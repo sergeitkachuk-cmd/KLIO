@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, pgTable, text } from "drizzle-orm/pg-core";
 
-export const accounts = sqliteTable("accounts", {
+export const accounts = pgTable("accounts", {
   email: text("email").primaryKey(),
   displayName: text("display_name").notNull().default("Пользователь"),
   planId: text("plan_id").notNull().default("start"),
@@ -13,7 +13,7 @@ export const accounts = sqliteTable("accounts", {
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
-export const brands = sqliteTable("brands", {
+export const brands = pgTable("brands", {
   id: text("id").primaryKey(),
   ownerEmail: text("owner_email").notNull(),
   name: text("name").notNull(),
@@ -26,7 +26,7 @@ export const brands = sqliteTable("brands", {
   index("brands_owner_updated_idx").on(table.ownerEmail, table.updatedAt),
 ]);
 
-export const generations = sqliteTable("generations", {
+export const generations = pgTable("generations", {
   id: text("id").primaryKey(),
   ownerEmail: text("owner_email").notNull(),
   brandId: text("brand_id"),
@@ -46,7 +46,7 @@ export const generations = sqliteTable("generations", {
   index("generations_brand_created_idx").on(table.brandId, table.createdAt),
 ]);
 
-export const materials = sqliteTable("materials", {
+export const materials = pgTable("materials", {
   id: text("id").primaryKey(),
   ownerEmail: text("owner_email").notNull(),
   brandId: text("brand_id").notNull(),

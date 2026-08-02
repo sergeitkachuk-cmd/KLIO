@@ -1,6 +1,6 @@
 import { and, eq, lt, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/d1";
 import { accounts, brands, generations } from "../../../db/schema";
+import { getDb } from "../../../db";
 import { getChatGPTUser, type ChatGPTUser } from "../../chatgpt-auth";
 import { planRule } from "../../plans";
 
@@ -13,23 +13,13 @@ export class WorkspaceAccessError extends Error {
   }
 }
 
-async function runtimeDatabaseBinding(): Promise<D1Database | null> {
-  try {
-    const runtime = await import("cloudflare:workers");
-    return runtime.env.DB ?? null;
-  } catch {
-    return null;
-  }
-}
-
 export async function workspaceDatabaseAvailable() {
-  return Boolean(await runtimeDatabaseBinding());
+  return Boolean(process.env.DATABASE_URL?.trim());
 }
 
 export async function getWorkspaceDb() {
-  const binding = await runtimeDatabaseBinding();
-  if (!binding) throw new WorkspaceAccessError("Хранилище кабинета недоступно.", 503);
-  return drizzle(binding);
+  if (!await workspaceDatabaseAvailable()) throw new WorkspaceAccessError("Хранилище кабинета недоступно.", 503);
+  return getDb();
 }
 
 export async function workspaceIdentity(): Promise<ChatGPTUser> {
@@ -225,7 +215,7 @@ export function workspaceErrorResponse(error: unknown) {
     return Response.json({ error: error.message }, { status: error.status });
   }
   const message = error instanceof Error ? error.message : "Неизвестная ошибка";
-  if (/no such table|D1 binding/i.test(message)) {
+  if (/does not exist|DATABASE_URL/i.test(message)) {
     return Response.json({ error: "Хранилище кабинета ещё не подготовлено. Повторите попытку после обновления сайта." }, { status: 503 });
   }
   console.error("Workspace persistence failed", error);

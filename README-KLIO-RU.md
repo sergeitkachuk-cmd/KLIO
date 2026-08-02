@@ -39,6 +39,28 @@
 - `npm run lint` — проверка исходного кода;
 - `npm run build` — производственная сборка.
 
+## Развёртывание на Render
+
+Проект работает на Render как **Web Service**, а не Static Site. В корне
+репозитория находится `render.yaml`, который создаёт Node.js-сервис и базу
+Render PostgreSQL, выполняет миграции и запускает Next.js.
+
+При создании Blueprint укажите этот репозиторий и заполните секреты
+`OPENAI_API_KEY`, `APP_USER_EMAIL`, `APP_USER_NAME` и
+`APP_ACCESS_PASSWORD`. Переменная
+`DATABASE_URL` подключается к созданной базе автоматически.
+
+Кабинет и API защищены HTTP Basic Authentication. Логин по умолчанию —
+`klio` (его можно изменить через `APP_ACCESS_USER`), пароль задаётся только
+в секретной переменной `APP_ACCESS_PASSWORD` на Render.
+
+Для ручной настройки Web Service используйте:
+
+- Build Command: `npm ci && npm run build`;
+- Pre-Deploy Command: `npm run db:push`;
+- Start Command: `npm start`;
+- Health Check Path: `/api/ai-status`.
+
 ## Важно
 
 - Реальные API-ключи в архив не включены.

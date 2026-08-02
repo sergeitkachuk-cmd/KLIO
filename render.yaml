@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: klio
+    runtime: node
+    plan: free
+    branch: main
+    buildCommand: npm ci && npm run build
+    preDeployCommand: npm run db:push
+    startCommand: npm start
+    healthCheckPath: /api/ai-status
+    envVars:
+      - key: NODE_VERSION
+        value: 22.13.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: klio-db
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-5.6
+      - key: APP_USER_EMAIL
+        sync: false
+      - key: APP_USER_NAME
+        sync: false
+      - key: APP_ACCESS_USER
+        value: klio
+      - key: APP_ACCESS_PASSWORD
+        sync: false
+
+databases:
+  - name: klio-db
+    plan: free

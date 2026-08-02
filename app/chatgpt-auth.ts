@@ -19,7 +19,12 @@ const CALLBACK_PATH = "/callback";
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
   const requestHeaders = await headers();
   const email = requestHeaders.get(USER_EMAIL_HEADER);
-  if (!email) return null;
+  if (!email) {
+    const renderEmail = process.env.APP_USER_EMAIL?.trim();
+    if (!renderEmail) return null;
+    const renderName = process.env.APP_USER_NAME?.trim() || renderEmail;
+    return { displayName: renderName, email: renderEmail, fullName: renderName };
+  }
 
   const encodedFullName = requestHeaders.get(USER_FULL_NAME_HEADER);
   const fullName =
