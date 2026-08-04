@@ -129,6 +129,20 @@ async function consumeSecondaryQuota(kind: "research" | "editor") {
   return { account: accountSummary(updated, await currentBrandCount(user.email)) };
 }
 
+// Mirrors assertSecondaryQuotaAvailable but for the primary "generation"
+// counter — called before the (costly) OpenAI request in /api/generate so
+// an account that's already over its monthly limit doesn't still burn a
+// real generation call only to have recordGeneration() reject it afterward.
+export async function assertGenerationQuotaAvailable() {
+  if (!await workspaceDatabaseAvailable()) return;
+  const user = await workspaceIdentity();
+  const current = await ensureAccount(user);
+  const rule = planRule(current.planId);
+  if (current.generationsUsed >= rule.generationLimit) {
+    throw new WorkspaceAccessError(`Лимит тарифа «${rule.name}» исчерпан: ${rule.generationLimit} материалов в месяц.`, 429);
+  }
+}
+
 export async function assertSecondaryQuotaAvailable(kind: "research" | "editor") {
   if (!await workspaceDatabaseAvailable()) return;
   const user = await workspaceIdentity();

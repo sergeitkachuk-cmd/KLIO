@@ -3240,12 +3240,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <div className={`workspace-status ${workspaceDataError ? "has-error" : ""}`}><i/><span><b>{workspaceDataError ? "Ошибка сохранения" : !workspaceReady ? "Загружаем кабинет" : workspaceSaving ? "Сохраняем изменения" : "Все изменения сохранены"}</b><small>{workspaceDataError || (!workspaceReady ? "Генератор уже доступен — данные брендов появятся через мгновение" : `${activeWorkspaceBrand?.name || brand.name} · защищённое хранилище кабинета`)}</small></span></div>
           </div>
 
-          <section className={`workspace-ai-banner ai-${aiConnection}`} aria-live="polite">
-            <i>{aiConnection === "connected" ? "✦" : aiConnection === "checking" ? "…" : "!"}</i>
-            <div><span>AI‑контур</span><b>{aiConnection === "connected" ? `Реальный ИИ подключён${aiModel ? ` · ${aiModel}` : ""}` : aiConnection === "checking" ? "Проверяем серверное подключение" : "ИИ пока не подключён"}</b><p>{aiConnection === "connected" ? "Генератор, семантика, контент‑план, редакторы КЛИО и веб‑поиск работают через серверный AI‑доступ." : aiConnection === "checking" ? "До завершения проверки генерации не запускаются." : "Шаблонные ответы отключены: КЛИО не выдаст санаторий вместо криптовалюты. Доступны профиль бренда, ручные ссылки, структурная матрица и ручная работа с сохранёнными материалами; AI‑режимы станут доступны после безопасного подключения ключа на сервере."}</p></div>
-            <span>{aiConnection === "connected" ? "Рабочий режим" : aiConnection === "checking" ? "Проверка" : "Без подмен"}</span>
-          </section>
-
           <section className="workspace-dashboard-bar" aria-label="Тариф и лимиты кабинета">
             <article><span>Тариф</span><b>{workspaceAccount.planName}</b><small>1 пользователь на всех планах</small></article>
             <article className="quota-card"><span>Материалы</span><b>{workspaceAccount.generationsUsed}<small> / {workspaceAccount.generationLimit}</small></b><i><u style={{ width: `${generationProgress}%` }}/></i></article>

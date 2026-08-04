@@ -6,7 +6,7 @@ import {
   type ContentTone,
 } from "../../content-plans";
 import { readWebsiteContext, websiteSourceLabel, type WebsiteContext } from "../_lib/website-context";
-import { recordGeneration, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
+import { assertGenerationQuotaAvailable, recordGeneration, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 
 type Format = ContentFormat;
 
@@ -857,6 +857,8 @@ export async function POST(request: Request) {
     if (!input.topic) {
       return Response.json({ error: "Укажите тему материала." }, { status: 400 });
     }
+
+    await assertGenerationQuotaAvailable();
 
     const apiKey = process.env.OPENAI_API_KEY?.trim();
     if (!apiKey) {
