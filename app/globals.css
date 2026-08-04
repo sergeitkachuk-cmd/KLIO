@@ -13260,3 +13260,24 @@ footer nav a {
   color: #fff;
   font-weight: 650;
 }
+
+@media (max-width: 480px) {
+  .auth-shell {
+    padding: 16px;
+  }
+
+  .auth-card {
+    padding: 30px 22px;
+    border-radius: 20px;
+  }
+
+  .auth-card h1 {
+    margin: 20px 0 8px;
+    font-size: 25px;
+  }
+
+  .auth-subtitle {
+    margin-bottom: 20px;
+    font-size: 13px;
+  }
+}
