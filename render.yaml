@@ -18,7 +18,9 @@ services:
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_MODEL
-        value: gpt-5.6
+        value: gpt-5.6-terra
+      - key: OPENAI_SEARCH_MODEL
+        value: gpt-5.6-terra
       - key: APP_USER_EMAIL
         sync: false
       - key: APP_USER_NAME

@@ -172,7 +172,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Автоподбор требует подключённого AI‑доступа. Пока добавьте ссылки вручную." }, { status: 503 });
     }
 
-    const model = process.env.OPENAI_SEARCH_MODEL?.trim() || "gpt-5.6";
+    const model = process.env.OPENAI_SEARCH_MODEL?.trim() || process.env.OPENAI_MODEL?.trim() || "gpt-5.6-terra";
     const brief = JSON.stringify({
       comparison_topic: query,
       brand: brand.name ? brand : null,
