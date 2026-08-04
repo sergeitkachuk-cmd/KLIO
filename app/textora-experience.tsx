@@ -1442,6 +1442,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setWorkspaceDataError("");
       try {
         const response = await fetch("/api/workspace", { cache: "no-store", headers: { Accept: "application/json" } });
+        if (response.status === 401) {
+          window.location.assign("/login?return_to=%2Fworkspace");
+          return;
+        }
         const payload = await response.json() as {
           error?: string;
           user?: { displayName?: string };
@@ -1488,6 +1492,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       cancelled = true;
     };
   }, [workspace]);
+
+  const signOutOfWorkspace = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      window.location.assign("/");
+    }
+  };
 
   useEffect(() => {
     if (workspace) return;
@@ -3184,6 +3196,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         <div className="workspace-header-actions">
           <Link href="/">На главную</Link>
           <button className="workspace-history-button" type="button" onClick={() => setHistoryOpen((value) => !value)}><span>Материалы</span><b>{activeMaterialCount}</b></button>
+          <button type="button" onClick={() => void signOutOfWorkspace()}>Выйти</button>
           <span className="workspace-account"><i>{nameInitials(workspaceUserName)}</i><b>{workspaceUserName}</b><small>{workspaceAccount.planName} · 1 пользователь</small></span>
         </div>
       </header>
@@ -3900,7 +3913,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     <header className="site-header">
       <a className="wordmark" href="#top" aria-label="КЛИО — на главную"><Brand/></a>
       <nav><a href="#audience">Для кого</a><a href="#modules">Как работает</a><a href="#plan">Контент‑план</a><a href="#pricing">Тарифы</a><a href="#faq">FAQ</a></nav>
-      <div><Link className="button ghost" href="/workspace">Войти</Link><Link className="button primary" href="/workspace">Попробовать</Link></div>
+      <div><Link className="button ghost" href="/login">Войти</Link><Link className="button primary" href="/signup">Попробовать</Link></div>
     </header>
 
     <section className="hero" id="top">

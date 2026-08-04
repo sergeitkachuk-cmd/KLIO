@@ -1,7 +1,7 @@
 import TextoraExperience from "../textora-experience";
-import { requireChatGPTUser } from "../chatgpt-auth";
+import { requireCurrentUser } from "../identity";
 
 export default async function WorkspacePage() {
-  await requireChatGPTUser("/workspace");
+  await requireCurrentUser("/workspace");
   return <TextoraExperience workspace />;
 }

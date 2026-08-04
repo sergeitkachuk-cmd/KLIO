@@ -20,6 +20,13 @@ export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
   const requestHeaders = await headers();
   const email = requestHeaders.get(USER_EMAIL_HEADER);
   if (!email) {
+    // APP_USER_EMAIL is a local/dev convenience only — it used to double as
+    // a way for the site owner to reach /workspace outside ChatGPT before
+    // real visitor accounts existed. In production, real login (site-auth.ts)
+    // or the ChatGPT embed header are the only ways in; letting this fallback
+    // apply in production would silently log every anonymous visitor into
+    // the same shared account.
+    if (process.env.NODE_ENV === "production") return null;
     const renderEmail = process.env.APP_USER_EMAIL?.trim();
     if (!renderEmail) return null;
     const renderName = process.env.APP_USER_NAME?.trim() || renderEmail;

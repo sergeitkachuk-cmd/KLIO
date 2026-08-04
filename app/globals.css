@@ -3728,13 +3728,17 @@ footer nav a {
   gap: 22px;
 }
 
-.workspace-header-actions > a {
+.workspace-header-actions > a,
+.workspace-header-actions > button {
+  border: none;
   color: rgba(255, 255, 255, 0.7);
+  background: none;
   font-size: 13px;
   font-weight: 650;
   letter-spacing: 0.06em;
   text-decoration: none;
   text-transform: uppercase;
+  cursor: pointer;
 }
 
 .workspace-account {
@@ -13176,4 +13180,83 @@ footer nav a {
   .content-plan-select > span {
     display: none;
   }
+}
+
+/* Auth pages: /login, /signup */
+.auth-shell {
+  display: grid;
+  place-items: center;
+  min-height: 100svh;
+  padding: 30px;
+  background:
+    radial-gradient(900px 620px at 91% 8%, rgba(124, 58, 237, 0.12), transparent 68%),
+    linear-gradient(180deg, #f5f4f8 0%, #ececf2 100%);
+}
+
+.auth-card {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  padding: 40px 34px;
+  overflow: hidden;
+  border-radius: 26px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 15% 5%, rgba(124, 58, 237, 0.48), transparent 34%),
+    radial-gradient(circle at 100% 82%, rgba(139, 92, 246, 0.3), transparent 36%),
+    linear-gradient(145deg, #0b0b14 0%, #171126 58%, #0c0b15 100%);
+  box-shadow: 0 44px 110px rgba(27, 20, 54, 0.22);
+  isolation: isolate;
+}
+
+.auth-card .wordmark {
+  display: inline-flex;
+  text-decoration: none;
+}
+
+.auth-card h1 {
+  margin: 26px 0 8px;
+  font-size: 30px;
+  font-weight: 560;
+  letter-spacing: -0.03em;
+}
+
+.auth-subtitle {
+  margin: 0 0 26px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.auth-card form {
+  display: block;
+}
+
+.auth-card .button {
+  width: 100%;
+  margin-top: 6px;
+}
+
+.auth-error {
+  margin: -8px 0 18px;
+  padding: 11px 14px;
+  border: 1px solid rgba(255, 118, 118, 0.35);
+  border-radius: 12px;
+  color: #ffd3d3;
+  background: rgba(255, 92, 92, 0.12);
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 1.45;
+}
+
+.auth-switch {
+  margin: 22px 0 0;
+  color: rgba(255, 255, 255, 0.56);
+  font-size: 13px;
+  text-align: center;
+}
+
+.auth-switch a {
+  color: #fff;
+  font-weight: 650;
 }

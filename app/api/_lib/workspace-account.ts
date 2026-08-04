@@ -1,7 +1,8 @@
 import { and, eq, lt, sql } from "drizzle-orm";
 import { accounts, brands, generations } from "../../../db/schema";
 import { getDb } from "../../../db";
-import { getChatGPTUser, type ChatGPTUser } from "../../chatgpt-auth";
+import type { ChatGPTUser } from "../../chatgpt-auth";
+import { getCurrentUser } from "../../identity";
 import { planRule } from "../../plans";
 
 export class WorkspaceAccessError extends Error {
@@ -23,8 +24,8 @@ export async function getWorkspaceDb() {
 }
 
 export async function workspaceIdentity(): Promise<ChatGPTUser> {
-  const user = await getChatGPTUser();
-  if (user) return user;
+  const user = await getCurrentUser();
+  if (user) return { ...user, fullName: user.displayName };
   if (process.env.NODE_ENV !== "production") {
     return { displayName: "Сергей", email: "preview@klio.local", fullName: "Сергей" };
   }

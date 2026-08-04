@@ -21,14 +21,6 @@ services:
         value: gpt-5.6-terra
       - key: OPENAI_SEARCH_MODEL
         value: gpt-5.6-terra
-      - key: APP_USER_EMAIL
-        sync: false
-      - key: APP_USER_NAME
-        sync: false
-      - key: APP_ACCESS_USER
-        value: klio
-      - key: APP_ACCESS_PASSWORD
-        sync: false
 
 databases:
   - name: klio-db
