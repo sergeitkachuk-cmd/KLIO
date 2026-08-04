@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, pgTable, text } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, text } from "drizzle-orm/pg-core";
 
 export const accounts = pgTable("accounts", {
   email: text("email").primaryKey(),
@@ -7,6 +7,9 @@ export const accounts = pgTable("accounts", {
   // Null for accounts that only ever authenticated via the ChatGPT embed
   // (no site password was ever set for them).
   passwordHash: text("password_hash"),
+  // Only meaningful for the password sign-in path — ChatGPT-embed accounts
+  // are already vetted by OpenAI's own auth and never gate on this.
+  emailVerified: boolean("email_verified").notNull().default(false),
   planId: text("plan_id").notNull().default("start"),
   generationMonth: text("generation_month").notNull(),
   generationsUsed: integer("generations_used").notNull().default(0),
@@ -25,6 +28,16 @@ export const sessions = pgTable("sessions", {
   expiresAt: text("expires_at").notNull(),
 }, (table) => [
   index("sessions_email_idx").on(table.email),
+]);
+
+export const emailVerifications = pgTable("email_verifications", {
+  // sha256 hex digest of the raw token — same pattern as sessions.id.
+  id: text("id").primaryKey(),
+  email: text("email").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  expiresAt: text("expires_at").notNull(),
+}, (table) => [
+  index("email_verifications_email_idx").on(table.email),
 ]);
 
 export const brands = pgTable("brands", {

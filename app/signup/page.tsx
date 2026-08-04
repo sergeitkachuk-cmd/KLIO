@@ -15,6 +15,9 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [sentTo, setSentTo] = useState("");
+  const [resendBusy, setResendBusy] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -45,11 +48,47 @@ export default function SignupPage() {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "Не удалось зарегистрироваться.");
-      window.location.assign(safeReturnTo());
+      setSentTo(email);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось зарегистрироваться.");
+    } finally {
       setBusy(false);
     }
+  }
+
+  async function handleResend() {
+    setResendBusy(true);
+    setResendMessage("");
+    try {
+      const response = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: sentTo }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      setResendMessage(payload.message || "Письмо отправлено повторно.");
+    } catch {
+      setResendMessage("Не удалось отправить письмо. Попробуйте позже.");
+    } finally {
+      setResendBusy(false);
+    }
+  }
+
+  if (sentTo) {
+    return (
+      <main className="auth-shell">
+        <div className="auth-card">
+          <Link className="wordmark" href="/" aria-label="КЛИО — на главную">
+            <span className="brand"><i>К</i><b>КЛИО</b><small>Цифровая редакция</small></span>
+          </Link>
+          <h1>Проверьте почту</h1>
+          <p className="auth-subtitle">Мы отправили письмо со ссылкой подтверждения на <b>{sentTo}</b>. Перейдите по ней, чтобы открыть кабинет — ссылка действует 24 часа.</p>
+          {resendMessage && <p className="auth-error" style={{ color: "#d3ffd8", background: "rgba(92,255,140,0.12)", borderColor: "rgba(118,255,118,0.35)" }}>{resendMessage}</p>}
+          <button className="button ghost large" type="button" onClick={() => void handleResend()} disabled={resendBusy}>{resendBusy ? "Отправляем…" : "Отправить письмо ещё раз"}</button>
+          <p className="auth-switch">Уже подтвердили? <Link href="/login">Войти</Link></p>
+        </div>
+      </main>
+    );
   }
 
   return (

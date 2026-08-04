@@ -21,6 +21,10 @@ services:
         value: gpt-5.6-terra
       - key: OPENAI_SEARCH_MODEL
         value: gpt-5.6-terra
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        value: "KLIO <onboarding@resend.dev>"
 
 databases:
   - name: klio-db

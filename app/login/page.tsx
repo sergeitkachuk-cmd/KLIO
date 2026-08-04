@@ -9,11 +9,22 @@ function safeReturnTo(): string {
   return "/workspace";
 }
 
+function initialVerifyError(): string {
+  if (typeof window === "undefined") return "";
+  const verifyStatus = new URLSearchParams(window.location.search).get("verify");
+  if (verifyStatus === "expired") return "Ссылка подтверждения устарела или уже использована. Войдите — мы предложим отправить новую.";
+  if (verifyStatus === "failed") return "Не удалось подтвердить email. Попробуйте войти ещё раз.";
+  return "";
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(initialVerifyError);
   const [busy, setBusy] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resendBusy, setResendBusy] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -31,6 +42,8 @@ export default function LoginPage() {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError("");
+    setNeedsVerification(false);
+    setResendMessage("");
     setBusy(true);
     try {
       const response = await fetch("/api/auth/login", {
@@ -39,11 +52,33 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || "Не удалось войти.");
+      if (!response.ok) {
+        if (payload.code === "EMAIL_NOT_VERIFIED") setNeedsVerification(true);
+        throw new Error(payload.error || "Не удалось войти.");
+      }
       window.location.assign(safeReturnTo());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось войти.");
+    } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleResend() {
+    setResendBusy(true);
+    setResendMessage("");
+    try {
+      const response = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      setResendMessage(payload.message || "Письмо отправлено повторно.");
+    } catch {
+      setResendMessage("Не удалось отправить письмо. Попробуйте позже.");
+    } finally {
+      setResendBusy(false);
     }
   }
 
@@ -59,6 +94,12 @@ export default function LoginPage() {
           <label className="field">Email<input type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
           <label className="field">Пароль<input type="password" required autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
           {error && <p className="auth-error">{error}</p>}
+          {needsVerification && (
+            <button className="button ghost" type="button" onClick={() => void handleResend()} disabled={resendBusy}>
+              {resendBusy ? "Отправляем…" : "Отправить письмо подтверждения ещё раз"}
+            </button>
+          )}
+          {resendMessage && <p className="auth-error" style={{ color: "#d3ffd8", background: "rgba(92,255,140,0.12)", borderColor: "rgba(118,255,118,0.35)" }}>{resendMessage}</p>}
           <button className="button primary large" type="submit" disabled={busy}>{busy ? "Входим…" : "Войти"}</button>
         </form>
         <p className="auth-switch">Нет аккаунта? <Link href="/signup">Зарегистрироваться</Link></p>
