@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { accounts } from "../../../../db/schema";
 import { hashPassword } from "../../_lib/password";
+import { resolveBaseUrl } from "../../_lib/base-url";
 import { emailDeliveryAvailable, sendVerificationEmail } from "../../_lib/email";
 import { clientIp, isRateLimited } from "../../_lib/rate-limit";
 import { createEmailVerification } from "../../_lib/verification";
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
     await db.update(accounts).set({ passwordHash }).where(eq(accounts.email, email));
 
     const token = await createEmailVerification(email);
-    const verifyUrl = new URL(`/api/auth/verify?token=${token}`, request.url).toString();
+    const verifyUrl = `${resolveBaseUrl(request)}/api/auth/verify?token=${token}`;
     try {
       await sendVerificationEmail(email, verifyUrl);
     } catch (error) {

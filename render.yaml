@@ -25,6 +25,8 @@ services:
         sync: false
       - key: RESEND_FROM_EMAIL
         value: "KLIO <onboarding@resend.dev>"
+      - key: APP_BASE_URL
+        value: https://klio-g1eg.onrender.com
 
 databases:
   - name: klio-db
