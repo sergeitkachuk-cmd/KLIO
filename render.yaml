@@ -2,7 +2,7 @@ services:
   - type: web
     name: klio
     runtime: node
-    plan: free
+    plan: starter
     branch: main
     buildCommand: npm ci && npm run build
     preDeployCommand: npm run db:push
