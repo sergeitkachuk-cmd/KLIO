@@ -328,22 +328,27 @@ function outputText(response: unknown) {
     .join("\n");
 }
 
-function parseMaterial(text: string): AdaptedMaterial {
-  const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-  const parsed = JSON.parse(cleaned) as Record<string, unknown>;
-  const title = clean(parsed.title, 500);
-  const body = clean(parsed.body, 60000);
-  if (!title || !body) throw new Error("AI returned an incomplete material");
-  return {
-    title,
-    body,
-    metaTitle: clean(parsed.meta_title, 500) || title.slice(0, 70),
-    metaDescription: clean(parsed.meta_description, 1000),
-    editorialComment: clean(parsed.editorial_comment, 1600),
-    changes: Array.isArray(parsed.changes)
-      ? parsed.changes.map((item) => clean(item, 240)).filter(Boolean).slice(0, 6)
-      : [],
-  };
+function parseMaterial(text: string): AdaptedMaterial | null {
+  try {
+    const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+    if (!cleaned) return null;
+    const parsed = JSON.parse(cleaned) as Record<string, unknown>;
+    const title = clean(parsed.title, 500);
+    const body = clean(parsed.body, 60000);
+    if (!title || !body) return null;
+    return {
+      title,
+      body,
+      metaTitle: clean(parsed.meta_title, 500) || title.slice(0, 70),
+      metaDescription: clean(parsed.meta_description, 1000),
+      editorialComment: clean(parsed.editorial_comment, 1600),
+      changes: Array.isArray(parsed.changes)
+        ? parsed.changes.map((item) => clean(item, 240)).filter(Boolean).slice(0, 6)
+        : [],
+    };
+  } catch {
+    return null;
+  }
 }
 
 function adaptationHasViolation(
@@ -434,8 +439,9 @@ export async function POST(request: Request) {
     if (!aiResponse.ok) {
       return Response.json({ error: "AI‑редактор временно не ответил. Попробуйте ещё раз." }, { status: 502 });
     }
-    let material = parseMaterial(outputText(await aiResponse.json()));
-    if (adaptationHasViolation(input, material)) {
+    const firstOutput = outputText(await aiResponse.json());
+    let material = parseMaterial(firstOutput);
+    if (!material || adaptationHasViolation(input, material)) {
       const correctionResponse = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -459,12 +465,22 @@ export async function POST(request: Request) {
             transformationDirective,
             "Запрещены заголовки «Что получает читатель» и «Условия и следующий шаг».",
           ].join("\n"),
-          input: JSON.stringify({ brief: adaptationBrief, rejected_material: material }),
+          input: JSON.stringify({
+            brief: adaptationBrief,
+            rejected_material: material ?? null,
+            rejected_raw_output: material ? null : firstOutput.slice(0, 12000),
+            validation_failure: material
+              ? "Материал нарушил ограничения выбранного сценария."
+              : "Обязательные поля title и body отсутствуют или пусты.",
+          }),
         }),
       });
-      if (correctionResponse.ok) material = parseMaterial(outputText(await correctionResponse.json()));
+      if (correctionResponse.ok) {
+        const corrected = parseMaterial(outputText(await correctionResponse.json()));
+        if (corrected) material = corrected;
+      }
     }
-    if (adaptationHasViolation(input, material)) {
+    if (!material || adaptationHasViolation(input, material)) {
       return Response.json({ error: "AI‑редактор не прошёл проверку формата. Исходный текст сохранён; повторите попытку или уточните задачу." }, { status: 422 });
     }
     const usage = await recordEditorialAction();

@@ -134,7 +134,7 @@ function semanticSchema() {
 function normalizeAiResult(result: SemanticResult, query: string, geography: GeographyTarget[], website: WebsiteContext) {
   const anchors = queryAnchors(query);
   const seen = new Set<string>();
-  const keywords = result.keywords.map((item, index) => ({
+  let keywords = result.keywords.map((item, index) => ({
     ...item,
     id: `semantic-${index + 1}`,
     phrase: clean(item.phrase, 180),
@@ -147,24 +147,65 @@ function normalizeAiResult(result: SemanticResult, query: string, geography: Geo
     return true;
   });
 
-  const breadth = new Set(keywords.map((item) => item.breadth));
-  const relations = new Set(keywords.map((item) => item.relation));
-  const recommended = keywords.filter((item) => item.recommended);
-  const core = keywords.find((item) => item.role === "Основной");
-  const offTopicRecommended = recommended.filter((item) => item.relation !== "Смежный" && item.relation !== "Гео" && !hasAnchor(item.phrase, anchors));
-  const geoLabels = geography.map((item) => item.label.toLocaleLowerCase("ru-RU").replace(/ё/g, "е"));
-  const geoCovered = geoLabels.every((label) => keywords.some((item) => item.relation === "Гео" && item.phrase.toLocaleLowerCase("ru-RU").replace(/ё/g, "е").includes(label)));
-
-  if (keywords.length < 18 || !core || recommended.length < 5 || recommended.length > 8
-    || !breadth.has("Широкий") || !breadth.has("Средний") || !breadth.has("Узкий")
-    || !relations.has("Ядро") || !relations.has("Смежный") || offTopicRecommended.length || !geoCovered) {
+  if (keywords.length < 12) {
     throw new AiResponseError("AI‑аналитик подготовил неполную семантическую карту. Запустите анализ ещё раз.", 422);
   }
 
-  const suggestedTopic = clean(result.suggestedTopic, 240);
-  if (!suggestedTopic || !hasAnchor(suggestedTopic, anchors)) {
-    throw new AiResponseError("AI‑аналитик потерял предмет исходной темы. Результат не принят.", 422);
+  const originalCoreIndex = keywords.findIndex((item) => item.role === "Основной");
+  const coreIndex = originalCoreIndex >= 0 ? originalCoreIndex : 0;
+  keywords = keywords.map((item, index) => ({
+    ...item,
+    role: index === coreIndex ? "Основной" as const : item.role === "Основной" ? "Поддерживающий" as const : item.role,
+    relation: index === coreIndex ? "Ядро" as const : item.relation,
+  }));
+
+  const breadthValues = ["Широкий", "Средний", "Узкий"] as const;
+  for (const [index, breadth] of breadthValues.entries()) {
+    if (!keywords.some((item) => item.breadth === breadth)) keywords[index].breadth = breadth;
   }
+  if (!keywords.some((item) => item.relation === "Смежный")) {
+    const adjacentIndex = coreIndex === 0 ? 1 : 0;
+    keywords[adjacentIndex].relation = "Смежный";
+  }
+
+  const recommendedIndexes = new Set<number>([coreIndex]);
+  keywords.forEach((item, index) => {
+    if (recommendedIndexes.size >= 6) return;
+    if (item.recommended && (hasAnchor(item.phrase, anchors) || item.relation === "Смежный")) recommendedIndexes.add(index);
+  });
+  keywords.forEach((item, index) => {
+    if (recommendedIndexes.size >= 6) return;
+    if (hasAnchor(item.phrase, anchors) && item.relation !== "Гео") recommendedIndexes.add(index);
+  });
+  keywords.forEach((_item, index) => {
+    if (recommendedIndexes.size < 5) recommendedIndexes.add(index);
+  });
+  keywords = keywords.map((item, index) => ({ ...item, recommended: recommendedIndexes.has(index) }));
+
+  for (const target of geography) {
+    const normalizedLabel = target.label.toLocaleLowerCase("ru-RU").replace(/ё/g, "е");
+    const covered = keywords.some((item) => item.relation === "Гео"
+      && item.phrase.toLocaleLowerCase("ru-RU").replace(/ё/g, "е").includes(normalizedLabel));
+    if (covered) continue;
+    const geoKeyword: SemanticKeyword = {
+      id: `semantic-${keywords.length + 1}`,
+      phrase: `${query} ${target.label}`,
+      cluster: "География спроса",
+      intent: "Смешанный",
+      role: "Гео",
+      relation: "Гео",
+      breadth: "Узкий",
+      recommended: false,
+      note: `Географическое уточнение спроса: ${target.label}.`,
+    };
+    if (keywords.length < 30) keywords.push(geoKeyword);
+    else keywords[keywords.length - 1] = geoKeyword;
+  }
+
+  const rawSuggestedTopic = clean(result.suggestedTopic, 240);
+  const suggestedTopic = rawSuggestedTopic && hasAnchor(rawSuggestedTopic, anchors)
+    ? rawSuggestedTopic
+    : `${query}: практическое руководство`;
 
   return {
     primaryQuery: query,
@@ -208,22 +249,48 @@ export async function POST(request: Request) {
       "Верни только структурированный результат по JSON‑схеме.",
     ].join("\n");
 
-    const { result: aiResult, model } = await requestStructuredJson<SemanticResult>({
+    const requestContext = {
+      current_query: query,
+      search_demand_geography: geography,
+      brand_profile: brand.name ? brand : null,
+      website_snapshot: website.status === "loaded" ? { url: website.resolvedUrl, text: website.text } : null,
+    };
+    const firstAttempt = await requestStructuredJson<SemanticResult>({
       schemaName: "klio_semantic_map",
       schema: semanticSchema(),
       instructions,
-      input: JSON.stringify({
-        current_query: query,
-        search_demand_geography: geography,
-        brand_profile: brand.name ? brand : null,
-        website_snapshot: website.status === "loaded" ? { url: website.resolvedUrl, text: website.text } : null,
-      }, null, 2),
+      input: JSON.stringify(requestContext, null, 2),
       reasoningEffort: "medium",
       verbosity: "high",
       maxOutputTokens: 9000,
     });
 
-    const result = normalizeAiResult(aiResult, query, geography, website);
+    let result: ReturnType<typeof normalizeAiResult>;
+    let model = firstAttempt.model;
+    try {
+      result = normalizeAiResult(firstAttempt.result, query, geography, website);
+    } catch (error) {
+      if (!(error instanceof AiResponseError) || error.status !== 422) throw error;
+      const correction = await requestStructuredJson<SemanticResult>({
+        schemaName: "klio_corrected_semantic_map",
+        schema: semanticSchema(),
+        instructions: [
+          instructions,
+          "Предыдущий результат не прошёл автоматическую проверку. Исправь его, а не меняй исходную тему.",
+          "Проверь перед ответом: 18–30 уникальных фраз; ровно один Основной запрос; 5–8 recommended; присутствуют Широкий, Средний и Узкий охват; есть Ядро и Смежный; suggestedTopic явно содержит предмет исходного запроса; для каждой переданной территории есть отдельная Гео-фраза.",
+        ].join("\n"),
+        input: JSON.stringify({
+          original_request: requestContext,
+          rejected_result: firstAttempt.result,
+          validation_failure: error.message,
+        }, null, 2),
+        reasoningEffort: "medium",
+        verbosity: "high",
+        maxOutputTokens: 9000,
+      });
+      model = correction.model;
+      result = normalizeAiResult(correction.result, query, geography, website);
+    }
     const usage = await recordResearch();
     return Response.json({ result, mode: "ai", model, sources: { website: website.status, geography: geography.map((item) => item.label) }, usage });
   } catch (error) {
