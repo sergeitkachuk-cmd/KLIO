@@ -3925,8 +3925,7 @@ footer nav a {
   gap: 22px;
 }
 
-.workspace-header-actions > a,
-.workspace-header-actions > .workspace-logout {
+.workspace-header-actions > a {
   border: none;
   color: rgba(255, 255, 255, 0.7);
   background: none;
@@ -3938,14 +3937,24 @@ footer nav a {
   cursor: pointer;
 }
 
+.account-menu {
+  position: relative;
+}
+
 .workspace-account {
   display: grid;
-  grid-template-columns: 36px auto;
+  grid-template-columns: 36px auto 16px;
   grid-template-rows: auto auto;
+  align-items: center;
   gap: 1px 10px;
   min-width: 156px;
   padding-left: 20px;
+  border: 0;
   border-left: 1px solid rgba(255, 255, 255, 0.16);
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .workspace-account i {
@@ -3972,6 +3981,52 @@ footer nav a {
 .workspace-account small {
   color: rgba(255, 255, 255, 0.52);
   font-size: 11px;
+}
+
+.workspace-account > em {
+  grid-row: 1 / 3;
+  grid-column: 3;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+  font-style: normal;
+  transition: transform 160ms ease;
+}
+
+.account-menu.is-open .workspace-account > em {
+  transform: rotate(180deg);
+}
+
+.account-menu-list {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 100;
+  min-width: 160px;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 13px;
+  background: rgba(17, 13, 27, 0.98);
+  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.38), inset 0 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(24px);
+}
+
+.account-menu-list button {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9px;
+  color: #fff;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 640;
+  text-align: left;
+  cursor: pointer;
+}
+
+.account-menu-list button:hover {
+  background: rgba(216, 255, 101, 0.09);
+  color: var(--acid);
 }
 
 .workspace-layout {
@@ -5959,6 +6014,36 @@ footer nav a {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.semantic-keyword-copy {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+  border: 1px solid rgba(61, 50, 102, 0.14);
+  border-radius: 7px;
+  color: #837e8f;
+  background: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.semantic-keyword-copy svg {
+  width: 13px;
+  height: 13px;
+}
+
+.semantic-keyword-row:hover .semantic-keyword-copy,
+.semantic-keyword-copy:focus-visible {
+  opacity: 1;
+}
+
+.semantic-keyword-copy:hover {
+  border-color: rgba(124, 58, 237, 0.32);
+  color: var(--cobalt);
 }
 
 .semantic-demand {

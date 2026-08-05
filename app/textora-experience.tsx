@@ -1195,7 +1195,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [semanticOpen, setSemanticOpen] = useState(false);
   const [contentPlanOpen, setContentPlanOpen] = useState(false);
   const [adaptationOpen, setAdaptationOpen] = useState(false);
-  const [generatorAdvanced, setGeneratorAdvanced] = useState(false);
+  const [generatorAdvanced, setGeneratorAdvanced] = useState(true);
   const [generatorMode, setGeneratorMode] = useState<"quick" | "advanced">("quick");
   const [quickPrompt, setQuickPrompt] = useState("");
   const [quickBusy, setQuickBusy] = useState(false);
@@ -1285,11 +1285,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [archiveTransformGoal, setArchiveTransformGoal] = useState<AdaptationGoal>("proofread");
   const [brandCreatorOpen, setBrandCreatorOpen] = useState(false);
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [newBrandName, setNewBrandName] = useState("");
   const [brandSwitchBusy, setBrandSwitchBusy] = useState(false);
   const metricsRef = useRef<HTMLDivElement>(null);
   const geoPickerRef = useRef<HTMLDivElement>(null);
   const brandPickerRef = useRef<HTMLDivElement>(null);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
 
   const words = useMemo(() => body.trim().split(/\s+/).filter(Boolean).length, [body]);
   const keyList = useMemo(() => keywords.split(",").map((item) => item.trim()).filter(Boolean), [keywords]);
@@ -1817,6 +1819,22 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       document.removeEventListener("keydown", closeOnEscape);
     };
   }, [brandMenuOpen]);
+
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!accountMenuRef.current?.contains(event.target as Node)) setAccountMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setAccountMenuOpen(false);
+    };
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [accountMenuOpen]);
 
   useEffect(() => {
     if (!archiveEditorItem) return;
@@ -2410,6 +2428,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       return;
     }
     setFormat("seo");
+    setGeneratorMode("advanced");
     setTopic(semanticResult.suggestedTopic || semanticQuery);
     setKeywords(selectedSemanticKeywords.map((item) => item.phrase).join(", "));
     setLength(Math.min(4000, Math.max(500, semanticResult.recommendedLength || 1200)));
@@ -2792,6 +2811,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       competitorComment.trim() ? `Комментарий пользователя: ${competitorComment.trim()}` : "",
     ].filter(Boolean).join("\n");
     setFormat("seo");
+    setGeneratorMode("advanced");
     setTopic(competitorQuery);
     setAccent(nextAccent);
     setGeneratorUseCompetitors(true);
@@ -3164,6 +3184,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     const cleanTitle = cleanContentPlanTitle(item.title);
     const structureLines = item.structure.map((section) => `• ${section}: раскрыть применительно к теме материала и опереться только на подтверждённые факты`);
     setFormat("seo");
+    setGeneratorMode("advanced");
     setTopic(cleanTitle);
     setKeywords(uniqueText([item.primaryKeyword, ...item.lsi]).join(", "));
     setLength(1200);
@@ -3403,8 +3424,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         <div className="workspace-header-actions">
           <Link href="/">На главную</Link>
           <button className="workspace-history-button" type="button" onClick={() => setHistoryOpen((value) => !value)}><span>Материалы</span><b>{activeMaterialCount}</b></button>
-          <button type="button" className="workspace-logout" onClick={() => void signOutOfWorkspace()}>Выйти</button>
-          <span className="workspace-account"><i>{nameInitials(workspaceUserName)}</i><b>{workspaceUserName}</b><small>{workspaceAccount.planName} · 1 пользователь</small></span>
+          <div className={`account-menu ${accountMenuOpen ? "is-open" : ""}`} ref={accountMenuRef}>
+            <button type="button" className="workspace-account" onClick={() => setAccountMenuOpen((value) => !value)} aria-haspopup="menu" aria-expanded={accountMenuOpen}>
+              <i>{nameInitials(workspaceUserName)}</i><b>{workspaceUserName}</b><small>{workspaceAccount.planName} · 1 пользователь</small><em>⌄</em>
+            </button>
+            {accountMenuOpen && <div className="account-menu-list" role="menu">
+              <button type="button" role="menuitem" onClick={() => void signOutOfWorkspace()}>Выйти</button>
+            </div>}
+          </div>
         </div>
       </header>
 
@@ -3757,13 +3784,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     {visibleSemanticKeywords.map((keyword) => {
                       const selected = selectedSemanticIds.includes(keyword.id);
                       const breadthClass = keyword.breadth === "Широкий" ? "high" : keyword.breadth === "Средний" ? "medium" : "niche";
-                      return <button type="button" className={`semantic-keyword-row ${selected ? "is-selected" : ""}`} onClick={() => toggleSemanticKeyword(keyword.id)} aria-pressed={selected} key={keyword.id}>
+                      return <div className={`semantic-keyword-row ${selected ? "is-selected" : ""}`} role="button" tabIndex={0} onClick={() => toggleSemanticKeyword(keyword.id)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); toggleSemanticKeyword(keyword.id); } }} aria-pressed={selected} key={keyword.id}>
                         <span><i>{selected ? "✓" : ""}</i></span>
                         <span><b>{keyword.phrase}</b>{keyword.note && <small>{keyword.note}</small>}<em>{keyword.role}{keyword.recommended ? " · рекомендует КЛИО" : ""}</em></span>
                         <span>{keyword.intent}</span>
                         <span>{keyword.relation}</span>
-                        <span><i className={`semantic-demand ${breadthClass}`}/>{keyword.breadth}</span>
-                      </button>;
+                        <span><i className={`semantic-demand ${breadthClass}`}/>{keyword.breadth}<button type="button" className="semantic-keyword-copy" onClick={(event) => { event.stopPropagation(); copyPlainText(keyword.phrase, "Фраза"); }} aria-label={`Копировать фразу «${keyword.phrase}»`}><Icon name="copy"/></button></span>
+                      </div>;
                     })}
                   </div>
                 </div>
@@ -3903,8 +3930,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <aside className="brief-panel">
                 <div className="brief-step"><span>Шаг 01</span><b>Бриф материала</b></div>
                 <div className="generator-mode-switch" role="radiogroup" aria-label="Режим генератора">
-                  <button type="button" className={generatorMode === "quick" ? "active" : ""} onClick={() => setGeneratorMode("quick")} role="radio" aria-checked={generatorMode === "quick"}><i>✦</i><span><b>Быстрый ввод</b><small>опишите задачу в одном окне</small></span></button>
-                  <button type="button" className={generatorMode === "advanced" ? "active" : ""} onClick={() => setGeneratorMode("advanced")} role="radio" aria-checked={generatorMode === "advanced"}><i>≡</i><span><b>Пошагово</b><small>формат, ключи, стиль отдельно</small></span></button>
+                  <button type="button" className={generatorMode === "quick" ? "active" : ""} onClick={() => setGeneratorMode("quick")} role="radio" aria-checked={generatorMode === "quick"}><i>✦</i><span><b>Новичок</b><small>опишите задачу в одном окне</small></span></button>
+                  <button type="button" className={generatorMode === "advanced" ? "active" : ""} onClick={() => setGeneratorMode("advanced")} role="radio" aria-checked={generatorMode === "advanced"}><i>≡</i><span><b>Эксперт</b><small>формат, ключи, стиль отдельно</small></span></button>
                 </div>
                 {generatorMode === "quick" && <div className="generator-quick">
                   <label className="field">Опишите задачу<AutoTextarea rows={6} value={quickPrompt} onChange={(event) => setQuickPrompt(event.target.value)} placeholder="Например: напиши SEO-статью про ORCA (сайт theorca.pro) — платформа для трейдеров с no-code сканерами и стратегиями. Аудитория — активные трейдеры."/><small>Опишите бренд, сайт или тему и что нужно написать — формат, тон и объём КЛИО определит сама. Если назван реальный бренд или сайт, КЛИО проверит факты в вебе, а не будет их выдумывать.</small></label>
@@ -4085,6 +4112,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <div className="adaptation-card-head"><div><span>Исходник заказчика</span><h3>Вставьте готовый текст</h3></div><b>{adaptationSourceWords.toLocaleString("ru-RU")} слов</b></div>
                 <label className="adaptation-source-field"><AutoTextarea className="adaptation-source-textarea" rows={10} value={adaptationSource} onChange={(event) => setAdaptationSource(event.target.value)} placeholder="Вставьте статью, пост, описание услуги или другой готовый материал…"/><small>Поле увеличивается вместе с текстом, а для длинного материала включает внутреннюю прокрутку. Исходник не перезаписывается.</small></label>
 
+                <label className="adaptation-field"><span>Ключевые фразы <small>необязательно</small></span><AutoTextarea rows={2} value={adaptationKeywords} onChange={(event) => setAdaptationKeywords(event.target.value)} placeholder="Например: санаторий в Карелии, восстановление"/></label>
+                <label className="adaptation-field"><span>Комментарий редактору <small>необязательно</small></span><AutoTextarea rows={2} value={adaptationInstructions} onChange={(event) => setAdaptationInstructions(event.target.value)} placeholder="Что важно сохранить, убрать или подчеркнуть"/></label>
+
                 <div className="adaptation-task"><span>Выберите режим КЛИО</span><div className="adaptation-goals">{adaptationGoals.map((item) => {
                   const active = adaptationGoal === item.id;
                   return <article className={active ? "active" : ""} key={item.id}>
@@ -4095,8 +4125,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
                 <div className="editor-tone-picker"><span>Интонация результата</span><div>{styles.map((item) => <button type="button" className={adaptationTone === item ? "active" : ""} onClick={() => { setAdaptationTone(item); setAdaptationResult(null); setAdaptationMode("example"); }} key={item}>{item}</button>)}</div></div>
 
-                <label className="adaptation-field"><span>Ключевые фразы <small>необязательно</small></span><AutoTextarea rows={2} value={adaptationKeywords} onChange={(event) => setAdaptationKeywords(event.target.value)} placeholder="Например: санаторий в Карелии, восстановление"/></label>
-                <label className="adaptation-field"><span>Комментарий редактору <small>необязательно</small></span><AutoTextarea rows={2} value={adaptationInstructions} onChange={(event) => setAdaptationInstructions(event.target.value)} placeholder="Что важно сохранить, убрать или подчеркнуть"/></label>
                 <label className="adaptation-brand-switch"><input type="checkbox" checked={useBrand} onChange={(event) => setUseBrand(event.target.checked)}/><i/><span><b>Использовать профиль бренда</b><small>Можно отключить и работать только с исходным текстом</small></span></label>
                 {adaptationError && <p className="generation-error" role="alert">{adaptationError}</p>}
                 <button className="button primary large adaptation-submit" type="button" onClick={adaptText} disabled={adaptationBusy || aiConnection !== "connected" || workspaceAccount.editorActionsRemaining <= 0}><Icon name="edit"/>{adaptationBusy ? "КЛИО редактирует…" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.editorActionsRemaining <= 0 ? "Лимит AI‑редактуры исчерпан" : `Запустить «${activeAdaptationPlan.title}»`}</button>
