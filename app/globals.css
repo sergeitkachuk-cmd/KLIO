@@ -2571,6 +2571,23 @@ select:focus-visible {
   width: 17px;
 }
 
+.result-head-actions {
+  flex: 0 0 auto;
+}
+
+.result-clear {
+  color: #8b8996 !important;
+}
+
+.result-clear:hover:not(:disabled) {
+  color: #5f5d6b !important;
+}
+
+.result-clear:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .result-title {
   display: block;
   width: 100%;
@@ -2617,9 +2634,12 @@ select:focus-visible {
 
 .editor-note {
   display: grid;
-  grid-template-columns: minmax(135px, 0.28fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "label note"
+    "body body";
   align-items: start;
-  gap: 18px;
+  gap: 8px 18px;
   margin-top: 22px;
   padding: 17px 18px;
   border: 1px solid rgba(50, 43, 86, 0.12);
@@ -2703,10 +2723,13 @@ textarea[data-autosize="true"] {
 }
 
 .editor-note span {
+  grid-area: label;
+  align-self: center;
   color: var(--cobalt);
 }
 
 .editor-note p {
+  grid-area: body;
   min-width: 0;
   margin: 0;
   color: #5f5d6b;
@@ -2716,6 +2739,9 @@ textarea[data-autosize="true"] {
 }
 
 .editor-note small {
+  grid-area: note;
+  align-self: center;
+  justify-self: end;
   color: #92909c;
   white-space: nowrap;
 }
@@ -3858,16 +3884,10 @@ footer nav a {
   flex-direction: column;
 }
 
-.workspace-content > .workspace-heading { order: 0; }
-.workspace-content > .workspace-dashboard-bar { order: 1; }
-.workspace-content > .workspace-history { order: 2; }
-.workspace-content > .mvp-flow { order: 3; }
-.workspace-content > #brand-profile { order: 4; }
-.workspace-content > #generator { order: 5; }
-.workspace-content > #semantics { order: 6; }
-.workspace-content > #competitors { order: 7; }
-.workspace-content > #content-plan { order: 8; }
-.workspace-content > #adaptation { order: 9; }
+/* Ordering rules for these children live in one place further down
+   ("Workspace clarity: AI status, separated tools and archive editor") —
+   a duplicate block used to live here too and silently lost the cascade,
+   which is why reordering #brand-profile once didn't stick. */
 
 .workspace-loading {
   display: grid;
@@ -10059,10 +10079,15 @@ footer nav a {
 
   .editor-note {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "label"
+      "note"
+      "body";
     gap: 8px;
   }
 
   .editor-note small {
+    justify-self: start;
     white-space: normal;
   }
 
@@ -10434,8 +10459,8 @@ footer nav a {
 .workspace-content > .workspace-history { order: 3; }
 .workspace-content > .archive-editor { order: 4; }
 .workspace-content > .mvp-flow { order: 5; }
-.workspace-content > #generator { order: 6; }
-.workspace-content > #brand-profile { order: 7; }
+.workspace-content > #brand-profile { order: 6; }
+.workspace-content > #generator { order: 7; }
 .workspace-content > #semantics { order: 8; }
 .workspace-content > #competitors { order: 9; }
 .workspace-content > #content-plan { order: 10; }

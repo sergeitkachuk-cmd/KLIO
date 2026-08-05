@@ -946,13 +946,14 @@ function readabilityScore(value: string) {
   return Math.max(45, Math.min(98, Math.round(96 - sentencePenalty - paragraphPenalty)));
 }
 
-function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" }) {
+function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" | "erase" }) {
   const paths = {
     arrow: <><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></>,
     spark: <><path d="m12 2 1.7 5.3L19 9l-5.3 1.7L12 16l-1.7-5.3L5 9l5.3-1.7L12 2Z"/><path d="m5 16 .7 2.3L8 19l-2.3.7L5 22l-.7-2.3L2 19l2.3-.7L5 16Z"/></>,
     check: <path d="m5 12 4 4L19 6"/>,
     copy: <><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></>,
     edit: <><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></>,
+    erase: <><path d="m18 6-12 12"/><path d="m6 6 12 12"/></>,
   };
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
@@ -3144,6 +3145,18 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     showToast("Текст скопирован без служебного комментария");
   }
 
+  function clearGeneratedResult() {
+    setTitle("");
+    setBody("");
+    setMetaTitle("");
+    setMetaDescription("");
+    setEditorNote("");
+    setGenerationMode("example");
+    setGenerationCoverage(null);
+    setMetricsVisible(false);
+    showToast("Поле результата очищено");
+  }
+
   async function adaptText() {
     if (aiConnection !== "connected") {
       setAdaptationError("ИИ не подключён. Редакторы КЛИО не запускаются в тестовом режиме, чтобы не искажать исходный материал.");
@@ -3742,7 +3755,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <button type="button" className={generatorMode === "advanced" ? "active" : ""} onClick={() => setGeneratorMode("advanced")} role="radio" aria-checked={generatorMode === "advanced"}><i>≡</i><span><b>Пошагово</b><small>формат, ключи, стиль отдельно</small></span></button>
                 </div>
                 {generatorMode === "quick" && <div className="generator-quick">
-                  <label className="field">Опишите задачу<AutoTextarea rows={6} value={quickPrompt} onChange={(event) => setQuickPrompt(event.target.value)} placeholder="Например: напиши SEO-статью про ORCA (сайт tradeorca.co) — платформа для трейдеров с no-code сканерами и стратегиями. Аудитория — активные трейдеры."/><small>Опишите бренд, сайт или тему и что нужно написать — формат, тон и объём КЛИО определит сама. Если назван реальный бренд или сайт, КЛИО проверит факты в вебе, а не будет их выдумывать.</small></label>
+                  <label className="field">Опишите задачу<AutoTextarea rows={6} value={quickPrompt} onChange={(event) => setQuickPrompt(event.target.value)} placeholder="Например: напиши SEO-статью про ORCA (сайт theorca.pro) — платформа для трейдеров с no-code сканерами и стратегиями. Аудитория — активные трейдеры."/><small>Опишите бренд, сайт или тему и что нужно написать — формат, тон и объём КЛИО определит сама. Если назван реальный бренд или сайт, КЛИО проверит факты в вебе, а не будет их выдумывать.</small></label>
                   {quickError && <p className="generation-error" role="alert">{quickError}</p>}
                   <button className="button primary generate" type="button" onClick={() => void generateQuick()} disabled={!activeBrandId || quickBusy || aiConnection !== "connected" || workspaceAccount.generationsRemaining <= 0}><Icon name="spark"/>{quickBusy ? "КЛИО пишет…" : !activeBrandId ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
                 </div>}
@@ -3798,7 +3811,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </>}
               </aside>
               <article className="result-panel">
-                <div className="result-head"><div><span className={`status status-${generationMode}`}><i/>{generationMode === "ai" ? "Создано КЛИО" : generationMode === "demo" ? "Сохранённая версия" : aiConnection === "connected" ? "Ожидает генерацию" : "ИИ не подключён"}</span><small>{words.toLocaleString("ru-RU")} / {length.toLocaleString("ru-RU")} слов · {tone}</small></div><button type="button" onClick={copyResult}><Icon name="copy"/> Копировать текст</button></div>
+                <div className="result-head"><div><span className={`status status-${generationMode}`}><i/>{generationMode === "ai" ? "Создано КЛИО" : generationMode === "demo" ? "Сохранённая версия" : aiConnection === "connected" ? "Ожидает генерацию" : "ИИ не подключён"}</span><small>{words.toLocaleString("ru-RU")} / {length.toLocaleString("ru-RU")} слов · {tone}</small></div><div className="result-head-actions"><button type="button" className="result-clear" onClick={clearGeneratedResult} disabled={!title && !body}><Icon name="erase"/> Очистить</button><button type="button" onClick={copyResult}><Icon name="copy"/> Копировать текст</button></div></div>
                 <div className={`length-control ${targetChecked ? (withinTarget ? "is-ok" : "is-warning") : "is-idle"}`}><span><i/>{targetChecked ? (withinTarget ? "Объём соблюдён" : "Материал не соответствует цели") : "Контроль включится после генерации"}</span><b>{targetChecked ? `${Math.round((words / Math.max(length, 1)) * 100)}%` : "—"}</b><u><i style={{ width: `${targetChecked ? Math.min(100, (words / Math.max(length, 1)) * 100) : 0}%` }}/></u><small>Допуск после генерации: от {Math.floor(length * 0.95).toLocaleString("ru-RU")} до {Math.ceil(length * 1.05).toLocaleString("ru-RU")} слов</small></div>
                 <AutoTextarea className="result-title" rows={1} value={title} onChange={(event) => setTitle(event.target.value)} aria-label="Заголовок результата"/>
                 <AutoTextarea className="result-body" value={body} onChange={(event) => setBody(event.target.value)} aria-label="Текст результата"/>
