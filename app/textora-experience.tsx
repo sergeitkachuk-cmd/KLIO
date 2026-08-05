@@ -2674,7 +2674,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query: cleanQuery,
-          brand: useBrand ? effectiveBrand : null,
+          // Only attach the brand profile when the visitor's query actually
+          // came from it (competitorFocusSource === "brand"). Falling back
+          // to the shared useBrand toggle here used to pull the brand into
+          // an intentionally independent, manually typed search.
+          brand: competitorFocusSource === "brand" && useBrand ? effectiveBrand : null,
           geography: selectedGeoScopes.map(({ label, detail }) => ({ label, detail })),
         }),
       });
@@ -2734,7 +2738,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           semanticKeywords: competitorFocusSource === "semantics" && semanticAnalysisReady
             ? selectedSemanticKeywords.map((item) => ({ phrase: item.phrase, cluster: item.cluster, role: item.role }))
             : [],
-          brand: useBrand ? effectiveBrand : null,
+          brand: competitorFocusSource === "brand" && useBrand ? effectiveBrand : null,
         }),
       });
       const payload = await response.json() as {

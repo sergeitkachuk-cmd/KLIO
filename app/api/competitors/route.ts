@@ -1,4 +1,5 @@
 import { readWebsiteContext, websiteSourceLabel, type WebsiteContext } from "../_lib/website-context";
+import { AiResponseError, openAiErrorResponse, requestStructuredJson } from "../_lib/openai-response";
 import { assertSecondaryQuotaAvailable, recordResearch, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 
 type CompetitorCoverage = "strong" | "partial" | "missing" | "unknown";
@@ -19,15 +20,6 @@ type SemanticKeywordInput = {
   role: string;
 };
 
-type TopicDefinition = {
-  id: string;
-  title: string;
-  cluster: string;
-  priority: "Высокий" | "Средний" | "Дополнительный";
-  rationale: string;
-  keywords: string[];
-};
-
 type BrandInput = {
   name: string;
   website: string;
@@ -44,12 +36,24 @@ type CompetitorPayload = {
   brand?: unknown;
 };
 
+type AiTopic = {
+  title: string;
+  cluster: string;
+  priority: "Высокий" | "Средний" | "Дополнительный";
+  rationale: string;
+  brand_coverage: CompetitorCoverage;
+  competitor_coverage: { competitor_id: string; coverage: CompetitorCoverage }[];
+  opportunity: string;
+  recommended: boolean;
+};
+
+type AiAnalysis = {
+  suggestedTitle: string;
+  topics: AiTopic[];
+};
+
 function clean(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
-}
-
-function normalize(value: string) {
-  return value.toLocaleLowerCase("ru-RU").replace(/ё/g, "е").replace(/\s+/g, " ");
 }
 
 function cleanBrand(value: unknown): BrandInput {
@@ -94,226 +98,48 @@ function sourceStatus(context: WebsiteContext): CompetitorSource["status"] {
   return "unavailable";
 }
 
-function coverageFor(text: string, status: WebsiteContext["status"] | "profile", keywords: string[]): CompetitorCoverage {
-  if (status !== "loaded" && status !== "profile") return "unknown";
-  const haystack = normalize(text);
-  const matches = [...new Set(keywords.map(normalize).filter(Boolean))]
-    .filter((keyword) => haystack.includes(keyword)).length;
-  if (matches >= Math.min(2, Math.max(1, keywords.length))) return "strong";
-  if (matches === 1) return "partial";
-  return "missing";
-}
-
-function sanatoriumTopics(): TopicDefinition[] {
-  return [
-    {
-      id: "choice",
-      title: "Критерии выбора санатория",
-      cluster: "Выбор",
-      priority: "Высокий",
-      rationale: "Напрямую отвечает на поисковый интент и помогает сопоставить варианты.",
-      keywords: ["как выбрать", "критерии выбора", "на что обратить внимание", "сравнить санатор"],
+function analysisSchema(competitorIds: string[]) {
+  return {
+    type: "object",
+    properties: {
+      suggestedTitle: { type: "string" },
+      topics: {
+        type: "array",
+        minItems: 6,
+        maxItems: 10,
+        items: {
+          type: "object",
+          properties: {
+            title: { type: "string" },
+            cluster: { type: "string" },
+            priority: { type: "string", enum: ["Высокий", "Средний", "Дополнительный"] },
+            rationale: { type: "string" },
+            brand_coverage: { type: "string", enum: ["strong", "partial", "missing", "unknown"] },
+            competitor_coverage: {
+              type: "array",
+              minItems: competitorIds.length,
+              maxItems: competitorIds.length,
+              items: {
+                type: "object",
+                properties: {
+                  competitor_id: { type: "string", enum: competitorIds },
+                  coverage: { type: "string", enum: ["strong", "partial", "missing", "unknown"] },
+                },
+                required: ["competitor_id", "coverage"],
+                additionalProperties: false,
+              },
+            },
+            opportunity: { type: "string" },
+            recommended: { type: "boolean" },
+          },
+          required: ["title", "cluster", "priority", "rationale", "brand_coverage", "competitor_coverage", "opportunity", "recommended"],
+          additionalProperties: false,
+        },
+      },
     },
-    {
-      id: "medical",
-      title: "Медицинский профиль и специалисты",
-      cluster: "Лечение",
-      priority: "Высокий",
-      rationale: "Помогает понять, соответствует ли предложение задаче восстановления.",
-      keywords: ["медицинский профиль", "врач", "специалист", "консультац", "диагност"],
-    },
-    {
-      id: "program",
-      title: "Состав программы и процедур",
-      cluster: "Лечение",
-      priority: "Высокий",
-      rationale: "Одна из главных тем на этапе выбора и сравнения путёвок.",
-      keywords: ["программа", "процедур", "назначен", "курс лечения", "путевк"],
-    },
-    {
-      id: "nature",
-      title: "Природные лечебные факторы",
-      cluster: "Преимущества",
-      priority: "Средний",
-      rationale: "Отделяет курортное предложение от обычного размещения и отдыха.",
-      keywords: ["лечебная вода", "минеральная вода", "лечебные гряз", "природные фактор", "бальнеолог"],
-    },
-    {
-      id: "indications",
-      title: "Показания и ограничения",
-      cluster: "Безопасность",
-      priority: "Высокий",
-      rationale: "Снижает риск завышенных ожиданий и помогает подготовиться к консультации.",
-      keywords: ["показан", "противопоказан", "ограничен", "не рекомендуется", "консультация врача"],
-    },
-    {
-      id: "documents",
-      title: "Документы и подготовка к поездке",
-      cluster: "Подготовка",
-      priority: "Средний",
-      rationale: "Закрывает практические вопросы до бронирования и заезда.",
-      keywords: ["санаторно-курортная карта", "документ", "справк", "что взять", "подготов"],
-    },
-    {
-      id: "duration",
-      title: "Длительность курса",
-      cluster: "Условия",
-      priority: "Средний",
-      rationale: "Помогает оценить формат поездки и реалистичность программы.",
-      keywords: ["длительность", "продолжительность", "дней", "суток", "срок курса"],
-    },
-    {
-      id: "accommodation",
-      title: "Проживание и питание",
-      cluster: "Условия",
-      priority: "Дополнительный",
-      rationale: "Дополняет медицинскую часть бытовыми критериями выбора.",
-      keywords: ["проживан", "номер", "корпус", "питание", "столов"],
-    },
-    {
-      id: "booking",
-      title: "Стоимость и условия бронирования",
-      cluster: "Решение",
-      priority: "Средний",
-      rationale: "Поддерживает коммерческую часть интента и следующий шаг читателя.",
-      keywords: ["стоимость", "цена", "забронировать", "бронирован", "свободные даты"],
-    },
-    {
-      id: "faq",
-      title: "Ответы на частые вопросы",
-      cluster: "Подготовка",
-      priority: "Дополнительный",
-      rationale: "Собирает оставшиеся сомнения без перегрузки основной структуры.",
-      keywords: ["частые вопросы", "вопросы и ответы", "faq", "можно ли", "что входит"],
-    },
-  ];
-}
-
-function genericTopics(query: string, semanticKeywords: SemanticKeywordInput[]): TopicDefinition[] {
-  const queryTokens = normalize(query).split(/[^a-zа-я0-9]+/i).filter((item) => item.length >= 4).slice(0, 5);
-  const clusterPhrases = new Map<string, string[]>();
-  for (const keyword of semanticKeywords) {
-    if (!keyword.cluster || keyword.cluster === "География") continue;
-    const current = clusterPhrases.get(keyword.cluster) ?? [];
-    current.push(keyword.phrase);
-    clusterPhrases.set(keyword.cluster, current);
-  }
-
-  const base: TopicDefinition[] = [
-    {
-      id: "core",
-      title: "Прямой ответ по основной теме",
-      cluster: "Основная тема",
-      priority: "Высокий",
-      rationale: "Показывает, отвечает ли страница на исходный запрос без длинного вступления.",
-      keywords: [normalize(query), ...queryTokens],
-    },
-    {
-      id: "choice",
-      title: "Критерии выбора и сравнения",
-      cluster: "Выбор",
-      priority: "Высокий",
-      rationale: "Помогает читателю перейти от изучения темы к осознанному решению.",
-      keywords: ["как выбрать", "критерии", "сравнен", "на что обратить внимание", "вариант"],
-    },
-    {
-      id: "benefit",
-      title: "Польза и подтверждённые преимущества",
-      cluster: "Ценность",
-      priority: "Высокий",
-      rationale: "Отделяет конкретную ценность от общих рекламных формулировок.",
-      keywords: ["преимуществ", "польз", "помогает", "результат", "ценност"],
-    },
-    {
-      id: "process",
-      title: "Как устроен процесс",
-      cluster: "Процесс",
-      priority: "Средний",
-      rationale: "Снимает неопределённость и показывает путь пользователя.",
-      keywords: ["как работает", "этап", "процесс", "порядок", "шаг"],
-    },
-    {
-      id: "conditions",
-      title: "Условия и ограничения",
-      cluster: "Условия",
-      priority: "Средний",
-      rationale: "Помогает оценить применимость предложения до обращения.",
-      keywords: ["условия", "ограничен", "требован", "подходит", "необходимо"],
-    },
-    {
-      id: "proof",
-      title: "Факты и доказательства",
-      cluster: "Доверие",
-      priority: "Средний",
-      rationale: "Показывает, чем страница подтверждает обещанную ценность.",
-      keywords: ["опыт", "сертификат", "исследован", "пример", "кейс", "цифр"],
-    },
-    {
-      id: "price",
-      title: "Стоимость и состав предложения",
-      cluster: "Решение",
-      priority: "Средний",
-      rationale: "Поддерживает коммерческий интент и снижает неопределённость.",
-      keywords: ["стоимость", "цена", "тариф", "что входит", "заказать"],
-    },
-    {
-      id: "faq",
-      title: "Ответы на частые вопросы",
-      cluster: "Вопросы",
-      priority: "Дополнительный",
-      rationale: "Закрывает сомнения, которые не требуют отдельного большого раздела.",
-      keywords: ["частые вопросы", "вопросы и ответы", "faq", "можно ли", "почему"],
-    },
-  ];
-
-  const semanticTopics = [...clusterPhrases.entries()].slice(0, 3).map(([cluster, phrases], index) => ({
-    id: `semantic-${index + 1}`,
-    title: cluster,
-    cluster: "Семантика",
-    priority: "Средний" as const,
-    rationale: "Смысловая группа перенесена из выбранной семантики.",
-    keywords: phrases.flatMap((phrase) => [normalize(phrase), ...normalize(phrase).split(/[^a-zа-я0-9]+/i).filter((item) => item.length >= 5)]).slice(0, 10),
-  }));
-
-  const knownTitles = new Set(base.map((item) => normalize(item.title)));
-  return [...base, ...semanticTopics.filter((item) => !knownTitles.has(normalize(item.title)))].slice(0, 10);
-}
-
-function opportunityFor(
-  topic: TopicDefinition,
-  brandCoverage: CompetitorCoverage,
-  competitorCoverage: CompetitorCoverage[],
-) {
-  const verified = competitorCoverage.filter((item) => item !== "unknown");
-  const covered = verified.filter((item) => item === "strong" || item === "partial").length;
-  if (brandCoverage === "strong" && covered < Math.max(1, Math.ceil(verified.length / 2))) {
-    return "Использовать подтверждённые факты бренда как заметный смысловой акцент.";
-  }
-  if (brandCoverage === "missing" && covered > 0) {
-    return "Закрыть ожидаемый вопрос на подтверждённых данных или вынести факт на уточнение.";
-  }
-  if (topic.priority === "Высокий" && covered <= 1) {
-    return "Раскрыть тему глубже: у доступных страниц она почти не представлена.";
-  }
-  if (covered >= Math.max(1, Math.ceil(verified.length / 2))) {
-    return "Дать более ясный и практичный ответ, не повторяя структуру конкурентов.";
-  }
-  return "Проверить уместность темы и добавить её только при наличии фактической основы.";
-}
-
-function isRecommended(topic: TopicDefinition, brandCoverage: CompetitorCoverage, coverages: CompetitorCoverage[]) {
-  const verified = coverages.filter((item) => item !== "unknown");
-  const covered = verified.filter((item) => item === "strong" || item === "partial").length;
-  return topic.priority === "Высокий"
-    || (topic.priority === "Средний" && (brandCoverage !== "missing" || covered > 0));
-}
-
-function suggestedTitle(query: string) {
-  if (/санатор|курорт|лечен|реабилитац|восстановлен/i.test(query)) {
-    return "Как выбрать санаторий для восстановления: критерии и вопросы до бронирования";
-  }
-  const normalizedQuery = query.replace(/[.!?]+$/, "");
-  return `Как выбрать ${normalizedQuery}: критерии, сравнение и важные вопросы`;
+    required: ["suggestedTitle", "topics"],
+    additionalProperties: false,
+  };
 }
 
 export async function POST(request: Request) {
@@ -338,29 +164,63 @@ export async function POST(request: Request) {
       url: competitorWebsites[index].resolvedUrl || item.url,
       status: sourceStatus(competitorWebsites[index]),
     }));
-    const brandText = [brand.description, brand.positioning, brand.audience, brand.advantages, brandWebsite.text].filter(Boolean).join("\n");
+    const brandText = [brand.description, brand.positioning, brand.audience, brand.advantages, brandWebsite.text].filter(Boolean).join("\n").slice(0, 6000);
     const brandStatus: WebsiteContext["status"] | "profile" = brandText ? "profile" : brandWebsite.status;
-    const definitions = /санатор|курорт|лечен|реабилитац|восстановлен/i.test(query)
-      ? sanatoriumTopics()
-      : genericTopics(query, semanticKeywords);
 
-    const topics = definitions.map((topic) => {
-      const coverage = Object.fromEntries(sources.map((source, index) => [
-        source.id,
-        coverageFor(competitorWebsites[index].text, competitorWebsites[index].status, topic.keywords),
-      ])) as Record<string, CompetitorCoverage>;
-      const competitorCoverage = sources.map((source) => coverage[source.id] ?? "unknown");
-      const brandCoverage = coverageFor(brandText, brandStatus, topic.keywords);
+    const requestContext = {
+      comparison_topic: query,
+      semantic_context: semanticKeywords.length ? semanticKeywords : null,
+      brand: brand.name ? { name: brand.name, status: brandStatus, text: brandText || null } : null,
+      competitors: sources.map((source, index) => ({
+        id: source.id,
+        label: source.label,
+        status: source.status,
+        text: competitorWebsites[index].status === "loaded" ? competitorWebsites[index].text.slice(0, 6000) : null,
+      })),
+    };
+
+    const instructions = [
+      "Ты — senior SEO-стратег КЛИО. Проведи настоящий контентный анализ конкурентов по факту прочитанных страниц — не используй шаблонный список тем из другой отрасли.",
+      "Сначала определи 6–10 тем, которые реально важны именно для этой темы/категории/индустрии и её аудитории, основываясь на comparison_topic, semantic_context (если передан) и содержимом прочитанных страниц. Темы должны быть предметными, а не абстрактными («Критерии выбора» без конкретики запрещены).",
+      "Для каждой темы классифицируй brand_coverage и coverage каждого конкурента строго по факту: strong — тема развёрнуто раскрыта в тексте; partial — упомянута кратко или косвенно; missing — текст прочитан, но темы нет; unknown — текст этого источника не был доступен (status не loaded/profile). Никогда не ставь unknown, если текст источника передан, и никогда не угадывай содержимое источника с status не loaded.",
+      "rationale объясняет, почему тема важна именно для этого запроса и аудитории. opportunity — конкретное редакционное действие: что раскрыть, усилить или проверить, с опорой на реальный разрыв между источниками, а не общая фраза.",
+      "recommended = true только для тем, которые реально стоит включить в материал по этой теме — не отмечай все темы как рекомендованные.",
+      "Не давай медицинских, юридических или финансовых гарантий и не оценивай качество продуктов — только полноту раскрытия темы в тексте.",
+      "suggestedTitle — конкретный заголовок будущего материала по comparison_topic, без общих формулировок вроде «Как выбрать X» если тема не про выбор.",
+      "Верни только структурированный результат по JSON-схеме.",
+    ].join("\n");
+
+    const { result: aiResult, model } = await requestStructuredJson<AiAnalysis>({
+      schemaName: "klio_competitor_analysis",
+      schema: analysisSchema(sources.map((item) => item.id)),
+      instructions,
+      input: JSON.stringify(requestContext, null, 2),
+      reasoningEffort: "medium",
+      verbosity: "medium",
+      maxOutputTokens: 9000,
+    });
+
+    if (!aiResult.topics?.length) {
+      throw new AiResponseError("AI-аналитик не смог построить сравнение. Повторите попытку.", 422);
+    }
+
+    const topics = aiResult.topics.map((topic, index) => {
+      const coverage = Object.fromEntries(
+        sources.map((source) => {
+          const match = topic.competitor_coverage.find((item) => item.competitor_id === source.id);
+          return [source.id, source.status === "loaded" ? (match?.coverage ?? "unknown") : "unknown"];
+        }),
+      ) as Record<string, CompetitorCoverage>;
       return {
-        id: topic.id,
-        title: topic.title,
-        cluster: topic.cluster,
+        id: `topic-${index + 1}`,
+        title: clean(topic.title, 200) || `Тема ${index + 1}`,
+        cluster: clean(topic.cluster, 100) || "Основная тема",
         priority: topic.priority,
-        rationale: topic.rationale,
-        brandCoverage,
+        rationale: clean(topic.rationale, 500),
+        brandCoverage: brand.name ? topic.brand_coverage : "unknown" as CompetitorCoverage,
         coverage,
-        opportunity: opportunityFor(topic, brandCoverage, competitorCoverage),
-        recommended: isRecommended(topic, brandCoverage, competitorCoverage),
+        opportunity: clean(topic.opportunity, 500),
+        recommended: Boolean(topic.recommended),
       };
     });
 
@@ -384,14 +244,15 @@ export async function POST(request: Request) {
     const unavailableCount = sources.length - loadedCount;
     const dataNote = [
       `Прочитано страниц: ${loadedCount} из ${sources.length}.`,
-      unavailableCount ? `${unavailableCount} ${unavailableCount === 1 ? "источник помечен" : "источника помечены"} как непроверенные и не считаются пустыми.` : "Все указанные страницы доступны для структурного сравнения.",
+      unavailableCount ? `${unavailableCount} ${unavailableCount === 1 ? "источник помечен" : "источника помечены"} как непроверенные и не считаются пустыми.` : "Все указанные страницы доступны для анализа.",
       `Профиль бренда: ${websiteSourceLabel(brandWebsite)}.`,
-      "Матрица фиксирует наличие тем, но не оценивает качество медицинских, юридических или коммерческих утверждений.",
+      "Сравнение построено ИИ по фактическому тексту страниц, а не по шаблону тем; оценка качества медицинских, юридических или коммерческих утверждений не проводится.",
     ].join(" ");
 
     const usage = await recordResearch();
     return Response.json({
-      mode: "demo",
+      mode: "ai",
+      model,
       usage,
       result: {
         query,
@@ -399,13 +260,13 @@ export async function POST(request: Request) {
         topics,
         commonTopics,
         gaps,
-        suggestedTitle: suggestedTitle(query),
+        suggestedTitle: clean(aiResult.suggestedTitle, 200) || query,
         suggestedStructure,
         dataNote,
       },
     });
   } catch (error) {
     if (error instanceof WorkspaceAccessError) return workspaceErrorResponse(error);
-    return Response.json({ error: "Не удалось прочитать страницы и построить матрицу." }, { status: 500 });
+    return openAiErrorResponse(error, "Не удалось прочитать страницы и построить матрицу.");
   }
 }

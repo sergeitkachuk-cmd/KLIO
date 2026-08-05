@@ -8,6 +8,10 @@ type StructuredRequest = {
   maxOutputTokens?: number;
   reasoningEffort?: "none" | "low" | "medium" | "high";
   verbosity?: "low" | "medium" | "high";
+  // Lets the model check real search behaviour (autocomplete, related
+  // searches, actual ranking pages) instead of generating query variants
+  // purely from its own training data.
+  useWebSearch?: boolean;
 };
 
 export class AiNotConfiguredError extends Error {
@@ -74,6 +78,7 @@ export async function requestStructuredJson<T>({
   maxOutputTokens = 9000,
   reasoningEffort = "low",
   verbosity = "medium",
+  useWebSearch = false,
 }: StructuredRequest): Promise<{ result: T; model: string }> {
   const { apiKey, model } = openAiConfiguration();
   const response = await fetch("https://api.openai.com/v1/responses", {
@@ -87,6 +92,7 @@ export async function requestStructuredJson<T>({
       store: false,
       reasoning: { effort: reasoningEffort },
       max_output_tokens: maxOutputTokens,
+      ...(useWebSearch ? { tools: [{ type: "web_search", search_context_size: "medium" }] } : {}),
       text: {
         verbosity,
         format: {
