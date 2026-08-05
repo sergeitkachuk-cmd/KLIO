@@ -1083,6 +1083,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [contentPlanOpen, setContentPlanOpen] = useState(false);
   const [adaptationOpen, setAdaptationOpen] = useState(false);
   const [generatorAdvanced, setGeneratorAdvanced] = useState(false);
+  const [generatorMode, setGeneratorMode] = useState<"quick" | "advanced">("quick");
+  const [quickPrompt, setQuickPrompt] = useState("");
+  const [quickBusy, setQuickBusy] = useState(false);
+  const [quickError, setQuickError] = useState("");
   const [generatorUseBrand, setGeneratorUseBrand] = useState(true);
   const [generatorUseSemantics, setGeneratorUseSemantics] = useState(true);
   const [generatorUseCompetitors, setGeneratorUseCompetitors] = useState(true);
@@ -3094,6 +3098,47 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     }
   }
 
+  async function generateQuick() {
+    if (aiConnection !== "connected") {
+      setQuickError("ИИ не подключён. Быстрый режим недоступен, пока не подключён ключ на сервере.");
+      return;
+    }
+    if (quickPrompt.trim().split(/\s+/).filter(Boolean).length < 4) {
+      setQuickError("Опишите задачу чуть подробнее — тему, бренд или сайт и что нужно написать.");
+      return;
+    }
+    setQuickBusy(true);
+    setQuickError("");
+    try {
+      const response = await fetch("/api/generate/quick", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: quickPrompt, brandId: activeBrandId || undefined }),
+      });
+      const payload = await response.json() as {
+        error?: string;
+        mode?: "ai";
+        material?: GeneratedMaterial;
+        format?: Format;
+        tone?: string;
+        usage?: { account?: WorkspaceAccount; archive?: GenerationArchiveItem } | null;
+      };
+      if (!response.ok || !payload.material) throw new Error(payload.error || "Не удалось сформировать материал.");
+      if (payload.usage?.account) setWorkspaceAccount(payload.usage.account);
+      if (payload.usage?.archive) setWorkspaceHistory((current) => [payload.usage!.archive!, ...current.filter((item) => item.id !== payload.usage!.archive!.id)].slice(0, 60));
+      if (payload.format && formats.some((item) => item.id === payload.format)) setFormat(payload.format);
+      if (payload.tone) setTone(payload.tone);
+      setTopic(quickPrompt.trim().slice(0, 300));
+      if (payload.mode !== "ai") throw new Error("Материал не получен от AI‑редакции.");
+      applyGeneratedMaterial(payload.material, "ai", null);
+      showToast("Материал создан КЛИО по вашему запросу");
+    } catch (error) {
+      setQuickError(error instanceof Error ? error.message : "Не удалось сформировать материал.");
+    } finally {
+      setQuickBusy(false);
+    }
+  }
+
   function copyResult() {
     navigator.clipboard?.writeText(`${title}\n\n${body}`);
     showToast("Текст скопирован без служебного комментария");
@@ -3692,6 +3737,16 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <div className="studio">
               <aside className="brief-panel">
                 <div className="brief-step"><span>Шаг 01</span><b>Бриф материала</b></div>
+                <div className="generator-mode-switch" role="radiogroup" aria-label="Режим генератора">
+                  <button type="button" className={generatorMode === "quick" ? "active" : ""} onClick={() => setGeneratorMode("quick")} role="radio" aria-checked={generatorMode === "quick"}><i>✦</i><span><b>Быстрый ввод</b><small>опишите задачу в одном окне</small></span></button>
+                  <button type="button" className={generatorMode === "advanced" ? "active" : ""} onClick={() => setGeneratorMode("advanced")} role="radio" aria-checked={generatorMode === "advanced"}><i>≡</i><span><b>Пошагово</b><small>формат, ключи, стиль отдельно</small></span></button>
+                </div>
+                {generatorMode === "quick" && <div className="generator-quick">
+                  <label className="field">Опишите задачу<AutoTextarea rows={6} value={quickPrompt} onChange={(event) => setQuickPrompt(event.target.value)} placeholder="Например: напиши SEO-статью про ORCA (сайт tradeorca.co) — платформа для трейдеров с no-code сканерами и стратегиями. Аудитория — активные трейдеры."/><small>Опишите бренд, сайт или тему и что нужно написать — формат, тон и объём КЛИО определит сама. Если назван реальный бренд или сайт, КЛИО проверит факты в вебе, а не будет их выдумывать.</small></label>
+                  {quickError && <p className="generation-error" role="alert">{quickError}</p>}
+                  <button className="button primary generate" type="button" onClick={() => void generateQuick()} disabled={!activeBrandId || quickBusy || aiConnection !== "connected" || workspaceAccount.generationsRemaining <= 0}><Icon name="spark"/>{quickBusy ? "КЛИО пишет…" : !activeBrandId ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
+                </div>}
+                {generatorMode === "advanced" && <>
                 <div className="field"><label>Формат</label><div className="format-tabs">{formats.map((item) => <button type="button" className={format === item.id ? "active" : ""} onClick={() => changeFormat(item.id)} key={item.id}>{item.label}</button>)}</div></div>
                 <div className={`editorial-plan-card generator-plan-card ${generatorAdvanced ? "" : "generator-advanced-hidden"}`}>
                   <div><span>Редакционный контракт</span><b>{activeFormatPlan.title}</b><small>{activeFormatPlan.summary}</small></div>
@@ -3740,6 +3795,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 {generationError && <p className="generation-error" role="alert">{generationError}</p>}
                 <button className="button primary generate" type="button" onClick={generate} disabled={!activeBrandId || busy || aiConnection !== "connected" || workspaceAccount.generationsRemaining <= 0}><Icon name="spark"/>{busy ? busySteps[busyStep] : !activeBrandId ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
                 {busy && <div className="generation-progress" aria-hidden="true"><i style={{ width: `${((busyStep + 1) / busySteps.length) * 100}%` }}/></div>}
+                </>}
               </aside>
               <article className="result-panel">
                 <div className="result-head"><div><span className={`status status-${generationMode}`}><i/>{generationMode === "ai" ? "Создано КЛИО" : generationMode === "demo" ? "Сохранённая версия" : aiConnection === "connected" ? "Ожидает генерацию" : "ИИ не подключён"}</span><small>{words.toLocaleString("ru-RU")} / {length.toLocaleString("ru-RU")} слов · {tone}</small></div><button type="button" onClick={copyResult}><Icon name="copy"/> Копировать текст</button></div>

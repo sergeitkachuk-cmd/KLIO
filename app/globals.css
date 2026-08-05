@@ -2147,6 +2147,75 @@ select:focus-visible {
   letter-spacing: -0.025em;
 }
 
+.generator-mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin-bottom: 21px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.generator-mode-switch button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 7px 11px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.62);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.generator-mode-switch button > i {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.generator-mode-switch button > span {
+  display: grid;
+  gap: 1px;
+}
+
+.generator-mode-switch button b {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.generator-mode-switch button small {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10px;
+}
+
+.generator-mode-switch button.active {
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.generator-mode-switch button.active > i {
+  border-color: rgba(216, 201, 255, 0.5);
+  color: var(--acid);
+  background: rgba(124, 58, 237, 0.22);
+}
+
+.generator-quick .field textarea {
+  min-height: 150px;
+}
+
 .field {
   display: block;
   min-width: 0;
@@ -2592,19 +2661,20 @@ select:focus-visible {
 
 .seo-passport > label {
   display: grid;
-  grid-template-columns: 82px minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 12px;
+  gap: 6px;
   padding: 11px 0;
   border-top: 1px solid rgba(50, 43, 86, 0.09);
 }
 
 .seo-passport > label > span,
 .seo-passport > label > small {
-  padding-top: 6px;
   color: var(--muted);
   font-size: 12px;
   font-weight: 650;
+}
+
+.seo-passport > label > small {
+  justify-self: end;
 }
 
 .seo-passport textarea {
@@ -3792,8 +3862,8 @@ footer nav a {
 .workspace-content > .workspace-dashboard-bar { order: 1; }
 .workspace-content > .workspace-history { order: 2; }
 .workspace-content > .mvp-flow { order: 3; }
-.workspace-content > #generator { order: 4; }
-.workspace-content > #brand-profile { order: 5; }
+.workspace-content > #brand-profile { order: 4; }
+.workspace-content > #generator { order: 5; }
 .workspace-content > #semantics { order: 6; }
 .workspace-content > #competitors { order: 7; }
 .workspace-content > #content-plan { order: 8; }
