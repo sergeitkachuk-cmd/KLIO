@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, TextareaHTMLAttributes } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { russianGeoTree } from "./geo-data";
 import { ADAPTATION_PLANS, FORMAT_PLANS, TONE_PLANS } from "./content-plans";
@@ -266,6 +267,49 @@ type GenerationArchiveItem = {
 
 type SavedMaterialType = "semantics" | "competitors" | "content_plan";
 type MaterialsFilter = "all" | "article" | SavedMaterialType;
+type MaterialsDateRange = "all" | "today" | "yesterday" | "week" | "month" | "lastMonth" | "quarter" | "year";
+
+const MATERIALS_DATE_RANGE_OPTIONS: { value: MaterialsDateRange; label: string }[] = [
+  { value: "all", label: "Все даты" },
+  { value: "today", label: "Сегодня" },
+  { value: "yesterday", label: "Вчера" },
+  { value: "week", label: "Эта неделя" },
+  { value: "month", label: "Этот месяц" },
+  { value: "lastMonth", label: "Прошлый месяц" },
+  { value: "quarter", label: "Этот квартал" },
+  { value: "year", label: "Год" },
+];
+
+function isWithinMaterialsDateRange(value: string, range: MaterialsDateRange): boolean {
+  if (range === "all") return true;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return true;
+  const now = new Date();
+  const startOfDay = (source: Date) => new Date(source.getFullYear(), source.getMonth(), source.getDate());
+  const today = startOfDay(now);
+  const itemDay = startOfDay(date);
+
+  if (range === "today") return itemDay.getTime() === today.getTime();
+  if (range === "yesterday") {
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    return itemDay.getTime() === yesterday.getTime();
+  }
+  if (range === "week") {
+    const offset = (today.getDay() + 6) % 7; // Monday-start week
+    const monday = new Date(today);
+    monday.setDate(monday.getDate() - offset);
+    return itemDay.getTime() >= monday.getTime();
+  }
+  if (range === "month") return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+  if (range === "lastMonth") {
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    return date.getFullYear() === lastMonth.getFullYear() && date.getMonth() === lastMonth.getMonth();
+  }
+  if (range === "quarter") return date.getFullYear() === now.getFullYear() && Math.floor(date.getMonth() / 3) === Math.floor(now.getMonth() / 3);
+  if (range === "year") return date.getFullYear() === now.getFullYear();
+  return true;
+}
 
 type SavedWorkspaceMaterial = {
   id: string;
@@ -960,6 +1004,10 @@ function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" | 
 
 // Custom dropdown matching the brand-switcher's visual language (trigger +
 // floating list, checkmark on the active item) instead of a native <select>.
+// The list portals to document.body and positions itself via a measured
+// rect — several of this component's homes (e.g. the generator's brief
+// panel) have overflow:hidden ancestors for their own rounded-corner/
+// background clipping, which would otherwise cut the open list off.
 function ModuleSelect({ label, value, options, onChange }: {
   label: string;
   value: string;
@@ -967,37 +1015,58 @@ function ModuleSelect({ label, value, options, onChange }: {
   onChange: (value: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [menuRect, setMenuRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const closeOnOutsideClick = (event: MouseEvent) => {
-      if (!ref.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (containerRef.current?.contains(target) || listRef.current?.contains(target)) return;
+      setOpen(false);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
+    const closeOnScroll = () => setOpen(false);
     document.addEventListener("mousedown", closeOnOutsideClick);
     document.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("scroll", closeOnScroll, true);
+    window.addEventListener("resize", closeOnScroll);
     return () => {
       document.removeEventListener("mousedown", closeOnOutsideClick);
       document.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("scroll", closeOnScroll, true);
+      window.removeEventListener("resize", closeOnScroll);
     };
   }, [open]);
 
+  function toggleOpen() {
+    if (!open && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setMenuRect({ top: rect.bottom + 8, left: rect.left, width: rect.width });
+    }
+    setOpen((current) => !current);
+  }
+
   const activeOption = options.find((item) => item.value === value);
 
-  return <div className={`field module-select ${open ? "is-open" : ""}`} ref={ref}>
+  return <div className={`field module-select ${open ? "is-open" : ""}`} ref={containerRef}>
     <span>{label}</span>
-    <button type="button" className="module-select-trigger" onClick={() => setOpen((current) => !current)} aria-haspopup="listbox" aria-expanded={open}>
+    <button type="button" ref={triggerRef} className="module-select-trigger" onClick={toggleOpen} aria-haspopup="listbox" aria-expanded={open}>
       <b>{activeOption?.label || value}</b>
       <em>⌄</em>
     </button>
-    {open && <div className="module-select-list" role="listbox" aria-label={label}>
-      {options.map((item) => <button type="button" role="option" aria-selected={item.value === value} className={item.value === value ? "active" : ""} onClick={() => { onChange(item.value); setOpen(false); }} key={item.value}>
-        <span>{item.label}</span><em>{item.value === value ? "✓" : ""}</em>
-      </button>)}
-    </div>}
+    {open && menuRect && createPortal(
+      <div className="module-select-list" role="listbox" aria-label={label} ref={listRef} style={{ position: "fixed", top: menuRect.top, left: menuRect.left, width: menuRect.width }}>
+        {options.map((item) => <button type="button" role="option" aria-selected={item.value === value} className={item.value === value ? "active" : ""} onClick={() => { onChange(item.value); setOpen(false); }} key={item.value}>
+          <span>{item.label}</span><em>{item.value === value ? "✓" : ""}</em>
+        </button>)}
+      </div>,
+      document.body,
+    )}
   </div>;
 }
 
@@ -1203,6 +1272,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [workspaceDataError, setWorkspaceDataError] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [materialsFilter, setMaterialsFilter] = useState<MaterialsFilter>("all");
+  const [materialsDateRange, setMaterialsDateRange] = useState<MaterialsDateRange>("all");
   const [moduleMaterialSources, setModuleMaterialSources] = useState<Partial<Record<SavedMaterialType, string>>>({});
   const [materialSavingType, setMaterialSavingType] = useState<SavedMaterialType | null>(null);
   const [archiveEditorItem, setArchiveEditorItem] = useState<GenerationArchiveItem | null>(null);
@@ -1437,12 +1507,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     { id: "semantics" as const, label: "Семантика", count: activeBrandSavedMaterials.filter((item) => item.type === "semantics").length },
     { id: "competitors" as const, label: "Анализ конкурентов", count: activeBrandSavedMaterials.filter((item) => item.type === "competitors").length },
   ], [activeBrandArticles, activeBrandSavedMaterials]);
-  const visibleBrandArticles = materialsFilter === "all" || materialsFilter === "article" ? activeBrandArticles : [];
-  const visibleBrandSavedMaterials = materialsFilter === "all"
+  const visibleBrandArticles = (materialsFilter === "all" || materialsFilter === "article" ? activeBrandArticles : [])
+    .filter((item) => isWithinMaterialsDateRange(item.createdAt, materialsDateRange));
+  const visibleBrandSavedMaterials = (materialsFilter === "all"
     ? activeBrandSavedMaterials
     : materialsFilter === "article"
       ? []
-      : activeBrandSavedMaterials.filter((item) => item.type === materialsFilter);
+      : activeBrandSavedMaterials.filter((item) => item.type === materialsFilter))
+    .filter((item) => isWithinMaterialsDateRange(item.createdAt, materialsDateRange));
   const activeMaterialCount = activeBrandArticles.length + activeBrandSavedMaterials.length;
   const generationProgress = Math.min(100, Math.round((workspaceAccount.generationsUsed / Math.max(workspaceAccount.generationLimit, 1)) * 100));
   const researchProgress = Math.min(100, Math.round((workspaceAccount.researchUsed / Math.max(workspaceAccount.researchLimit, 1)) * 100));
@@ -2866,6 +2938,40 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     showToast("Материал подготовлен к скачиванию");
   }
 
+  async function deleteArchiveItem(item: GenerationArchiveItem) {
+    if (!window.confirm(`Удалить «${item.title}»? Это действие необратимо.`)) return;
+    try {
+      const response = await fetch("/api/workspace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete_generation", id: item.id }),
+      });
+      const payload = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Не удалось удалить материал.");
+      setWorkspaceHistory((current) => current.filter((entry) => entry.id !== item.id));
+      showToast("Материал удалён");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Не удалось удалить материал.");
+    }
+  }
+
+  async function deleteSavedMaterial(item: SavedWorkspaceMaterial) {
+    if (!window.confirm(`Удалить «${item.title}»? Это действие необратимо.`)) return;
+    try {
+      const response = await fetch("/api/workspace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete_material", id: item.id }),
+      });
+      const payload = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Не удалось удалить материал.");
+      setWorkspaceMaterials((current) => current.filter((entry) => entry.id !== item.id));
+      showToast("Материал удалён");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Не удалось удалить материал.");
+    }
+  }
+
   function persistContentPlan(options: {
     query?: string;
     count?: number;
@@ -3297,7 +3403,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         <div className="workspace-header-actions">
           <Link href="/">На главную</Link>
           <button className="workspace-history-button" type="button" onClick={() => setHistoryOpen((value) => !value)}><span>Материалы</span><b>{activeMaterialCount}</b></button>
-          <button type="button" onClick={() => void signOutOfWorkspace()}>Выйти</button>
+          <button type="button" className="workspace-logout" onClick={() => void signOutOfWorkspace()}>Выйти</button>
           <span className="workspace-account"><i>{nameInitials(workspaceUserName)}</i><b>{workspaceUserName}</b><small>{workspaceAccount.planName} · 1 пользователь</small></span>
         </div>
       </header>
@@ -3352,16 +3458,19 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
           {historyOpen && <section className="workspace-history" id="history">
             <div className="workspace-history-head"><div><span>Кабинет бренда · {activeWorkspaceBrand?.name || brand.name}</span><h2>Материалы</h2><p>Здесь хранятся только статьи, планы и исследования текущего бренда. Сохранённый результат можно открыть в своём модуле и продолжить работу.</p></div><button type="button" onClick={() => setHistoryOpen(false)} aria-label="Закрыть материалы"><span>Закрыть</span><i aria-hidden="true">×</i></button></div>
-            {activeMaterialCount > 0 && <div className="workspace-history-filters" role="group" aria-label="Фильтр материалов по типу">
-              {materialsFilterOptions.map((option) => <button type="button" className={materialsFilter === option.id ? "active" : ""} aria-pressed={materialsFilter === option.id} onClick={() => setMaterialsFilter(option.id)} key={option.id}><span>{option.label}</span><b>{option.count}</b></button>)}
+            {activeMaterialCount > 0 && <div className="workspace-history-toolbar">
+              <div className="workspace-history-filters" role="group" aria-label="Фильтр материалов по типу">
+                {materialsFilterOptions.map((option) => <button type="button" className={materialsFilter === option.id ? "active" : ""} aria-pressed={materialsFilter === option.id} onClick={() => setMaterialsFilter(option.id)} key={option.id}><span>{option.label}</span><b>{option.count}</b></button>)}
+              </div>
+              <ModuleSelect label="Период" value={materialsDateRange} options={MATERIALS_DATE_RANGE_OPTIONS} onChange={(value) => setMaterialsDateRange(value as MaterialsDateRange)}/>
             </div>}
             {visibleBrandArticles.length || visibleBrandSavedMaterials.length ? <div className="workspace-history-list">{visibleBrandArticles.map((item) => {
               const formatLabel = formats.find((candidate) => candidate.id === item.format)?.label || item.format;
-              return <article className="material-card material-article" key={item.id}><div><span>{formatLabel}</span><small>{archiveDate(item.createdAt)}</small></div><h3>{item.title}</h3><p>{item.topic}</p><footer><span>Статья или текст</span><button type="button" onClick={() => openArchiveItem(item)}>В редактор <Icon name="arrow"/></button></footer></article>;
+              return <article className="material-card material-article" key={item.id}><div><span>{formatLabel}</span><small>{archiveDate(item.createdAt)}</small></div><h3>{item.title}</h3><p>{item.topic}</p><footer><span>Статья или текст</span><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал">Удалить</button><button type="button" onClick={() => openArchiveItem(item)}>В редактор <Icon name="arrow"/></button></div></footer></article>;
             })}{visibleBrandSavedMaterials.map((item) => {
               const typeLabel = item.type === "content_plan" ? "Контент‑план" : item.type === "semantics" ? "Семантика" : "Анализ конкурентов";
-              return <article className={`material-card material-${item.type}`} key={item.id}><div><span>{typeLabel}</span><small>{archiveDate(item.createdAt)} · версия {item.versionNumber}</small></div><h3>{item.title}</h3><p>{item.status}</p><footer><span>Сохранённый снимок</span><div><button type="button" className="material-export" onClick={() => exportSavedMaterial(item)}>Экспорт</button><button type="button" onClick={() => openSavedMaterial(item)}>В модуль <Icon name="arrow"/></button></div></footer></article>;
-            })}</div> : <div className="workspace-history-empty"><i>Аа</i><div><h3>У этого бренда пока нет материалов</h3><p>Сгенерированные тексты появятся здесь автоматически. Семантику, анализ конкурентов и контент‑планы можно зафиксировать кнопкой «Сохранить в материалы».</p></div></div>}
+              return <article className={`material-card material-${item.type}`} key={item.id}><div><span>{typeLabel}</span><small>{archiveDate(item.createdAt)} · версия {item.versionNumber}</small></div><h3>{item.title}</h3><p>{item.status}</p><footer><span>Сохранённый снимок</span><div><button type="button" className="material-delete" onClick={() => void deleteSavedMaterial(item)} aria-label="Удалить материал">Удалить</button><button type="button" className="material-export" onClick={() => exportSavedMaterial(item)}>Экспорт</button><button type="button" onClick={() => openSavedMaterial(item)}>В модуль <Icon name="arrow"/></button></div></footer></article>;
+            })}</div> : <div className="workspace-history-empty"><i>Аа</i><div><h3>{activeMaterialCount > 0 ? "Нет материалов за выбранный период" : "У этого бренда пока нет материалов"}</h3><p>{activeMaterialCount > 0 ? "Попробуйте выбрать другой период или фильтр." : "Сгенерированные тексты появятся здесь автоматически. Семантику, анализ конкурентов и контент‑планы можно зафиксировать кнопкой «Сохранить в материалы»."}</p></div></div>}
           </section>}
 
           {archiveEditorItem && <div className="archive-editor-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) closeArchiveEditor(); }}>
@@ -3901,6 +4010,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <div className={!competitorNeedsRefresh && selectedCompetitorTopics.length ? "is-ready" : ""}><i>{!competitorNeedsRefresh && selectedCompetitorTopics.length ? "✓" : "+"}</i><span><b>Матрица</b><small>{!competitorNeedsRefresh && selectedCompetitorTopics.length ? `${selectedCompetitorTopics.length} ориентиров` : "необязательно"}</small></span></div>
                   <div className={useBrand ? "is-ready" : ""}><i>{useBrand ? "✓" : "—"}</i><span><b>Бренд</b><small>{useBrand ? effectiveBrand.name : "профиль отключён"}</small></span></div>
                 </div>
+                <p className="content-plan-source-hint">Это статус, а не переключатель: включаются в модулях 01–03 выше — здесь просто видно, что подключится к плану.</p>
 
                 <div className="content-plan-controls">
                   <div><span>Количество тем</span><div>{[10, 15, 25].map((value) => <button type="button" className={contentPlanCount === value ? "active" : ""} onClick={() => { setContentPlanCount(value); setContentPlanNeedsRefresh(true); persistContentPlan({ count: value, needsRefresh: true }); }} key={value}>{value}</button>)}</div></div>
@@ -3942,7 +4052,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   {visibleContentPlanItems.map((item) => {
                     const originalIndex = contentPlanResult.items.findIndex((candidate) => candidate.id === item.id);
                     const expanded = expandedPlanItem === item.id;
-                    return <article className={`content-plan-item ${expanded ? "is-expanded" : ""}`} key={item.id}>
+                    const statusClass = item.status === "Готово" ? "done" : item.status === "В работе" ? "work" : "plan";
+                    return <article className={`content-plan-item status-${statusClass} ${expanded ? "is-expanded" : ""}`} key={item.id}>
                       <div className="content-plan-item-main">
                         <label className={`content-plan-select ${selectedPlanItemIds.includes(item.id) ? "is-selected" : ""}`}><input type="checkbox" checked={selectedPlanItemIds.includes(item.id)} onChange={() => togglePlanItemSelection(item.id)}/><i>{selectedPlanItemIds.includes(item.id) ? "✓" : ""}</i><span>Выбрать</span></label>
                         <span className="content-plan-index">{String(originalIndex + 1).padStart(2, "0")}</span>
@@ -3951,7 +4062,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                           <h3>{item.title}</h3>
                           <p><span>Основной запрос</span>{item.primaryKeyword}</p>
                         </div>
-                        <label className={`content-plan-status status-${item.status === "Готово" ? "done" : item.status === "В работе" ? "work" : "plan"}`}><span>Статус</span><select value={item.status} onChange={(event) => updateContentPlanStatus(item.id, event.target.value as ContentPlanStatus)}><option>Запланировано</option><option>В работе</option><option>Готово</option></select></label>
+                        <label className={`content-plan-status status-${statusClass}`}><span>Статус</span><select value={item.status} onChange={(event) => updateContentPlanStatus(item.id, event.target.value as ContentPlanStatus)}><option>Запланировано</option><option>В работе</option><option>Готово</option></select></label>
                         <div className="content-plan-item-actions"><button type="button" onClick={() => setExpandedPlanItem(expanded ? null : item.id)}>{expanded ? "Скрыть бриф" : "Открыть бриф"}</button><button type="button" onClick={() => sendPlanItemToGenerator(item)}>В генератор <Icon name="arrow"/></button></div>
                       </div>
                       {expanded && <div className="content-plan-brief">

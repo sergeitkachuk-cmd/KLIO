@@ -17,6 +17,7 @@ type WorkspacePayload = {
   workspace?: unknown;
   generation?: unknown;
   material?: unknown;
+  id?: unknown;
 };
 
 const MATERIAL_TYPES = new Set(["semantics", "competitors", "content_plan"]);
@@ -276,6 +277,28 @@ export async function POST(request: Request) {
         versionNumber,
       }).returning();
       return Response.json({ material: materialResponse(saved), quotaUsed: false }, { status: 201 });
+    }
+
+    if (action === "delete_generation") {
+      const id = clean(payload.id, 100);
+      if (!id) return Response.json({ error: "Не указан материал для удаления." }, { status: 400 });
+      const [deleted] = await db.delete(generations).where(and(
+        eq(generations.id, id),
+        eq(generations.ownerEmail, user.email),
+      )).returning({ id: generations.id });
+      if (!deleted) return Response.json({ error: "Материал не найден или недоступен." }, { status: 404 });
+      return Response.json({ ok: true, id: deleted.id });
+    }
+
+    if (action === "delete_material") {
+      const id = clean(payload.id, 100);
+      if (!id) return Response.json({ error: "Не указан материал для удаления." }, { status: 400 });
+      const [deleted] = await db.delete(materials).where(and(
+        eq(materials.id, id),
+        eq(materials.ownerEmail, user.email),
+      )).returning({ id: materials.id });
+      if (!deleted) return Response.json({ error: "Материал не найден или недоступен." }, { status: 404 });
+      return Response.json({ ok: true, id: deleted.id });
     }
 
     return Response.json({ error: "Неизвестное действие кабинета." }, { status: 400 });

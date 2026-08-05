@@ -969,7 +969,7 @@ export async function POST(request: Request) {
           "Поля source_facts и hidden_editorial_controls — внутренний бриф, а не содержание публикации. Никогда не пересказывай устройство брифа, профиль бренда, описание аудитории, выбранный стиль, ключевые слова или правила формата.",
           "Не используй мета-фразы «материал адресован», «текст говорит», «профиль бренда», «выбранный стиль», «ключевые темы» и подобные редакционные пояснения.",
           "Факты и преимущества вплетай в тему естественно. Позиционирование можно переформулировать; не копируй его отдельным рекламным абзацем.",
-          "Выполни keyword_contract: каждая required_phrases должна присутствовать в body хотя бы один раз в точной или грамматически корректной форме. Не выдавай ключи списком и не комментируй SEO‑настройки. Соблюдай целевой объём строго, с допуском не более 5%.",
+          "Выполни keyword_contract: каждая required_phrases должна присутствовать в body хотя бы один раз в точной или грамматически корректной форме. Не выдавай ключи списком и не комментируй SEO‑настройки. Ориентируйся на целевой объём, отклонение до 15% допустимо.",
           "Не добивай текст вариациями одного ключа. Поисковые формулировки нужны для ясного соответствия интенту, а не для плотности: при конфликте с естественностью используй грамматически корректную форму и сохрани смысл.",
           "Материал должен добавлять собственную пользу: предметное объяснение, подтверждённые факты бренда, практический вывод или решение задачи. Не пересказывай абстрактно то, что могло бы относиться к любой компании.",
           "Для медицинской тематики избегай гарантий результата, диагнозов и персональных назначений.",
@@ -992,8 +992,12 @@ export async function POST(request: Request) {
 
     const responseBody = await aiResponse.json();
     let material = parseMaterial(outputText(responseBody));
-    const minimumWords = Math.floor(input.length * 0.95);
-    const maximumWords = Math.ceil(input.length * 1.05);
+    // ±15%, not ±5% — LLMs reliably land "close" to a target length, not
+    // exact, and hard-rejecting near-misses was discarding good articles
+    // and forcing costly full retries. Coverage badges in the UI already
+    // surface a length mismatch softly without blocking the result.
+    const minimumWords = Math.floor(input.length * 0.85);
+    const maximumWords = Math.ceil(input.length * 1.15);
     let missingGeo = missingGeography(material, input);
     let subjectCheck = topicCoverage(material, input);
     let missingFocuses = missingEditorialFocuses(material, input);
@@ -1053,14 +1057,15 @@ export async function POST(request: Request) {
       }
     }
 
-    const actualWords = countWords(material.body);
-    if (actualWords < minimumWords || actualWords > maximumWords) {
-      return Response.json(
-        { error: `AI‑редакция получила ${actualWords} слов вместо ${input.length}. Материал не принят — запустите генерацию ещё раз.` },
-        { status: 422 },
-      );
-    }
-
+    // Word count, geography, editorial-focus and keyword coverage are all
+    // soft targets: the correction pass above already tried once to fix
+    // them, and the client already renders a per-criterion coverage badge
+    // (see coverageSummary below) instead of a pass/fail wall. Hard-
+    // rejecting near-misses here used to discard a perfectly usable
+    // article and force a full, costly retry — sometimes repeatedly.
+    // Meta-leakage (internal brief text visible in the article) and a
+    // hijacked topic are real defects, not just imprecision, so those two
+    // still block.
     if (hasMetaLeakage(material.body)) {
       return Response.json(
         { error: "AI‑редакция обнаружила в тексте служебные формулировки. Материал не принят — запустите генерацию ещё раз." },
@@ -1068,30 +1073,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (missingGeo.length) {
-      return Response.json(
-        { error: `AI‑редакция не применила выбранную географию: ${missingGeo.join(", ")}. Материал не принят — запустите генерацию ещё раз.` },
-        { status: 422 },
-      );
-    }
-
     if (!subjectCheck.passes) {
       return Response.json(
         { error: `AI‑редакция не раскрыла предмет темы «${input.topic}» в основном тексте. Материал не принят — запустите генерацию ещё раз.` },
-        { status: 422 },
-      );
-    }
-
-    if (missingFocuses.length) {
-      return Response.json(
-        { error: `AI‑редакция не применила обязательные ориентиры: ${missingFocuses.map((item) => item.label).join(", ")}. Материал не принят — запустите генерацию ещё раз.` },
-        { status: 422 },
-      );
-    }
-
-    if (missingKeyPhrases.length) {
-      return Response.json(
-        { error: `AI‑редакция не использовала выбранные ключевые фразы: ${missingKeyPhrases.join(", ")}. Материал не принят — запустите генерацию ещё раз.` },
         { status: 422 },
       );
     }

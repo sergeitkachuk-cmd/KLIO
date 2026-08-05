@@ -2346,10 +2346,8 @@ select:focus-visible {
 }
 
 .module-select-list {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  right: 0;
+  /* position/top/left/width are set inline — the list portals to
+     document.body and measures its trigger, see ModuleSelect. */
   z-index: 100;
   display: grid;
   gap: 4px;
@@ -3928,7 +3926,7 @@ footer nav a {
 }
 
 .workspace-header-actions > a,
-.workspace-header-actions > button {
+.workspace-header-actions > .workspace-logout {
   border: none;
   color: rgba(255, 255, 255, 0.7);
   background: none;
@@ -4347,6 +4345,14 @@ footer nav a {
 
 .workspace-history-list footer svg {
   width: 14px;
+}
+
+.material-delete {
+  color: #a39da9 !important;
+}
+
+.material-delete:hover {
+  color: #c0392b !important;
 }
 
 .workspace-history-empty {
@@ -7595,6 +7601,8 @@ footer nav a {
 .content-plan-shell {
   display: grid;
   gap: 18px;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 .content-plan-setup {
@@ -7764,6 +7772,14 @@ footer nav a {
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.content-plan-source-hint {
+  margin: 0;
+  padding: 10px 29px 0;
+  color: #948e9e;
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 .content-plan-controls {
@@ -7985,6 +8001,7 @@ footer nav a {
 .content-plan-item {
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.86);
+  border-left: 3px solid rgba(150, 145, 165, 0.35);
   border-radius: 4px 20px 4px 4px;
   background: rgba(255, 255, 255, 0.68);
   box-shadow: 0 12px 35px rgba(34, 27, 62, 0.06), inset 0 1px rgba(255, 255, 255, 0.94);
@@ -8093,14 +8110,26 @@ footer nav a {
   font-weight: 670;
 }
 
+.content-plan-item.status-work {
+  border-left-color: var(--cobalt);
+}
+
+.content-plan-item.status-done {
+  border-left-color: #6fa93a;
+}
+
 .content-plan-status.status-work select {
-  border-color: rgba(124, 58, 237, 0.25);
+  border-color: rgba(124, 58, 237, 0.3);
+  background: rgba(124, 58, 237, 0.09);
   color: #6735c9;
+  font-weight: 700;
 }
 
 .content-plan-status.status-done select {
-  border-color: rgba(100, 154, 52, 0.25);
-  color: #557c31;
+  border-color: rgba(100, 154, 52, 0.32);
+  background: rgba(111, 169, 58, 0.12);
+  color: #4d7328;
+  font-weight: 700;
 }
 
 .content-plan-item-actions {
@@ -8237,9 +8266,16 @@ footer nav a {
 .content-plan-brief-grid section {
   min-width: 0;
   padding: 16px 17px;
-  border: 1px solid rgba(68, 57, 107, 0.1);
+  border: 1px solid rgba(68, 57, 107, 0.14);
   border-radius: 4px 14px 4px 4px;
-  background: rgba(250, 249, 253, 0.58);
+  background: #fff;
+  box-shadow: 0 1px 0 rgba(68, 57, 107, 0.04);
+}
+
+.content-plan-brief-grid section > div > i,
+.content-plan-brief-grid section > p,
+.content-plan-brief-grid li {
+  overflow-wrap: anywhere;
 }
 
 .content-plan-brief-grid section > div {
@@ -11375,14 +11411,27 @@ footer nav a {
   width: 16px;
 }
 
+.workspace-history-toolbar {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 14px;
+  margin: -2px 0 20px;
+  padding: 15px 0 0;
+  border-top: 1px solid rgba(68, 57, 107, 0.09);
+}
+
+.workspace-history-toolbar .module-select {
+  min-width: 180px;
+  margin: 0;
+}
+
 .workspace-history-filters {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  margin: -2px 0 20px;
-  padding: 15px 0 0;
-  border-top: 1px solid rgba(68, 57, 107, 0.09);
 }
 
 .workspace-history-filters > button {
@@ -12189,7 +12238,7 @@ footer nav a {
   background: rgba(255, 255, 255, 0.66);
 }
 
-.workspace-history-filters {
+.workspace-history-toolbar {
   margin-top: 0;
   padding-top: 0;
   border-top: 0;
