@@ -958,6 +958,49 @@ function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" | 
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
 
+// Custom dropdown matching the brand-switcher's visual language (trigger +
+// floating list, checkmark on the active item) instead of a native <select>.
+function ModuleSelect({ label, value, options, onChange }: {
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  const activeOption = options.find((item) => item.value === value);
+
+  return <div className={`field module-select ${open ? "is-open" : ""}`} ref={ref}>
+    <span>{label}</span>
+    <button type="button" className="module-select-trigger" onClick={() => setOpen((current) => !current)} aria-haspopup="listbox" aria-expanded={open}>
+      <b>{activeOption?.label || value}</b>
+      <em>⌄</em>
+    </button>
+    {open && <div className="module-select-list" role="listbox" aria-label={label}>
+      {options.map((item) => <button type="button" role="option" aria-selected={item.value === value} className={item.value === value ? "active" : ""} onClick={() => { onChange(item.value); setOpen(false); }} key={item.value}>
+        <span>{item.label}</span><em>{item.value === value ? "✓" : ""}</em>
+      </button>)}
+    </div>}
+  </div>;
+}
+
 function CoverageIcon({ coverage }: { coverage: CompetitorCoverage }) {
   const paths = {
     strong: <path d="m7.5 12.2 2.8 2.8 6.4-7"/>,
@@ -3282,8 +3325,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             {brandCreatorOpen && <div className="brand-create-form"><input value={newBrandName} onChange={(event) => setNewBrandName(event.target.value)} placeholder="Название бренда" autoFocus/><button type="button" onClick={() => void createWorkspaceBrand()}>Создать</button></div>}
           </div>
           <nav aria-label="Рабочие модули">
-            <a href="#generator"><i>01</i><span><b>Генерировать материал</b><small>быстрый старт</small></span></a>
             <a href="#brand-profile" onClick={() => setBrandOpen(true)}><i>+</i><span><b>Профиль бренда</b><small>по желанию</small></span></a>
+            <a href="#generator"><i>01</i><span><b>Генерировать материал</b><small>быстрый старт</small></span></a>
             <a href="#semantics" onClick={() => setSemanticOpen(true)}><i>+</i><span><b>Семантика</b><small>самостоятельно или в бриф</small></span></a>
             <a href="#competitors" onClick={() => setCompetitorOpen(true)}><i>+</i><span><b>Конкуренты</b><small>По желанию</small></span></a>
             <a href="#content-plan" onClick={() => setContentPlanOpen(true)}><i>+</i><span><b>Контент‑план</b><small>самостоятельный инструмент</small></span></a>
@@ -3802,7 +3845,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   </div>
                 </div>
                 <button className="generator-advanced-toggle" type="button" onClick={() => setGeneratorAdvanced((value) => !value)} aria-expanded={generatorAdvanced}><span><b>{generatorAdvanced ? "Скрыть профессиональные настройки" : "Профессиональные настройки"}</b><small>Стиль, объём и редакционный план формата</small></span><i>{generatorAdvanced ? "−" : "+"}</i></button>
-                <div className={`field two ${generatorAdvanced ? "" : "generator-advanced-hidden"}`}><label>Стиль<select value={tone} onChange={(event) => setTone(event.target.value)}>{styles.map((item) => <option key={item}>{item}</option>)}</select></label><label>Объём<select value={customLength ? "custom" : String(length)} onChange={(event) => changeLength(event.target.value)}>{lengthPresets[format].map((item) => <option value={item.value} key={item.value}>{item.label}</option>)}<option value="custom">Свой объём…</option></select></label></div>
+                <div className={`field two ${generatorAdvanced ? "" : "generator-advanced-hidden"}`}>
+                  <ModuleSelect label="Стиль" value={tone} options={styles.map((item) => ({ value: item, label: item }))} onChange={setTone}/>
+                  <ModuleSelect label="Объём" value={customLength ? "custom" : String(length)} options={[...lengthPresets[format].map((item) => ({ value: String(item.value), label: item.label })), { value: "custom", label: "Свой объём…" }]} onChange={changeLength}/>
+                </div>
                 <p className={`tone-contract-note ${generatorAdvanced ? "" : "generator-advanced-hidden"}`}><i>Стиль: {tone}</i> меняет лексику и ритм, но не превращает выбранный формат в другой тип материала.</p>
                 {customLength && <label className={`field custom-length ${generatorAdvanced ? "" : "generator-advanced-hidden"}`}>Свой объём<div><input type="number" min="30" max="4000" step="10" value={length} onChange={(event) => setManualLength(event.target.value)} inputMode="numeric"/><span>слов</span></div><small>Можно указать от 30 до 4 000 слов</small></label>}
                 {generationError && <p className="generation-error" role="alert">{generationError}</p>}
