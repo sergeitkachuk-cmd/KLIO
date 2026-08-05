@@ -147,7 +147,13 @@ function normalizeAiResult(result: SemanticResult, query: string, geography: Geo
     return true;
   });
 
-  if (keywords.length < 12) {
+  // Below this, triggering the (expensive, ~doubles latency) correction
+  // pass below is worth it — the map is too thin to be useful. Above it,
+  // a modest shortfall from the requested 18-30 is still a perfectly
+  // usable result; forcing a full second AI call over a few duplicate
+  // phrases getting filtered out was making "low" reasoning effort
+  // *slower* on average than it needed to be.
+  if (keywords.length < 8) {
     throw new AiResponseError("AI‑аналитик подготовил неполную семантическую карту. Запустите анализ ещё раз.", 422);
   }
 

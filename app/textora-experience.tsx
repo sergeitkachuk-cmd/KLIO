@@ -2710,15 +2710,21 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       };
       if (!response.ok || !payload.candidates?.length) throw new Error(payload.error || "ИИ не нашёл подходящие страницы.");
 
-      const filled = competitors.filter((item) => item.url.trim());
-      const used = new Set(filled.map((item) => comparableUrl(item.url)));
+      // Keep only what the visitor typed themselves — re-running discovery
+      // is a request for fresh candidates. Previously this kept *every*
+      // filled slot (including ones from an earlier discovery) ahead of
+      // the new results, so once 5 slots were full, slice(0, 5) silently
+      // dropped every new candidate and re-discovery always looked like
+      // "the same competitors, every time".
+      const manualEntries = competitors.filter((item) => item.origin === "manual" && item.url.trim());
+      const used = new Set(manualEntries.map((item) => comparableUrl(item.url)));
       const discovered = payload.candidates.filter((item) => {
         const key = comparableUrl(item.url);
         if (!key || used.has(key)) return false;
         used.add(key);
         return true;
       });
-      const next = [...filled, ...discovered].slice(0, 5);
+      const next = [...manualEntries, ...discovered].slice(0, 5);
       while (next.length < 2) next.push({ id: `competitor-${Date.now()}-${next.length}`, label: `Конкурент ${next.length + 1}`, url: "", origin: "manual" });
 
       setCompetitors(next);
