@@ -869,7 +869,7 @@ export async function POST(request: Request) {
     }
 
     const website = input.useBrand ? await readWebsiteContext(input.brand.website) : await readWebsiteContext("");
-    const model = process.env.OPENAI_MODEL?.trim() || "gpt-5.6-terra";
+    const model = process.env.OPENAI_MODEL?.trim() || "gpt-5-mini";
     const formatPlan = FORMAT_PLANS[input.format];
     const selectedToneRules = toneRules(input.tone);
     const userBrief = JSON.stringify({

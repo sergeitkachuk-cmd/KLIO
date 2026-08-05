@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       }, { status: 503 });
     }
 
-    const model = process.env.OPENAI_MODEL?.trim() || "gpt-5.6-terra";
+    const model = process.env.OPENAI_MODEL?.trim() || "gpt-5-mini";
 
     const aiResponse = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",

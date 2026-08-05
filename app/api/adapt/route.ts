@@ -383,7 +383,7 @@ export async function POST(request: Request) {
 
     const brandWebsite = input.useBrand ? clean(input.brand.website, 220) : "";
     const website = await readWebsiteContext(brandWebsite);
-    const model = process.env.OPENAI_MODEL?.trim() || "gpt-5.6-terra";
+    const model = process.env.OPENAI_MODEL?.trim() || "gpt-5-mini";
     const plan = ADAPTATION_PLANS[input.goal];
     const toneRules = TONE_PLANS[input.tone];
     const transformationDirective = deepRewriteGoals.has(input.goal)
