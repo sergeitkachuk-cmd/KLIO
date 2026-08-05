@@ -967,6 +967,18 @@ function normalizeWorkspaceBrand(value: unknown): WorkspaceBrand | null {
   };
 }
 
+// A connection killed mid-response (proxy/gateway timeout, network drop)
+// makes response.json() throw, which used to skip past the "не удалось…"
+// fallback message entirely and surface a blank error line. Parsing safely
+// here means callers always get *something* to show, even on a timeout.
+async function safeJson(response: Response): Promise<Record<string, unknown>> {
+  try {
+    return await response.json();
+  } catch {
+    return {};
+  }
+}
+
 function archiveDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
@@ -1030,16 +1042,26 @@ function ModuleSelect({ label, value, options, onChange }: {
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
-    const closeOnScroll = () => setOpen(false);
+    // Reposition on scroll instead of closing — the list is portaled and
+    // position:fixed, so it needs to track the trigger if the page scrolls.
+    // Scrolling *inside* the option list itself (a capture-phase scroll
+    // event bubbling up from listRef) must not close the menu — that used
+    // to make picking a style/length impossible to scroll to.
+    const repositionOnScroll = (event: Event) => {
+      if (listRef.current?.contains(event.target as Node)) return;
+      if (!triggerRef.current) return;
+      const rect = triggerRef.current.getBoundingClientRect();
+      setMenuRect({ top: rect.bottom + 8, left: rect.left, width: rect.width });
+    };
     document.addEventListener("mousedown", closeOnOutsideClick);
     document.addEventListener("keydown", closeOnEscape);
-    window.addEventListener("scroll", closeOnScroll, true);
-    window.addEventListener("resize", closeOnScroll);
+    window.addEventListener("scroll", repositionOnScroll, true);
+    window.addEventListener("resize", repositionOnScroll);
     return () => {
       document.removeEventListener("mousedown", closeOnOutsideClick);
       document.removeEventListener("keydown", closeOnEscape);
-      window.removeEventListener("scroll", closeOnScroll, true);
-      window.removeEventListener("resize", closeOnScroll);
+      window.removeEventListener("scroll", repositionOnScroll, true);
+      window.removeEventListener("resize", repositionOnScroll);
     };
   }, [open]);
 
@@ -1568,7 +1590,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           window.location.assign("/login?return_to=%2Fworkspace");
           return;
         }
-        const payload = await response.json() as {
+        const payload = await safeJson(response) as {
           error?: string;
           user?: { displayName?: string };
           account?: WorkspaceAccount;
@@ -1772,7 +1794,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             workspace: JSON.parse(workspaceSnapshotJson),
           }),
         });
-        const payload = await response.json() as { error?: string; brand?: unknown; account?: WorkspaceAccount };
+        const payload = await safeJson(response) as { error?: string; brand?: unknown; account?: WorkspaceAccount };
         if (!response.ok) throw new Error(payload.error || "Не удалось сохранить изменения.");
         const saved = normalizeWorkspaceBrand(payload.brand);
         if (saved) setWorkspaceBrands((current) => current.map((item) => item.id === saved.id ? saved : item));
@@ -1970,7 +1992,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "save_brand", brandId: activeBrandId, profile: effectiveBrand, workspace: workspaceSnapshot }),
       });
-      const payload = await response.json() as { error?: string; brand?: unknown; account?: WorkspaceAccount };
+      const payload = await safeJson(response) as { error?: string; brand?: unknown; account?: WorkspaceAccount };
       if (!response.ok) throw new Error(payload.error || "Не удалось сохранить бренд.");
       const saved = normalizeWorkspaceBrand(payload.brand);
       if (saved) setWorkspaceBrands((current) => current.map((item) => item.id === saved.id ? saved : item));
@@ -2031,7 +2053,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "create_brand", profile: blankProfile, workspace: { useBrand: true, profileMode: "quick" } }),
       });
-      const payload = await response.json() as { error?: string; brand?: unknown; account?: WorkspaceAccount };
+      const payload = await safeJson(response) as { error?: string; brand?: unknown; account?: WorkspaceAccount };
       const created = normalizeWorkspaceBrand(payload.brand);
       if (!response.ok || !created) throw new Error(payload.error || "Не удалось создать бренд.");
       setWorkspaceBrands((current) => [...current, created]);
@@ -2096,7 +2118,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           },
         }),
       });
-      const payload = await response.json() as { error?: string; generation?: GenerationArchiveItem };
+      const payload = await safeJson(response) as { error?: string; generation?: GenerationArchiveItem };
       if (!response.ok || !payload.generation) throw new Error(payload.error || "Не удалось сохранить материал.");
       const saved = payload.generation;
       setArchiveEditorItem({ ...saved });
@@ -2156,7 +2178,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           useBrand: Boolean(archivedBrand),
         }),
       });
-      const payload = await response.json() as { error?: string; mode?: "ai"; material?: AdaptedMaterial; usage?: { account?: WorkspaceAccount } | null };
+      const payload = await safeJson(response) as { error?: string; mode?: "ai"; material?: AdaptedMaterial; usage?: { account?: WorkspaceAccount } | null };
       if (!response.ok || !payload.material || payload.mode !== "ai") throw new Error(payload.error || "Редактор КЛИО не подготовил новую версию.");
       if (payload.usage?.account) setWorkspaceAccount(payload.usage.account);
       setArchiveEditorItem((current) => current ? {
@@ -2353,7 +2375,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           brand: useBrand ? effectiveBrand : null,
         }),
       });
-      const payload = await response.json() as {
+      const payload = await safeJson(response) as {
         error?: string;
         mode?: "ai";
         result?: SemanticResult;
@@ -2491,7 +2513,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         } : null,
       }),
     });
-    const payload = await response.json() as {
+    const payload = await safeJson(response) as {
       error?: string;
       mode?: "ai";
       material?: GeneratedMaterial;
@@ -2682,7 +2704,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           geography: selectedGeoScopes.map(({ label, detail }) => ({ label, detail })),
         }),
       });
-      const payload = await response.json() as {
+      const payload = await safeJson(response) as {
         error?: string;
         candidates?: CompetitorEntry[];
       };
@@ -2738,10 +2760,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           semanticKeywords: competitorFocusSource === "semantics" && semanticAnalysisReady
             ? selectedSemanticKeywords.map((item) => ({ phrase: item.phrase, cluster: item.cluster, role: item.role }))
             : [],
-          brand: competitorFocusSource === "brand" && useBrand ? effectiveBrand : null,
+          // Unlike discovery (which biases a *search*), the matrix always
+          // compares against "Ваш бренд" when the profile is on — that
+          // comparison is the point of the table regardless of where the
+          // query text came from. Gating this on focusSource too made every
+          // brand cell show "?" whenever the query wasn't from the brand.
+          brand: useBrand ? effectiveBrand : null,
         }),
       });
-      const payload = await response.json() as {
+      const payload = await safeJson(response) as {
         error?: string;
         mode?: "demo" | "ai";
         result?: CompetitorResult;
@@ -2878,7 +2905,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           material: { ...material, brandId: activeBrandId, sourceId, saveMode },
         }),
       });
-      const payload = await response.json() as { error?: string; material?: SavedWorkspaceMaterial };
+      const payload = await safeJson(response) as { error?: string; material?: SavedWorkspaceMaterial };
       if (!response.ok || !payload.material) throw new Error(payload.error || "Не удалось сохранить материал.");
       setWorkspaceMaterials((current) => [payload.material!, ...current.filter((item) => item.id !== payload.material!.id)].slice(0, 120));
       setModuleMaterialSources((current) => ({ ...current, [type]: payload.material!.id }));
@@ -2970,7 +2997,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "delete_generation", id: item.id }),
       });
-      const payload = await response.json() as { error?: string };
+      const payload = await safeJson(response) as { error?: string };
       if (!response.ok) throw new Error(payload.error || "Не удалось удалить материал.");
       setWorkspaceHistory((current) => current.filter((entry) => entry.id !== item.id));
       showToast("Материал удалён");
@@ -2987,7 +3014,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "delete_material", id: item.id }),
       });
-      const payload = await response.json() as { error?: string };
+      const payload = await safeJson(response) as { error?: string };
       if (!response.ok) throw new Error(payload.error || "Не удалось удалить материал.");
       setWorkspaceMaterials((current) => current.filter((entry) => entry.id !== item.id));
       showToast("Материал удалён");
@@ -3056,7 +3083,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           brand: useBrand ? effectiveBrand : null,
         }),
       });
-      const payload = await response.json() as {
+      const payload = await safeJson(response) as {
         error?: string;
         mode?: "ai";
         result?: Omit<ContentPlanResult, "items"> & { items: Array<Omit<ContentPlanItem, "status">> };
@@ -3132,7 +3159,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           brand: useBrand ? effectiveBrand : null,
         }),
       });
-      const payload = await response.json() as {
+      const payload = await safeJson(response) as {
         error?: string;
         mode?: "ai";
         replacements?: Array<{ sourceId: string; alternatives: Array<Omit<ContentPlanItem, "id" | "status">> }>;
@@ -3290,7 +3317,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: quickPrompt, brandId: activeBrandId || undefined }),
       });
-      const payload = await response.json() as {
+      const payload = await safeJson(response) as {
         error?: string;
         mode?: "ai";
         material?: GeneratedMaterial;
@@ -3356,7 +3383,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           useBrand,
         }),
       });
-      const payload = await response.json() as {
+      const payload = await safeJson(response) as {
         error?: string;
         mode?: "ai";
         material?: AdaptedMaterial;
@@ -4091,7 +4118,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                         <div className="content-plan-item-copy">
                           <div><span>{item.cluster}</span><i>{item.format}</i><i>{item.intent}</i><i>{item.stage}</i><em className={`priority-${item.priority === "Высокий" ? "high" : item.priority === "Средний" ? "medium" : "extra"}`}>{item.priority}</em></div>
                           <h3>{item.title}</h3>
-                          <p><span>Основной запрос</span>{item.primaryKeyword}</p>
+                          <p><span>Основной запрос</span><b>{item.primaryKeyword}</b></p>
                         </div>
                         <label className={`content-plan-status status-${statusClass}`}><span>Статус</span><select value={item.status} onChange={(event) => updateContentPlanStatus(item.id, event.target.value as ContentPlanStatus)}><option>Запланировано</option><option>В работе</option><option>Готово</option></select></label>
                         <div className="content-plan-item-actions"><button type="button" onClick={() => setExpandedPlanItem(expanded ? null : item.id)}>{expanded ? "Скрыть бриф" : "Открыть бриф"}</button><button type="button" onClick={() => sendPlanItemToGenerator(item)}>В генератор <Icon name="arrow"/></button></div>

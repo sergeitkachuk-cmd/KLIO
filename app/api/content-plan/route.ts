@@ -224,8 +224,8 @@ export async function POST(request: Request) {
         brand_profile: input.brand.name ? input.brand : null,
         required_items: input.count,
       }, null, 2),
-      reasoningEffort: "medium",
-      verbosity: "high",
+      reasoningEffort: "low",
+      verbosity: "medium",
       maxOutputTokens: input.count === 25 ? 18000 : input.count === 15 ? 12500 : 9000,
       useWebSearch: true,
     });

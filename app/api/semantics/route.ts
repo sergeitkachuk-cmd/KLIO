@@ -262,8 +262,8 @@ export async function POST(request: Request) {
       schema: semanticSchema(),
       instructions,
       input: JSON.stringify(requestContext, null, 2),
-      reasoningEffort: "medium",
-      verbosity: "high",
+      reasoningEffort: "low",
+      verbosity: "medium",
       maxOutputTokens: 9000,
       useWebSearch: true,
     });
@@ -287,8 +287,8 @@ export async function POST(request: Request) {
           rejected_result: firstAttempt.result,
           validation_failure: error.message,
         }, null, 2),
-        reasoningEffort: "medium",
-        verbosity: "high",
+        reasoningEffort: "low",
+        verbosity: "medium",
         maxOutputTokens: 9000,
         useWebSearch: true,
       });

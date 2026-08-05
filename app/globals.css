@@ -2357,8 +2357,10 @@ select:focus-visible {
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 15px;
   color: #fff;
-  background: rgba(17, 13, 27, 0.98);
-  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.38), inset 0 1px rgba(255, 255, 255, 0.08);
+  background:
+    radial-gradient(circle at 85% -10%, rgba(124, 58, 237, 0.4), transparent 42%),
+    linear-gradient(155deg, #051a31 0%, #0c3459 55%, #041225 100%);
+  box-shadow: 0 22px 55px rgba(2, 10, 22, 0.5), inset 0 1px rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(24px);
   scrollbar-width: thin;
 }
@@ -4005,8 +4007,10 @@ footer nav a {
   padding: 6px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 13px;
-  background: rgba(17, 13, 27, 0.98);
-  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.38), inset 0 1px rgba(255, 255, 255, 0.08);
+  background:
+    radial-gradient(circle at 85% -10%, rgba(124, 58, 237, 0.4), transparent 42%),
+    linear-gradient(155deg, #051a31 0%, #0c3459 55%, #041225 100%);
+  box-shadow: 0 22px 55px rgba(2, 10, 22, 0.5), inset 0 1px rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(24px);
 }
 
@@ -7687,7 +7691,6 @@ footer nav a {
   display: grid;
   gap: 18px;
   min-width: 0;
-  overflow-x: hidden;
 }
 
 .content-plan-setup {
@@ -8153,6 +8156,7 @@ footer nav a {
 
 .content-plan-item-copy h3 {
   margin: 9px 0 8px;
+  overflow-wrap: anywhere;
   font-size: clamp(18px, 1.5vw, 23px);
   font-weight: 560;
   line-height: 1.2;
@@ -8163,17 +8167,26 @@ footer nav a {
   display: flex;
   align-items: baseline;
   gap: 8px;
+  min-width: 0;
   margin: 0;
   color: #65606e;
   font-size: 12px;
 }
 
 .content-plan-item-copy > p span {
+  flex: 0 0 auto;
   color: #99949f;
   font-size: 10px;
   font-weight: 680;
   letter-spacing: 0.07em;
   text-transform: uppercase;
+}
+
+.content-plan-item-copy > p b {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-weight: 650;
 }
 
 .content-plan-status {
@@ -8197,10 +8210,12 @@ footer nav a {
 
 .content-plan-item.status-work {
   border-left-color: var(--cobalt);
+  background: linear-gradient(120deg, rgba(124, 58, 237, 0.1), rgba(255, 255, 255, 0.68) 55%);
 }
 
 .content-plan-item.status-done {
   border-left-color: #6fa93a;
+  background: linear-gradient(120deg, rgba(111, 169, 58, 0.12), rgba(255, 255, 255, 0.68) 55%);
 }
 
 .content-plan-status.status-work select {
@@ -11431,8 +11446,10 @@ footer nav a {
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 15px;
   color: #fff;
-  background: rgba(17, 13, 27, 0.98);
-  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.38), inset 0 1px rgba(255, 255, 255, 0.08);
+  background:
+    radial-gradient(circle at 85% -10%, rgba(124, 58, 237, 0.4), transparent 42%),
+    linear-gradient(155deg, #051a31 0%, #0c3459 55%, #041225 100%);
+  box-shadow: 0 22px 55px rgba(2, 10, 22, 0.5), inset 0 1px rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(24px);
   scrollbar-width: thin;
 }
@@ -12121,11 +12138,6 @@ footer nav a {
   background:
     radial-gradient(circle at 88% 0%, rgba(124, 58, 237, 0.26), transparent 35%),
     linear-gradient(145deg, #051a31, #0b3154);
-}
-
-.brand-menu-list {
-  background: rgba(4, 20, 39, 0.985);
-  box-shadow: 0 22px 55px rgba(3, 15, 30, 0.44), inset 0 1px rgba(255, 255, 255, 0.09);
 }
 
 .archive-editor-overlay {

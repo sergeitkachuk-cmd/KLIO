@@ -181,8 +181,8 @@ export async function POST(request: Request) {
         user_comment: input.comment || null,
         brand_profile: input.brand.name ? input.brand : null,
       }, null, 2),
-      reasoningEffort: "medium",
-      verbosity: "high",
+      reasoningEffort: "low",
+      verbosity: "medium",
       maxOutputTokens: 12000,
     });
 

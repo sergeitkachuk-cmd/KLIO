@@ -195,7 +195,7 @@ export async function POST(request: Request) {
       schema: analysisSchema(sources.map((item) => item.id)),
       instructions,
       input: JSON.stringify(requestContext, null, 2),
-      reasoningEffort: "medium",
+      reasoningEffort: "low",
       verbosity: "medium",
       maxOutputTokens: 9000,
     });
