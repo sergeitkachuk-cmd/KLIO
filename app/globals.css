@@ -4283,10 +4283,6 @@ footer nav a {
   font-size: 12px;
 }
 
-.tool-collapsed > :not(.workspace-module-heading) {
-  display: none !important;
-}
-
 .tool-collapsed {
   min-height: 0 !important;
 }
@@ -13797,4 +13793,153 @@ footer nav a {
 .brand-create-form input {
   border: 1.5px solid rgba(255, 255, 255, 0.3);
   background: rgba(0, 0, 0, 0.28);
+}
+
+/* Content-plan horizontal overflow, round 2: the earlier fix covered
+   .content-plan-brief-grid, but .content-plan-strategy (Редакционный
+   ракурс / Коммуникационная цель / Следующий шаг) and .content-plan-seo
+   had the exact same min-width:auto trap — a grid item defaults to
+   min-content width regardless of its track being minmax(0, 1fr) unless
+   the item itself also gets min-width:0, and without overflow-wrap a
+   long word/phrase in the AI-written angle/objective/meta text can force
+   that min-content wider than the viewport. overflow-x:hidden on the
+   brief as a last-resort backstop so nothing here can push the page into
+   a horizontal scroll again even if another spot is found later. */
+.content-plan-strategy section {
+  min-width: 0;
+}
+
+.content-plan-strategy p {
+  overflow-wrap: anywhere;
+}
+
+.content-plan-seo label {
+  min-width: 0;
+}
+
+.content-plan-seo label > p {
+  overflow-wrap: anywhere;
+}
+
+.content-plan-brief {
+  overflow-x: hidden;
+}
+
+/* Редакторы КЛИО mode cards ("ВЫБЕРИТЕ РЕЖИМ КЛИО") were still using the
+   same 15% opacity border + near-white background as everything else
+   fixed above — the single biggest visual mass on that screen, and the
+   main reason the field-contrast pass didn't read as a visible change. */
+.adaptation-goals button {
+  border: 1.5px solid rgba(124, 58, 237, 0.28);
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(29, 21, 58, 0.08), inset 0 1px rgba(255, 255, 255, 0.95);
+}
+
+.adaptation-goals button.active {
+  border-color: rgba(124, 58, 237, 0.55);
+  background: linear-gradient(135deg, #fff, rgba(196, 168, 247, 0.42));
+  box-shadow: 0 6px 18px rgba(68, 42, 112, 0.16), inset 0 1px rgba(255, 255, 255, 0.98);
+}
+
+.adaptation-goals button > i {
+  border-color: rgba(124, 58, 237, 0.32);
+  background: #fff;
+}
+
+/* Smooth expand/collapse for the four self-contained tool modules
+   (previously an instant display:none swap — reported as too abrupt).
+   Each module has exactly two direct children: the always-visible
+   heading and its "shell" content — a CSS grid with the second row
+   animated between 1fr (open) and 0fr (collapsed) gives a real height
+   animation with no JS measuring and no layout-shift jump. */
+.semantics-module,
+.competitor-module,
+.content-plan-module,
+.adaptation-module {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  transition: grid-template-rows 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.semantics-module.tool-collapsed,
+.competitor-module.tool-collapsed,
+.content-plan-module.tool-collapsed,
+.adaptation-module.tool-collapsed {
+  grid-template-rows: auto 0fr;
+}
+
+.semantics-module > :not(.workspace-module-heading),
+.competitor-module > :not(.workspace-module-heading),
+.content-plan-module > :not(.workspace-module-heading),
+.adaptation-module > :not(.workspace-module-heading) {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Профиль бренда is a genuinely different shape when open vs collapsed
+   (square info card vs full-width form — see .workspace-quickstart
+   above), not just a taller version of the same card, so it can't use
+   the same height-morph trick. Its content still gets a real reveal
+   instead of popping in instantly: a CSS animation plays automatically
+   whenever React mounts it, no transition/JS required. */
+@keyframes brandProfileReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.brand-profile-body {
+  animation: brandProfileReveal 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* "AI is working" button feedback — added to every button that triggers
+   a real AI call (generate/analyze/adapt/discover), toggled via a
+   .is-busy class alongside the existing disabled+changing-label state.
+   Three layers: a light sweeping across the surface ("блик"), a pulsing
+   glow at the edge (contour), and a gentle whole-button breathing scale
+   so the label visibly moves too, not just the text it displays. */
+.is-busy {
+  position: relative;
+  overflow: hidden;
+  animation: buttonBusyPulse 1.7s ease-in-out infinite;
+}
+
+.is-busy::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -45%;
+  width: 45%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  animation: buttonBusySweep 1.7s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes buttonBusyPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(216, 255, 101, 0.45);
+  }
+
+  50% {
+    transform: scale(1.015);
+    box-shadow: 0 0 0 5px rgba(216, 255, 101, 0);
+  }
+}
+
+@keyframes buttonBusySweep {
+  0% {
+    left: -45%;
+  }
+
+  100% {
+    left: 100%;
+  }
 }
