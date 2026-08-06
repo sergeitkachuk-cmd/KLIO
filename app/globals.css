@@ -1148,11 +1148,6 @@ select:focus-visible {
   padding-top: 150px;
 }
 
-.mvp-flow > span,
-.mvp-flow > div {
-  min-width: 0;
-  padding: 19px 20px;
-}
 
 .mvp-flow .mvp-flow-alternative {
   background: linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(216, 255, 101, 0.08));
@@ -10521,24 +10516,6 @@ footer nav a {
   background: #7c3447;
 }
 
-.mvp-flow > span {
-  display: grid;
-  align-items: center;
-  font-size: 12px;
-  font-weight: 720;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  color: var(--acid);
-}
-
-.mvp-flow > div {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 2px 12px;
-  border-left: 1px solid var(--line);
-  border-left-color: rgba(255, 255, 255, 0.12);
-}
-
 .mvp-flow b {
   font-size: 15px;
   font-weight: 650;
@@ -10551,11 +10528,9 @@ footer nav a {
 }
 
 .mvp-flow i {
-  grid-row: 1 / 3;
   font-size: 13px;
   font-style: normal;
   font-weight: 680;
-  color: rgba(216, 255, 101, 0.72);
 }
 
 .mvp-flow .mvp-flow-plan,
@@ -13482,30 +13457,61 @@ footer nav a {
    without having to hunt down every duplicate.
    --------------------------------------------------------------------- */
 
-.mvp-flow {
+/* ---------------------------------------------------------------------
+   Workspace "quickstart" row: the flow strip (.mvp-flow) and the
+   collapsed brand-profile card side by side as two matched panels,
+   instead of two stacked full-width bars. Rewritten after the first
+   pass: old .mvp-flow > div / .mvp-flow > span rules from the pre-panel
+   flat-grid design (see above) were still matching the new wrapper divs
+   as literal direct children and forcing a stray 2-column grid on them —
+   removed those, so what follows is now the only layout in effect.
+   --------------------------------------------------------------------- */
+.workspace-quickstart {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: stretch;
+  gap: 16px;
   margin-bottom: 22px;
+}
+
+.workspace-quickstart .mvp-flow,
+.workspace-quickstart .brand-profile {
+  margin: 0;
+  height: 100%;
+}
+
+.workspace-quickstart .brand-profile.is-open {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 860px) {
+  .workspace-quickstart {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mvp-flow {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 20px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  padding: 26px 28px;
+  border: 1px solid rgba(151, 190, 234, 0.17);
   border-radius: 4px 28px 4px 4px;
-  backdrop-filter: blur(24px) saturate(145%);
-  grid-template-columns: minmax(165px, 0.72fr) repeat(5, minmax(0, 1fr));
   color: #fff;
-  border-color: rgba(151, 190, 234, 0.17);
   background:
     radial-gradient(circle at 88% 0%, rgba(124, 58, 237, 0.29), transparent 35%),
     linear-gradient(120deg, #04162b, #0a3155 66%, #071f38);
   box-shadow: 0 24px 64px rgba(3, 17, 34, 0.25), inset 0 1px rgba(255, 255, 255, 0.1);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 22px 26px;
+  backdrop-filter: blur(24px) saturate(145%);
 }
 
 .mvp-flow-main {
   display: flex;
+  min-width: 0;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 .mvp-flow-main > span {
@@ -13519,15 +13525,16 @@ footer nav a {
 .mvp-flow-steps {
   display: flex;
   align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
+  gap: 16px;
 }
 
 .mvp-flow-step {
   display: flex;
+  flex: 1 1 0;
   align-items: center;
   gap: 12px;
-  padding: 13px 18px;
+  min-width: 0;
+  padding: 15px 18px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.06);
@@ -13537,14 +13544,18 @@ footer nav a {
   display: grid;
   flex-shrink: 0;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   color: var(--night);
   background: var(--acid);
   font-size: 13px;
   font-style: normal;
   font-weight: 800;
+}
+
+.mvp-flow-step > span {
+  min-width: 0;
 }
 
 .mvp-flow-step b {
@@ -13563,6 +13574,7 @@ footer nav a {
 }
 
 .mvp-flow-arrow {
+  flex-shrink: 0;
   color: rgba(255, 255, 255, 0.32);
   font-size: 20px;
   font-style: normal;
@@ -13570,17 +13582,19 @@ footer nav a {
 
 .mvp-flow-extra {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  padding-top: 14px;
+  padding-top: 18px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .mvp-flow-extra > div {
   display: flex;
+  min-width: 0;
+  flex-direction: column;
   align-items: flex-start;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: 8px;
+  padding: 13px 14px;
   border: 1px dashed rgba(255, 255, 255, 0.16);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.032);
@@ -13598,6 +13612,10 @@ footer nav a {
   font-size: 12px;
   font-style: normal;
   font-weight: 700;
+}
+
+.mvp-flow-extra > div > span {
+  min-width: 0;
 }
 
 .mvp-flow-extra b {
@@ -13630,72 +13648,66 @@ footer nav a {
   }
 }
 
-/* Brand-profile module header: was a fixed, oversized banner (30px
-   heading + a full descriptive paragraph + generous padding) sitting
-   permanently near the top of the workspace regardless of whether the
-   module was open. Collapsed by default, it should read as a slim
-   toggle row, not a hero section — the description only earns its
-   space back once the module is actually open. */
-.brand-profile-head,
-.brand-profile:not(.is-open) .brand-profile-head {
-  align-items: center;
+/* Brand-profile card, matching the flow strip's panel: same gradient
+   background, and — while collapsed — a full vertical composition
+   (kicker + title, the explanatory description, then the toggle/open
+   actions pinned to the bottom) instead of a single cramped row. Once
+   the module is actually open (.is-open), it drops all of this and
+   spans the full width again for the real editing form. */
+.workspace-quickstart .brand-profile:not(.is-open) {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid rgba(151, 190, 234, 0.17);
+  border-radius: 4px 28px 4px 4px;
+  background:
+    radial-gradient(circle at 88% 0%, rgba(124, 58, 237, 0.29), transparent 35%),
+    linear-gradient(120deg, #04162b, #0a3155 66%, #071f38);
+  box-shadow: 0 24px 64px rgba(3, 17, 34, 0.25), inset 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.workspace-quickstart .brand-profile:not(.is-open) .brand-profile-head {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: stretch;
   gap: 20px;
-  padding: 16px 22px;
+  width: 100%;
+  padding: 26px 28px;
+  /* .brand-profile-head normally paints its own background (see rules
+     above) — here the outer .brand-profile card already carries the
+     matching gradient, so the head must stay transparent or it hides it. */
+  background: none;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.workspace-quickstart .brand-profile:not(.is-open) .brand-profile-head > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .brand-profile-head h3 {
   font-weight: 540;
   letter-spacing: -0.045em;
-  margin: 2px 0 0;
-  font-size: 19px;
-}
-
-.brand-profile:not(.is-open) .brand-profile-head p {
-  display: none;
-}
-
-.brand-profile.is-open .brand-profile-head p {
-  max-width: 560px;
-  margin: 4px 0 0;
-  font-size: 13px;
-}
-
-/* mvp-flow + brand-profile side by side instead of two stacked
-   full-width bars — reads as two compact panels rather than a long
-   stretched strip. The brand-profile panel breaks out to full width
-   only while actually expanded (editing a profile in a half-width
-   column would be cramped). */
-.workspace-quickstart {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: stretch;
-  gap: 16px;
-  margin-bottom: 22px;
-}
-
-.workspace-quickstart .mvp-flow,
-.workspace-quickstart .brand-profile {
   margin: 0;
-  height: 100%;
+  font-size: 22px;
 }
 
-.workspace-quickstart .brand-profile:not(.is-open) {
-  display: flex;
+.workspace-quickstart .brand-profile:not(.is-open) .brand-profile-head p {
+  display: block;
+  max-width: none;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
-.workspace-quickstart .brand-profile:not(.is-open) .brand-profile-head {
-  align-self: center;
+.workspace-quickstart .brand-profile:not(.is-open) .brand-profile-actions {
+  justify-content: space-between;
   width: 100%;
-}
-
-.workspace-quickstart .brand-profile.is-open {
-  grid-column: 1 / -1;
-}
-
-@media (max-width: 860px) {
-  .workspace-quickstart {
-    grid-template-columns: 1fr;
-  }
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* The "Профиль отключён/активен" switch had no dark-theme track color at
