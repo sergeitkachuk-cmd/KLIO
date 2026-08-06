@@ -3648,6 +3648,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </section>
           </div>}
 
+          <div className="workspace-quickstart">
           <div className="mvp-flow" aria-label="Простой и расширенный режимы работы">
             <div className="mvp-flow-main">
               <span>Начните без лишних этапов</span>
@@ -3759,6 +3760,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <div className="brand-profile-footer"><p><i className={brandSaved ? "saved" : ""}/>{brandSaved ? "Профиль и данные бренда сохранены в кабинете" : "Есть несохранённые изменения"}</p><div><button type="button" onClick={restoreBrand}>Восстановить базовый профиль</button><button className="button primary" type="button" onClick={() => void saveBrand()}>Сохранить профиль</button></div></div>
             </div>}
           </section>
+          </div>
 
           <section className={`workspace-module semantics-module ${semanticOpen ? "" : "tool-collapsed"}`} id="semantics">
             <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Семантика и поисковый интент</h2></div><p>Соберите ключи отдельно или передайте выбранные фразы в генератор. Для быстрого материала этот этап можно пропустить.</p><button type="button" onClick={() => setSemanticOpen((value) => !value)} aria-expanded={semanticOpen}>{semanticOpen ? "Свернуть" : "Открыть инструмент"}<i>{semanticOpen ? "−" : "+"}</i></button></div>

@@ -13864,3 +13864,54 @@ footer nav a {
   margin: 4px 0 0;
   font-size: 13px;
 }
+
+/* mvp-flow + brand-profile side by side instead of two stacked
+   full-width bars — reads as two compact panels rather than a long
+   stretched strip. The brand-profile panel breaks out to full width
+   only while actually expanded (editing a profile in a half-width
+   column would be cramped). */
+.workspace-quickstart {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.workspace-quickstart .mvp-flow,
+.workspace-quickstart .brand-profile {
+  margin: 0;
+  height: 100%;
+}
+
+.workspace-quickstart .brand-profile:not(.is-open) {
+  display: flex;
+}
+
+.workspace-quickstart .brand-profile:not(.is-open) .brand-profile-head {
+  align-self: center;
+  width: 100%;
+}
+
+.workspace-quickstart .brand-profile.is-open {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 860px) {
+  .workspace-quickstart {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The "Профиль отключён/активен" switch had no dark-theme track color at
+   all — a near-invisible dark-on-dark pill on the navy card background,
+   reported as blending in. */
+.brand-profile-head .brand-switch > span {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.brand-profile-head .brand-switch input:checked + span {
+  border-color: rgba(216, 255, 101, 0.5);
+  background: var(--cobalt);
+}
