@@ -3003,6 +3003,35 @@ textarea[data-autosize="true"] {
   animation: scoreIn 1s 180ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
+.quality-tips {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 10px 0 0;
+  padding: 10px 0 0;
+  border-top: 1px dashed rgba(255, 255, 255, 0.16);
+  list-style: none;
+}
+
+.quality-tips li {
+  position: relative;
+  padding-left: 12px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.quality-tips li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--acid);
+}
+
 .result-footer {
   display: flex;
   align-items: center;

@@ -990,16 +990,17 @@ function nameInitials(value: string) {
   return (parts.slice(0, 2).map((item) => item[0]?.toLocaleUpperCase("ru-RU") || "").join("") || "К").slice(0, 2);
 }
 
-function readabilityScore(value: string) {
+function readabilityDiagnostics(value: string) {
   const words = value.trim().split(/\s+/).filter(Boolean);
   const sentences = value.split(/[.!?]+/).map((item) => item.trim()).filter(Boolean);
   const paragraphs = value.split(/\n\s*\n/).map((item) => item.trim()).filter(Boolean);
-  if (!words.length) return 0;
+  if (!words.length) return { score: 0, sentenceLength: 0, paragraphLength: 0 };
   const sentenceLength = words.length / Math.max(sentences.length, 1);
   const paragraphLength = words.length / Math.max(paragraphs.length, 1);
   const sentencePenalty = Math.min(34, Math.abs(sentenceLength - 14) * 1.55);
   const paragraphPenalty = paragraphLength > 95 ? Math.min(18, (paragraphLength - 95) / 5) : 0;
-  return Math.max(45, Math.min(98, Math.round(96 - sentencePenalty - paragraphPenalty)));
+  const score = Math.max(45, Math.min(98, Math.round(96 - sentencePenalty - paragraphPenalty)));
+  return { score, sentenceLength, paragraphLength };
 }
 
 function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" | "erase" }) {
@@ -1322,9 +1323,25 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     const coverage = keyList.length ? keysFound / keyList.length : 0;
     const primaryInTitle = keyList[0] ? containsKeyword(title, keyList[0]) : false;
     const lengthProgress = Math.min(words / Math.max(length * 0.72, 1), 1);
-    const structure = Math.min(body.split(/\n\s*\n/).filter(Boolean).length / 5, 1);
+    const structureCount = body.split(/\n\s*\n/).filter(Boolean).length;
+    const structure = Math.min(structureCount / 5, 1);
     const seo = Math.min(100, Math.round(28 + coverage * 37 + (primaryInTitle ? 15 : 0) + lengthProgress * 12 + structure * 8));
-    return { seo, readability: readabilityScore(body), keysFound };
+    const readabilityInfo = readabilityDiagnostics(body);
+
+    // Concrete, actionable notes instead of a bare "есть точки роста" —
+    // each one names exactly what to change and, where relevant, by how
+    // much. Capped so the card stays a quick glance, not a checklist wall.
+    const seoTips: string[] = [];
+    if (keyList[0] && !primaryInTitle) seoTips.push(`Добавьте основной запрос «${keyList[0]}» в заголовок`);
+    if (keyList.length && keysFound < keyList.length) seoTips.push(`Используйте ещё ${keyList.length - keysFound} из ${keyList.length} ключевых фраз в тексте`);
+    if (structureCount < 4) seoTips.push("Добавьте ещё один-два смысловых раздела с подзаголовком");
+
+    const readabilityTips: string[] = [];
+    if (readabilityInfo.sentenceLength > 20) readabilityTips.push("Сократите самые длинные предложения");
+    else if (readabilityInfo.sentenceLength > 0 && readabilityInfo.sentenceLength < 7) readabilityTips.push("Часть коротких предложений можно объединить");
+    if (readabilityInfo.paragraphLength > 95) readabilityTips.push("Разбейте длинные абзацы на более короткие");
+
+    return { seo, readability: readabilityInfo.score, keysFound, seoTips: seoTips.slice(0, 2), readabilityTips: readabilityTips.slice(0, 1) };
   }, [body, keyList, length, title, words]);
   const foundationReady = Boolean(
     brand.name.trim()
@@ -3446,7 +3463,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }
 
   if (workspace) {
-    const withinTarget = words >= Math.floor(length * 0.95) && words <= Math.ceil(length * 1.05);
+    // ±15% matches the tolerance the generator itself already accepts as a
+    // finished result server-side (see app/api/generate/route.ts) — the UI
+    // must never flag a word count the backend already considered fine.
+    const withinTarget = words >= Math.floor(length * 0.85) && words <= Math.ceil(length * 1.15);
     const targetChecked = generationMode !== "example";
 
     if (workspaceDataError && !activeBrandId) {
@@ -4029,7 +4049,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </aside>
               <article className="result-panel">
                 <div className="result-head"><div><span className={`status status-${generationMode}`}><i/>{generationMode === "ai" ? "Создано КЛИО" : generationMode === "demo" ? "Сохранённая версия" : aiConnection === "connected" ? "Ожидает генерацию" : "ИИ не подключён"}</span><small>{words.toLocaleString("ru-RU")} / {length.toLocaleString("ru-RU")} слов · {tone}</small></div><div className="result-head-actions"><button type="button" className="result-clear" onClick={clearGeneratedResult} disabled={!title && !body}><Icon name="erase"/> Очистить</button><button type="button" onClick={copyResult}><Icon name="copy"/> Копировать текст</button></div></div>
-                <div className={`length-control ${targetChecked ? (withinTarget ? "is-ok" : "is-warning") : "is-idle"}`}><span><i/>{targetChecked ? (withinTarget ? "Объём соблюдён" : "Материал не соответствует цели") : "Контроль включится после генерации"}</span><b>{targetChecked ? `${Math.round((words / Math.max(length, 1)) * 100)}%` : "—"}</b><u><i style={{ width: `${targetChecked ? Math.min(100, (words / Math.max(length, 1)) * 100) : 0}%` }}/></u><small>Допуск после генерации: от {Math.floor(length * 0.95).toLocaleString("ru-RU")} до {Math.ceil(length * 1.05).toLocaleString("ru-RU")} слов</small></div>
+                <div className={`length-control ${targetChecked ? (withinTarget ? "is-ok" : "is-warning") : "is-idle"}`}><span><i/>{targetChecked ? (withinTarget ? "Объём в цели" : "Объём отличается от заданного") : "Контроль включится после генерации"}</span><b>{targetChecked ? `${Math.round((words / Math.max(length, 1)) * 100)}%` : "—"}</b><u><i style={{ width: `${targetChecked ? Math.min(100, (words / Math.max(length, 1)) * 100) : 0}%` }}/></u><small>{targetChecked && !withinTarget ? "Это ориентир, а не жёсткое правило — при желании сократите или дополните текст ниже." : `Ориентир: от ${Math.floor(length * 0.85).toLocaleString("ru-RU")} до ${Math.ceil(length * 1.15).toLocaleString("ru-RU")} слов`}</small></div>
                 <AutoTextarea className="result-title" rows={1} value={title} onChange={(event) => setTitle(event.target.value)} aria-label="Заголовок результата"/>
                 <AutoTextarea className="result-body" value={body} onChange={(event) => setBody(event.target.value)} aria-label="Текст результата"/>
                 {generationCoverage && <div className="generation-brief-check"><div><span>Контроль брифа</span><small>Проверено до выдачи материала</small></div><p className={generationCoverage.subjectApplied ? "is-ready" : "is-missing"}><i>{generationCoverage.subjectApplied ? "✓" : "!"}</i><span><b>Предмет темы</b><small>{generationCoverage.subjectApplied ? `раскрыт в ${generationCoverage.subjectSections} смысловых блоках` : "недостаточно раскрыт"}</small></span></p><p className={!generationCoverage.keywordMissing.length ? "is-ready" : "is-missing"}><i>{!generationCoverage.keywordMissing.length ? "✓" : "!"}</i><span><b>Ключевые фразы</b><small>{generationCoverage.keywordTotal ? `${generationCoverage.keywordApplied.length} из ${generationCoverage.keywordTotal} использованы в тексте` : "ключевые фразы не задавались"}</small></span></p><p className={!generationCoverage.editorialFocusMissing.length ? "is-ready" : "is-missing"}><i>{!generationCoverage.editorialFocusMissing.length ? "✓" : "!"}</i><span><b>Редакционные ориентиры</b><small>{generationCoverage.editorialFocusTotal ? `${generationCoverage.editorialFocusApplied.length} из ${generationCoverage.editorialFocusTotal} применены` : "дополнительные ориентиры не передавались"}</small></span></p><p className="is-ready"><i>✓</i><span><b>География спроса</b><small>{generationCoverage.geographyApplied.length ? generationCoverage.geographyApplied.join(", ") : "отдельная география не задана"}</small></span></p></div>}
@@ -4040,10 +4060,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <label><span className="seo-field-label"><b>Метаописание</b><button type="button" onClick={() => copyPlainText(metaDescription, "Метаописание")}><Icon name="copy"/> Копировать</button></span><AutoTextarea rows={2} value={metaDescription} onChange={(event) => setMetaDescription(event.target.value)} aria-label="Метаописание"/><small>{metaDescription.length} знаков</small></label>
                 </div>
                 <div ref={metricsRef} className={`quality-zone ${metricsVisible ? "is-visible" : ""}`} aria-live="polite" aria-atomic="true">
-                  <div className="quality-head"><span>Контроль качества</span><small><i/> Значения обновлены по текущему тексту</small></div>
+                  <div className="quality-head"><span>Идеи для полировки</span><small><i/> Необязательно — материал уже готов к публикации</small></div>
                   <div className="quality-grid">
-                    <div className="quality-card" key={`seo-${metricsReplay}`}><small>SEO</small><b><MetricNumber value={quality.seo} replay={metricsReplay}/><em>/100</em></b><span>{quality.seo >= 80 ? "сильное соответствие" : "есть точки роста"}</span><i><u style={{ "--score": `${quality.seo}%` } as CSSProperties}/></i></div>
-                    <div className="quality-card" key={`read-${metricsReplay}`}><small>Читаемость</small><b><MetricNumber value={quality.readability} replay={metricsReplay}/><em>/100</em></b><span>{quality.readability >= 80 ? "комфортный ритм" : "нужна редактура"}</span><i><u style={{ "--score": `${quality.readability}%` } as CSSProperties}/></i></div>
+                    <div className="quality-card" key={`seo-${metricsReplay}`}><small>SEO</small><b><MetricNumber value={quality.seo} replay={metricsReplay}/><em>/100</em></b><span>{quality.seo >= 80 ? "сильное соответствие" : "можно улучшить"}</span><i><u style={{ "--score": `${quality.seo}%` } as CSSProperties}/></i>{quality.seoTips.length > 0 && quality.seo < 80 && <ul className="quality-tips">{quality.seoTips.map((tip) => <li key={tip}>{tip}</li>)}</ul>}</div>
+                    <div className="quality-card" key={`read-${metricsReplay}`}><small>Читаемость</small><b><MetricNumber value={quality.readability} replay={metricsReplay}/><em>/100</em></b><span>{quality.readability >= 80 ? "комфортный ритм" : "можно улучшить"}</span><i><u style={{ "--score": `${quality.readability}%` } as CSSProperties}/></i>{quality.readabilityTips.length > 0 && quality.readability < 80 && <ul className="quality-tips">{quality.readabilityTips.map((tip) => <li key={tip}>{tip}</li>)}</ul>}</div>
                     <div className="quality-card" key={`keys-${metricsReplay}`}><small>Ключи</small><b><MetricNumber value={quality.keysFound} replay={metricsReplay}/><em>/{keyList.length}</em></b><span>с учётом словоформ</span><i><u style={{ "--score": `${keyList.length ? (quality.keysFound / keyList.length) * 100 : 0}%` } as CSSProperties}/></i></div>
                   </div>
                 </div>

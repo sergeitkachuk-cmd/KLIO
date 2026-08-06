@@ -1032,6 +1032,23 @@ export async function POST(request: Request) {
       }
     }
 
+    // Deterministic backstop for a case the correction pass sometimes still
+    // misses: a genuine overshoot (e.g. 130% of target). Rather than ship a
+    // too-long article and then tell the client in the UI that "the result
+    // doesn't match the brief" — which reads as KLIO admitting a failed
+    // generation — mechanically trim it to the target here. Free, instant,
+    // and it cuts at a sentence boundary near the target rather than
+    // mid-thought. Undershoot isn't backstopped the same way: there's no
+    // safe mechanical way to add real content, so a too-short result still
+    // just shows the soft badge below.
+    if (countWords(material.body) > maximumWords) {
+      material = { ...material, body: trimToWordTarget(material.body, input.length) };
+      missingGeo = missingGeography(material, input);
+      subjectCheck = topicCoverage(material, input);
+      missingFocuses = missingEditorialFocuses(material, input);
+      missingKeyPhrases = missingKeywords(material, input);
+    }
+
     // Word count, geography, editorial-focus and keyword coverage are all
     // soft targets: the correction pass above already tried once to fix
     // them, and the client already renders a per-criterion coverage badge
