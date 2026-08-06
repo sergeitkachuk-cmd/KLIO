@@ -3387,7 +3387,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     showToast("Текст скопирован без служебного комментария");
   }
 
-  function clearGeneratedResult() {
+  function clearGenerationResultFields() {
     setTitle("");
     setBody("");
     setMetaTitle("");
@@ -3396,7 +3396,29 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setGenerationMode("example");
     setGenerationCoverage(null);
     setMetricsVisible(false);
+  }
+
+  function clearGeneratedResult() {
+    clearGenerationResultFields();
     showToast("Поле результата очищено");
+  }
+
+  // Nothing here persists across a real reload (no localStorage) — but a
+  // long workspace session never reloads, so a leftover topic/keywords
+  // from an earlier test can sit in the brief and quietly bleed into the
+  // next generation if a field is forgotten. One button, full reset.
+  function resetGeneratorBrief() {
+    setTopic("");
+    setKeywords("");
+    setAccent("");
+    setTone("Экспертный");
+    setLength(defaultLengthByFormat[format]);
+    setCustomLength(false);
+    setQuickPrompt("");
+    setQuickError("");
+    setGenerationError("");
+    clearGenerationResultFields();
+    showToast("Бриф очищен — можно начинать новую тему");
   }
 
   async function adaptText() {
@@ -4003,7 +4025,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <div className="workspace-module-heading"><div><span>Главный экран</span><h2>Генератор материалов</h2></div><p>Укажите формат, тему, ключевые слова и то, что важно раскрыть. Остальные инструменты подключаются только по необходимости.</p></div>
             <div className="studio">
               <aside className="brief-panel">
-                <div className="brief-step"><span>Шаг 01</span><b>Бриф материала</b></div>
+                <div className="brief-step"><div className="brief-step-label"><span>Шаг 01</span><b>Бриф материала</b></div><button type="button" className="brief-reset" onClick={resetGeneratorBrief}>Начать заново</button></div>
                 <div className="generator-mode-switch" role="radiogroup" aria-label="Режим генератора">
                   <button type="button" className={generatorMode === "quick" ? "active" : ""} onClick={() => setGeneratorMode("quick")} role="radio" aria-checked={generatorMode === "quick"}><i>✦</i><span><b>Новичок</b><small>опишите задачу в одном окне</small></span></button>
                   <button type="button" className={generatorMode === "advanced" ? "active" : ""} onClick={() => setGeneratorMode("advanced")} role="radio" aria-checked={generatorMode === "advanced"}><i>≡</i><span><b>Эксперт</b><small>формат, ключи, стиль отдельно</small></span></button>

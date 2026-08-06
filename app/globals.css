@@ -2137,6 +2137,13 @@ select:focus-visible {
   border-bottom: 1px solid rgba(255, 255, 255, 0.16);
 }
 
+.brief-step-label {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  min-width: 0;
+}
+
 .brief-step span {
   color: rgba(221, 214, 254, 0.72);
 }
@@ -2145,6 +2152,23 @@ select:focus-visible {
   font-size: 18px;
   font-weight: 550;
   letter-spacing: -0.025em;
+}
+
+.brief-reset {
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: rgba(221, 214, 254, 0.72);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.brief-reset:hover {
+  color: #fff;
 }
 
 .generator-mode-switch {
