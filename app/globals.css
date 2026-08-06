@@ -13722,3 +13722,79 @@ footer nav a {
   border-color: rgba(216, 255, 101, 0.5);
   background: var(--cobalt);
 }
+
+/* ---------------------------------------------------------------------
+   Field contrast pass (site owner feedback: "все поля в развёрнутых
+   модулях сливаются и получается каша без акцентов" — input/textarea
+   fields across Профиль бренда, Семантика, Конкуренты, Контент‑план и
+   Редакторы КЛИО all used near-transparent white backgrounds (55-82%
+   opacity) with 9-18% opacity borders sitting on similarly light card
+   backgrounds — a field and the card behind it were nearly the same
+   shade, so the eye can't tell "this is editable" from "this is just
+   background". Same fix applied everywhere: a clearly colored border
+   instead of a barely-there one, a real drop shadow (reads as a lifted
+   surface regardless of the exact card tone behind it, unlike an inset
+   highlight alone), and a background close to solid white so it's
+   reliably brighter than every card it sits on. Appended at the end so
+   these declarations win over the older per-module rules above without
+   having to touch two dozen scattered blocks individually.
+   --------------------------------------------------------------------- */
+.brand-fields input,
+.brand-fields textarea,
+.semantic-primary-query input,
+.semantic-geo-menu-head input,
+.semantic-query-row input,
+.semantic-query-row select,
+.content-plan-query-row input,
+.adaptation-source-field textarea,
+.adaptation-field textarea,
+.adaptation-seo-fields textarea,
+.content-plan-replacement-comment textarea {
+  border: 1.5px solid rgba(124, 58, 237, 0.32);
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(29, 21, 58, 0.07), inset 0 1px rgba(255, 255, 255, 0.9);
+}
+
+.brand-fields input:focus,
+.brand-fields textarea:focus,
+.semantic-primary-query input:focus,
+.semantic-geo-menu-head input:focus,
+.semantic-query-row input:focus,
+.semantic-query-row select:focus,
+.content-plan-query-row input:focus,
+.adaptation-source-field textarea:focus,
+.adaptation-field textarea:focus,
+.adaptation-seo-fields textarea:focus,
+.content-plan-replacement-comment textarea:focus {
+  border-color: rgba(124, 58, 237, 0.6);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.14), 0 3px 10px rgba(29, 21, 58, 0.07);
+}
+
+.competitor-query-row > label {
+  border: 1.5px solid rgba(124, 58, 237, 0.32);
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(29, 21, 58, 0.07);
+}
+
+/* Dark-theme fields (generator's own brief, sidebar "add brand") get the
+   same treatment scaled for a navy background: a visibly lighter fill
+   and a stronger border instead of a near-invisible one. */
+.field input,
+.field textarea,
+.field select {
+  border: 1.5px solid rgba(255, 255, 255, 0.34);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.075));
+  box-shadow: 0 3px 10px rgba(2, 8, 18, 0.22), inset 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  border-color: var(--acid);
+  box-shadow: 0 0 0 3px rgba(216, 255, 101, 0.16), 0 3px 10px rgba(2, 8, 18, 0.22);
+}
+
+.brand-create-form input {
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.28);
+}
