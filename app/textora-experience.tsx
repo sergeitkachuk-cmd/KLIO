@@ -18,6 +18,11 @@ type CompetitorMode = "example" | "demo" | "ai";
 type CompetitorFocusSource = "manual" | "semantics" | "brand";
 type ContentPlanMode = "idle" | "demo" | "ai";
 type ContentPlanStatus = "Запланировано" | "В работе" | "Готово";
+const CONTENT_PLAN_STATUS_OPTIONS = [
+  { value: "Запланировано", label: "Запланировано" },
+  { value: "В работе", label: "В работе" },
+  { value: "Готово", label: "Готово" },
+];
 type AdaptationGoal = keyof typeof ADAPTATION_PLANS;
 type AdaptationMode = "example" | "demo" | "ai";
 
@@ -4192,7 +4197,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
                 <div className="content-plan-controls">
                   <div><span>Количество тем</span><div>{[10, 15, 25].map((value) => <button type="button" className={contentPlanCount === value ? "active" : ""} onClick={() => { setContentPlanCount(value); setContentPlanNeedsRefresh(true); persistContentPlan({ count: value, needsRefresh: true }); }} key={value}>{value}</button>)}</div></div>
-                  <p><i>i</i><span><b>Без выдуманной частотности</b><small>КЛИО различает ширину и интент запросов, но не рисует фиктивные показы. Числа спроса требуют отдельного поискового источника.</small></span></p>
                   <button className={`button primary large ${contentPlanBusy ? "is-busy" : ""}`} type="button" onClick={buildContentPlan} disabled={contentPlanBusy || aiConnection !== "connected" || workspaceAccount.researchRemaining <= 0}><Icon name="spark"/>{contentPlanBusy ? "Собираем систему…" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.researchRemaining <= 0 ? "Лимит исследований исчерпан" : contentPlanResult.items.length ? "Обновить контент‑план" : "Собрать контент‑план"}</button>
                 </div>
                 {contentPlanError && <p className="generation-error" role="alert">{contentPlanError}</p>}
@@ -4204,7 +4208,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <article><span>Кластеры</span><b>{contentPlanResult.clusters.length}</b><small>разные задачи читателя</small></article>
                   <article><span>В работе</span><b>{contentPlanProgress.working}</b><small>переданы в генератор</small></article>
                   <article><span>Готово</span><b>{contentPlanProgress.ready}</b><small>отмечено редактором</small></article>
-                  {contentPlanNeedsRefresh && <p><i>↻</i><span><b>Исходные данные изменились</b><small>Старый план сохранён, но его нужно обновить по текущей теме и настройкам.</small></span></p>}
                 </div>
 
                 <div className="content-plan-toolbar">
@@ -4239,7 +4242,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                           <h3>{item.title}</h3>
                           <p><span>Основной запрос</span><b>{item.primaryKeyword}</b></p>
                         </div>
-                        <label className={`content-plan-status status-${statusClass}`}><span>Статус</span><select value={item.status} onChange={(event) => updateContentPlanStatus(item.id, event.target.value as ContentPlanStatus)}><option>Запланировано</option><option>В работе</option><option>Готово</option></select></label>
+                        <div className={`content-plan-status status-${statusClass}`}><ModuleSelect label="Статус" value={item.status} options={CONTENT_PLAN_STATUS_OPTIONS} onChange={(value) => updateContentPlanStatus(item.id, value as ContentPlanStatus)}/></div>
                         <div className="content-plan-item-actions"><button type="button" onClick={() => setExpandedPlanItem(expanded ? null : item.id)}>{expanded ? "Скрыть бриф" : "Открыть бриф"}</button><button type="button" onClick={() => sendPlanItemToGenerator(item)}>В генератор <Icon name="arrow"/></button></div>
                       </div>
                       {expanded && <div className="content-plan-brief">

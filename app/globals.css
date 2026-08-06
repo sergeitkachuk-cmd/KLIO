@@ -7580,8 +7580,7 @@ footer nav a {
 }
 
 .content-plan-query-row label > span,
-.content-plan-controls > div > span,
-.content-plan-status > span {
+.content-plan-controls > div > span {
   color: #6f6a7c;
   font-size: 11px;
   font-weight: 700;
@@ -7767,9 +7766,9 @@ footer nav a {
 }
 
 .content-plan-controls {
-  display: grid;
-  grid-template-columns: auto minmax(260px, 1fr) auto;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 20px;
   padding: 22px 29px 27px;
 }
@@ -7802,17 +7801,6 @@ footer nav a {
   color: #fff;
 }
 
-.content-plan-controls > p {
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-  max-width: 520px;
-  margin: 0 auto;
-  color: #6f697d;
-}
-
-.content-plan-controls > p > i,
 .content-plan-note > i {
   display: grid;
   place-items: center;
@@ -7824,20 +7812,6 @@ footer nav a {
   font-size: 12px;
   font-style: normal;
   font-weight: 750;
-}
-
-.content-plan-controls > p span {
-  display: grid;
-}
-
-.content-plan-controls > p b {
-  font-size: 12px;
-}
-
-.content-plan-controls > p small {
-  margin-top: 2px;
-  font-size: 11px;
-  line-height: 1.4;
 }
 
 /* Same "real cards, real gaps" treatment as .content-plan-source-strip
@@ -7881,49 +7855,6 @@ footer nav a {
 
 .content-plan-summary article > small {
   color: rgba(255, 255, 255, 0.58);
-  font-size: 11px;
-}
-
-.content-plan-summary > p {
-  grid-column: 1 / -1;
-  display: none;
-  grid-template-columns: 28px minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-  margin: 0;
-  padding: 13px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 4px 14px 4px 4px;
-  background: linear-gradient(90deg, rgba(124, 58, 237, 0.32), rgba(216, 255, 101, 0.2));
-}
-
-.content-plan-summary.needs-refresh > p {
-  display: grid;
-}
-
-.content-plan-summary > p > i {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.16);
-  color: #fff;
-  font-style: normal;
-}
-
-.content-plan-summary > p span {
-  display: grid;
-}
-
-.content-plan-summary > p b {
-  color: #fff;
-  font-size: 12px;
-}
-
-.content-plan-summary > p small {
-  margin-top: 2px;
-  color: rgba(255, 255, 255, 0.68);
   font-size: 11px;
 }
 
@@ -8047,25 +7978,6 @@ footer nav a {
   font-weight: 650;
 }
 
-.content-plan-status {
-  display: grid;
-  align-content: center;
-  gap: 6px;
-}
-
-.content-plan-status select {
-  width: 100%;
-  min-height: 39px;
-  padding: 0 30px 0 11px;
-  border: 1px solid rgba(61, 52, 98, 0.13);
-  border-radius: 9px;
-  outline: 0;
-  background: rgba(255, 255, 255, 0.7);
-  color: #625c6f;
-  font-size: 12px;
-  font-weight: 670;
-}
-
 .content-plan-item.status-work {
   border-left-color: var(--cobalt);
   background: linear-gradient(120deg, rgba(124, 58, 237, 0.1), rgba(255, 255, 255, 0.68) 55%);
@@ -8074,20 +7986,6 @@ footer nav a {
 .content-plan-item.status-done {
   border-left-color: #6fa93a;
   background: linear-gradient(120deg, rgba(111, 169, 58, 0.12), rgba(255, 255, 255, 0.68) 55%);
-}
-
-.content-plan-status.status-work select {
-  border-color: rgba(124, 58, 237, 0.3);
-  background: rgba(124, 58, 237, 0.09);
-  color: #6735c9;
-  font-weight: 700;
-}
-
-.content-plan-status.status-done select {
-  border-color: rgba(100, 154, 52, 0.32);
-  background: rgba(111, 169, 58, 0.12);
-  color: #4d7328;
-  font-weight: 700;
 }
 
 @media (max-width: 1100px) {
@@ -8259,20 +8157,26 @@ footer nav a {
   font-weight: 720;
 }
 
+/* Opaque dark navy, not a translucent tint — .content-plan-note is a
+   direct child of .content-plan-shell, which has no background of its
+   own, so a low-opacity fill here sat straight on the page's light
+   backdrop instead of the dark card it was designed to read on, and the
+   dimmed text on top of it became close to unreadable. Same fix as
+   .content-plan-replacement got earlier. */
 .content-plan-note {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   padding: 16px 18px;
-  border: 1px solid rgba(73, 62, 112, 0.11);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 4px 15px 4px 4px;
-  background: rgba(255, 255, 255, 0.53);
+  background: linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
 }
 
 .content-plan-note p {
   margin: 0;
-  color: #746e7f;
+  color: rgba(255, 255, 255, 0.68);
   font-size: 12px;
   line-height: 1.48;
 }
@@ -8280,12 +8184,18 @@ footer nav a {
 .content-plan-note button {
   border: 0;
   background: transparent;
-  color: var(--cobalt);
+  color: var(--acid);
   font-size: 12px;
   font-weight: 690;
   cursor: pointer;
 }
 
+/* Same "no dark ancestor" issue as .content-plan-note above — a direct
+   child of .content-plan-shell, which has no background of its own, so
+   a light-theme translucent fill and unset (dark, inherited) text color
+   sat on the page's still-light backdrop. This is also the very first
+   thing anyone sees in this module before generating a plan, so it's
+   worth getting right. */
 .content-plan-empty {
   display: grid;
   grid-template-columns: 115px minmax(0, 1fr);
@@ -8293,9 +8203,10 @@ footer nav a {
   gap: 28px;
   min-height: 220px;
   padding: 32px;
-  border: 1px dashed rgba(76, 63, 122, 0.2);
+  color: #fff;
+  border: 1px dashed rgba(255, 255, 255, 0.24);
   border-radius: 4px 27px 4px 4px;
-  background: rgba(255, 255, 255, 0.42);
+  background: linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
 }
 
 .content-plan-empty > i {
@@ -10342,9 +10253,13 @@ footer nav a {
     flex-direction: column;
   }
 
-  .content-plan-query-row,
-  .content-plan-controls {
+  .content-plan-query-row {
     grid-template-columns: 1fr;
+  }
+
+  .content-plan-controls {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .content-plan-query-row > button,
@@ -10356,15 +10271,6 @@ footer nav a {
   .content-plan-source-strip,
   .content-plan-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .content-plan-summary > p {
-    grid-column: 1 / -1;
-  }
-
-  .content-plan-controls > p {
-    max-width: none;
-    margin: 0;
   }
 
   .content-plan-toolbar {
@@ -10390,10 +10296,6 @@ footer nav a {
   .content-plan-controls {
     padding-right: 19px;
     padding-left: 19px;
-  }
-
-  .content-plan-summary > p {
-    grid-column: 1;
   }
 
   .content-plan-item-main {
@@ -14275,14 +14177,12 @@ footer nav a {
 
 .content-plan-setup-head p,
 .content-plan-source-hint,
-.content-plan-controls > p,
 .content-plan-note p {
   color: rgba(255, 255, 255, 0.65);
 }
 
 .content-plan-query-row label > span,
-.content-plan-controls > div > span,
-.content-plan-status > span {
+.content-plan-controls > div > span {
   color: rgba(255, 255, 255, 0.5);
 }
 
@@ -14354,26 +14254,19 @@ footer nav a {
   color: #fff;
 }
 
-.content-plan-status select {
-  border-color: rgba(255, 255, 255, 0.24);
-  color: #fff;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.content-plan-status.status-work select {
+.content-plan-status.status-work .module-select-trigger {
   border-color: rgba(216, 255, 101, 0.4);
   background: rgba(216, 255, 101, 0.16);
   color: var(--acid);
 }
 
-.content-plan-status.status-done select {
-  border-color: rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.16);
-  color: #fff;
+.content-plan-status.status-work .module-select-trigger b {
+  color: var(--acid);
 }
 
-.content-plan-status select option {
-  color: #111;
+.content-plan-status.status-done .module-select-trigger {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .content-plan-item-actions button {
@@ -14435,19 +14328,9 @@ footer nav a {
   color: var(--acid);
 }
 
-.content-plan-note {
-  border-color: rgba(255, 255, 255, 0.16);
-  background: rgba(255, 255, 255, 0.06);
-}
-
 .content-plan-note > i {
   background: rgba(216, 255, 101, 0.16);
   color: var(--acid);
-}
-
-.content-plan-empty {
-  border-color: rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.04);
 }
 
 .content-plan-empty > div > span {
@@ -14629,7 +14512,16 @@ footer nav a {
   display: block;
 }
 
-.content-plan-status > span {
+/* ModuleSelect (see the component) always renders its own "Статус"
+   caption above the trigger — kept for screen readers, taken out of
+   visual flow so the trigger's box lines up with the "Открыть бриф"/
+   "В генератор" buttons beside it, same reasoning as the native <select>
+   this replaced. */
+.content-plan-status .field {
+  margin: 0;
+}
+
+.content-plan-status .field > span {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -14640,13 +14532,9 @@ footer nav a {
   white-space: nowrap;
 }
 
-.content-plan-status select {
+.content-plan-status .module-select-trigger {
   min-height: 46px;
-}
-
-.content-plan-status select option {
-  color: #fff;
-  background: #0c2848;
+  margin-top: 0;
 }
 
 .content-plan-item-copy > div > i,
