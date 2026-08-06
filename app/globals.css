@@ -4620,6 +4620,14 @@ footer nav a {
   --ink: #fff;
   --muted: rgba(255, 255, 255, 0.62);
   --line: rgba(255, 255, 255, 0.14);
+  /* Redefining --ink as a custom property does not, by itself, change
+     what unrelated elements inherit for the `color` property — body
+     already resolved color: var(--ink) to the old global dark value and
+     handed that concrete color down through ordinary inheritance, so
+     anything in here with no color of its own (h3 headings, etc.) still
+     showed dark text on this now-dark card. Setting color explicitly
+     here is what actually breaks that chain and hands white down. */
+  color: #fff;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 4px 38px 4px 4px;
@@ -14546,7 +14554,22 @@ footer nav a {
 
 .content-plan-status .module-select-trigger {
   min-height: 46px;
+  padding: 0 10px;
   margin-top: 0;
+  gap: 4px;
+}
+
+/* ModuleSelect's default label size (15px/590) is tuned for the wide
+   sidebar brand switcher — inside the ~128px status column it pushed
+   "Запланировано" past the box and truncated it with an ellipsis, no
+   matter how the box itself was resized. Shrink the label here instead. */
+.content-plan-status .module-select-trigger b {
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.content-plan-status .module-select-trigger > em {
+  font-size: 11px;
 }
 
 .content-plan-item-copy > div > i,

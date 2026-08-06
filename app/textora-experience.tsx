@@ -2697,7 +2697,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
   function useCurrentSemanticsForCompetitors() {
     if (!semanticAnalysisReady) {
-      showToast("Сначала соберите актуальную семантику в модуле 02");
+      showToast("Сначала соберите актуальную семантику в разделе «Семантика»");
       document.getElementById("semantics")?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
@@ -2712,7 +2712,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   function useBrandForCompetitors() {
     const nextQuery = brandComparisonTheme(effectiveBrand);
     if (!nextQuery) {
-      showToast("Сначала заполните название и описание бренда в модуле 01");
+      showToast("Сначала заполните название и описание бренда в разделе «Профиль бренда»");
       return;
     }
     setUseBrand(true);
@@ -3807,7 +3807,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <div className="semantic-shell">
               <div className="semantic-search-card">
                 <div className="semantic-search-head">
-                  <div><span>Шаг 1 · исходные данные</span><h3>Что ищет ваш читатель?</h3><p>Сначала задайте тему и географию. Результаты появятся только после запуска анализа — модуль 04 на этом этапе не используется.</p></div>
+                  <div><span>Шаг 1 · исходные данные</span><h3>Что ищет ваш читатель?</h3><p>Сначала задайте тему и географию. Результаты появятся только после запуска анализа — до этого момента ничего не передаётся в генератор.</p></div>
                   <span className={`semantic-mode semantic-mode-${aiConnection === "connected" ? "ai" : "idle"}`}><i/>{aiConnection === "connected" ? "ИИ подключён" : aiConnection === "disconnected" ? "ИИ не подключён · генерация отключена" : "Проверяем AI‑подключение"}</span>
                 </div>
                 <div className="semantic-primary-query">
@@ -3897,7 +3897,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <span>Результат анализа · рекомендуемый материал</span>
                   <h4>{semanticResult.suggestedTopic}</h4>
                   <div className="semantic-plan-meta"><b>SEO‑статья</b><small>{semanticResult.recommendedLength.toLocaleString("ru-RU")} слов · подробный ответ</small></div>
-                  <p className="semantic-result-source">Сформировано модулем 02 из запроса «{semanticResult.primaryQuery}». В генератор материал ещё не передан.</p>
+                  <p className="semantic-result-source">Сформировано из запроса «{semanticResult.primaryQuery}». В генератор материал ещё не передан.</p>
                 </article>
                 <article className="semantic-selection-card">
                   <span>Собрано для брифа</span>
@@ -4114,7 +4114,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                       <input type="checkbox" checked={generatorUseSemantics} onChange={(event) => {
                         const checked = event.target.checked;
                         setGeneratorUseSemantics(checked);
-                        if (checked && !generatorSemanticsReady) showToast("Выбор сохранён — сначала подготовьте семантику в модуле 02");
+                        if (checked && !generatorSemanticsReady) showToast("Выбор сохранён — сначала подготовьте семантику в разделе «Семантика»");
                       }}/>
                       <i aria-hidden="true">✓</i>
                       <span><b>Семантика</b><small>{generatorSemanticsReady ? `${selectedSemanticKeywords.length} фраз · ${semanticResult.intent.label || "интент определён"}` : generatorUseSemantics ? semanticNeedsRefresh ? "Выбрана · соберите или обновите семантику" : "Выбрана · отметьте ключевые фразы" : "Не использовать в этой генерации"}</small></span>
@@ -4172,7 +4172,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <div className="content-plan-shell">
               <article className="content-plan-setup">
                 <div className="content-plan-setup-head">
-                  <div><span>Основа плана</span><h3>От запроса к серии публикаций</h3><p>Можно начать вручную или взять текущую тему из модуля 02. Для одной статьи этот этап не нужен.</p></div>
+                  <div><span>Основа плана</span><h3>От запроса к серии публикаций</h3><p>Можно начать вручную или взять текущую тему из раздела «Семантика». Для одной статьи этот этап не нужен.</p></div>
                   <span className={`status status-${contentPlanMode === "ai" ? "ai" : "example"}`}><i/>{contentPlanMode === "ai" ? "AI‑план" : aiConnection === "connected" ? "Ожидает тему" : "ИИ не подключён"}</span>
                 </div>
 
