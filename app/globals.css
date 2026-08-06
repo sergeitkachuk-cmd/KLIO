@@ -8268,16 +8268,28 @@ footer nav a {
 
 /* Ready-text editor and adaptation */
 
+/* Dark navy pass — Редакторы КЛИО (parity with the other modules).
+   --ink/--muted/--line redefined once here rather than per selector (see
+   .semantic-shell for the same approach) — but redefining the custom
+   properties alone does *not* change what color unstyled descendants
+   inherit (that was the actual bug in the Семантика pass: body already
+   resolves color: var(--ink) to the old global value and hands the
+   concrete color down through ordinary inheritance). Setting color
+   explicitly here is what actually breaks that chain. */
 .adaptation-shell {
+  --ink: #fff;
+  --muted: rgba(255, 255, 255, 0.62);
+  --line: rgba(255, 255, 255, 0.14);
   display: grid;
   grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.86);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 4px 38px 4px 4px;
   background:
-    radial-gradient(circle at 96% 0%, rgba(124, 58, 237, 0.14), transparent 28%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(241, 238, 250, 0.7));
-  box-shadow: 0 28px 82px rgba(28, 21, 55, 0.1), inset 0 1px rgba(255, 255, 255, 0.96);
+    radial-gradient(circle at 96% 0%, rgba(124, 58, 237, 0.26), transparent 32%),
+    linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
+  box-shadow: 0 28px 82px rgba(3, 12, 26, 0.3), inset 0 1px rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(28px) saturate(145%);
 }
 
@@ -8289,13 +8301,13 @@ footer nav a {
 
 .adaptation-input-card {
   border-right: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .adaptation-result-card {
   display: flex;
   flex-direction: column;
-  background: rgba(251, 250, 253, 0.54);
+  background: rgba(255, 255, 255, 0.015);
 }
 
 .adaptation-card-head,
@@ -8331,10 +8343,10 @@ footer nav a {
 
 .adaptation-card-head > b {
   padding: 7px 10px;
-  border: 1px solid rgba(124, 58, 237, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 999px;
-  color: #625d70;
-  background: rgba(255, 255, 255, 0.7);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.09);
   font-size: 11px;
   font-weight: 660;
 }
@@ -8351,11 +8363,11 @@ footer nav a {
   padding: 18px;
   overflow-y: auto;
   resize: vertical;
-  border: 1px solid rgba(47, 40, 79, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 16px;
   outline: none;
-  color: #292735;
-  background: rgba(255, 255, 255, 0.82);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
   font-size: 15px;
   line-height: 1.65;
 }
@@ -8376,7 +8388,7 @@ footer nav a {
 }
 
 .adaptation-source-field > small {
-  color: #85818f;
+  color: rgba(255, 255, 255, 0.58);
   font-size: 11px;
   line-height: 1.45;
 }
@@ -8415,11 +8427,11 @@ footer nav a {
   min-width: 0;
   min-height: 72px;
   padding: 13px 14px;
-  border: 1px solid rgba(80, 60, 125, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 15px;
-  color: #4d4959;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.83), rgba(233, 226, 247, 0.48));
-  box-shadow: 0 10px 26px rgba(49, 35, 81, 0.07), inset 0 1px rgba(255, 255, 255, 0.95);
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(18px) saturate(145%);
   text-align: left;
   cursor: pointer;
@@ -8428,16 +8440,16 @@ footer nav a {
 
 .adaptation-goals button:hover {
   transform: translateY(-1px);
-  border-color: rgba(124, 58, 237, 0.3);
-  box-shadow: 0 14px 32px rgba(59, 38, 100, 0.1), inset 0 1px rgba(255, 255, 255, 0.98);
+  border-color: rgba(124, 58, 237, 0.4);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .adaptation-goals button.active {
-  border-color: rgba(124, 58, 237, 0.38);
+  border-color: rgba(124, 58, 237, 0.5);
   border-radius: 15px 15px 0 0;
-  color: #292238;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(193, 164, 244, 0.35));
-  box-shadow: 0 14px 36px rgba(68, 42, 112, 0.12), inset 0 1px rgba(255, 255, 255, 0.98);
+  color: #fff;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.28), rgba(255, 255, 255, 0.06));
+  box-shadow: 0 14px 36px rgba(3, 12, 26, 0.24), inset 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .adaptation-goals button > i {
@@ -8445,17 +8457,18 @@ footer nav a {
   place-items: center;
   width: 22px;
   height: 22px;
-  border: 1px solid rgba(47, 40, 79, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.24);
   border-radius: 7px;
+  color: #fff;
   font-size: 11px;
   font-style: normal;
   font-weight: 760;
 }
 
 .adaptation-goals button.active > i {
-  border-color: var(--cobalt);
-  color: #fff;
-  background: var(--cobalt);
+  border-color: var(--acid);
+  color: var(--night);
+  background: var(--acid);
 }
 
 .adaptation-goals button > span {
@@ -8470,18 +8483,18 @@ footer nav a {
 }
 
 .adaptation-goals button small {
-  color: #746d80;
+  color: rgba(255, 255, 255, 0.55);
   font-size: 12px;
   line-height: 1.45;
 }
 
 .adaptation-goal-scenario {
   padding: 16px 18px 18px 45px;
-  border: 1px solid rgba(124, 58, 237, 0.28);
+  border: 1px solid rgba(124, 58, 237, 0.4);
   border-top: 0;
   border-radius: 0 0 15px 15px;
-  background: linear-gradient(135deg, rgba(242, 237, 252, 0.94), rgba(255, 255, 255, 0.82));
-  box-shadow: 0 16px 34px rgba(63, 39, 105, 0.08), inset 0 1px rgba(255, 255, 255, 0.7);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.16), rgba(255, 255, 255, 0.04));
+  box-shadow: 0 16px 34px rgba(3, 12, 26, 0.22), inset 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .adaptation-goal-scenario > span {
@@ -8495,7 +8508,7 @@ footer nav a {
 .adaptation-goal-scenario > b {
   display: block;
   margin-top: 5px;
-  color: #30283d;
+  color: #fff;
   font-size: 14px;
   font-weight: 680;
   line-height: 1.4;
@@ -8515,7 +8528,7 @@ footer nav a {
   grid-template-columns: 23px minmax(0, 1fr);
   align-items: start;
   gap: 9px;
-  color: #625b6d;
+  color: rgba(255, 255, 255, 0.75);
   font-size: 12px;
   line-height: 1.48;
 }
@@ -8536,27 +8549,27 @@ footer nav a {
 
 .adaptation-plan-card {
   margin: 12px 0 18px;
-  border: 1px solid rgba(124, 58, 237, 0.16);
-  background: linear-gradient(145deg, rgba(124, 58, 237, 0.075), rgba(255, 255, 255, 0.68));
+  border: 1px solid rgba(124, 58, 237, 0.32);
+  background: linear-gradient(145deg, rgba(124, 58, 237, 0.18), rgba(255, 255, 255, 0.04));
 }
 
 .adaptation-plan-card > div > span {
-  color: var(--cobalt);
+  color: #cabdf6;
 }
 
 .adaptation-plan-card > div > b {
-  color: #302b3f;
+  color: #fff;
 }
 
 .adaptation-plan-card > div > small,
 .adaptation-plan-card li {
-  color: #6f6a79;
+  color: rgba(255, 255, 255, 0.68);
 }
 
 .adaptation-plan-card li::before {
-  border-color: rgba(124, 58, 237, 0.16);
-  color: var(--cobalt);
-  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(124, 58, 237, 0.4);
+  color: #cabdf6;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .adaptation-field {
@@ -8566,7 +8579,7 @@ footer nav a {
 }
 
 .adaptation-field > span small {
-  color: #9995a2;
+  color: rgba(255, 255, 255, 0.48);
   font-size: 9px;
   font-weight: 620;
   letter-spacing: 0;
@@ -8579,11 +8592,11 @@ footer nav a {
   padding: 13px 14px;
   overflow: hidden;
   resize: none;
-  border: 1px solid rgba(47, 40, 79, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 12px;
   outline: none;
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.06);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -8594,9 +8607,9 @@ footer nav a {
   gap: 0 11px;
   margin-top: 17px;
   padding: 12px 13px;
-  border: 1px solid rgba(47, 40, 79, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 13px;
-  background: rgba(255, 255, 255, 0.47);
+  background: rgba(255, 255, 255, 0.04);
   cursor: pointer;
 }
 
@@ -8611,7 +8624,7 @@ footer nav a {
   height: 21px;
   margin-top: 2px;
   border-radius: 999px;
-  background: #c8c4d0;
+  background: rgba(255, 255, 255, 0.18);
   transition: background 180ms ease;
 }
 
@@ -8646,7 +8659,7 @@ footer nav a {
 }
 
 .adaptation-brand-switch small {
-  color: #8a8693;
+  color: rgba(255, 255, 255, 0.55);
   font-size: 10px;
 }
 
@@ -8672,7 +8685,7 @@ footer nav a {
 }
 
 .adaptation-result-head > div > small {
-  color: #8a8693;
+  color: rgba(255, 255, 255, 0.58);
   font-size: 11px;
 }
 
@@ -8683,7 +8696,7 @@ footer nav a {
   gap: 7px;
   padding: 8px 0;
   border: 0;
-  color: #5f34bb;
+  color: #cabdf6;
   background: transparent;
   font-size: 12px;
   font-weight: 670;
@@ -8719,7 +8732,7 @@ footer nav a {
 .adaptation-result-body {
   min-height: 330px;
   padding: 10px 5px;
-  color: #33303c;
+  color: rgba(255, 255, 255, 0.85);
   font-size: 15px;
   line-height: 1.72;
 }
@@ -8729,9 +8742,9 @@ footer nav a {
   gap: 10px;
   margin-top: 18px;
   padding: 15px;
-  border: 1px solid rgba(47, 40, 79, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .adaptation-seo-fields label {
@@ -8740,7 +8753,7 @@ footer nav a {
 }
 
 .adaptation-seo-fields label > span {
-  color: var(--cobalt);
+  color: #cabdf6;
   font-size: 10px;
   font-weight: 720;
   letter-spacing: 0.1em;
@@ -8750,9 +8763,10 @@ footer nav a {
 .adaptation-seo-fields textarea {
   min-height: 38px;
   padding: 8px 9px;
-  border-color: rgba(47, 40, 79, 0.09);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.16);
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.06);
   font-size: 12px;
   line-height: 1.45;
 }
@@ -8760,9 +8774,9 @@ footer nav a {
 .adaptation-changes {
   margin-top: 18px;
   padding: 17px;
-  border: 1px solid rgba(124, 58, 237, 0.13);
+  border: 1px solid rgba(124, 58, 237, 0.3);
   border-radius: 16px 16px 4px 16px;
-  background: rgba(124, 58, 237, 0.055);
+  background: rgba(124, 58, 237, 0.14);
 }
 
 .adaptation-changes > div {
@@ -8777,13 +8791,13 @@ footer nav a {
   align-items: flex-start;
   gap: 7px;
   margin: 0;
-  color: #4f4a5c;
+  color: rgba(255, 255, 255, 0.78);
   font-size: 11px;
   line-height: 1.4;
 }
 
 .adaptation-changes p i {
-  color: var(--cobalt);
+  color: var(--acid);
   font-style: normal;
   font-weight: 760;
 }
@@ -8792,8 +8806,8 @@ footer nav a {
   display: block;
   margin-top: 13px;
   padding-top: 11px;
-  border-top: 1px solid rgba(124, 58, 237, 0.1);
-  color: #85818f;
+  border-top: 1px solid rgba(124, 58, 237, 0.24);
+  color: rgba(255, 255, 255, 0.58);
   font-size: 10px;
   line-height: 1.5;
 }
@@ -8808,7 +8822,7 @@ footer nav a {
 }
 
 .adaptation-result-footer > span {
-  color: #8a8693;
+  color: rgba(255, 255, 255, 0.55);
   font-size: 11px;
 }
 
@@ -8826,10 +8840,10 @@ footer nav a {
   place-items: center;
   width: 68px;
   height: 68px;
-  border: 1px solid rgba(124, 58, 237, 0.18);
+  border: 1px solid rgba(124, 58, 237, 0.35);
   border-radius: 24px 24px 5px 24px;
-  color: var(--cobalt);
-  background: rgba(124, 58, 237, 0.08);
+  color: #cabdf6;
+  background: rgba(124, 58, 237, 0.16);
   font-size: 24px;
   font-style: normal;
   font-weight: 560;
@@ -8859,15 +8873,16 @@ footer nav a {
 
 .adaptation-empty-state > div span {
   padding: 9px 11px;
-  border: 1px solid rgba(47, 40, 79, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.62);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
   font-size: 11px;
   font-weight: 640;
 }
 
 .adaptation-empty-state > div b {
-  color: var(--cobalt);
+  color: #cabdf6;
   font-size: 15px;
 }
 
@@ -13727,9 +13742,6 @@ footer nav a {
 .semantic-query-row input,
 .semantic-query-row select,
 .content-plan-query-row input,
-.adaptation-source-field textarea,
-.adaptation-field textarea,
-.adaptation-seo-fields textarea,
 .content-plan-replacement-comment textarea {
   border: 1.5px solid rgba(124, 58, 237, 0.32);
   background: #fff;
@@ -13741,15 +13753,14 @@ footer nav a {
 .semantic-query-row input:focus,
 .semantic-query-row select:focus,
 .content-plan-query-row input:focus,
-.adaptation-source-field textarea:focus,
-.adaptation-field textarea:focus,
-.adaptation-seo-fields textarea:focus,
 .content-plan-replacement-comment textarea:focus {
   border-color: rgba(124, 58, 237, 0.6);
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.14), 0 3px 10px rgba(29, 21, 58, 0.07);
 }
 
-/* .semantic-primary-query input and .semantic-geo-menu-head input used to
+/* .adaptation-source-field/.adaptation-field/.adaptation-seo-fields
+   textareas, .semantic-primary-query input and .semantic-geo-menu-head
+   input used to
    be in the light-field group above — now dark-native (see their own
    rules), so they're deliberately excluded from it. */
 
