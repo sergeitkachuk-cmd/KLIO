@@ -13170,9 +13170,15 @@ footer nav a {
   min-width: 0;
 }
 
+/* Wide enough that ModuleSelect's *portaled* option list — which
+   inherits this column's measured width but is not a DOM descendant of
+   it (portals break the ancestry CSS descendant selectors rely on, so
+   the smaller trigger-only font below can't reach the list) — has room
+   for "Запланировано" at the list's own default font size without
+   forcing a horizontal scrollbar inside the popup. */
 .content-plan-item-main > .content-plan-status {
-  flex: 0 1 128px;
-  min-width: 96px;
+  flex: 0 1 156px;
+  min-width: 140px;
 }
 
 .content-plan-item-main > .content-plan-item-actions {
@@ -13236,7 +13242,7 @@ footer nav a {
 .adaptation-quota-note {
   display: block;
   margin-top: -4px;
-  color: #777083;
+  color: rgba(255, 255, 255, 0.55);
   font-size: 10px;
   line-height: 1.45;
 }
@@ -13830,27 +13836,6 @@ footer nav a {
 
 .content-plan-summary article {
   min-width: 0;
-}
-
-/* Редакторы КЛИО mode cards ("ВЫБЕРИТЕ РЕЖИМ КЛИО") were still using the
-   same 15% opacity border + near-white background as everything else
-   fixed above — the single biggest visual mass on that screen, and the
-   main reason the field-contrast pass didn't read as a visible change. */
-.adaptation-goals button {
-  border: 1.5px solid rgba(124, 58, 237, 0.28);
-  background: #fff;
-  box-shadow: 0 4px 14px rgba(29, 21, 58, 0.08), inset 0 1px rgba(255, 255, 255, 0.95);
-}
-
-.adaptation-goals button.active {
-  border-color: rgba(124, 58, 237, 0.55);
-  background: linear-gradient(135deg, #fff, rgba(196, 168, 247, 0.42));
-  box-shadow: 0 6px 18px rgba(68, 42, 112, 0.16), inset 0 1px rgba(255, 255, 255, 0.98);
-}
-
-.adaptation-goals button > i {
-  border-color: rgba(124, 58, 237, 0.32);
-  background: #fff;
 }
 
 /* Smooth reveal, take 2. The first attempt animated grid-template-rows
