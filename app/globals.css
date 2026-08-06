@@ -3786,6 +3786,16 @@ footer nav a {
 /* Product workspace */
 .workspace-shell {
   min-height: 100vh;
+  /* The public marketing page (.site-shell) has had this since the
+     start; the workspace never did. clip (not hidden) specifically to
+     avoid a side effect of overflow-x:hidden — per the CSS overflow
+     spec, setting only one axis to hidden forces the OTHER axis's used
+     value to auto, which would have turned this into its own vertical
+     scroll container and broken every position:sticky header inside it.
+     This is the guaranteed backstop: whatever inside the workspace
+     still runs too wide (content-plan has repeatedly been the culprit),
+     the page itself can no longer be pushed wider than the viewport. */
+  overflow-x: clip;
   color: var(--ink);
   background:
     radial-gradient(900px 620px at 91% 8%, rgba(124, 58, 237, 0.12), transparent 68%),
@@ -14196,4 +14206,257 @@ footer nav a {
 
 .brand-profile-body .profile-recommendation-footer {
   border-top-color: rgba(255, 255, 255, 0.14);
+}
+
+/* ---------------------------------------------------------------------
+   Контент-план, dark navy pass (installment 2 — same palette as
+   Профиль бренда, confirmed good). Covers the setup card, the stats
+   row, the topic list and the expanded brief.
+   --------------------------------------------------------------------- */
+.content-plan-setup {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.16);
+  background:
+    radial-gradient(circle at 93% 4%, rgba(124, 58, 237, 0.26), transparent 32%),
+    linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
+  box-shadow: 0 26px 80px rgba(3, 12, 26, 0.3), inset 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.content-plan-setup-head > div > span,
+.content-plan-item-copy > div > span,
+.content-plan-brief section > span,
+.content-plan-seo label > span {
+  color: #d5c9fb;
+}
+
+.content-plan-setup-head p,
+.content-plan-source-strip small,
+.content-plan-source-hint,
+.content-plan-controls > p,
+.content-plan-note p {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.content-plan-query-row label > span,
+.content-plan-controls > div > span,
+.content-plan-status > span {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.content-plan-query-row input {
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.06));
+}
+
+.content-plan-query-row input:focus {
+  border-color: var(--acid);
+  box-shadow: 0 0 0 4px rgba(216, 255, 101, 0.14);
+}
+
+.content-plan-query-row > button,
+.content-plan-export,
+.content-plan-controls > div button {
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.content-plan-source-strip {
+  border-top-color: rgba(255, 255, 255, 0.14);
+  border-bottom-color: rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.content-plan-source-strip > div {
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.content-plan-source-strip > div > i {
+  border-color: rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.content-plan-source-strip > div.is-ready > i {
+  border-color: rgba(216, 255, 101, 0.45);
+  background: rgba(216, 255, 101, 0.14);
+  color: var(--acid);
+}
+
+.content-plan-summary {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.content-plan-summary article {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(10, 35, 64, 0.92), rgba(8, 27, 50, 0.85));
+}
+
+.content-plan-summary article > span,
+.content-plan-summary article > small,
+.content-plan-summary > p small {
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.content-plan-clusters button {
+  border-color: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.content-plan-clusters button small {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.content-plan-item {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.16);
+  background: linear-gradient(135deg, #0c2848, #082849 60%, #061c34);
+  box-shadow: 0 12px 35px rgba(3, 12, 26, 0.28), inset 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.content-plan-item.status-work {
+  background: linear-gradient(120deg, rgba(124, 58, 237, 0.28), #082849 55%);
+}
+
+.content-plan-item.status-done {
+  background: linear-gradient(120deg, rgba(111, 169, 58, 0.28), #082849 55%);
+}
+
+.content-plan-index {
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #d5c9fb;
+}
+
+.content-plan-item-copy > div > i,
+.content-plan-item-copy > div > em {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.content-plan-item-copy > div > em.priority-high {
+  background: rgba(216, 255, 101, 0.18);
+  color: var(--acid);
+}
+
+.content-plan-item-copy > div > em.priority-medium {
+  background: rgba(124, 58, 237, 0.22);
+  color: #cabdf6;
+}
+
+.content-plan-item-copy > p {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.content-plan-item-copy > p span {
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.content-plan-item-copy > p b {
+  color: #fff;
+}
+
+.content-plan-status select {
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.content-plan-status.status-work select {
+  border-color: rgba(216, 255, 101, 0.4);
+  background: rgba(216, 255, 101, 0.16);
+  color: var(--acid);
+}
+
+.content-plan-status.status-done select {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.content-plan-status select option {
+  color: #111;
+}
+
+.content-plan-item-actions button {
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.content-plan-item-actions button:last-child {
+  border-color: rgba(216, 255, 101, 0.5);
+  background: var(--acid);
+  color: var(--night);
+}
+
+.content-plan-strategy section {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.content-plan-strategy span {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.content-plan-strategy p {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.content-plan-seo {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.content-plan-seo label {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.content-plan-seo label > p {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.content-plan-brief-grid section {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.055);
+  box-shadow: none;
+}
+
+.content-plan-brief-grid section > p,
+.content-plan-brief-grid li {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.content-plan-brief-grid section > div > i {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.content-plan-brief-grid li > i {
+  background: rgba(216, 255, 101, 0.16);
+  color: var(--acid);
+}
+
+.content-plan-note {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.content-plan-note > i {
+  background: rgba(216, 255, 101, 0.16);
+  color: var(--acid);
+}
+
+.content-plan-empty {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.content-plan-empty > div > span {
+  color: #d5c9fb;
+}
+
+.content-plan-empty p {
+  color: rgba(255, 255, 255, 0.65);
 }
