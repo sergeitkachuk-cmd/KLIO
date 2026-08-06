@@ -2124,6 +2124,13 @@ select:focus-visible {
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(16px);
   font-size: 16px;
+  /* .field itself is font-weight: 610 for the caption text ("Тема
+     материала" etc.) sitting right next to these in the same <label>;
+     inputs/textareas/selects inherit that by default since nothing
+     reset it, so whatever the person actually typed rendered just as
+     bold as the caption above it and read as one heavy block. Back to
+     a normal weight for the content people type. */
+  font-weight: 400;
 }
 
 .field input,
@@ -14701,4 +14708,15 @@ footer nav a {
 .content-plan-item-copy > p b {
   color: rgba(255, 255, 255, 0.85);
   font-weight: 550;
+}
+
+/* Same bold-inheritance issue as .field above, one form over: each
+   <label> in .brand-fields (Компания, О компании, Позиционирование...)
+   wraps its caption text and its input/textarea as siblings, and the
+   label itself is font-weight: 680 for the caption — nothing reset that
+   on the input/textarea, so everything typed into the brand profile
+   inherited the caption's full boldness too. */
+.brand-fields input,
+.brand-fields textarea {
+  font-weight: 400;
 }
