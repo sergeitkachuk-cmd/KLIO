@@ -1507,25 +1507,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       mode: contentPlanMode,
       needsRefresh: contentPlanNeedsRefresh,
     },
-    generator: {
-      format,
-      topic,
-      keywords,
-      tone,
-      length,
-      customLength,
-      accent,
-      title,
-      body,
-      metaTitle,
-      metaDescription,
-      editorNote,
-      generationMode,
-      coverage: generationCoverage,
-      useBrandContext: generatorUseBrand,
-      useSemanticContext: generatorUseSemantics,
-      useCompetitorContext: generatorUseCompetitors,
-    },
+    // The generator's brief/result is deliberately NOT part of the saved
+    // snapshot (see applyWorkspaceBrand's matching reset below) — unlike
+    // semantics/competitors/content-plan/adaptation, which are ongoing
+    // setup work worth keeping, a generator draft left over from an
+    // earlier topic silently reappearing on the next visit or brand
+    // switch was creating confusing "mixed" briefs (reported by the site
+    // owner: an old topic bleeding into an unrelated new one).
     adaptation: {
       source: adaptationSource,
       goal: adaptationGoal,
@@ -1536,13 +1524,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       mode: adaptationMode,
     },
   }), [
-    accent, adaptationGoal, adaptationInstructions, adaptationKeywords, adaptationMode, adaptationResult, adaptationSource, adaptationTone,
-    body, competitorComment, competitorFocusSource, competitorMode, competitorNeedsRefresh, competitorQuery, competitorResult,
-    competitors, contentPlanCount, contentPlanMode, contentPlanNeedsRefresh, contentPlanQuery, contentPlanResult, customLength,
-    editorNote, format, generationCoverage, generationMode, generatorUseBrand, generatorUseCompetitors, generatorUseSemantics,
-    keywords, length, metaDescription, metaTitle, profileMode,
+    adaptationGoal, adaptationInstructions, adaptationKeywords, adaptationMode, adaptationResult, adaptationSource, adaptationTone,
+    competitorComment, competitorFocusSource, competitorMode, competitorNeedsRefresh, competitorQuery, competitorResult,
+    competitors, contentPlanCount, contentPlanMode, contentPlanNeedsRefresh, contentPlanQuery, contentPlanResult,
+    profileMode,
     selectedCompetitorTopicIds, selectedSemanticIds, semanticGeo, semanticMode, semanticNeedsRefresh, semanticQuery, semanticResult,
-    title, tone, topic, useBrand,
+    useBrand,
   ]);
   const workspaceSnapshotJson = useMemo(() => JSON.stringify(workspaceSnapshot), [workspaceSnapshot]);
   const activeWorkspaceBrand = useMemo(
@@ -1938,7 +1925,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     const semantics = snapshot.semantics ?? {};
     const competitorState = snapshot.competitors ?? {};
     const planState = snapshot.contentPlan ?? {};
-    const generatorState = snapshot.generator ?? {};
     const adaptationState = snapshot.adaptation ?? {};
     setWorkspaceReady(false);
     setActiveBrandId(record.id);
@@ -1983,24 +1969,30 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setExpandedPlanItem(null);
     setContentPlanError("");
 
-    setFormat(generatorState.format === "social" || generatorState.format === "ads" || generatorState.format === "landing" ? generatorState.format : "seo");
-    setTopic(generatorState.topic ?? "");
-    setKeywords(generatorState.keywords ?? "");
-    setTone(generatorState.tone && styles.includes(generatorState.tone) ? generatorState.tone : "Экспертный");
-    setLength(typeof generatorState.length === "number" ? generatorState.length : 1200);
-    setCustomLength(Boolean(generatorState.customLength));
-    setAccent(generatorState.accent ?? "");
-    const trustedGeneratorResult = generatorState.generationMode === "ai";
-    setTitle(trustedGeneratorResult ? generatorState.title ?? "Здесь появится заголовок материала" : "Здесь появится заголовок материала");
-    setBody(trustedGeneratorResult ? generatorState.body ?? "" : "Результат появится после генерации. Шаблонные ответы отключены: до подключения ИИ КЛИО не создаёт тестовый текст.");
-    setMetaTitle(trustedGeneratorResult ? generatorState.metaTitle ?? "" : "");
-    setMetaDescription(trustedGeneratorResult ? generatorState.metaDescription ?? "" : "");
-    setEditorNote(trustedGeneratorResult ? generatorState.editorNote ?? "" : "Служебный комментарий появится после реальной AI‑генерации и не попадёт в скопированный текст.");
-    setGenerationMode(trustedGeneratorResult ? "ai" : "example");
-    setGenerationCoverage(trustedGeneratorResult ? generatorState.coverage ?? null : null);
-    setGeneratorUseBrand(generatorState.useBrandContext !== false);
-    setGeneratorUseSemantics(generatorState.useSemanticContext !== false);
-    setGeneratorUseCompetitors(generatorState.useCompetitorContext !== false);
+    // Generator brief/result is never restored from a saved snapshot — see
+    // the comment on workspaceSnapshot above. Every load or brand switch
+    // starts it exactly as empty as the "Начать заново" button leaves it,
+    // on purpose: a previous topic/keywords/draft quietly reappearing was
+    // the actual bug being fixed here, not a feature to preserve.
+    setFormat("seo");
+    setTopic("");
+    setKeywords("");
+    setTone("Экспертный");
+    setLength(defaultLengthByFormat.seo);
+    setCustomLength(false);
+    setAccent("");
+    setTitle("Здесь появится заголовок материала");
+    setBody("Результат появится после генерации. Шаблонные ответы отключены: до подключения ИИ КЛИО не создаёт тестовый текст.");
+    setMetaTitle("");
+    setMetaDescription("");
+    setEditorNote("Служебный комментарий появится после реальной AI‑генерации и не попадёт в скопированный текст.");
+    setGenerationMode("example");
+    setGenerationCoverage(null);
+    setGeneratorUseBrand(true);
+    setGeneratorUseSemantics(true);
+    setGeneratorUseCompetitors(true);
+    setQuickPrompt("");
+    setQuickError("");
     setGenerationError("");
 
     setAdaptationSource(adaptationState.source ?? "");
