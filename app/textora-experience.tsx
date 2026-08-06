@@ -1275,7 +1275,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [contentPlanMode, setContentPlanMode] = useState<ContentPlanMode>("idle");
   const [contentPlanBusy, setContentPlanBusy] = useState(false);
   const [contentPlanError, setContentPlanError] = useState("");
-  const [contentPlanCluster, setContentPlanCluster] = useState("Все темы");
   const [expandedPlanItem, setExpandedPlanItem] = useState<string | null>(null);
   const [contentPlanNeedsRefresh, setContentPlanNeedsRefresh] = useState(true);
   const [selectedPlanItemIds, setSelectedPlanItemIds] = useState<string[]>([]);
@@ -1488,16 +1487,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const generatorBrandReady = useBrand && Boolean(effectiveBrand.name.trim());
   const generatorSemanticsReady = semanticAnalysisReady && selectedSemanticKeywords.length > 0;
   const generatorCompetitorsReady = competitorMode !== "example" && !competitorNeedsRefresh && selectedCompetitorTopics.length > 0;
-  const contentPlanClusters = useMemo(
-    () => ["Все темы", ...contentPlanResult.clusters],
-    [contentPlanResult.clusters],
-  );
-  const visibleContentPlanItems = useMemo(
-    () => contentPlanCluster === "Все темы"
-      ? contentPlanResult.items
-      : contentPlanResult.items.filter((item) => item.cluster === contentPlanCluster),
-    [contentPlanCluster, contentPlanResult.items],
-  );
   const contentPlanProgress = useMemo(() => ({
     ready: contentPlanResult.items.filter((item) => item.status === "Готово").length,
     working: contentPlanResult.items.filter((item) => item.status === "В работе").length,
@@ -2001,7 +1990,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setContentPlanResult(planState.mode === "ai" && storedPlan ? storedPlan : emptyContentPlanResult);
     setContentPlanMode(planState.mode === "ai" && storedPlan ? "ai" : "idle");
     setContentPlanNeedsRefresh(planState.mode !== "ai" || planState.needsRefresh !== false);
-    setContentPlanCluster("Все темы");
     setExpandedPlanItem(null);
     setContentPlanError("");
 
@@ -3022,7 +3010,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setContentPlanResult(storedResult);
       setContentPlanMode("ai");
       setContentPlanNeedsRefresh(Boolean(payload?.needsRefresh));
-      setContentPlanCluster("Все темы");
       setSelectedPlanItemIds([]);
       setPlanReplacements([]);
       setContentPlanOpen(true);
@@ -3087,6 +3074,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Не удалось удалить материал.");
     }
+  }
+
+  // Used by the content-plan "источники" strip: each chip is a shortcut
+  // to the module it reports on, not just a read-only status light —
+  // open that module and scroll it into view instead of leaving people
+  // to hunt for it themselves.
+  function goToModule(id: string, open: () => void) {
+    open();
+    window.setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   }
 
   function persistContentPlan(options: {
@@ -3170,7 +3166,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setContentPlanResult(result);
       setContentPlanMode(mode);
       setContentPlanNeedsRefresh(false);
-      setContentPlanCluster("Все темы");
       setExpandedPlanItem(result.items[0]?.id ?? null);
       setSelectedPlanItemIds([]);
       setPlanReplacements([]);
@@ -4188,12 +4183,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </div>
 
                 <div className="content-plan-source-strip" aria-label="Источники будущего плана">
-                  <div className={semanticAnalysisReady ? "is-ready" : ""}><i>{semanticAnalysisReady ? "✓" : "02"}</i><span><b>Семантика</b><small>{semanticAnalysisReady ? `${selectedSemanticKeywords.length} выбранных фраз` : "можно собрать или пропустить"}</small></span></div>
-                  <div className={selectedGeoScopes.length ? "is-ready" : ""}><i>{selectedGeoScopes.length ? "✓" : "—"}</i><span><b>География</b><small>{selectedGeoScopes.length ? semanticGeoSummary : "вся Россия"}</small></span></div>
-                  <div className={!competitorNeedsRefresh && selectedCompetitorTopics.length ? "is-ready" : ""}><i>{!competitorNeedsRefresh && selectedCompetitorTopics.length ? "✓" : "+"}</i><span><b>Матрица</b><small>{!competitorNeedsRefresh && selectedCompetitorTopics.length ? `${selectedCompetitorTopics.length} ориентиров` : "необязательно"}</small></span></div>
-                  <div className={useBrand ? "is-ready" : ""}><i>{useBrand ? "✓" : "—"}</i><span><b>Бренд</b><small>{useBrand ? effectiveBrand.name : "профиль отключён"}</small></span></div>
+                  <button type="button" className={semanticAnalysisReady ? "is-ready" : ""} onClick={() => goToModule("semantics", () => setSemanticOpen(true))}><i>{semanticAnalysisReady ? "✓" : "02"}</i><span><b>Семантика</b><small>{semanticAnalysisReady ? `${selectedSemanticKeywords.length} выбранных фраз` : "можно собрать или пропустить"}</small></span></button>
+                  <button type="button" className={selectedGeoScopes.length ? "is-ready" : ""} onClick={() => goToModule("semantics", () => setSemanticOpen(true))}><i>{selectedGeoScopes.length ? "✓" : "—"}</i><span><b>География</b><small>{selectedGeoScopes.length ? semanticGeoSummary : "вся Россия"}</small></span></button>
+                  <button type="button" className={!competitorNeedsRefresh && selectedCompetitorTopics.length ? "is-ready" : ""} onClick={() => goToModule("competitors", () => setCompetitorOpen(true))}><i>{!competitorNeedsRefresh && selectedCompetitorTopics.length ? "✓" : "+"}</i><span><b>Матрица</b><small>{!competitorNeedsRefresh && selectedCompetitorTopics.length ? `${selectedCompetitorTopics.length} ориентиров` : "необязательно"}</small></span></button>
+                  <button type="button" className={useBrand ? "is-ready" : ""} onClick={() => goToModule("brand-profile", () => setBrandOpen(true))}><i>{useBrand ? "✓" : "—"}</i><span><b>Бренд</b><small>{useBrand ? effectiveBrand.name : "профиль отключён"}</small></span></button>
                 </div>
-                <p className="content-plan-source-hint">Это статус, а не переключатель: включаются в модулях 01–03 выше — здесь просто видно, что подключится к плану.</p>
+                <p className="content-plan-source-hint">Не просто статус — можно кликнуть, чтобы перейти в нужный модуль и заполнить его. Включаются в модулях 01–03 выше.</p>
 
                 <div className="content-plan-controls">
                   <div><span>Количество тем</span><div>{[10, 15, 25].map((value) => <button type="button" className={contentPlanCount === value ? "active" : ""} onClick={() => { setContentPlanCount(value); setContentPlanNeedsRefresh(true); persistContentPlan({ count: value, needsRefresh: true }); }} key={value}>{value}</button>)}</div></div>
@@ -4213,7 +4208,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </div>
 
                 <div className="content-plan-toolbar">
-                  <div className="content-plan-clusters">{contentPlanClusters.map((cluster) => <button type="button" className={contentPlanCluster === cluster ? "active" : ""} onClick={() => setContentPlanCluster(cluster)} key={cluster}>{cluster}<small>{cluster === "Все темы" ? contentPlanResult.items.length : contentPlanResult.items.filter((item) => item.cluster === cluster).length}</small></button>)}</div>
                   <div className="content-plan-toolbar-actions"><button type="button" className="content-plan-save" onClick={() => void saveModuleMaterial("content_plan")} disabled={materialSavingType === "content_plan"}>{materialSavingType === "content_plan" ? "Сохраняем…" : moduleMaterialSources.content_plan ? "Сохранить новую версию" : "Сохранить в материалы"}</button>{moduleMaterialSources.content_plan && <button type="button" className="content-plan-copy" onClick={() => void saveModuleMaterial("content_plan", "copy")} disabled={materialSavingType === "content_plan"}>Копия</button>}<button type="button" className="content-plan-export" onClick={exportContentPlan}><Icon name="arrow"/> Экспорт CSV</button></div>
                 </div>
 
@@ -4232,7 +4226,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </section>}
 
                 <div className="content-plan-list">
-                  {visibleContentPlanItems.map((item) => {
+                  {contentPlanResult.items.map((item) => {
                     const originalIndex = contentPlanResult.items.findIndex((candidate) => candidate.id === item.id);
                     const expanded = expandedPlanItem === item.id;
                     const statusClass = item.status === "Готово" ? "done" : item.status === "В работе" ? "work" : "plan";

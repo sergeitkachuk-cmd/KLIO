@@ -7681,42 +7681,61 @@ footer nav a {
   line-height: 1.5;
 }
 
+/* Real cards with real gaps, not a seamed 1px-divided strip — a row of
+   thin, barely-separated bars reads as one long stretched line once
+   it's stacked under the setup card and the stat row above, which use
+   the same seamed pattern. Each source is also now a genuine shortcut
+   (see goToModule in the component), not just a status light, so it
+   needs to look clickable: a real button box, not a table cell. */
 .content-plan-source-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1px;
-  border-top: 1px solid rgba(57, 47, 95, 0.09);
-  border-bottom: 1px solid rgba(57, 47, 95, 0.09);
-  background: rgba(57, 47, 95, 0.08);
+  gap: 10px;
+  padding: 0 29px 22px;
 }
 
-.content-plan-source-strip > div {
+.content-plan-source-strip > button {
   display: grid;
   grid-template-columns: 31px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
   min-width: 0;
-  padding: 16px 18px;
-  background: rgba(255, 255, 255, 0.65);
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 4px 16px 4px 4px;
+  background: rgba(255, 255, 255, 0.05);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
 }
 
-.content-plan-source-strip > div > i {
+.content-plan-source-strip > button:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.09);
+  transform: translateY(-2px);
+}
+
+.content-plan-source-strip > button.is-ready {
+  border-color: rgba(216, 255, 101, 0.3);
+}
+
+.content-plan-source-strip > button > i {
   display: grid;
   place-items: center;
   width: 31px;
   height: 31px;
-  border: 1px solid rgba(79, 68, 117, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 50%;
-  color: #908b9b;
+  color: rgba(255, 255, 255, 0.6);
   font-size: 11px;
   font-style: normal;
   font-weight: 720;
 }
 
-.content-plan-source-strip > div.is-ready > i {
-  border-color: rgba(124, 58, 237, 0.2);
-  background: rgba(124, 58, 237, 0.09);
-  color: var(--cobalt);
+.content-plan-source-strip > button.is-ready > i {
+  border-color: rgba(216, 255, 101, 0.45);
+  background: rgba(216, 255, 101, 0.14);
+  color: var(--acid);
 }
 
 .content-plan-source-strip span {
@@ -7725,6 +7744,7 @@ footer nav a {
 }
 
 .content-plan-source-strip b {
+  color: #fff;
   font-size: 13px;
   font-weight: 670;
 }
@@ -7732,7 +7752,7 @@ footer nav a {
 .content-plan-source-strip small {
   margin-top: 3px;
   overflow: hidden;
-  color: #7c7788;
+  color: rgba(255, 255, 255, 0.6);
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -7820,25 +7840,30 @@ footer nav a {
   line-height: 1.4;
 }
 
+/* Same "real cards, real gaps" treatment as .content-plan-source-strip
+   above, and written dark-native for the same reason: four stat cards
+   sharing one seamed background used to read as a single stretched bar
+   sitting right under another one (.content-plan-setup) — nothing told
+   the eye where one component ended and the next began. */
 .content-plan-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.82);
-  border-radius: 4px 22px 4px 4px;
-  background: rgba(62, 50, 105, 0.1);
-  box-shadow: 0 17px 45px rgba(35, 27, 64, 0.07);
+  gap: 10px;
 }
 
 .content-plan-summary article {
+  min-width: 0;
   padding: 20px 22px;
-  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 4px 18px 4px 4px;
+  color: #fff;
+  background: linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
+  box-shadow: 0 14px 36px rgba(3, 12, 26, 0.24), inset 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .content-plan-summary article > span {
   display: block;
-  color: #7a7486;
+  color: rgba(255, 255, 255, 0.58);
   font-size: 11px;
   font-weight: 690;
   letter-spacing: 0.08em;
@@ -7848,13 +7873,14 @@ footer nav a {
 .content-plan-summary article > b {
   display: block;
   margin: 7px 0 2px;
+  color: #fff;
   font-size: 33px;
   font-weight: 520;
   letter-spacing: -0.05em;
 }
 
 .content-plan-summary article > small {
-  color: #888391;
+  color: rgba(255, 255, 255, 0.58);
   font-size: 11px;
 }
 
@@ -7866,7 +7892,9 @@ footer nav a {
   gap: 10px;
   margin: 0;
   padding: 13px 18px;
-  background: linear-gradient(90deg, rgba(124, 58, 237, 0.08), rgba(216, 255, 101, 0.14));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 4px 14px 4px 4px;
+  background: linear-gradient(90deg, rgba(124, 58, 237, 0.32), rgba(216, 255, 101, 0.2));
 }
 
 .content-plan-summary.needs-refresh > p {
@@ -7879,8 +7907,8 @@ footer nav a {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: rgba(124, 58, 237, 0.12);
-  color: var(--cobalt);
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
   font-style: normal;
 }
 
@@ -7889,67 +7917,22 @@ footer nav a {
 }
 
 .content-plan-summary > p b {
+  color: #fff;
   font-size: 12px;
 }
 
 .content-plan-summary > p small {
   margin-top: 2px;
-  color: #736d7f;
+  color: rgba(255, 255, 255, 0.68);
   font-size: 11px;
 }
 
 .content-plan-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 15px;
   padding: 4px 0 0;
-}
-
-.content-plan-clusters {
-  display: flex;
-  min-width: 0;
-  gap: 7px;
-  overflow-x: auto;
-  padding: 4px 2px 7px;
-  scrollbar-width: thin;
-}
-
-.content-plan-clusters button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 38px;
-  padding: 0 12px;
-  border: 1px solid rgba(61, 51, 98, 0.13);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.55);
-  color: #625c70;
-  font-size: 12px;
-  font-weight: 650;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.content-plan-clusters button small {
-  display: grid;
-  place-items: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: rgba(72, 61, 109, 0.08);
-  font-size: 10px;
-}
-
-.content-plan-clusters button.active {
-  border-color: #18151f;
-  background: #18151f;
-  color: #fff;
-}
-
-.content-plan-clusters button.active small {
-  background: rgba(255, 255, 255, 0.13);
 }
 
 .content-plan-export {
@@ -10388,10 +10371,6 @@ footer nav a {
     gap: 8px;
   }
 
-  .content-plan-clusters {
-    width: 100%;
-  }
-
   .content-plan-brief {
     padding-left: 85px;
   }
@@ -10409,11 +10388,6 @@ footer nav a {
   .content-plan-setup-head,
   .content-plan-query-row,
   .content-plan-controls {
-    padding-right: 19px;
-    padding-left: 19px;
-  }
-
-  .content-plan-source-strip > div {
     padding-right: 19px;
     padding-left: 19px;
   }
@@ -14300,7 +14274,6 @@ footer nav a {
 }
 
 .content-plan-setup-head p,
-.content-plan-source-strip small,
 .content-plan-source-hint,
 .content-plan-controls > p,
 .content-plan-note p {
@@ -14332,63 +14305,6 @@ footer nav a {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.content-plan-source-strip {
-  border-top-color: rgba(255, 255, 255, 0.14);
-  border-bottom-color: rgba(255, 255, 255, 0.14);
-  background: rgba(0, 0, 0, 0.16);
-}
-
-.content-plan-source-strip > div {
-  background: rgba(255, 255, 255, 0.045);
-}
-
-.content-plan-source-strip > div > i {
-  border-color: rgba(255, 255, 255, 0.22);
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.content-plan-source-strip > div.is-ready > i {
-  border-color: rgba(216, 255, 101, 0.45);
-  background: rgba(216, 255, 101, 0.14);
-  color: var(--acid);
-}
-
-.content-plan-summary {
-  border-color: rgba(255, 255, 255, 0.16);
-  /* Was rgba(0,0,0,0.18) - way too translucent, so the page's own light
-     background (.workspace-shell) bled through and washed this whole
-     row and the cluster pills below it out to a pale grey instead of
-     the intended dark navy. */
-  background: linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
-}
-
-.content-plan-summary article {
-  color: #fff;
-  background: linear-gradient(135deg, rgba(10, 35, 64, 0.92), rgba(8, 27, 50, 0.85));
-}
-
-.content-plan-summary article > span,
-.content-plan-summary article > small,
-.content-plan-summary > p small {
-  color: rgba(255, 255, 255, 0.58);
-}
-
-.content-plan-clusters button {
-  /* Was a low-opacity white overlay (rgba(255,255,255,0.07)) - correct
-     for a pill sitting on a dark card, but .content-plan-toolbar (its
-     actual parent) has no background of its own and sits directly on
-     the page's still-light backdrop, so the pill washed out to almost
-     nothing. Opaque now, like .content-plan-selection-bar's pills
-     already correctly are for the same "floats on the light page"
-     situation. */
-  border-color: rgba(255, 255, 255, 0.18);
-  color: rgba(255, 255, 255, 0.85);
-  background: linear-gradient(135deg, #0c2848, #082849 60%, #061c34);
-}
-
-.content-plan-clusters button small {
-  background: rgba(255, 255, 255, 0.12);
-}
 
 .content-plan-item {
   color: #fff;
@@ -14571,19 +14487,6 @@ footer nav a {
 
 .content-plan-select > span {
   color: rgba(255, 255, 255, 0.55);
-}
-
-.content-plan-summary > p {
-  background: linear-gradient(90deg, rgba(124, 58, 237, 0.28), rgba(216, 255, 101, 0.18));
-}
-
-.content-plan-summary > p > i {
-  background: rgba(255, 255, 255, 0.16);
-  color: #fff;
-}
-
-.content-plan-summary > p b {
-  color: #fff;
 }
 
 /* Discovered these two rules (.content-plan-save/.content-plan-copy)
