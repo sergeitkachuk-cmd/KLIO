@@ -13154,7 +13154,19 @@ footer nav a {
   gap: 18px;
   min-height: 122px;
   padding: 19px 21px;
-  grid-template-columns: 68px 48px minmax(0, 1fr) 128px 220px;
+  /* Found the real cause of the repeated horizontal overflow: four of
+     these five columns were hard pixel widths (68+48+128+220 = 464px)
+     that CSS Grid will never shrink below, and the 220px "actions"
+     column holds two buttons whose own minimum width (100px + 112px +
+     gap = 219px) leaves it almost no margin — real button text routinely
+     needed a few pixels more than that and forced the whole row wider
+     than its container. Only the title column (minmax(0, 1fr)) could
+     ever shrink, so it had nowhere near enough give to absorb that.
+     Letting the actions column size to its own content (min 200px) means
+     it always gets what it actually needs, and the title column - which
+     can shrink all the way to 0 - absorbs the rest, so the row itself
+     can never exceed the available width again. */
+  grid-template-columns: 68px 48px minmax(0, 1fr) 128px minmax(200px, auto);
 }
 
 .content-plan-select {
@@ -13822,7 +13834,15 @@ footer nav a {
 }
 
 .content-plan-brief {
-  overflow-x: hidden;
+  /* auto, not hidden — the real overflow source (.content-plan-item-main's
+     rigid column widths, fixed above) shouldn't fire again, but if
+     anything unexpected still runs wide, it should stay reachable via a
+     scrollbar rather than silently disappear off the edge. */
+  overflow-x: auto;
+}
+
+.content-plan-summary article {
+  min-width: 0;
 }
 
 /* Редакторы КЛИО mode cards ("ВЫБЕРИТЕ РЕЖИМ КЛИО") were still using the
@@ -13846,56 +13866,40 @@ footer nav a {
   background: #fff;
 }
 
-/* Smooth expand/collapse for the four self-contained tool modules
-   (previously an instant display:none swap — reported as too abrupt).
-   Each module has exactly two direct children: the always-visible
-   heading and its "shell" content — a CSS grid with the second row
-   animated between 1fr (open) and 0fr (collapsed) gives a real height
-   animation with no JS measuring and no layout-shift jump. */
-.semantics-module,
-.competitor-module,
-.content-plan-module,
-.adaptation-module {
-  display: grid;
-  grid-template-rows: auto 1fr;
-  transition: grid-template-rows 420ms cubic-bezier(0.22, 1, 0.36, 1);
+/* Smooth reveal, take 2. The first attempt animated grid-template-rows
+   (1fr <-> 0fr) for a true height morph — in practice that read as
+   "elastic"/rubbery (the easing used, cubic-bezier(0.22, 1, 0.36, 1),
+   overshoots by design — exactly the "stretches like a rubber band"
+   effect reported) and risked its own layout bugs (the row became a
+   grid item that also needed min-width:0 on the width axis, on top of
+   everything else already fixed in this module). Reverted to the plain,
+   always-correct display:none swap and instead give the revealed
+   content a calm fade + small settle: a CSS animation that plays
+   automatically whenever an element becomes visible, no transition/JS/
+   height-measuring involved, and — this time — no overshoot in the
+   easing. */
+.tool-collapsed > :not(.workspace-module-heading) {
+  display: none;
 }
 
-.semantics-module.tool-collapsed,
-.competitor-module.tool-collapsed,
-.content-plan-module.tool-collapsed,
-.adaptation-module.tool-collapsed {
-  grid-template-rows: auto 0fr;
-}
-
-.semantics-module > :not(.workspace-module-heading),
-.competitor-module > :not(.workspace-module-heading),
-.content-plan-module > :not(.workspace-module-heading),
-.adaptation-module > :not(.workspace-module-heading) {
-  min-height: 0;
-  overflow: hidden;
-}
-
-/* Профиль бренда is a genuinely different shape when open vs collapsed
-   (square info card vs full-width form — see .workspace-quickstart
-   above), not just a taller version of the same card, so it can't use
-   the same height-morph trick. Its content still gets a real reveal
-   instead of popping in instantly: a CSS animation plays automatically
-   whenever React mounts it, no transition/JS required. */
-@keyframes brandProfileReveal {
+@keyframes moduleReveal {
   from {
     opacity: 0;
-    transform: translateY(-8px) scale(0.98);
+    transform: translateY(-6px);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 
+.semantic-shell,
+.competitor-optional-shell,
+.content-plan-shell,
+.adaptation-shell,
 .brand-profile-body {
-  animation: brandProfileReveal 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: moduleReveal 320ms ease-out both;
 }
 
 /* "AI is working" button feedback — added to every button that triggers
