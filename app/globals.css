@@ -10277,14 +10277,6 @@ footer nav a {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .content-plan-item-main {
-    grid-template-columns: 48px minmax(0, 1fr) 118px;
-  }
-
-  .content-plan-item-actions {
-    grid-column: 2 / -1;
-    width: min(420px, 100%);
-  }
 }
 
 @media (max-width: 900px) {
@@ -10327,19 +10319,6 @@ footer nav a {
     width: 100%;
   }
 
-  .content-plan-item-main {
-    grid-template-columns: 46px minmax(0, 1fr);
-  }
-
-  .content-plan-status {
-    grid-column: 2;
-    width: min(220px, 100%);
-  }
-
-  .content-plan-item-actions {
-    grid-column: 2;
-  }
-
   .content-plan-brief {
     padding-left: 85px;
   }
@@ -10371,7 +10350,6 @@ footer nav a {
   }
 
   .content-plan-item-main {
-    grid-template-columns: 38px minmax(0, 1fr);
     gap: 12px;
     padding: 16px;
   }
@@ -10390,16 +10368,6 @@ footer nav a {
     align-items: flex-start;
     flex-direction: column;
     gap: 3px;
-  }
-
-  .content-plan-status,
-  .content-plan-item-actions {
-    grid-column: 1 / -1;
-    width: 100%;
-  }
-
-  .content-plan-item-actions {
-    grid-template-columns: 1fr;
   }
 
   .content-plan-brief {
@@ -10731,17 +10699,20 @@ footer nav a {
 }
 
 .content-plan-item-actions {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 7px;
-  grid-template-columns: minmax(100px, 1fr) minmax(112px, 1fr);
+  min-width: 0;
   align-self: center;
 }
 
 .content-plan-item-actions button {
   display: inline-flex;
+  flex: 1 1 100px;
   align-items: center;
   justify-content: center;
   gap: 6px;
+  min-width: 0;
   padding: 0 10px;
   border: 1px solid rgba(63, 53, 101, 0.14);
   border-radius: 9px;
@@ -10749,11 +10720,17 @@ footer nav a {
   color: #514b5e;
   font-size: 11px;
   font-weight: 680;
+  line-height: 1.2;
+  text-align: center;
   cursor: pointer;
-  width: 100%;
   min-height: 46px;
-  height: 46px;
-  white-space: nowrap;
+  /* Was nowrap — with fixed/auto grid tracks upstream, that forced this
+     button's min-content width past whatever space it was given and blew
+     out the whole row (see .content-plan-item-main below). Now that the
+     row is flex and these buttons can shrink and wrap their own label
+     onto two lines, nowrap has nothing to protect and only reintroduces
+     the same failure mode. */
+  white-space: normal;
 }
 
 .content-plan-strategy {
@@ -13175,25 +13152,54 @@ footer nav a {
   height: 14px;
 }
 
+/* Rebuilt from scratch (was a 5-column CSS Grid re-tuned across six
+   separate breakpoints, several of which only declared 3-4 explicit
+   tracks for 5 grid items — the rest fell back to implicit auto-placement
+   and landed in whichever column happened to be free, at whatever width
+   that column's track gave them. Combined with an unbounded
+   `minmax(200px, auto)` actions column and nowrap button labels with no
+   width ceiling, that's what kept forcing the row wider than the screen.
+   A flex row sidesteps both problems at once: every child either shrinks
+   (min-width: 0) or wraps (flex-wrap here, white-space: normal on the
+   buttons), so there is no longer any track that can demand more space
+   than exists. */
 .content-plan-item-main {
-  display: grid;
-  align-items: stretch;
-  gap: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
   min-height: 122px;
   padding: 19px 21px;
-  /* Found the real cause of the repeated horizontal overflow: four of
-     these five columns were hard pixel widths (68+48+128+220 = 464px)
-     that CSS Grid will never shrink below, and the 220px "actions"
-     column holds two buttons whose own minimum width (100px + 112px +
-     gap = 219px) leaves it almost no margin — real button text routinely
-     needed a few pixels more than that and forced the whole row wider
-     than its container. Only the title column (minmax(0, 1fr)) could
-     ever shrink, so it had nowhere near enough give to absorb that.
-     Letting the actions column size to its own content (min 200px) means
-     it always gets what it actually needs, and the title column - which
-     can shrink all the way to 0 - absorbs the rest, so the row itself
-     can never exceed the available width again. */
-  grid-template-columns: 68px 48px minmax(0, 1fr) 128px minmax(200px, auto);
+  min-width: 0;
+}
+
+.content-plan-item-main > .content-plan-select,
+.content-plan-item-main > .content-plan-index {
+  flex: 0 0 auto;
+}
+
+.content-plan-item-main > .content-plan-item-copy {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.content-plan-item-main > .content-plan-status {
+  flex: 0 1 128px;
+  min-width: 96px;
+}
+
+.content-plan-item-main > .content-plan-item-actions {
+  flex: 1 1 220px;
+  min-width: 0;
+  max-width: 260px;
+}
+
+@media (max-width: 560px) {
+  .content-plan-item-main > .content-plan-status,
+  .content-plan-item-main > .content-plan-item-actions {
+    flex-basis: 100%;
+    max-width: none;
+  }
 }
 
 .content-plan-select {
@@ -13253,13 +13259,6 @@ footer nav a {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .content-plan-item-main {
-    grid-template-columns: 58px 44px minmax(0, 1fr) 118px;
-  }
-
-  .content-plan-item-actions {
-    grid-column: 3 / -1;
-  }
 }
 
 @media (max-width: 900px) {
@@ -13278,29 +13277,6 @@ footer nav a {
     grid-template-columns: 1fr;
   }
 
-  .content-plan-item-main {
-    grid-template-columns: 54px minmax(0, 1fr);
-  }
-
-  .content-plan-select {
-    grid-column: 1;
-    grid-row: 1;
-  }
-
-  .content-plan-index {
-    grid-column: 1;
-    grid-row: 2;
-  }
-
-  .content-plan-item-copy {
-    grid-column: 2;
-    grid-row: 1 / 3;
-  }
-
-  .content-plan-status,
-  .content-plan-item-actions {
-    grid-column: 1 / -1;
-  }
 }
 
 @media (max-width: 820px) {
@@ -13861,10 +13837,11 @@ footer nav a {
 }
 
 .content-plan-brief {
-  /* auto, not hidden — the real overflow source (.content-plan-item-main's
-     rigid column widths, fixed above) shouldn't fire again, but if
-     anything unexpected still runs wide, it should stay reachable via a
-     scrollbar rather than silently disappear off the edge. */
+  /* auto, not hidden — the real overflow source (.content-plan-item-main,
+     rebuilt as a shrink/wrap-safe flex row further down) shouldn't fire
+     again, but if anything unexpected still runs wide, it should stay
+     reachable via a scrollbar rather than silently disappear off the
+     edge. */
   overflow-x: auto;
 }
 
@@ -14548,4 +14525,105 @@ footer nav a {
   border-color: rgba(255, 255, 255, 0.18);
   color: #fff;
   background: linear-gradient(135deg, #0c2848, #082849 60%, #061c34);
+}
+
+/* ---------------------------------------------------------------------
+   Контент-план, dark navy pass (installment 3): the "Точечная замена"
+   panel (opened via "Заменить выбранные") was missed entirely by
+   installments 1-2 above — it still had its original light card,
+   light "Что изменить" filter pills and light alternative-topic
+   suggestion cards sitting inside an otherwise all-navy module, which
+   is what read as stray light patches with poor contrast against
+   everything around them.
+   --------------------------------------------------------------------- */
+.content-plan-replacement {
+  border-color: rgba(255, 255, 255, 0.16);
+  background:
+    radial-gradient(circle at 93% 4%, rgba(124, 58, 237, 0.22), transparent 32%),
+    linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
+  box-shadow: 0 18px 46px rgba(3, 12, 26, 0.28), inset 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.content-plan-replacement-head span,
+.content-plan-replacement-options > span,
+.content-plan-replacement-comment > span {
+  color: #d5c9fb;
+}
+
+.content-plan-replacement-head h3 {
+  color: #fff;
+}
+
+.content-plan-replacement-head p {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.content-plan-replacement-head > button {
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.content-plan-replacement-options button {
+  border-color: rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.content-plan-replacement-options button.active {
+  border-color: rgba(216, 255, 101, 0.5);
+  color: var(--acid);
+  background: rgba(216, 255, 101, 0.14);
+}
+
+.content-plan-replacement-comment textarea {
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05));
+}
+
+.content-plan-replacement-comment textarea::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.content-plan-replacement-comment textarea:focus {
+  border-color: var(--acid);
+  box-shadow: 0 0 0 3px rgba(216, 255, 101, 0.14);
+}
+
+.content-plan-replacement-groups > article {
+  border-top-color: rgba(255, 255, 255, 0.14);
+}
+
+.content-plan-replacement-groups > article > div:first-child > span,
+.content-plan-replacement-groups button > span {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.content-plan-replacement-groups h4 {
+  color: #fff;
+}
+
+.content-plan-replacement-groups > article > div:first-child > button {
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.content-plan-replacement-groups > article > div:last-child > button {
+  color: #fff;
+  background: linear-gradient(135deg, #0c2848, #082849 60%, #061c34);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.content-plan-replacement-groups > article > div:last-child > button:hover {
+  border-color: rgba(216, 255, 101, 0.4);
+}
+
+.content-plan-replacement-groups button > small {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.content-plan-replacement-groups button > em {
+  color: var(--acid);
 }
