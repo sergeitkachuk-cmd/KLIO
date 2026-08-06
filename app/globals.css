@@ -7499,6 +7499,18 @@ footer nav a {
 
 .content-plan-shell {
   display: grid;
+  /* Explicit minmax(0, 1fr), not a bare implicit column: with no
+     grid-template-columns at all, a single-column grid's one implicit
+     track defaults to `auto` sizing, which is allowed to grow past the
+     container to fit its widest descendant's max-content width (the
+     actual cause of the item cards measuring ~3000px wide in DevTools —
+     every fix inside .content-plan-item-main was shrinking correctly,
+     but nothing above it was capping the column those shrinks happened
+     inside of). minmax(0, 1fr) is a hard ceiling at the available width;
+     min-width: 0 alone (kept below) only lets *this* element shrink
+     when squeezed by its own parent, it doesn't cap what this element
+     offers its own children. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
   min-width: 0;
 }
@@ -7894,10 +7906,17 @@ footer nav a {
 
 .content-plan-list {
   display: grid;
+  /* Same auto-track blowout as .content-plan-shell above, one level
+     down — this is the direct parent of each .content-plan-item, so an
+     unconstrained column here is exactly what let the cards render at
+     ~3000px wide regardless of anything fixed inside them. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
+  min-width: 0;
 }
 
 .content-plan-item {
+  min-width: 0;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.86);
   border-left: 3px solid rgba(150, 145, 165, 0.35);
@@ -12957,6 +12976,7 @@ footer nav a {
 
 .content-plan-replacement {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 15px;
   margin: 14px 0;
   padding: 20px;
@@ -13008,6 +13028,7 @@ footer nav a {
 .content-plan-replacement-options,
 .content-plan-replacement-comment {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
 }
 
@@ -13048,6 +13069,7 @@ footer nav a {
 
 .content-plan-replacement-groups {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
 }
 
