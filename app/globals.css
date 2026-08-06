@@ -4609,14 +4609,24 @@ footer nav a {
 }
 
 /* Semantic research module */
+/* Дark navy pass — Семантика (parity with Профиль бренда/Контент-план).
+   Redefining --ink/--muted/--line locally instead of touching every
+   selector that uses them: both are CSS custom properties, so every
+   var(--ink)/var(--muted)/var(--line) inside this subtree picks up the
+   dark-theme values automatically without being restated per rule. What
+   still needs its own line below is only the hardcoded light-theme
+   backgrounds/colors (rgba literals, not custom properties). */
 .semantic-shell {
+  --ink: #fff;
+  --muted: rgba(255, 255, 255, 0.62);
+  --line: rgba(255, 255, 255, 0.14);
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 4px 38px 4px 4px;
   background:
-    radial-gradient(circle at 92% 3%, rgba(124, 58, 237, 0.15), transparent 25%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.84), rgba(242, 239, 250, 0.68));
-  box-shadow: 0 28px 82px rgba(28, 21, 55, 0.1), inset 0 1px rgba(255, 255, 255, 0.96);
+    radial-gradient(circle at 92% 3%, rgba(124, 58, 237, 0.26), transparent 32%),
+    linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
+  box-shadow: 0 28px 82px rgba(3, 12, 26, 0.3), inset 0 1px rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(28px) saturate(145%);
 }
 
@@ -4666,10 +4676,10 @@ footer nav a {
   gap: 8px;
   flex: 0 0 auto;
   padding: 9px 12px;
-  border: 1px solid rgba(56, 47, 91, 0.13);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 999px;
-  color: #615d6e;
-  background: rgba(255, 255, 255, 0.62);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
   font-size: 12px;
   font-weight: 680;
 }
@@ -4702,12 +4712,12 @@ footer nav a {
   align-items: end;
   gap: 16px;
   padding: 18px;
-  border: 1px solid rgba(124, 58, 237, 0.3);
+  border: 1px solid rgba(124, 58, 237, 0.4);
   border-radius: 20px 20px 5px 20px;
   background:
-    radial-gradient(circle at 5% 0%, rgba(124, 58, 237, 0.12), transparent 36%),
-    rgba(255, 255, 255, 0.74);
-  box-shadow: 0 16px 40px rgba(71, 49, 127, 0.08), inset 0 1px rgba(255, 255, 255, 0.96);
+    radial-gradient(circle at 5% 0%, rgba(124, 58, 237, 0.22), transparent 36%),
+    rgba(255, 255, 255, 0.05);
+  box-shadow: 0 16px 40px rgba(3, 12, 26, 0.22), inset 0 1px rgba(255, 255, 255, 0.1);
 }
 
 .semantic-primary-query label {
@@ -4735,7 +4745,7 @@ footer nav a {
 }
 
 .semantic-primary-label b {
-  color: #29243a;
+  color: #fff;
   font-size: 16px;
   font-weight: 720;
 }
@@ -4745,29 +4755,29 @@ footer nav a {
   height: 66px;
   min-width: 0;
   padding: 0 20px;
-  border: 2px solid rgba(74, 57, 132, 0.16);
+  border: 2px solid rgba(255, 255, 255, 0.28);
   border-radius: 15px;
   outline: none;
   color: var(--ink);
-  background: #fff;
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.9);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.06));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.12);
   font-size: 19px;
   font-weight: 570;
   letter-spacing: -0.015em;
 }
 
 .semantic-primary-query input::placeholder {
-  color: #aaa6b5;
+  color: rgba(255, 255, 255, 0.42);
   font-weight: 450;
 }
 
 .semantic-primary-query input:focus {
-  border-color: rgba(124, 58, 237, 0.68);
-  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.09);
+  border-color: var(--acid);
+  box-shadow: 0 0 0 4px rgba(216, 255, 101, 0.14);
 }
 
 .semantic-primary-query label > small {
-  color: #777382;
+  color: rgba(255, 255, 255, 0.58);
   font-size: 12px;
   line-height: 1.45;
 }
@@ -4776,15 +4786,15 @@ footer nav a {
   position: relative;
   margin-top: 14px;
   padding: 10px;
-  border: 1px solid rgba(47, 40, 79, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 16px;
-  background: rgba(248, 247, 252, 0.72);
+  background: rgba(255, 255, 255, 0.04);
   transition: border-color 180ms ease, box-shadow 180ms ease;
 }
 
 .semantic-geo-picker.is-open {
-  border-color: rgba(124, 58, 237, 0.28);
-  box-shadow: 0 16px 42px rgba(47, 35, 88, 0.08);
+  border-color: rgba(124, 58, 237, 0.4);
+  box-shadow: 0 16px 42px rgba(3, 12, 26, 0.22);
 }
 
 .semantic-geo-trigger {
@@ -4804,7 +4814,7 @@ footer nav a {
 }
 
 .semantic-geo-trigger:hover {
-  background: rgba(255, 255, 255, 0.58);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .semantic-geo-trigger > span {
@@ -4833,7 +4843,7 @@ footer nav a {
 }
 
 .semantic-geo-trigger > span > small {
-  color: #85818f;
+  color: rgba(255, 255, 255, 0.55);
   font-size: 11px;
 }
 
@@ -4843,10 +4853,10 @@ footer nav a {
   gap: 9px;
   flex: 0 0 auto;
   padding: 8px 10px;
-  border: 1px solid rgba(124, 58, 237, 0.16);
+  border: 1px solid rgba(124, 58, 237, 0.32);
   border-radius: 999px;
-  color: #5f39ae;
-  background: rgba(124, 58, 237, 0.06);
+  color: #cabdf6;
+  background: rgba(124, 58, 237, 0.16);
   font-size: 11px;
   font-style: normal;
   font-weight: 680;
@@ -4877,10 +4887,10 @@ footer nav a {
   gap: 7px;
   min-height: 34px;
   padding: 5px 7px 5px 10px;
-  border: 1px solid rgba(124, 58, 237, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 10px;
-  color: #504761;
-  background: rgba(255, 255, 255, 0.76);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
   cursor: pointer;
 }
 
@@ -4900,7 +4910,7 @@ footer nav a {
 }
 
 .semantic-geo-chips > button small {
-  color: #918b9b;
+  color: rgba(255, 255, 255, 0.55);
   font-size: 9px;
 }
 
@@ -4910,14 +4920,14 @@ footer nav a {
   width: 19px;
   height: 19px;
   border-radius: 50%;
-  color: var(--cobalt);
-  background: rgba(124, 58, 237, 0.08);
+  color: var(--acid);
+  background: rgba(216, 255, 101, 0.14);
   font-size: 15px;
   font-style: normal;
 }
 
 .semantic-geo-chips > span {
-  color: #777382;
+  color: rgba(255, 255, 255, 0.58);
   font-size: 11px;
   font-weight: 650;
 }
@@ -4925,10 +4935,10 @@ footer nav a {
 .semantic-geo-menu {
   overflow: hidden;
   margin: 2px 4px 4px;
-  border: 1px solid rgba(47, 40, 79, 0.13);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 24px 64px rgba(36, 26, 69, 0.13);
+  background: linear-gradient(155deg, #051a31 0%, #0c3459 55%, #041225 100%);
+  box-shadow: 0 24px 64px rgba(2, 10, 22, 0.4);
 }
 
 .semantic-geo-menu-head {
@@ -4937,8 +4947,8 @@ footer nav a {
   align-items: end;
   gap: 12px;
   padding: 15px;
-  border-bottom: 1px solid rgba(47, 40, 79, 0.09);
-  background: rgba(248, 247, 252, 0.88);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .semantic-geo-menu-head label {
@@ -4947,7 +4957,7 @@ footer nav a {
 }
 
 .semantic-geo-menu-head label > span {
-  color: #65606e;
+  color: rgba(255, 255, 255, 0.55);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -4958,26 +4968,26 @@ footer nav a {
   width: 100%;
   height: 46px;
   padding: 0 13px;
-  border: 1px solid rgba(47, 40, 79, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.24);
   border-radius: 11px;
   outline: none;
   color: var(--ink);
-  background: #fff;
+  background: rgba(255, 255, 255, 0.08);
   font-size: 14px;
 }
 
 .semantic-geo-menu-head input:focus {
-  border-color: rgba(124, 58, 237, 0.48);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.07);
+  border-color: var(--acid);
+  box-shadow: 0 0 0 3px rgba(216, 255, 101, 0.14);
 }
 
 .semantic-geo-menu-head > button {
   height: 46px;
   padding: 0 13px;
-  border: 1px solid rgba(47, 40, 79, 0.11);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 11px;
-  color: #6c6674;
-  background: #fff;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
   font-size: 11px;
   font-weight: 650;
   cursor: pointer;
@@ -5001,9 +5011,9 @@ footer nav a {
 
 .semantic-geo-district {
   overflow: hidden;
-  border: 1px solid rgba(47, 40, 79, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
-  background: rgba(248, 247, 252, 0.72);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .semantic-geo-node {
@@ -5021,8 +5031,8 @@ footer nav a {
 
 .region-node {
   min-height: 53px;
-  border-top: 1px solid rgba(47, 40, 79, 0.07);
-  background: rgba(255, 255, 255, 0.64);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .semantic-geo-checkbox {
@@ -5031,10 +5041,10 @@ footer nav a {
   width: 25px;
   height: 25px;
   padding: 0;
-  border: 1px solid rgba(47, 40, 79, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 7px;
   color: #fff;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.06);
   cursor: pointer;
 }
 
@@ -5088,12 +5098,12 @@ footer nav a {
 }
 
 .semantic-geo-node-label small {
-  color: #8d8896;
+  color: rgba(255, 255, 255, 0.5);
   font-size: 10px;
 }
 
 .semantic-geo-node-label > i {
-  color: #817b8c;
+  color: rgba(255, 255, 255, 0.55);
   font-size: 15px;
   font-style: normal;
   transition: transform 160ms ease;
@@ -5117,8 +5127,8 @@ footer nav a {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 5px;
   padding: 5px 8px 10px 43px;
-  border-top: 1px solid rgba(47, 40, 79, 0.06);
-  background: rgba(255, 255, 255, 0.74);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .semantic-geo-cities > button {
@@ -5131,7 +5141,7 @@ footer nav a {
   padding: 5px 8px;
   border: 1px solid transparent;
   border-radius: 8px;
-  color: #5d5868;
+  color: rgba(255, 255, 255, 0.72);
   background: transparent;
   font-size: 11px;
   text-align: left;
@@ -5139,13 +5149,13 @@ footer nav a {
 }
 
 .semantic-geo-cities > button:hover {
-  background: rgba(124, 58, 237, 0.045);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .semantic-geo-cities > button.is-checked {
-  border-color: rgba(124, 58, 237, 0.14);
-  color: #443456;
-  background: rgba(124, 58, 237, 0.07);
+  border-color: rgba(124, 58, 237, 0.32);
+  color: #fff;
+  background: rgba(124, 58, 237, 0.16);
 }
 
 .semantic-geo-cities > button > i {
@@ -5153,10 +5163,10 @@ footer nav a {
   place-items: center;
   width: 19px;
   height: 19px;
-  border: 1px solid rgba(47, 40, 79, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 6px;
   color: #fff;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.06);
   font-size: 10px;
   font-style: normal;
   font-weight: 760;
@@ -5177,7 +5187,7 @@ footer nav a {
   display: grid;
   place-items: center;
   min-height: 150px;
-  color: #6e6877;
+  color: rgba(255, 255, 255, 0.55);
   text-align: center;
 }
 
@@ -5195,17 +5205,17 @@ footer nav a {
   justify-content: space-between;
   gap: 16px;
   padding: 12px 15px;
-  border-top: 1px solid rgba(47, 40, 79, 0.09);
-  background: rgba(248, 247, 252, 0.9);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .semantic-geo-menu-footer > span {
-  color: #777181;
+  color: rgba(255, 255, 255, 0.6);
   font-size: 11px;
 }
 
 .semantic-geo-menu-footer > span b {
-  color: var(--cobalt);
+  color: var(--acid);
   font-size: 14px;
 }
 
@@ -5214,8 +5224,8 @@ footer nav a {
   padding: 0 18px;
   border: 0;
   border-radius: 10px;
-  color: #fff;
-  background: var(--cobalt);
+  color: var(--night);
+  background: var(--acid);
   font-size: 11px;
   font-weight: 690;
   cursor: pointer;
@@ -5228,11 +5238,11 @@ footer nav a {
   gap: 10px;
   margin: 8px 12px 0;
   padding-top: 10px;
-  border-top: 1px solid rgba(47, 40, 79, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .semantic-geo-summary b {
-  color: #4d485d;
+  color: rgba(255, 255, 255, 0.75);
   font-size: 11px;
   font-weight: 580;
   line-height: 1.45;
@@ -5245,14 +5255,14 @@ footer nav a {
   gap: 18px;
   margin-top: 14px;
   padding: 16px 18px;
-  border: 1px solid rgba(124, 58, 237, 0.18);
+  border: 1px solid rgba(124, 58, 237, 0.3);
   border-radius: 16px;
-  background: linear-gradient(120deg, rgba(124, 58, 237, 0.07), rgba(255, 255, 255, 0.68));
+  background: linear-gradient(120deg, rgba(124, 58, 237, 0.2), rgba(255, 255, 255, 0.05));
 }
 
 .semantic-analysis-action.needs-refresh {
-  border-color: rgba(212, 154, 53, 0.34);
-  background: linear-gradient(120deg, rgba(244, 185, 73, 0.1), rgba(255, 255, 255, 0.72));
+  border-color: rgba(216, 255, 101, 0.4);
+  background: linear-gradient(120deg, rgba(216, 255, 101, 0.16), rgba(255, 255, 255, 0.05));
 }
 
 .semantic-analysis-action > div {
@@ -5262,7 +5272,7 @@ footer nav a {
 }
 
 .semantic-analysis-action > div > span {
-  color: var(--cobalt);
+  color: #cabdf6;
   font-size: 9px;
   font-weight: 760;
   letter-spacing: 0.12em;
@@ -5270,18 +5280,18 @@ footer nav a {
 }
 
 .semantic-analysis-action.needs-refresh > div > span {
-  color: #a66b18;
+  color: var(--acid);
 }
 
 .semantic-analysis-action > div > b {
-  color: #342e45;
+  color: #fff;
   font-size: 14px;
   font-weight: 690;
   line-height: 1.35;
 }
 
 .semantic-analysis-action > div > small {
-  color: #7d7888;
+  color: rgba(255, 255, 255, 0.6);
   font-size: 11px;
   line-height: 1.45;
 }
@@ -5337,7 +5347,7 @@ footer nav a {
   align-items: flex-start;
   gap: 9px;
   margin-top: 15px;
-  color: #777382;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .semantic-data-note > i {
@@ -5346,10 +5356,10 @@ footer nav a {
   width: 19px;
   height: 19px;
   flex: 0 0 auto;
-  border: 1px solid rgba(124, 58, 237, 0.2);
+  border: 1px solid rgba(216, 255, 101, 0.4);
   border-radius: 50%;
-  color: var(--cobalt);
-  background: rgba(124, 58, 237, 0.06);
+  color: var(--acid);
+  background: rgba(216, 255, 101, 0.14);
   font-size: 11px;
   font-style: normal;
   font-weight: 750;
@@ -5408,8 +5418,8 @@ footer nav a {
 .semantic-insight-grid article > .semantic-result-source {
   margin-top: 14px;
   padding-top: 12px;
-  border-top: 1px solid rgba(47, 40, 79, 0.09);
-  color: #625b70;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.55);
   font-size: 11px;
   line-height: 1.5;
 }
@@ -5422,15 +5432,15 @@ footer nav a {
   min-height: 250px;
   padding: 38px 42px;
   background:
-    radial-gradient(circle at 8% 50%, rgba(124, 58, 237, 0.1), transparent 24%),
-    rgba(255, 255, 255, 0.46);
+    radial-gradient(circle at 8% 50%, rgba(124, 58, 237, 0.18), transparent 30%),
+    rgba(255, 255, 255, 0.03);
 }
 
 .semantic-waiting-mark {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: var(--cobalt);
+  color: #cabdf6;
 }
 
 .semantic-waiting-mark span {
@@ -5438,12 +5448,13 @@ footer nav a {
   place-items: center;
   width: 68px;
   height: 68px;
-  border: 1px solid rgba(124, 58, 237, 0.2);
+  border: 1px solid rgba(124, 58, 237, 0.32);
   border-radius: 22px 22px 6px 22px;
-  background: rgba(255, 255, 255, 0.76);
-  box-shadow: 0 15px 38px rgba(69, 46, 125, 0.09);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 15px 38px rgba(3, 12, 26, 0.24);
   font-size: 20px;
   font-weight: 610;
+  color: #fff;
 }
 
 .semantic-waiting-mark i {
@@ -5487,7 +5498,7 @@ footer nav a {
   display: flex;
   align-items: center;
   gap: 9px;
-  color: #5e586b;
+  color: rgba(255, 255, 255, 0.72);
   font-size: 12px;
   font-weight: 620;
 }
@@ -5498,8 +5509,8 @@ footer nav a {
   width: 25px;
   height: 25px;
   border-radius: 8px;
-  color: var(--cobalt);
-  background: rgba(124, 58, 237, 0.08);
+  color: #cabdf6;
+  background: rgba(124, 58, 237, 0.18);
   font-size: 10px;
   font-style: normal;
   font-weight: 760;
@@ -5547,7 +5558,7 @@ footer nav a {
 .semantic-clusters {
   padding: 26px 20px;
   border-right: 1px solid var(--line);
-  background: rgba(235, 231, 244, 0.4);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .semantic-clusters > div:first-child {
@@ -5578,7 +5589,7 @@ footer nav a {
   padding: 8px 9px 8px 11px;
   border: 1px solid transparent;
   border-radius: 10px;
-  color: #696575;
+  color: rgba(255, 255, 255, 0.68);
   background: transparent;
   font-size: 13px;
   text-align: left;
@@ -5591,21 +5602,21 @@ footer nav a {
   min-width: 27px;
   height: 27px;
   border-radius: 8px;
-  color: #777382;
-  background: rgba(255, 255, 255, 0.62);
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.1);
   font-size: 11px;
 }
 
 .semantic-clusters nav button.active {
-  border-color: rgba(124, 58, 237, 0.2);
-  color: var(--ink);
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: 0 9px 24px rgba(37, 27, 72, 0.07), inset 3px 0 var(--cobalt);
+  border-color: rgba(124, 58, 237, 0.4);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.09);
+  box-shadow: inset 3px 0 var(--acid);
 }
 
 .semantic-clusters nav button.active b {
-  color: #fff;
-  background: var(--cobalt);
+  color: var(--night);
+  background: var(--acid);
 }
 
 .semantic-cluster-tip {
@@ -5613,13 +5624,13 @@ footer nav a {
   gap: 9px;
   margin-top: 22px;
   padding: 13px;
-  border: 1px solid rgba(124, 58, 237, 0.12);
+  border: 1px solid rgba(124, 58, 237, 0.28);
   border-radius: 12px;
-  background: rgba(124, 58, 237, 0.055);
+  background: rgba(124, 58, 237, 0.12);
 }
 
 .semantic-cluster-tip > i {
-  color: var(--cobalt);
+  color: #cabdf6;
   font-size: 13px;
   font-style: normal;
 }
@@ -5665,33 +5676,33 @@ footer nav a {
 .semantic-keywords-head button {
   min-height: 36px;
   padding: 0 11px;
-  border: 1px solid rgba(54, 45, 89, 0.13);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 9px;
-  color: #625e6d;
-  background: rgba(255, 255, 255, 0.58);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.09);
   font-size: 12px;
   font-weight: 650;
   cursor: pointer;
 }
 
 .semantic-keywords-head button:first-child {
-  border-color: rgba(124, 58, 237, 0.22);
-  color: var(--cobalt);
-  background: rgba(124, 58, 237, 0.07);
+  border-color: rgba(216, 255, 101, 0.4);
+  color: var(--acid);
+  background: rgba(216, 255, 101, 0.12);
 }
 
 .semantic-selected-strip {
   margin: 18px 0;
   padding: 14px;
-  border: 1px dashed rgba(61, 50, 102, 0.16);
+  border: 1px dashed rgba(255, 255, 255, 0.22);
   border-radius: 13px;
-  background: rgba(255, 255, 255, 0.38);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .semantic-selected-strip.has-items {
   border-style: solid;
-  border-color: rgba(124, 58, 237, 0.18);
-  background: rgba(124, 58, 237, 0.045);
+  border-color: rgba(124, 58, 237, 0.32);
+  background: rgba(124, 58, 237, 0.1);
 }
 
 .semantic-selected-strip > div {
@@ -5708,10 +5719,10 @@ footer nav a {
   gap: 7px;
   min-height: 32px;
   padding: 0 8px 0 10px;
-  border: 1px solid rgba(124, 58, 237, 0.16);
+  border: 1px solid rgba(124, 58, 237, 0.32);
   border-radius: 999px;
-  color: #4c4267;
-  background: rgba(255, 255, 255, 0.76);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
   font-size: 11px;
   font-weight: 620;
   cursor: pointer;
@@ -5723,8 +5734,8 @@ footer nav a {
   width: 17px;
   height: 17px;
   border-radius: 50%;
-  color: var(--cobalt);
-  background: rgba(124, 58, 237, 0.09);
+  color: #cabdf6;
+  background: rgba(124, 58, 237, 0.18);
   font-size: 13px;
   font-style: normal;
 }
@@ -5736,9 +5747,9 @@ footer nav a {
 
 .semantic-table {
   overflow: hidden;
-  border: 1px solid rgba(48, 41, 78, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.46);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .semantic-table-head,
@@ -5750,8 +5761,8 @@ footer nav a {
 
 .semantic-table-head {
   min-height: 39px;
-  color: #85818e;
-  background: rgba(231, 227, 239, 0.62);
+  color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.06);
   font-size: 10px;
   font-weight: 720;
   letter-spacing: 0.08em;
@@ -5769,8 +5780,8 @@ footer nav a {
   min-height: 61px;
   padding: 0;
   border: 0;
-  border-top: 1px solid rgba(48, 41, 78, 0.09);
-  color: #5f5b68;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.75);
   background: transparent;
   font-size: 12px;
   text-align: left;
@@ -5779,11 +5790,11 @@ footer nav a {
 }
 
 .semantic-keyword-row:hover {
-  background: rgba(255, 255, 255, 0.68);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .semantic-keyword-row.is-selected {
-  background: linear-gradient(90deg, rgba(124, 58, 237, 0.08), rgba(255, 255, 255, 0.42));
+  background: linear-gradient(90deg, rgba(124, 58, 237, 0.2), rgba(255, 255, 255, 0.02));
 }
 
 .semantic-keyword-row > span:first-child > i {
@@ -5791,18 +5802,19 @@ footer nav a {
   place-items: center;
   width: 23px;
   height: 23px;
-  border: 1px solid rgba(61, 50, 102, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 7px;
   color: #fff;
-  background: rgba(255, 255, 255, 0.58);
+  background: rgba(255, 255, 255, 0.06);
   font-size: 12px;
   font-style: normal;
   font-weight: 760;
 }
 
 .semantic-keyword-row.is-selected > span:first-child > i {
-  border-color: var(--cobalt);
-  background: var(--cobalt);
+  border-color: var(--acid);
+  background: var(--acid);
+  color: var(--night);
 }
 
 .semantic-keyword-row > span:nth-child(2) {
@@ -5821,7 +5833,7 @@ footer nav a {
 
 .semantic-keyword-row > span:nth-child(2) small {
   flex-basis: 100%;
-  color: #8a6570;
+  color: rgba(255, 255, 255, 0.5);
   font-size: 10px;
   line-height: 1.35;
 }
@@ -5829,8 +5841,8 @@ footer nav a {
 .semantic-keyword-row > span:nth-child(2) em {
   padding: 3px 5px;
   border-radius: 5px;
-  color: var(--cobalt);
-  background: rgba(124, 58, 237, 0.075);
+  color: #cabdf6;
+  background: rgba(124, 58, 237, 0.18);
   font-size: 8px;
   font-style: normal;
   font-weight: 740;
@@ -5850,10 +5862,10 @@ footer nav a {
   width: 24px;
   height: 24px;
   margin-left: auto;
-  border: 1px solid rgba(61, 50, 102, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 7px;
-  color: #837e8f;
-  background: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.06);
   cursor: pointer;
   opacity: 0.5;
   transition: opacity 120ms ease, color 120ms ease, border-color 120ms ease;
@@ -5870,8 +5882,8 @@ footer nav a {
 }
 
 .semantic-keyword-copy:hover {
-  border-color: rgba(124, 58, 237, 0.32);
-  color: var(--cobalt);
+  border-color: rgba(216, 255, 101, 0.5);
+  color: var(--acid);
 }
 
 .semantic-demand {
@@ -13704,8 +13716,6 @@ footer nav a {
    --------------------------------------------------------------------- */
 .brand-fields input,
 .brand-fields textarea,
-.semantic-primary-query input,
-.semantic-geo-menu-head input,
 .semantic-query-row input,
 .semantic-query-row select,
 .content-plan-query-row input,
@@ -13720,8 +13730,6 @@ footer nav a {
 
 .brand-fields input:focus,
 .brand-fields textarea:focus,
-.semantic-primary-query input:focus,
-.semantic-geo-menu-head input:focus,
 .semantic-query-row input:focus,
 .semantic-query-row select:focus,
 .content-plan-query-row input:focus,
@@ -13732,6 +13740,10 @@ footer nav a {
   border-color: rgba(124, 58, 237, 0.6);
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.14), 0 3px 10px rgba(29, 21, 58, 0.07);
 }
+
+/* .semantic-primary-query input and .semantic-geo-menu-head input used to
+   be in the light-field group above — now dark-native (see their own
+   rules), so they're deliberately excluded from it. */
 
 .competitor-query-row > label {
   border: 1.5px solid rgba(124, 58, 237, 0.32);
