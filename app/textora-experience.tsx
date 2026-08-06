@@ -1159,6 +1159,13 @@ function AutoTextarea({ value, className, onInput, ...props }: AutoTextareaProps
     className={className}
     value={value}
     data-autosize="true"
+    // Chrome/Edge restore typed field values after a plain page reload
+    // (separate from autofill/localStorage — the browser caches and
+    // replays them itself, dispatching a real input event React then
+    // treats as user input). autoComplete="off" is what stops that, so a
+    // reload actually starts clean instead of resurrecting the last
+    // session's topic/keywords/draft.
+    autoComplete="off"
     onInput={(event) => {
       resizeTextarea(event.currentTarget);
       onInput?.(event);
@@ -3552,7 +3559,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </div>
             <small>{workspaceBrands.length} из {workspaceAccount.brandLimit} брендов · данные раздельны</small>
             <button type="button" onClick={() => setBrandCreatorOpen((value) => !value)} disabled={workspaceBrands.length >= workspaceAccount.brandLimit || brandSwitchBusy}>+ Добавить бренд</button>
-            {brandCreatorOpen && <div className="brand-create-form"><input value={newBrandName} onChange={(event) => setNewBrandName(event.target.value)} placeholder="Название бренда" autoFocus/><button type="button" onClick={() => void createWorkspaceBrand()}>Создать</button></div>}
+            {brandCreatorOpen && <div className="brand-create-form"><input value={newBrandName} onChange={(event) => setNewBrandName(event.target.value)} placeholder="Название бренда" autoFocus autoComplete="off"/><button type="button" onClick={() => void createWorkspaceBrand()}>Создать</button></div>}
           </div>
           <nav aria-label="Рабочие модули">
             <a href="#brand-profile" onClick={() => setBrandOpen(true)}><i>+</i><span><b>Профиль бренда</b><small>по желанию</small></span></a>
@@ -3692,8 +3699,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               {brandTab === "foundation" && <div className="brand-field-group" role="tabpanel">
                 <div className="brand-group-heading"><span>Основа бренда</span><p>Факты, которые определяют, о ком и для кого говорит каждый материал.</p></div>
                 <div className="brand-fields">
-                  <label>Компания<input value={brand.name} onChange={(event) => updateBrand("name", event.target.value)}/><small>Полное название, которое можно использовать в публикации.</small></label>
-                  <label>Сайт<input value={brand.website} onChange={(event) => updateBrand("website", event.target.value)}/><small>КЛИО читает открытую страницу при сборе семантики и генерации; недоступные сведения не додумываются.</small></label>
+                  <label>Компания<input value={brand.name} onChange={(event) => updateBrand("name", event.target.value)} autoComplete="off"/><small>Полное название, которое можно использовать в публикации.</small></label>
+                  <label>Сайт<input value={brand.website} onChange={(event) => updateBrand("website", event.target.value)} autoComplete="off"/><small>КЛИО читает открытую страницу при сборе семантики и генерации; недоступные сведения не додумываются.</small></label>
                   <label className="wide">О компании<AutoTextarea rows={3} value={brand.description} onChange={(event) => updateBrand("description", event.target.value)}/><small>Короткая фактическая справка: сфера, география, услуги и масштаб.</small></label>
                   <label className="wide">Позиционирование<AutoTextarea rows={3} value={brand.positioning} onChange={(event) => updateBrand("positioning", event.target.value)}/><small>Какое место бренд хочет занимать в сознании аудитории — не рекламный слоган, а редакционный ориентир.</small></label>
                   <label>Основная аудитория<AutoTextarea rows={4} value={brand.audience} onChange={(event) => updateBrand("audience", event.target.value)}/><small>Кто читатель, с какой задачей и на каком уровне понимания темы.</small></label>
@@ -3760,7 +3767,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <div className="semantic-primary-query">
                   <label>
                     <span className="semantic-primary-label"><i>Главное поле</i><b>Основной запрос или тема</b></span>
-                    <input value={semanticQuery} onChange={(event) => updateSemanticQuery(event.target.value)} placeholder="Например: санаторий для лечения остеохондроза" />
+                    <input value={semanticQuery} onChange={(event) => updateSemanticQuery(event.target.value)} placeholder="Например: санаторий для лечения остеохондроза" autoComplete="off" />
                     <small>Это единственный источник темы для текущего анализа. Генератор не может заменить или дополнить запрос скрыто.</small>
                   </label>
                 </div>
@@ -3784,7 +3791,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
                   {semanticGeoOpen && <div className="semantic-geo-menu" id="semantic-geo-tree">
                     <div className="semantic-geo-menu-head">
-                      <label><span>Найти территорию</span><input autoFocus value={semanticGeoSearch} onChange={(event) => setSemanticGeoSearch(event.target.value)} placeholder="Округ, регион или город"/></label>
+                      <label><span>Найти территорию</span><input autoFocus value={semanticGeoSearch} onChange={(event) => setSemanticGeoSearch(event.target.value)} placeholder="Округ, регион или город" autoComplete="off"/></label>
                       <button type="button" onClick={clearSemanticGeo} disabled={!selectedGeoCityIds.size}>Сбросить выбор</button>
                     </div>
                     <div className="semantic-geo-tree" role="tree" aria-label="Округа, регионы и города России">
@@ -3934,7 +3941,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </div>
 
               <div className="competitor-query-row">
-                <label><span>Тема, основной запрос или категория бренда <em>{competitorFocusSource === "semantics" ? "из семантики" : competitorFocusSource === "brand" ? "из профиля бренда" : "ручной ввод"}</em></span><input value={competitorQuery} onChange={(event) => { const next = event.target.value; setCompetitorQuery(next); setCompetitorFocusSource("manual"); setCompetitorNeedsRefresh(true); persistCompetitorWorkspace({ query: next, focusSource: "manual", needsRefresh: true }); }} placeholder="Например: санаторий для восстановления"/></label>
+                <label><span>Тема, основной запрос или категория бренда <em>{competitorFocusSource === "semantics" ? "из семантики" : competitorFocusSource === "brand" ? "из профиля бренда" : "ручной ввод"}</em></span><input value={competitorQuery} onChange={(event) => { const next = event.target.value; setCompetitorQuery(next); setCompetitorFocusSource("manual"); setCompetitorNeedsRefresh(true); persistCompetitorWorkspace({ query: next, focusSource: "manual", needsRefresh: true }); }} placeholder="Например: санаторий для восстановления" autoComplete="off"/></label>
                 <div className="competitor-query-sources">
                   <button type="button" className={competitorFocusSource === "semantics" ? "is-active" : ""} onClick={useCurrentSemanticsForCompetitors}><i>02</i><span><b>Из семантики</b><small>{semanticAnalysisReady ? semanticResult.primaryQuery : "сначала выполните анализ"}</small></span></button>
                   <button type="button" className={competitorFocusSource === "brand" ? "is-active" : ""} onClick={useBrandForCompetitors}><i>01</i><span><b>Из бренда</b><small>{effectiveBrand.name}</small></span></button>
@@ -3947,8 +3954,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 {competitorDiscoveryNote && <p className="competitor-discovery-note"><Icon name="check"/>{competitorDiscoveryNote}</p>}
                 {competitors.map((competitor, index) => <div className="competitor-source-row" key={competitor.id}>
                   <i>{String(index + 1).padStart(2, "0")}</i>
-                  <label><span>Название {competitor.origin === "ai" && <em>найдено ИИ</em>}</span><input value={competitor.label} onChange={(event) => updateCompetitorEntry(competitor.id, "label", event.target.value)} placeholder={`Конкурент ${index + 1}`}/></label>
-                  <label className="competitor-url-field"><span>Ссылка на материал</span><input type="url" value={competitor.url} onChange={(event) => updateCompetitorEntry(competitor.id, "url", event.target.value)} placeholder="https://site.ru/page"/>{competitor.origin === "ai" && /^https?:\/\//i.test(competitor.url) && <a href={competitor.url} target="_blank" rel="noreferrer">Открыть найденный источник <Icon name="arrow"/></a>}</label>
+                  <label><span>Название {competitor.origin === "ai" && <em>найдено ИИ</em>}</span><input value={competitor.label} onChange={(event) => updateCompetitorEntry(competitor.id, "label", event.target.value)} placeholder={`Конкурент ${index + 1}`} autoComplete="off"/></label>
+                  <label className="competitor-url-field"><span>Ссылка на материал</span><input type="url" value={competitor.url} onChange={(event) => updateCompetitorEntry(competitor.id, "url", event.target.value)} placeholder="https://site.ru/page" autoComplete="off"/>{competitor.origin === "ai" && /^https?:\/\//i.test(competitor.url) && <a href={competitor.url} target="_blank" rel="noreferrer">Открыть найденный источник <Icon name="arrow"/></a>}</label>
                   <button type="button" className="competitor-remove" onClick={() => removeCompetitorEntry(competitor.id)} aria-label={`Удалить строку ${index + 1}`}>×</button>
                 </div>)}
                 <button type="button" className="competitor-add" onClick={addCompetitorEntry} disabled={competitors.length >= 5}>+ Добавить конкурента <span>{competitors.length}/5</span></button>
@@ -4042,7 +4049,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <ol>{activeFormatPlan.steps.map((step) => <li key={step}>{step}</li>)}</ol>
                   <p><i>Итог</i>{activeFormatPlan.result}</p>
                 </div>
-                <label className="field">Тема материала<input value={topic} onChange={(event) => { setTopic(event.target.value); setGenerationCoverage(null); }} /></label>
+                <label className="field">Тема материала<input value={topic} onChange={(event) => { setTopic(event.target.value); setGenerationCoverage(null); }} autoComplete="off" /></label>
                 <label className="field">Ключевые слова<AutoTextarea value={keywords} onChange={(event) => { setKeywords(event.target.value); setGenerationCoverage(null); }} /><small>Разделяйте запросы запятыми или получите их после анализа выдачи</small></label>
                 <label className="field generator-accent-field">Дополнительный акцент<AutoTextarea rows={3} value={accent} onChange={(event) => { setAccent(event.target.value); setGenerationCoverage(null); }} placeholder="Например: раскрыть питание, ограничения и порядок консультации"/><small>{(accent.match(/^\s*[•*\-–—]\s+/gm) ?? []).length ? `Распознано обязательных редакционных ориентиров: ${(accent.match(/^\s*[•*\-–—]\s+/gm) ?? []).length}` : "Можно ввести вручную или передать выводы из матрицы. Ориентиры влияют на разделы статьи, а не остаются служебной заметкой."}</small></label>
                 <div className="generator-context-card">
@@ -4124,7 +4131,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </div>
 
                 <div className="content-plan-query-row">
-                  <label><span>Основная тема или направление</span><input value={contentPlanQuery} onChange={(event) => { const next = event.target.value; setContentPlanQuery(next); setContentPlanNeedsRefresh(true); setContentPlanError(""); persistContentPlan({ query: next, needsRefresh: true }); }} placeholder="Например: санаторий для лечения желудка"/></label>
+                  <label><span>Основная тема или направление</span><input value={contentPlanQuery} onChange={(event) => { const next = event.target.value; setContentPlanQuery(next); setContentPlanNeedsRefresh(true); setContentPlanError(""); persistContentPlan({ query: next, needsRefresh: true }); }} placeholder="Например: санаторий для лечения желудка" autoComplete="off"/></label>
                   <button type="button" onClick={useCurrentSemanticsForPlan} disabled={!semanticAnalysisReady}><Icon name="arrow"/> Взять из семантики</button>
                 </div>
 
