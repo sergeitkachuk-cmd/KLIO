@@ -13947,3 +13947,253 @@ footer nav a {
     left: 100%;
   }
 }
+
+/* ---------------------------------------------------------------------
+   Профиль бренда, dark navy pass (site owner: take the .mvp-flow navy/
+   purple palette as the base everywhere, not too dark, more accent
+   colour — not a light/dark toggle, one consistent look). First
+   installment: the brand-profile form (all three tabs), the module most
+   recently reviewed. Semantics/competitors/content-plan/adaptation are
+   still on the old light theme and will get the same treatment as a
+   follow-up, confirmed against a screenshot before rolling it out
+   everywhere at once — this exact module took several rounds to get
+   right, so the rest is safer done in checked stages than in one blind
+   pass across five different modules.
+   --------------------------------------------------------------------- */
+.brand-profile-body {
+  color: #fff;
+  background:
+    radial-gradient(circle at 88% 0%, rgba(124, 58, 237, 0.24), transparent 40%),
+    linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
+}
+
+.profile-mode-bar {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.09), rgba(124, 58, 237, 0.14));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.profile-mode-bar > div:first-child span,
+.brand-tab-navigation-head span,
+.brand-group-heading span {
+  color: #d5c9fb;
+}
+
+.profile-mode-bar > div:first-child small,
+.brand-tab-navigation-head small,
+.brand-group-heading p,
+.brand-score p small,
+.brand-checklist small,
+.brand-fields label > small {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.profile-mode-switch {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.profile-mode-switch button {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.profile-mode-switch button > i {
+  border-color: rgba(255, 255, 255, 0.24);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.profile-mode-switch button.active {
+  border-color: rgba(255, 255, 255, 0.85);
+  color: var(--night);
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(3, 12, 26, 0.35), inset 0 1px #fff;
+}
+
+.profile-mode-switch button.active > i {
+  border-color: rgba(124, 58, 237, 0.3);
+  color: var(--cobalt);
+  background: rgba(124, 58, 237, 0.1);
+}
+
+.brand-tab-navigation {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(124, 58, 237, 0.12));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.brand-tabs {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.brand-tabs button {
+  border-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.brand-tabs button i {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.brand-tabs button > span {
+  border-color: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.brand-tabs button:hover {
+  border-color: rgba(216, 255, 101, 0.4);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.brand-field-group {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+}
+
+.brand-group-heading {
+  border-bottom-color: rgba(255, 255, 255, 0.14);
+}
+
+.brand-fields label {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.brand-score,
+.brand-checklist {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.055);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.brand-score > div {
+  background: conic-gradient(var(--acid) var(--profile-score), rgba(255, 255, 255, 0.12) 0);
+}
+
+.brand-score > div::after {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: #0c2544;
+}
+
+.brand-score > div span {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.brand-checklist > div i {
+  border-color: rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.brand-checklist > div.is-complete i {
+  border-color: rgba(216, 255, 101, 0.45);
+  color: var(--night);
+  background: var(--acid);
+}
+
+/* Fields on the new dark card need the dark-theme treatment (matching
+   .field input's dark styling), not the bright-white one written when
+   this form still sat on a light card. */
+.brand-fields input,
+.brand-fields textarea {
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.06));
+  box-shadow: 0 3px 10px rgba(2, 8, 18, 0.22), inset 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.brand-fields input:focus,
+.brand-fields textarea:focus {
+  border-color: var(--acid);
+  box-shadow: 0 0 0 3px rgba(216, 255, 101, 0.16), 0 3px 10px rgba(2, 8, 18, 0.22);
+}
+
+.brand-fields input::placeholder,
+.brand-fields textarea::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.brand-profile-body .brand-profile-footer {
+  border-top-color: rgba(255, 255, 255, 0.14);
+}
+
+.brand-profile-footer p {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.brand-profile-body .brand-profile-footer > div > button:first-child {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Brand-profile dark pass, part 2: "Голос и ограничения" / "Правила
+   форматов" tabs (profile-ai-note, recommendation grids, etc). Keeps the
+   amber "заполните основу бренда" warning legible on its own tinted
+   background rather than recolouring it purple like everything else. */
+.brand-profile-body .profile-ai-note,
+.brand-profile-body .profile-assistant-row {
+  border-color: rgba(124, 58, 237, 0.32);
+  background: linear-gradient(120deg, rgba(124, 58, 237, 0.18), rgba(255, 255, 255, 0.06));
+}
+
+.brand-profile-body .profile-ai-note span,
+.brand-profile-body .profile-assistant-row span {
+  color: #d5c9fb;
+}
+
+.brand-profile-body .profile-ai-note p,
+.brand-profile-body .profile-assistant-row p,
+.brand-profile-body .profile-recommendation-footer small {
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.brand-profile-body .profile-assistant-row button {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.brand-profile-body .profile-foundation-warning {
+  border-color: rgba(230, 172, 76, 0.4);
+  background: rgba(230, 172, 76, 0.12);
+}
+
+.brand-profile-body .profile-foundation-warning p {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.brand-profile-body .profile-foundation-warning > i {
+  border-color: rgba(230, 172, 76, 0.5);
+  color: #f0c674;
+}
+
+.brand-profile-body .profile-foundation-warning button {
+  border-color: rgba(230, 172, 76, 0.5);
+  color: #f0c674;
+  background: rgba(230, 172, 76, 0.12);
+}
+
+.brand-profile-body .profile-recommendation-grid article,
+.brand-profile-body .format-recommendation-grid article {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.055);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.brand-profile-body .profile-recommendation-grid article > span,
+.brand-profile-body .format-recommendation-grid article > div i {
+  color: #d5c9fb;
+}
+
+.brand-profile-body .profile-recommendation-grid p,
+.brand-profile-body .format-recommendation-grid p {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.brand-profile-body .format-recommendation-grid article > div span {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.brand-profile-body .profile-recommendation-footer {
+  border-top-color: rgba(255, 255, 255, 0.14);
+}
