@@ -7,10 +7,20 @@
 html {
   scroll-behavior: smooth;
   scroll-padding-top: 94px;
+  /* The definitive fix for the page-level horizontal scroll that kept
+     reappearing in the workspace no matter which nested element it was
+     traced back to and patched: overflow-x:clip on .workspace-shell
+     further down only stops CHILDREN from overflowing beyond that div's
+     own box — if the div itself still ends up wider than the viewport
+     (which it evidently still could), body/html happily scroll to show
+     it, since neither had any width/overflow guard of its own. This is
+     the actual outermost root, so nothing nested inside can bypass it. */
+  overflow-x: hidden;
 }
 
 body {
   margin: 0;
+  overflow-x: hidden;
   background: var(--paper);
   color: var(--ink);
   font-family: var(--sans);
@@ -14459,4 +14469,55 @@ footer nav a {
 
 .content-plan-empty p {
   color: rgba(255, 255, 255, 0.65);
+}
+
+/* Контент-план dark pass, missed spots found from a real screenshot:
+   the "Выбрать" checkbox (still light), the "Исходные данные изменились"
+   notice (still its old light gradient sitting inside the now-dark
+   summary row), and the toolbar's save/copy buttons (a later, light-
+   themed override of the same class was winning over the dark one). */
+.content-plan-setup .status {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.content-plan-setup .status-ai {
+  color: var(--acid);
+}
+
+.content-plan-setup .status-ai i {
+  background: var(--acid);
+  box-shadow: 0 0 0 5px rgba(216, 255, 101, 0.16);
+}
+
+.content-plan-setup .status-example {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.content-plan-select > i {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.content-plan-select > span {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.content-plan-summary > p {
+  background: linear-gradient(90deg, rgba(124, 58, 237, 0.28), rgba(216, 255, 101, 0.18));
+}
+
+.content-plan-summary > p > i {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.content-plan-summary > p b {
+  color: #fff;
+}
+
+.content-plan-save,
+.content-plan-copy {
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(118, 152, 195, 0.12));
 }
