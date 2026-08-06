@@ -3503,6 +3503,18 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     showToast("Откройте рабочее пространство для тестирования модуля");
   }
 
+  // The "Материалы" header button just toggled historyOpen with no visual
+  // feedback beyond that — from anywhere scrolled away from the top of the
+  // page, the section that appears reads as "the button did nothing".
+  // Bring it into view whenever it opens.
+  useEffect(() => {
+    if (!historyOpen) return;
+    const frame = window.requestAnimationFrame(() => {
+      document.getElementById("history")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [historyOpen]);
+
   if (workspace) {
     // ±15% matches the tolerance the generator itself already accepts as a
     // finished result server-side (see app/api/generate/route.ts) — the UI
@@ -3525,6 +3537,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <i>{nameInitials(workspaceUserName)}</i><b>{workspaceUserName}</b><small>{workspaceAccount.planName} · 1 пользователь</small><em>⌄</em>
             </button>
             {accountMenuOpen && <div className="account-menu-list" role="menu">
+              <Link href="/account" role="menuitem">Личный кабинет</Link>
               <button type="button" role="menuitem" onClick={() => void signOutOfWorkspace()}>Выйти</button>
             </div>}
           </div>
@@ -3570,14 +3583,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <div className={`workspace-status ${workspaceDataError ? "has-error" : ""}`}><i/><span><b>{workspaceDataError ? "Ошибка сохранения" : !workspaceReady ? "Загружаем кабинет" : workspaceSaving ? "Сохраняем изменения" : "Все изменения сохранены"}</b><small>{workspaceDataError || (!workspaceReady ? "Генератор уже доступен — данные брендов появятся через мгновение" : `${activeWorkspaceBrand?.name || brand.name} · защищённое хранилище кабинета`)}</small></span></div>
           </div>
 
-          <section className="workspace-dashboard-bar" aria-label="Тариф и лимиты кабинета">
-            <article><span>Тариф</span><b>{workspaceAccount.planName}</b><small>1 пользователь на всех планах</small></article>
-            <article className="quota-card"><span>Материалы</span><b>{workspaceAccount.generationsUsed}<small> / {workspaceAccount.generationLimit}</small></b><i><u style={{ width: `${generationProgress}%` }}/></i></article>
-            <article className="quota-card"><span>Исследования</span><b>{workspaceAccount.researchUsed}<small> / {workspaceAccount.researchLimit}</small></b><i><u style={{ width: `${researchProgress}%` }}/></i></article>
-            <article className="quota-card"><span>AI‑редактура</span><b>{workspaceAccount.editorActionsUsed}<small> / {workspaceAccount.editorActionLimit}</small></b><i><u style={{ width: `${editorProgress}%` }}/></i></article>
-            <article><span>Бренды</span><b>{workspaceBrands.length}<small> / {workspaceAccount.brandLimit}</small></b><small>в максимальном тарифе — 10</small></article>
-            <button type="button" onClick={() => setHistoryOpen((value) => !value)}><span>Материалы бренда</span><b>{activeMaterialCount}</b><small>{historyOpen ? "Скрыть раздел" : "Открыть статьи и исследования"}</small></button>
-          </section>
 
           {historyOpen && <section className="workspace-history" id="history">
             <div className="workspace-history-head"><div><span>Кабинет бренда · {activeWorkspaceBrand?.name || brand.name}</span><h2>Материалы</h2><p>Здесь хранятся только статьи, планы и исследования текущего бренда. Сохранённый результат можно открыть в своём модуле и продолжить работу.</p></div><button type="button" onClick={() => setHistoryOpen(false)} aria-label="Закрыть материалы"><span>Закрыть</span><i aria-hidden="true">×</i></button></div>
@@ -3644,12 +3649,19 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </div>}
 
           <div className="mvp-flow" aria-label="Простой и расширенный режимы работы">
-            <span>Начните без лишних этапов</span>
-            <div><i>01</i><b>Тема и ключи</b><small>этого достаточно для старта</small></div>
-            <div><i>02</i><b>Готовый материал</b><small>сразу в генераторе</small></div>
-            <div className="mvp-flow-plan"><i>+</i><b>Нужна глубина?</b><small>откройте любой инструмент ниже</small></div>
-            <div className="mvp-flow-optional"><i>↗</i><b>Инструменты автономны</b><small>результат можно не передавать в генератор</small></div>
-            <div className="mvp-flow-alternative"><i>Аа</i><b>Есть готовый текст?</b><small>откройте редакторы КЛИО</small></div>
+            <div className="mvp-flow-main">
+              <span>Начните без лишних этапов</span>
+              <div className="mvp-flow-steps">
+                <div className="mvp-flow-step"><i>01</i><span><b>Тема и ключи</b><small>этого достаточно для старта</small></span></div>
+                <i className="mvp-flow-arrow" aria-hidden="true">→</i>
+                <div className="mvp-flow-step"><i>02</i><span><b>Готовый материал</b><small>сразу в генераторе</small></span></div>
+              </div>
+            </div>
+            <div className="mvp-flow-extra">
+              <div className="mvp-flow-plan"><i>+</i><span><b>Нужна глубина?</b><small>откройте любой инструмент ниже</small></span></div>
+              <div className="mvp-flow-optional"><i>↗</i><span><b>Инструменты автономны</b><small>результат можно не передавать в генератор</small></span></div>
+              <div className="mvp-flow-alternative"><i>Аа</i><span><b>Есть готовый текст?</b><small>откройте редакторы КЛИО</small></span></div>
+            </div>
           </div>
 
           <section className={`brand-profile ${brandOpen ? "is-open" : ""}`} id="brand-profile">

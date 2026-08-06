@@ -4067,7 +4067,10 @@ footer nav a {
   backdrop-filter: blur(24px);
 }
 
-.account-menu-list button {
+.account-menu-list button,
+.account-menu-list a {
+  display: flex;
+  align-items: center;
   width: 100%;
   min-height: 40px;
   padding: 0 12px;
@@ -4078,10 +4081,12 @@ footer nav a {
   font-size: 13px;
   font-weight: 640;
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
 }
 
-.account-menu-list button:hover {
+.account-menu-list button:hover,
+.account-menu-list a:hover {
   background: rgba(216, 255, 101, 0.09);
   color: var(--acid);
 }
@@ -13680,4 +13685,182 @@ footer nav a {
     margin-bottom: 20px;
     font-size: 13px;
   }
+}
+
+/* ---------------------------------------------------------------------
+   Workspace dashboard cleanup (Aug 2026): removed the duplicate top
+   "Тариф/Материалы/Исследования/AI‑редактура/Бренды" stat row entirely
+   (it repeated the sidebar's own tariff card with different, confusing
+   used-vs-remaining framing, plus a "Материалы бренда" button that
+   duplicated the header's "Материалы" button). Plan/usage details now
+   live on the /account page (see app/account/page.tsx), reachable from
+   the name menu in the header. What's below re-lays-out what's left:
+   the "start here" flow strip and the brand-profile module header,
+   both flagged as too cramped/oversized in their old form. Appended at
+   the end of the file so these declarations reliably win the cascade
+   over the older, scattered .mvp-flow/.brand-profile-head rules above
+   without having to hunt down every duplicate.
+   --------------------------------------------------------------------- */
+
+.mvp-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px 26px;
+}
+
+.mvp-flow-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mvp-flow-main > span {
+  color: var(--acid);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.mvp-flow-steps {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.mvp-flow-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.mvp-flow-step > i {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--night);
+  background: var(--acid);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.mvp-flow-step b {
+  display: block;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.mvp-flow-step small {
+  display: block;
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+}
+
+.mvp-flow-arrow {
+  color: rgba(255, 255, 255, 0.32);
+  font-size: 20px;
+  font-style: normal;
+}
+
+.mvp-flow-extra {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mvp-flow-extra > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.032);
+}
+
+.mvp-flow-extra > div > i {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  color: #cabdf6;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.mvp-flow-extra b {
+  display: block;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.mvp-flow-extra small {
+  display: block;
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.56);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+@media (max-width: 720px) {
+  .mvp-flow-steps {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mvp-flow-arrow {
+    display: none;
+  }
+
+  .mvp-flow-extra {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Brand-profile module header: was a fixed, oversized banner (30px
+   heading + a full descriptive paragraph + generous padding) sitting
+   permanently near the top of the workspace regardless of whether the
+   module was open. Collapsed by default, it should read as a slim
+   toggle row, not a hero section — the description only earns its
+   space back once the module is actually open. */
+.brand-profile-head,
+.brand-profile:not(.is-open) .brand-profile-head {
+  align-items: center;
+  gap: 20px;
+  padding: 16px 22px;
+}
+
+.brand-profile-head h3 {
+  margin: 2px 0 0;
+  font-size: 19px;
+}
+
+.brand-profile:not(.is-open) .brand-profile-head p {
+  display: none;
+}
+
+.brand-profile.is-open .brand-profile-head p {
+  max-width: 560px;
+  margin: 4px 0 0;
+  font-size: 13px;
 }
