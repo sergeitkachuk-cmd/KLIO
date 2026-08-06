@@ -7,20 +7,10 @@
 html {
   scroll-behavior: smooth;
   scroll-padding-top: 94px;
-  /* The definitive fix for the page-level horizontal scroll that kept
-     reappearing in the workspace no matter which nested element it was
-     traced back to and patched: overflow-x:clip on .workspace-shell
-     further down only stops CHILDREN from overflowing beyond that div's
-     own box — if the div itself still ends up wider than the viewport
-     (which it evidently still could), body/html happily scroll to show
-     it, since neither had any width/overflow guard of its own. This is
-     the actual outermost root, so nothing nested inside can bypass it. */
-  overflow-x: hidden;
 }
 
 body {
   margin: 0;
-  overflow-x: hidden;
   background: var(--paper);
   color: var(--ink);
   font-family: var(--sans);
@@ -3796,16 +3786,18 @@ footer nav a {
 /* Product workspace */
 .workspace-shell {
   min-height: 100vh;
-  /* The public marketing page (.site-shell) has had this since the
-     start; the workspace never did. clip (not hidden) specifically to
-     avoid a side effect of overflow-x:hidden — per the CSS overflow
-     spec, setting only one axis to hidden forces the OTHER axis's used
-     value to auto, which would have turned this into its own vertical
-     scroll container and broken every position:sticky header inside it.
-     This is the guaranteed backstop: whatever inside the workspace
-     still runs too wide (content-plan has repeatedly been the culprit),
-     the page itself can no longer be pushed wider than the viewport. */
-  overflow-x: clip;
+  /* Reverted overflow-x:clip here (and the same on html/body) - turns
+     out clip counts as "not visible" for the CSS overflow spec's axis-
+     pairing rule same as hidden does: setting only overflow-x forces
+     overflow-y's used value to auto, which turned this 100vh-tall
+     element into its OWN internal vertical scroll container, separate
+     from the page's normal scroll — exactly what broke the sticky
+     sidebar (confirmed by the site owner: it stayed pinned at the top
+     with a blank gap below instead of scrolling normally). max-width
+     is a pure sizing constraint with no such side effect: it stops this
+     element from ever rendering wider than the viewport regardless of
+     what's inside it, without touching how anything scrolls. */
+  max-width: 100vw;
   color: var(--ink);
   background:
     radial-gradient(900px 620px at 91% 8%, rgba(124, 58, 237, 0.12), transparent 68%),
@@ -4518,6 +4510,21 @@ footer nav a {
   min-width: 0;
   margin: 0 auto;
   padding: 52px clamp(28px, 4vw, 66px) 100px;
+  /* Overflow guard against whatever inside still runs too wide, applied
+     here rather than on .workspace-shell/html/body: this element has no
+     explicit height of its own (unlike .workspace-shell's min-height:
+     100vh or .workspace-layout's min-height: calc(100vh - 76px)), so its
+     rendered height always exactly equals its content's height. That
+     means the CSS overflow spec's axis-pairing rule (setting only
+     overflow-x forces overflow-y to auto) is harmless here — there's
+     never a height/content mismatch for auto to actually create a
+     scroll container out of, so nothing about scrolling or the sticky
+     module headers living inside this element changes. Confirmed the
+     .workspace-shell version of this exact fix broke the sticky sidebar
+     for precisely that reason (it does have an explicit min-height
+     shorter than its content) - don't reapply it there. */
+  overflow-x: clip;
+  max-width: 100%;
 }
 
 .workspace-heading {
@@ -14295,7 +14302,11 @@ footer nav a {
 
 .content-plan-summary {
   border-color: rgba(255, 255, 255, 0.16);
-  background: rgba(0, 0, 0, 0.18);
+  /* Was rgba(0,0,0,0.18) - way too translucent, so the page's own light
+     background (.workspace-shell) bled through and washed this whole
+     row and the cluster pills below it out to a pale grey instead of
+     the intended dark navy. */
+  background: linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
 }
 
 .content-plan-summary article {
@@ -14310,9 +14321,16 @@ footer nav a {
 }
 
 .content-plan-clusters button {
+  /* Was a low-opacity white overlay (rgba(255,255,255,0.07)) - correct
+     for a pill sitting on a dark card, but .content-plan-toolbar (its
+     actual parent) has no background of its own and sits directly on
+     the page's still-light backdrop, so the pill washed out to almost
+     nothing. Opaque now, like .content-plan-selection-bar's pills
+     already correctly are for the same "floats on the light page"
+     situation. */
   border-color: rgba(255, 255, 255, 0.18);
-  color: rgba(255, 255, 255, 0.72);
-  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.85);
+  background: linear-gradient(135deg, #0c2848, #082849 60%, #061c34);
 }
 
 .content-plan-clusters button small {
@@ -14517,7 +14535,20 @@ footer nav a {
 
 .content-plan-save,
 .content-plan-copy {
+  /* Same "floats directly on the still-light page, needs to be opaque
+     not translucent" fix as .content-plan-clusters button above. */
   border-color: rgba(255, 255, 255, 0.18);
   color: #fff;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(118, 152, 195, 0.12));
+  background: linear-gradient(135deg, #0c2848, #082849 60%, #061c34);
+}
+
+/* .content-plan-export is used in two places: inside the .content-plan-
+   setup card (already dark, low-opacity overlay is correct there via
+   the rule above) AND inside .content-plan-toolbar-actions, which floats
+   directly on the still-light page like .content-plan-save/.copy did -
+   the specific instance there needs the same opaque fix. */
+.content-plan-toolbar-actions .content-plan-export {
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  background: linear-gradient(135deg, #0c2848, #082849 60%, #061c34);
 }
