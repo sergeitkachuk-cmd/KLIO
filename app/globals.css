@@ -14533,20 +14533,17 @@ footer nav a {
   color: #fff;
 }
 
-.content-plan-save,
-.content-plan-copy {
-  /* Same "floats directly on the still-light page, needs to be opaque
-     not translucent" fix as .content-plan-clusters button above. */
-  border-color: rgba(255, 255, 255, 0.18);
-  color: #fff;
-  background: linear-gradient(135deg, #0c2848, #082849 60%, #061c34);
-}
-
-/* .content-plan-export is used in two places: inside the .content-plan-
-   setup card (already dark, low-opacity overlay is correct there via
-   the rule above) AND inside .content-plan-toolbar-actions, which floats
-   directly on the still-light page like .content-plan-save/.copy did -
-   the specific instance there needs the same opaque fix. */
+/* Discovered these two rules (.content-plan-save/.content-plan-copy)
+   never actually made it into the production CSS bundle despite being
+   correctly positioned last in this source file and confirmed committed
+   - the build's CSS optimizer apparently doesn't reliably preserve
+   source order when this many rules share the exact same selector
+   (this file has hundreds of such duplicates from edits over many
+   sessions). Scoped under the real parent (.content-plan-toolbar-actions)
+   instead so these win on SPECIFICITY, which optimizers can't get wrong
+   the way they can get "last one in source order" wrong. */
+.content-plan-toolbar-actions .content-plan-save,
+.content-plan-toolbar-actions .content-plan-copy,
 .content-plan-toolbar-actions .content-plan-export {
   border-color: rgba(255, 255, 255, 0.18);
   color: #fff;
