@@ -14649,3 +14649,56 @@ footer nav a {
 .content-plan-replacement-groups button > em {
   color: var(--acid);
 }
+
+/* ---------------------------------------------------------------------
+   Контент-план, polish pass after the overflow fix: the native <select>
+   popup for "Статус" was still the browser's default white list (a
+   gradient background isn't something a browser lets a page paint on
+   its own dropdown popup — every browser renders that part natively —
+   but a solid dark fill + light text is, and gets it out of the harsh
+   white-on-dark clash). The status control also sat visibly lower and
+   shorter than "Открыть бриф"/"В генератор" next to it, because it
+   carries its own "Статус" caption above the control while the buttons
+   don't — same row, different content height, so centering them left
+   the control itself out of line. Kept the caption for screen readers,
+   just took it out of the visual flow so the select's box lines up with
+   the buttons'. And the tag pills / meta value next to each title were
+   at the same near-white, semi-bold weight as the title itself, so nine
+   stacked cards each just read as one solid pale block instead of a
+   title standing out from its metadata — dialed those two back.
+   --------------------------------------------------------------------- */
+.content-plan-status {
+  position: relative;
+  display: block;
+}
+
+.content-plan-status > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.content-plan-status select {
+  min-height: 46px;
+}
+
+.content-plan-status select option {
+  color: #fff;
+  background: #0c2848;
+}
+
+.content-plan-item-copy > div > i,
+.content-plan-item-copy > div > em {
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 560;
+}
+
+.content-plan-item-copy > p b {
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 550;
+}
