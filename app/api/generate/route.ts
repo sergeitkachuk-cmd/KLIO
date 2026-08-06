@@ -1052,17 +1052,41 @@ export async function POST(request: Request) {
       }
     }
 
-    // Deterministic backstop for a case the correction pass sometimes still
-    // misses: a genuine overshoot (e.g. 130% of target). Rather than ship a
-    // too-long article and then tell the client in the UI that "the result
-    // doesn't match the brief" — which reads as KLIO admitting a failed
-    // generation — mechanically trim it to the target here. Free, instant,
-    // and it cuts at a sentence boundary near the target rather than
-    // mid-thought. Undershoot isn't backstopped the same way: there's no
-    // safe mechanical way to add real content, so a too-short result still
-    // just shows the soft badge below.
+    // Backstop for a case the correction pass sometimes still misses: a
+    // genuine overshoot (e.g. 130% of target). Rather than ship a too-long
+    // article and then tell the client in the UI that "the result doesn't
+    // match the brief" — which reads as KLIO admitting a failed generation
+    // — shrink it here before the client ever sees it. First choice is a
+    // cheap nano pass that actually reads the text and condenses it
+    // without breaking an argument that continues into the next sentence
+    // (a blind word-count cut can't tell the difference between "the end
+    // of a thought" and "a sentence boundary"). A purely mechanical trim
+    // is only the fallback if that call itself fails — always leave the
+    // client with *something* rather than an error.
     if (countWords(material.body) > maximumWords) {
-      material = { ...material, body: trimOverflowBody(material.body, input.length) };
+      try {
+        const condenseCall = await callAiModel<Record<string, unknown>>({
+          operation: "condense_overflow",
+          ownerEmail: identity.email,
+          brandId: input.useBrand ? input.brandId : undefined,
+          schemaName: "klio_condensed_material",
+          schema: MATERIAL_SCHEMA,
+          instructions: [
+            "Ты сокращаешь уже готовую статью до целевого объёма, не переписывая её заново.",
+            `Целевой объём: ${input.length} слов, допустимо от ${minimumWords} до ${maximumWords}.`,
+            "Сокращай за счёт наименее важного: повторов, избыточных примеров, лишних деталей. Не обрывай мысль или аргумент на середине — если предложение продолжает мысль из предыдущего, сокращай их вместе или не трогай.",
+            "Не добавляй новые факты, не меняй заголовок, тему, ключевые фразы и структуру подзаголовков без необходимости.",
+            "Сохрани meta_title, meta_description и editorial_comment по смыслу как есть (можно чуть скорректировать под новый объём).",
+            "Верни только валидный JSON с полями title, body, meta_title, meta_description, editorial_comment.",
+          ].join("\n"),
+          input: JSON.stringify({ target_words: input.length, current_material: material }),
+        });
+        material = materialFromRecord(condenseCall.result);
+        usedModel = condenseCall.model;
+      } catch (error) {
+        console.error("Nano condense pass failed, falling back to mechanical trim", error);
+        material = { ...material, body: trimOverflowBody(material.body, input.length) };
+      }
       missingGeo = missingGeography(material, input);
       subjectCheck = topicCoverage(material, input);
       missingFocuses = missingEditorialFocuses(material, input);

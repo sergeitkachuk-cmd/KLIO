@@ -70,7 +70,8 @@ export type AiOperation =
   | "revise_content"
   // Nano — short formalized steps
   | "normalize_quick_brief"
-  | "validate_content";
+  | "validate_content"
+  | "condense_overflow";
 
 export type ReasoningEffort = "none" | "low" | "medium";
 
@@ -119,6 +120,14 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
 
   normalize_quick_brief: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 800, structuredOutput: true, retryable: true, useWebSearch: false },
   validate_content: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 1_500, structuredOutput: true, retryable: true, useWebSearch: false },
+  // Shrinks an already-written, still-too-long article down to its target
+  // length while keeping the argument intact — the rare last-resort case
+  // where the initial generation *and* the one revise_content correction
+  // pass both still overshot. This is condensing existing text to a
+  // length constraint, not composing new prose, so it's in nano's range;
+  // a purely mechanical word-count cut (see trimOverflowBody in
+  // generate/route.ts) is kept only as the fallback if this call fails.
+  condense_overflow: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 8_000, structuredOutput: true, retryable: true, useWebSearch: false },
 };
 
 // adapt_text's 12 KLIO editor goals (see app/content-plans.ts
