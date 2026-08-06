@@ -1193,7 +1193,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [semanticResult, setSemanticResult] = useState<SemanticResult>(defaultSemanticResult);
   const [semanticMode, setSemanticMode] = useState<SemanticMode>("idle");
   const [aiConnection, setAiConnection] = useState<AiConnection>("checking");
-  const [aiModel, setAiModel] = useState("");
   const [semanticBusy, setSemanticBusy] = useState(false);
   const [semanticArticleBusy, setSemanticArticleBusy] = useState(false);
   const [semanticError, setSemanticError] = useState("");
@@ -1562,12 +1561,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     fetch("/api/ai-status", { cache: "no-store", headers: { Accept: "application/json" } })
       .then(async (response) => {
         if (!response.ok) throw new Error("AI status unavailable");
-        return response.json() as Promise<{ connected?: boolean; model?: string | null }>;
+        return response.json() as Promise<{ connected?: boolean }>;
       })
       .then((status) => {
         if (cancelled) return;
         setAiConnection(status.connected ? "connected" : "disconnected");
-        setAiModel(status.model || "");
       })
       .catch(() => {
         if (!cancelled) setAiConnection("disconnected");
@@ -3695,7 +3693,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <div className="semantic-search-card">
                 <div className="semantic-search-head">
                   <div><span>Шаг 1 · исходные данные</span><h3>Что ищет ваш читатель?</h3><p>Сначала задайте тему и географию. Результаты появятся только после запуска анализа — модуль 04 на этом этапе не используется.</p></div>
-                  <span className={`semantic-mode semantic-mode-${aiConnection === "connected" ? "ai" : "idle"}`}><i/>{aiConnection === "connected" ? `ИИ подключён${aiModel ? ` · ${aiModel}` : ""}` : aiConnection === "disconnected" ? "ИИ не подключён · генерация отключена" : "Проверяем AI‑подключение"}</span>
+                  <span className={`semantic-mode semantic-mode-${aiConnection === "connected" ? "ai" : "idle"}`}><i/>{aiConnection === "connected" ? "ИИ подключён" : aiConnection === "disconnected" ? "ИИ не подключён · генерация отключена" : "Проверяем AI‑подключение"}</span>
                 </div>
                 <div className="semantic-primary-query">
                   <label>

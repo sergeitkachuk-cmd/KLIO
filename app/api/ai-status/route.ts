@@ -1,6 +1,7 @@
+// Deliberately does not report which model is behind the connection — the
+// AI router (ai-config.ts/ai-router.ts) picks Luna/Nano per operation
+// automatically, and end users must never see or choose a model.
 export async function GET() {
   const connected = Boolean(process.env.OPENAI_API_KEY?.trim());
-  const model = connected ? (process.env.OPENAI_MODEL?.trim() || "gpt-5-mini") : null;
-
-  return Response.json({ connected, model }, { headers: { "Cache-Control": "no-store" } });
+  return Response.json({ connected }, { headers: { "Cache-Control": "no-store" } });
 }

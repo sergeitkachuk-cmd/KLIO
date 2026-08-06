@@ -1,5 +1,6 @@
-import { AiResponseError, openAiErrorResponse, requestStructuredJson } from "../_lib/openai-response";
-import { assertSecondaryQuotaAvailable, recordResearch, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
+import { AiResponseError, openAiErrorResponse } from "../_lib/openai-response";
+import { callAiModel } from "../_lib/ai-router";
+import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 
 type SemanticInput = {
   phrase: string;
@@ -196,6 +197,7 @@ export async function POST(request: Request) {
     const input = normalizePayload(raw);
     if (!input.query) return Response.json({ error: "Укажите основную тему контент‑плана." }, { status: 400 });
     await assertSecondaryQuotaAvailable("research");
+    const identity = await workspaceIdentity();
 
     const instructions = [
       "Ты — ведущий контент‑стратег и SEO‑редактор платформы КЛИО.",
@@ -212,7 +214,9 @@ export async function POST(request: Request) {
       "Верни только структурированный результат по заданной JSON‑схеме.",
     ].join("\n");
 
-    const { result: aiPlan, model } = await requestStructuredJson<AiPlan>({
+    const { result: aiPlan, model } = await callAiModel<AiPlan>({
+      operation: "generate_content_plan",
+      ownerEmail: identity.email,
       schemaName: "klio_content_plan",
       schema: contentPlanSchema(input.count),
       instructions,
@@ -224,10 +228,6 @@ export async function POST(request: Request) {
         brand_profile: input.brand.name ? input.brand : null,
         required_items: input.count,
       }, null, 2),
-      reasoningEffort: "low",
-      verbosity: "medium",
-      maxOutputTokens: input.count === 25 ? 18000 : input.count === 15 ? 12500 : 9000,
-      useWebSearch: true,
     });
 
     const items = validatePlan(aiPlan, input);

@@ -1,5 +1,6 @@
-import { AiResponseError, openAiErrorResponse, requestStructuredJson } from "../../_lib/openai-response";
-import { assertSecondaryQuotaAvailable, recordEditorialAction, WorkspaceAccessError, workspaceErrorResponse } from "../../_lib/workspace-account";
+import { AiResponseError, openAiErrorResponse } from "../../_lib/openai-response";
+import { callAiModel } from "../../_lib/ai-router";
+import { assertSecondaryQuotaAvailable, recordEditorialAction, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../../_lib/workspace-account";
 
 type ReplacementPayload = {
   query?: unknown;
@@ -158,6 +159,7 @@ export async function POST(request: Request) {
     if (!input.query) return Response.json({ error: "Укажите тему контент‑плана." }, { status: 400 });
     if (!input.selectedItems.length) return Response.json({ error: "Выберите от одной до пяти тем для замены." }, { status: 400 });
     await assertSecondaryQuotaAvailable("editor");
+    const identity = await workspaceIdentity();
 
     const instructions = [
       "Ты — выпускающий контент‑стратег платформы КЛИО.",
@@ -169,7 +171,9 @@ export async function POST(request: Request) {
       "Верни только структурированный JSON по схеме.",
     ].join("\n");
 
-    const { result, model } = await requestStructuredJson<ReplacementResult>({
+    const { result, model } = await callAiModel<ReplacementResult>({
+      operation: "revise_content_plan",
+      ownerEmail: identity.email,
       schemaName: "klio_content_plan_replacements",
       schema: replacementSchema(input.selectedItems.map((item) => item.id)),
       instructions,
@@ -181,9 +185,6 @@ export async function POST(request: Request) {
         user_comment: input.comment || null,
         brand_profile: input.brand.name ? input.brand : null,
       }, null, 2),
-      reasoningEffort: "low",
-      verbosity: "medium",
-      maxOutputTokens: 12000,
     });
 
     const existing = new Set(input.existingTitles.map((item) => item.toLocaleLowerCase("ru-RU")));

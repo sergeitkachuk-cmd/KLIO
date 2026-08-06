@@ -1,6 +1,7 @@
 import { readWebsiteContext, websiteSourceLabel, type WebsiteContext } from "../_lib/website-context";
-import { AiResponseError, openAiConfiguration, openAiErrorResponse, requestStructuredJson } from "../_lib/openai-response";
-import { assertSecondaryQuotaAvailable, recordResearch, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
+import { AiNotConfiguredError, AiResponseError, openAiErrorResponse } from "../_lib/openai-response";
+import { callAiModel } from "../_lib/ai-router";
+import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 
 type SemanticKeyword = {
   id: string;
@@ -234,7 +235,8 @@ export async function POST(request: Request) {
     if (!query) return Response.json({ error: "Введите основной запрос или тему." }, { status: 400 });
 
     await assertSecondaryQuotaAvailable("research");
-    openAiConfiguration();
+    if (!process.env.OPENAI_API_KEY?.trim()) throw new AiNotConfiguredError();
+    const identity = await workspaceIdentity();
     const legacyRegion = clean(payload.region, 1600) || "Россия";
     const geography = cleanGeography(payload.geography, legacyRegion);
     const brand = cleanBrand(payload.brand);
@@ -263,15 +265,13 @@ export async function POST(request: Request) {
       brand_profile: brand.name ? brand : null,
       website_snapshot: website.status === "loaded" ? { url: website.resolvedUrl, text: website.text } : null,
     };
-    const firstAttempt = await requestStructuredJson<SemanticResult>({
+    const firstAttempt = await callAiModel<SemanticResult>({
+      operation: "research_semantics",
+      ownerEmail: identity.email,
       schemaName: "klio_semantic_map",
       schema: semanticSchema(),
       instructions,
       input: JSON.stringify(requestContext, null, 2),
-      reasoningEffort: "low",
-      verbosity: "medium",
-      maxOutputTokens: 9000,
-      useWebSearch: true,
     });
 
     let result: ReturnType<typeof normalizeAiResult>;
@@ -280,7 +280,9 @@ export async function POST(request: Request) {
       result = normalizeAiResult(firstAttempt.result, query, geography, website);
     } catch (error) {
       if (!(error instanceof AiResponseError) || error.status !== 422) throw error;
-      const correction = await requestStructuredJson<SemanticResult>({
+      const correction = await callAiModel<SemanticResult>({
+        operation: "research_semantics",
+        ownerEmail: identity.email,
         schemaName: "klio_corrected_semantic_map",
         schema: semanticSchema(),
         instructions: [
@@ -293,10 +295,6 @@ export async function POST(request: Request) {
           rejected_result: firstAttempt.result,
           validation_failure: error.message,
         }, null, 2),
-        reasoningEffort: "low",
-        verbosity: "medium",
-        maxOutputTokens: 9000,
-        useWebSearch: true,
       });
       model = correction.model;
       result = normalizeAiResult(correction.result, query, geography, website);

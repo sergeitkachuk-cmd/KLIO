@@ -6,7 +6,9 @@ import {
   type ContentTone,
 } from "../../content-plans";
 import { readWebsiteContext, websiteSourceLabel, type WebsiteContext } from "../_lib/website-context";
-import { assertGenerationQuotaAvailable, recordGeneration, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
+import { assertGenerationQuotaAvailable, recordGeneration, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
+import { AiCallError, callAiModel } from "../_lib/ai-router";
+import type { AiOperation } from "../_lib/ai-config";
 
 type Format = ContentFormat;
 
@@ -82,6 +84,13 @@ const FORMAT_LABELS: Record<Format, string> = {
   social: "публикация для социальных сетей",
   ads: "рекламный текст",
   landing: "текст для страницы сайта",
+};
+
+const FORMAT_OPERATION: Record<Format, AiOperation> = {
+  seo: "generate_seo_article",
+  social: "generate_social_post",
+  ads: "generate_ad_copy",
+  landing: "generate_landing",
 };
 
 const ALLOWED_FORMATS = new Set<Format>(["seo", "social", "ads", "landing"]);
@@ -769,24 +778,7 @@ function topicAwareSanatoriumFormatSections(input: ReturnType<typeof normalizePa
   return topicAwareSanatoriumSections(input, brandName);
 }
 
-function outputText(response: unknown) {
-  if (!response || typeof response !== "object") return "";
-  const candidate = response as {
-    output_text?: unknown;
-    output?: Array<{ content?: Array<{ type?: string; text?: unknown }> }>;
-  };
-  if (typeof candidate.output_text === "string") return candidate.output_text;
-
-  return (candidate.output ?? [])
-    .flatMap((item) => item.content ?? [])
-    .filter((item) => item.type === "output_text" && typeof item.text === "string")
-    .map((item) => item.text as string)
-    .join("\n");
-}
-
-function parseMaterial(text: string): GeneratedMaterial {
-  const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-  const parsed = JSON.parse(cleaned) as Record<string, unknown>;
+function materialFromRecord(parsed: Record<string, unknown>): GeneratedMaterial {
   const title = cleanText(parsed.title, 500);
   const body = cleanText(parsed.body, 50000);
 
@@ -868,8 +860,9 @@ export async function POST(request: Request) {
       }, { status: 503 });
     }
 
+    const identity = await workspaceIdentity();
     const website = input.useBrand ? await readWebsiteContext(input.brand.website) : await readWebsiteContext("");
-    const model = process.env.OPENAI_MODEL?.trim() || "gpt-5-mini";
+    const operation = FORMAT_OPERATION[input.format];
     const formatPlan = FORMAT_PLANS[input.format];
     const selectedToneRules = toneRules(input.tone);
     const userBrief = JSON.stringify({
@@ -929,22 +922,15 @@ export async function POST(request: Request) {
         : null,
     }, null, 2);
 
-    const aiResponse = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        store: false,
-        reasoning: { effort: "low" },
-        max_output_tokens: Math.min(24000, Math.max(3500, input.length * 4)),
-        tools: [{ type: "web_search", search_context_size: "medium" }],
-        text: {
-          verbosity: input.length >= 1800 ? "high" : input.length <= 300 ? "low" : "medium",
-          format: { type: "json_schema", name: "klio_generated_material", strict: true, schema: MATERIAL_SCHEMA },
-        },
+    let material: GeneratedMaterial;
+    let usedModel = "";
+    try {
+      const call = await callAiModel<Record<string, unknown>>({
+        operation,
+        ownerEmail: identity.email,
+        brandId: input.useBrand ? input.brandId : undefined,
+        schemaName: "klio_generated_material",
+        schema: MATERIAL_SCHEMA,
         instructions: [
           "Ты — старший русскоязычный редактор и контент‑маркетолог платформы КЛИО.",
           "Создай готовый к публикации материал по брифу и верни только валидный JSON без Markdown-ограждений.",
@@ -978,20 +964,16 @@ export async function POST(request: Request) {
           "editorial_comment кратко объясняет использованный ракурс, соблюдение голоса бренда и возможные места для фактчекинга; он не является частью статьи.",
         ].join("\n"),
         input: `Подготовь материал по этому брифу:\n${userBrief}`,
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error("OpenAI generation failed", aiResponse.status, errorText.slice(0, 1200));
-      return Response.json(
-        { error: "AI-редакция временно не ответила. Попробуйте ещё раз." },
-        { status: 502 },
-      );
+      });
+      material = materialFromRecord(call.result);
+      usedModel = call.model;
+    } catch (error) {
+      if (error instanceof AiCallError) {
+        return Response.json({ error: error.message }, { status: error.status });
+      }
+      throw error;
     }
 
-    const responseBody = await aiResponse.json();
-    let material = parseMaterial(outputText(responseBody));
     // ±15%, not ±5% — LLMs reliably land "close" to a target length, not
     // exact, and hard-rejecting near-misses was discarding good articles
     // and forcing costly full retries. Coverage badges in the UI already
@@ -1004,21 +986,13 @@ export async function POST(request: Request) {
     let missingKeyPhrases = missingKeywords(material, input);
 
     if (countWords(material.body) < minimumWords || countWords(material.body) > maximumWords || hasMetaLeakage(material.body) || missingGeo.length || !subjectCheck.passes || missingFocuses.length || missingKeyPhrases.length) {
-      const correctionResponse = await fetch("https://api.openai.com/v1/responses", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model,
-          store: false,
-          reasoning: { effort: "low" },
-          max_output_tokens: Math.min(24000, Math.max(3500, input.length * 4)),
-          text: {
-            verbosity: "high",
-            format: { type: "json_schema", name: "klio_corrected_material", strict: true, schema: MATERIAL_SCHEMA },
-          },
+      try {
+        const correctionCall = await callAiModel<Record<string, unknown>>({
+          operation: "revise_content",
+          ownerEmail: identity.email,
+          brandId: input.useBrand ? input.brandId : undefined,
+          schemaName: "klio_corrected_material",
+          schema: MATERIAL_SCHEMA,
           instructions: [
             "Ты — выпускающий редактор платформы КЛИО.",
             "Приведи материал к заданному объёму, сохранив тему, факты, ключевые фразы, структуру и голос бренда.",
@@ -1044,16 +1018,17 @@ export async function POST(request: Request) {
             "Верни только валидный JSON с полями title, body, meta_title, meta_description, editorial_comment.",
           ].join("\n"),
           input: JSON.stringify({ brief: JSON.parse(userBrief), current_material: material }),
-        }),
-      });
-
-      if (correctionResponse.ok) {
-        const correctedBody = await correctionResponse.json();
-        material = parseMaterial(outputText(correctedBody));
+        });
+        material = materialFromRecord(correctionCall.result);
+        usedModel = correctionCall.model;
         missingGeo = missingGeography(material, input);
         subjectCheck = topicCoverage(material, input);
         missingFocuses = missingEditorialFocuses(material, input);
         missingKeyPhrases = missingKeywords(material, input);
+      } catch (error) {
+        // The correction pass is best-effort — if it fails, fall through
+        // with the original material rather than losing the whole result.
+        console.error("Generation correction pass failed", error);
       }
     }
 
@@ -1093,7 +1068,7 @@ export async function POST(request: Request) {
       tone: input.tone,
       targetLength: input.length,
     });
-    return Response.json({ material, mode: "ai", model, coverage: coverageSummary(material, input), sources: { website: website.status, geography: input.geography.map((item) => item.label) }, usage });
+    return Response.json({ material, mode: "ai", model: usedModel, coverage: coverageSummary(material, input), sources: { website: website.status, geography: input.geography.map((item) => item.label) }, usage });
   } catch (error) {
     if (error instanceof WorkspaceAccessError) return workspaceErrorResponse(error);
     console.error("Generation route failed", error);

@@ -1,6 +1,7 @@
 import { readWebsiteContext, websiteSourceLabel, type WebsiteContext } from "../_lib/website-context";
-import { AiResponseError, openAiErrorResponse, requestStructuredJson } from "../_lib/openai-response";
-import { assertSecondaryQuotaAvailable, recordResearch, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
+import { AiResponseError, openAiErrorResponse } from "../_lib/openai-response";
+import { callAiModel } from "../_lib/ai-router";
+import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 
 type CompetitorCoverage = "strong" | "partial" | "missing" | "unknown";
 
@@ -153,6 +154,7 @@ export async function POST(request: Request) {
     if (!query) return Response.json({ error: "Укажите тему или основной запрос." }, { status: 400 });
     if (competitors.length < 2) return Response.json({ error: "Добавьте минимум две страницы конкурентов." }, { status: 400 });
     await assertSecondaryQuotaAvailable("research");
+    const identity = await workspaceIdentity();
 
     const [brandWebsite, competitorWebsites] = await Promise.all([
       readWebsiteContext(brand.website),
@@ -190,14 +192,13 @@ export async function POST(request: Request) {
       "Верни только структурированный результат по JSON-схеме.",
     ].join("\n");
 
-    const { result: aiResult, model } = await requestStructuredJson<AiAnalysis>({
+    const { result: aiResult, model } = await callAiModel<AiAnalysis>({
+      operation: "analyze_competitors",
+      ownerEmail: identity.email,
       schemaName: "klio_competitor_analysis",
       schema: analysisSchema(sources.map((item) => item.id)),
       instructions,
       input: JSON.stringify(requestContext, null, 2),
-      reasoningEffort: "low",
-      verbosity: "medium",
-      maxOutputTokens: 9000,
     });
 
     if (!aiResult.topics?.length) {

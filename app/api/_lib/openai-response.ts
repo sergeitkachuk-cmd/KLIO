@@ -1,18 +1,13 @@
-type JsonSchema = Record<string, unknown>;
-
-type StructuredRequest = {
-  schemaName: string;
-  schema: JsonSchema;
-  instructions: string;
-  input: string;
-  maxOutputTokens?: number;
-  reasoningEffort?: "none" | "low" | "medium" | "high";
-  verbosity?: "low" | "medium" | "high";
-  // Lets the model check real search behaviour (autocomplete, related
-  // searches, actual ranking pages) instead of generating query variants
-  // purely from its own training data.
-  useWebSearch?: boolean;
-};
+// This file used to also hold requestStructuredJson()/openAiConfiguration()
+// — a second, parallel place that picked an OpenAI model and called the
+// Responses API directly. Every route has since moved onto the single
+// router in ai-router.ts / ai-config.ts, so that duplicate call path was
+// removed. What's left is shared error plumbing: the error types and the
+// one openAiErrorResponse() mapper every AI-calling route's catch-all uses,
+// for both legacy AiResponseError throws (still used for post-call
+// validation, e.g. semantics/content-plan schema checks) and AiCallError
+// from callAiModel().
+import { AiCallError } from "./ai-router";
 
 export class AiNotConfiguredError extends Error {
   constructor() {
@@ -29,15 +24,6 @@ export class AiResponseError extends Error {
   }
 }
 
-export function openAiConfiguration() {
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) throw new AiNotConfiguredError();
-  return {
-    apiKey,
-    model: process.env.OPENAI_MODEL?.trim() || "gpt-5-mini",
-  };
-}
-
 export function openAiErrorResponse(error: unknown, fallback: string) {
   if (error instanceof AiNotConfiguredError) {
     return Response.json({ error: error.message, code: "AI_NOT_CONFIGURED" }, { status: 503 });
@@ -45,80 +31,12 @@ export function openAiErrorResponse(error: unknown, fallback: string) {
   if (error instanceof AiResponseError) {
     return Response.json({ error: error.message, code: "AI_RESPONSE_ERROR" }, { status: error.status });
   }
+  // Routes on the ai-router.ts path (callAiModel) throw AiCallError instead
+  // of AiResponseError — same shape, handled the same way here so every
+  // route can share one catch-all.
+  if (error instanceof AiCallError) {
+    return Response.json({ error: error.message, code: "AI_RESPONSE_ERROR" }, { status: error.status });
+  }
   console.error(fallback, error);
   return Response.json({ error: fallback }, { status: 500 });
-}
-
-function responseOutputText(response: unknown) {
-  const source = response && typeof response === "object" ? response as Record<string, unknown> : {};
-  if (typeof source.output_text === "string" && source.output_text.trim()) return source.output_text.trim();
-  const output = Array.isArray(source.output) ? source.output : [];
-  for (const item of output) {
-    if (!item || typeof item !== "object") continue;
-    const content = Array.isArray((item as Record<string, unknown>).content)
-      ? (item as Record<string, unknown>).content as unknown[]
-      : [];
-    for (const part of content) {
-      if (!part || typeof part !== "object") continue;
-      const record = part as Record<string, unknown>;
-      if (record.type === "refusal" && typeof record.refusal === "string") {
-        throw new AiResponseError("AI‑редакция не смогла выполнить этот запрос. Измените формулировку и повторите попытку.", 422);
-      }
-      if (typeof record.text === "string" && record.text.trim()) return record.text.trim();
-    }
-  }
-  throw new AiResponseError("AI‑редакция вернула пустой ответ. Повторите попытку.");
-}
-
-export async function requestStructuredJson<T>({
-  schemaName,
-  schema,
-  instructions,
-  input,
-  maxOutputTokens = 9000,
-  reasoningEffort = "low",
-  verbosity = "medium",
-  useWebSearch = false,
-}: StructuredRequest): Promise<{ result: T; model: string }> {
-  const { apiKey, model } = openAiConfiguration();
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      store: false,
-      reasoning: { effort: reasoningEffort },
-      max_output_tokens: maxOutputTokens,
-      ...(useWebSearch ? { tools: [{ type: "web_search", search_context_size: "medium" }] } : {}),
-      text: {
-        verbosity,
-        format: {
-          type: "json_schema",
-          name: schemaName,
-          strict: true,
-          schema,
-        },
-      },
-      instructions,
-      input,
-    }),
-  });
-
-  if (!response.ok) {
-    const detail = await response.text();
-    console.error("OpenAI request failed", response.status, detail.slice(0, 1200));
-    throw new AiResponseError("AI‑редакция временно не ответила. Повторите попытку через несколько минут.");
-  }
-
-  const body = await response.json();
-  try {
-    return { result: JSON.parse(responseOutputText(body)) as T, model };
-  } catch (error) {
-    if (error instanceof AiResponseError) throw error;
-    console.error("OpenAI structured response parse failed", error);
-    throw new AiResponseError("AI‑редакция вернула неполный результат. Повторите попытку.");
-  }
 }

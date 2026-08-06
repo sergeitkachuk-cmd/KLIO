@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, index, integer, pgTable, text } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, real, text } from "drizzle-orm/pg-core";
 
 export const accounts = pgTable("accounts", {
   email: text("email").primaryKey(),
@@ -71,6 +71,35 @@ export const generations = pgTable("generations", {
 }, (table) => [
   index("generations_owner_created_idx").on(table.ownerEmail, table.createdAt),
   index("generations_brand_created_idx").on(table.brandId, table.createdAt),
+]);
+
+// One row per AI call made through the router (app/api/_lib/ai-router.ts).
+// Powers cost/latency accounting per user, brand, material and operation.
+export const aiUsage = pgTable("ai_usage", {
+  id: text("id").primaryKey(),
+  ownerEmail: text("owner_email").notNull(),
+  brandId: text("brand_id"),
+  materialId: text("material_id"),
+  operation: text("operation").notNull(),
+  model: text("model").notNull(),
+  reasoningEffort: text("reasoning_effort").notNull(),
+  inputTokens: integer("input_tokens").notNull().default(0),
+  cachedInputTokens: integer("cached_input_tokens").notNull().default(0),
+  outputTokens: integer("output_tokens").notNull().default(0),
+  totalTokens: integer("total_tokens").notNull().default(0),
+  estimatedCostUsd: real("estimated_cost_usd").notNull().default(0),
+  durationMs: integer("duration_ms").notNull().default(0),
+  retryCount: integer("retry_count").notNull().default(0),
+  // "success" | "failed" — see AiUsageStatus in ai-config.ts
+  status: text("status").notNull(),
+  // Set when a nano operation fell back to Luna after exhausting retries.
+  fallbackFrom: text("fallback_from"),
+  requestId: text("request_id"),
+  errorMessage: text("error_message"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  index("ai_usage_owner_created_idx").on(table.ownerEmail, table.createdAt),
+  index("ai_usage_operation_idx").on(table.operation, table.createdAt),
 ]);
 
 export const materials = pgTable("materials", {

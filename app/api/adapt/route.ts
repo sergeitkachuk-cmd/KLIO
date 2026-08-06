@@ -6,7 +6,9 @@ import {
   type ContentTone,
 } from "../../content-plans";
 import { readWebsiteContext, websiteSourceLabel, type WebsiteContext } from "../_lib/website-context";
-import { assertSecondaryQuotaAvailable, recordEditorialAction, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
+import { assertSecondaryQuotaAvailable, recordEditorialAction, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
+import { AiCallError, callAiModel } from "../_lib/ai-router";
+import { adaptationReasoningEffort } from "../_lib/ai-config";
 
 type AdaptationGoal = AdaptationPlan;
 
@@ -314,41 +316,20 @@ function demoMaterial(input: ReturnType<typeof normalizePayload>, website: Websi
   };
 }
 
-function outputText(response: unknown) {
-  if (!response || typeof response !== "object") return "";
-  const candidate = response as {
-    output_text?: unknown;
-    output?: Array<{ content?: Array<{ type?: string; text?: unknown }> }>;
+function materialFromRecord(parsed: Record<string, unknown>): AdaptedMaterial | null {
+  const title = clean(parsed.title, 500);
+  const body = clean(parsed.body, 60000);
+  if (!title || !body) return null;
+  return {
+    title,
+    body,
+    metaTitle: clean(parsed.meta_title, 500) || title.slice(0, 70),
+    metaDescription: clean(parsed.meta_description, 1000),
+    editorialComment: clean(parsed.editorial_comment, 1600),
+    changes: Array.isArray(parsed.changes)
+      ? parsed.changes.map((item) => clean(item, 240)).filter(Boolean).slice(0, 6)
+      : [],
   };
-  if (typeof candidate.output_text === "string") return candidate.output_text;
-  return (candidate.output ?? [])
-    .flatMap((item) => item.content ?? [])
-    .filter((item) => item.type === "output_text" && typeof item.text === "string")
-    .map((item) => item.text as string)
-    .join("\n");
-}
-
-function parseMaterial(text: string): AdaptedMaterial | null {
-  try {
-    const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-    if (!cleaned) return null;
-    const parsed = JSON.parse(cleaned) as Record<string, unknown>;
-    const title = clean(parsed.title, 500);
-    const body = clean(parsed.body, 60000);
-    if (!title || !body) return null;
-    return {
-      title,
-      body,
-      metaTitle: clean(parsed.meta_title, 500) || title.slice(0, 70),
-      metaDescription: clean(parsed.meta_description, 1000),
-      editorialComment: clean(parsed.editorial_comment, 1600),
-      changes: Array.isArray(parsed.changes)
-        ? parsed.changes.map((item) => clean(item, 240)).filter(Boolean).slice(0, 6)
-        : [],
-    };
-  } catch {
-    return null;
-  }
 }
 
 function adaptationHasViolation(
@@ -381,9 +362,10 @@ export async function POST(request: Request) {
 
     await assertSecondaryQuotaAvailable("editor");
 
+    const identity = await workspaceIdentity();
     const brandWebsite = input.useBrand ? clean(input.brand.website, 220) : "";
     const website = await readWebsiteContext(brandWebsite);
-    const model = process.env.OPENAI_MODEL?.trim() || "gpt-5-mini";
+    const reasoningEffort = adaptationReasoningEffort(input.goal);
     const plan = ADAPTATION_PLANS[input.goal];
     const toneRules = TONE_PLANS[input.tone];
     const transformationDirective = deepRewriteGoals.has(input.goal)
@@ -406,19 +388,15 @@ export async function POST(request: Request) {
         ? { url: website.resolvedUrl, text: website.text }
         : null,
     };
-    const aiResponse = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model,
-        store: false,
-        reasoning: { effort: "low" },
-        max_output_tokens: 9000,
-        tools: [{ type: "web_search", search_context_size: "medium" }],
-        text: {
-          verbosity: input.goal === "social" || input.goal === "ads" || input.goal === "cold_email" ? "low" : "medium",
-          format: { type: "json_schema", name: "klio_adapted_material", strict: true, schema: ADAPTED_MATERIAL_SCHEMA },
-        },
+    let material: AdaptedMaterial | null = null;
+    let usedModel = "";
+    try {
+      const call = await callAiModel<Record<string, unknown>>({
+        operation: "adapt_text",
+        reasoningEffortOverride: reasoningEffort,
+        ownerEmail: identity.email,
+        schemaName: "klio_adapted_material",
+        schema: ADAPTED_MATERIAL_SCHEMA,
         instructions: [
           "Ты — старший русскоязычный редактор и контент‑маркетолог платформы КЛИО.",
           "Переработай готовый текст пользователя под указанную задачу и верни только валидный JSON без Markdown-ограждений.",
@@ -435,27 +413,23 @@ export async function POST(request: Request) {
           "Структура JSON: title, body, meta_title, meta_description, editorial_comment, changes. changes — массив из 3–6 коротких строк.",
         ].join("\n"),
         input: JSON.stringify(adaptationBrief),
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      return Response.json({ error: "AI‑редактор временно не ответил. Попробуйте ещё раз." }, { status: 502 });
+      });
+      material = materialFromRecord(call.result);
+      usedModel = call.model;
+    } catch (error) {
+      if (error instanceof AiCallError) {
+        return Response.json({ error: error.message }, { status: error.status });
+      }
+      throw error;
     }
-    const firstOutput = outputText(await aiResponse.json());
-    let material = parseMaterial(firstOutput);
+
     if (!material || adaptationHasViolation(input, material)) {
-      const correctionResponse = await fetch("https://api.openai.com/v1/responses", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model,
-          store: false,
-          reasoning: { effort: "low" },
-          max_output_tokens: 9000,
-          text: {
-            verbosity: input.goal === "social" || input.goal === "ads" ? "low" : "medium",
-            format: { type: "json_schema", name: "klio_corrected_adaptation", strict: true, schema: ADAPTED_MATERIAL_SCHEMA },
-          },
+      try {
+        const correctionCall = await callAiModel<Record<string, unknown>>({
+          operation: "revise_content",
+          ownerEmail: identity.email,
+          schemaName: "klio_corrected_adaptation",
+          schema: ADAPTED_MATERIAL_SCHEMA,
           instructions: [
             "Ты — выпускающий редактор КЛИО. Пересобери материал: текущая версия не прошла проверку формата или слишком похожа на исходник.",
             "Верни только валидный JSON с полями title, body, meta_title, meta_description, editorial_comment, changes.",
@@ -470,23 +444,25 @@ export async function POST(request: Request) {
           input: JSON.stringify({
             brief: adaptationBrief,
             rejected_material: material ?? null,
-            rejected_raw_output: material ? null : firstOutput.slice(0, 12000),
             validation_failure: material
               ? "Материал нарушил ограничения выбранного сценария."
               : "Обязательные поля title и body отсутствуют или пусты.",
           }),
-        }),
-      });
-      if (correctionResponse.ok) {
-        const corrected = parseMaterial(outputText(await correctionResponse.json()));
-        if (corrected) material = corrected;
+        });
+        const corrected = materialFromRecord(correctionCall.result);
+        if (corrected) {
+          material = corrected;
+          usedModel = correctionCall.model;
+        }
+      } catch (error) {
+        console.error("Adaptation correction pass failed", error);
       }
     }
     if (!material || adaptationHasViolation(input, material)) {
       return Response.json({ error: "AI‑редактор не прошёл проверку формата. Исходный текст сохранён; повторите попытку или уточните задачу." }, { status: 422 });
     }
     const usage = await recordEditorialAction();
-    return Response.json({ material, mode: "ai", model, sources: { website: website.status }, usage });
+    return Response.json({ material, mode: "ai", model: usedModel, sources: { website: website.status }, usage });
   } catch (error) {
     if (error instanceof WorkspaceAccessError) return workspaceErrorResponse(error);
     console.error("Adaptation route failed", error);

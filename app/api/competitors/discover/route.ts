@@ -1,3 +1,6 @@
+import { AiCallError, callAiModel } from "../../_lib/ai-router";
+import { workspaceIdentity } from "../../_lib/workspace-account";
+
 type BrandInput = {
   name: string;
   website: string;
@@ -167,33 +170,25 @@ export async function POST(request: Request) {
       return Response.json({ error: "Укажите тему либо заполните описание и позиционирование бренда." }, { status: 400 });
     }
 
-    const apiKey = process.env.OPENAI_API_KEY?.trim();
-    if (!apiKey) {
+    if (!process.env.OPENAI_API_KEY?.trim()) {
       return Response.json({ error: "Автоподбор требует подключённого AI‑доступа. Пока добавьте ссылки вручную." }, { status: 503 });
     }
 
-    const model = process.env.OPENAI_SEARCH_MODEL?.trim() || process.env.OPENAI_MODEL?.trim() || "gpt-5-mini";
+    const identity = await workspaceIdentity();
     const brief = JSON.stringify({
       comparison_topic: query,
       brand: brand.name ? brand : null,
       search_demand_geography: geography,
     }, null, 2);
 
-    const aiResponse = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        store: false,
-        reasoning: { effort: "low" },
-        max_output_tokens: 1800,
-        text: { verbosity: "low" },
-        tools: [{ type: "web_search", search_context_size: "medium" }],
-        tool_choice: "required",
-        include: ["web_search_call.action.sources"],
+    let responseBody: unknown;
+    let model = "";
+    try {
+      const call = await callAiModel({
+        operation: "discover_competitors",
+        ownerEmail: identity.email,
+        toolChoice: "required",
+        includeSources: true,
         instructions: [
           "Ты находишь прямых контентных конкурентов для сравнительной матрицы КЛИО.",
           "Обязательно выполни веб‑поиск и найди 3–5 открытых страниц реальных компаний по той же теме, категории и поисковому интенту.",
@@ -204,16 +199,16 @@ export async function POST(request: Request) {
           "Не придумывай адреса и не перечисляй страницы, которые не были найдены веб‑поиском.",
         ].join("\n"),
         input: `Найди страницы конкурентов по этому брифу:\n${brief}`,
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error("Competitor discovery failed", aiResponse.status, errorText.slice(0, 1200));
-      return Response.json({ error: "ИИ‑поиск временно не ответил. Ссылки можно добавить вручную." }, { status: 502 });
+      });
+      responseBody = call.rawResponse;
+      model = call.model;
+    } catch (error) {
+      if (error instanceof AiCallError) {
+        return Response.json({ error: error.message }, { status: error.status });
+      }
+      throw error;
     }
 
-    const responseBody = await aiResponse.json();
     const brandDomain = domainOf(brand.website);
     const seen = new Set<string>();
     const candidates = citationsFromResponse(responseBody)
