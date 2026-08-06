@@ -5,7 +5,7 @@ import {
   type ContentFormat,
   type ContentTone,
 } from "../../content-plans";
-import { readWebsiteContext, websiteSourceLabel, type WebsiteContext } from "../_lib/website-context";
+import { readWebsiteContext } from "../_lib/website-context";
 import { assertGenerationQuotaAvailable, recordGeneration, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 import { AiCallError, callAiModel } from "../_lib/ai-router";
 import type { AiOperation } from "../_lib/ai-config";
@@ -252,13 +252,12 @@ function trimToWordTarget(value: string, target: number) {
 }
 
 // Deterministic overshoot backstop for a real AI-written body (see the
-// mechanical-trim step in POST below) — not the same as fitDemoLength,
-// which works on template sections built from scratch. Splits on blank
-// lines (the model always writes section breaks this way per the prompt's
-// "уместными подзаголовками" instruction) and, when there's more than one
-// section, keeps the last one — almost always the conclusion/CTA —
-// untouched, trimming only the sections before it. That avoids the one
-// thing a flat word-count cut risks: lopping off the ending entirely.
+// mechanical-trim step in POST below). Splits on blank lines (the model
+// always writes section breaks this way per the prompt's "уместными
+// подзаголовками" instruction) and, when there's more than one section,
+// keeps the last one — almost always the conclusion/CTA — untouched,
+// trimming only the sections before it. That avoids the one thing a flat
+// word-count cut risks: lopping off the ending entirely.
 function trimOverflowBody(body: string, target: number) {
   const sections = body.split(/\n\s*\n/).map((item) => item.trim()).filter(Boolean);
   if (sections.length <= 1) return trimToWordTarget(body, target);
@@ -269,21 +268,6 @@ function trimOverflowBody(body: string, target: number) {
 
   const core = trimToWordTarget(sections.slice(0, -1).join("\n\n"), target - conclusionWords);
   return `${core}\n\n${conclusion}`;
-}
-
-function fitDemoLength(sections: string[], target: number) {
-  const complete = sections.join("\n\n");
-  if (countWords(complete) <= target) return complete;
-
-  if (target > 350 && sections.length > 2) {
-    const conclusion = sections.at(-1) || "";
-    const conclusionWords = countWords(conclusion);
-    const coreTarget = Math.max(1, target - conclusionWords);
-    const core = trimToWordTarget(sections.slice(0, -1).join("\n\n"), coreTarget);
-    return `${core}\n\n${conclusion}`;
-  }
-
-  return trimToWordTarget(complete, target);
 }
 
 const META_LEAKAGE_PATTERNS = [
@@ -413,28 +397,6 @@ function missingGeography(material: GeneratedMaterial, input: ReturnType<typeof 
   return input.geography.slice(0, 5).filter((item) => !geographyMentioned(publication, item.label)).map((item) => item.label);
 }
 
-function demoGeographySection(input: ReturnType<typeof normalizePayload>) {
-  if (input.format !== "seo" && input.format !== "landing") return "";
-  const labels = input.geography.slice(0, 5).map((item) => item.label);
-  if (!labels.length) return "";
-  return `Учтите географию поездки\n\nЕсли вы планируете поездку, находясь в одной из выбранных территорий — ${naturalList(labels)} — заранее сравните варианты дороги, трансфера и времени прибытия. География влияет на удобство маршрута и сезон поездки, но сама по себе не подтверждает, что у конкретного бренда есть филиал или представительство в этих регионах.`;
-}
-
-function cleanTopic(value: string) {
-  const cleaned = value.trim().replace(/[.!?]+$/, "");
-  return cleaned ? `${cleaned.charAt(0).toUpperCase()}${cleaned.slice(1)}` : "Как выбрать решение под свою задачу";
-}
-
-function listItems(value: string) {
-  return value.split(/[;\n]/).map((item) => item.trim().replace(/[.;]+$/, "")).filter(Boolean);
-}
-
-function naturalList(items: string[]) {
-  if (!items.length) return "";
-  if (items.length === 1) return items[0];
-  return `${items.slice(0, -1).join(", ")} и ${items.at(-1)}`;
-}
-
 function selectedKeywords(input: ReturnType<typeof normalizePayload>) {
   const maximum = input.format === "seo" ? 8 : input.format === "landing" ? 3 : 1;
   const semanticPhrases = input.useSemantics ? input.semanticContext?.selectedKeywords.map((item) => item.phrase) ?? [] : [];
@@ -518,286 +480,6 @@ function activeEditorialFocuses(input: ReturnType<typeof normalizePayload>) {
     .slice(0, 10);
 }
 
-function isSanatoriumContext(input: ReturnType<typeof normalizePayload>) {
-  const source = `${input.topic} ${input.keywords} ${input.useBrand ? `${input.brand.name} ${input.brand.description}` : ""}`;
-  return /санатор|курорт|лечен|реабилитац|оздоров|восстановлен/i.test(source);
-}
-
-function brandNameTokens(value: string) {
-  return value
-    .toLocaleLowerCase("ru-RU")
-    .replace(/ё/g, "е")
-    .split(/[^a-zа-я0-9]+/i)
-    .map(stemRussianWord)
-    .filter((item) => item.length >= 4 && !["санатор", "компан", "бренд"].includes(item));
-}
-
-function isBrandMarketingTopic(input: ReturnType<typeof normalizePayload>) {
-  if (!input.useBrand || !input.brand.name.trim()) return false;
-  const topicTokens = keywordSearchTokens(input.topic);
-  const nameTokens = brandNameTokens(input.brand.name);
-  const named = nameTokens.length > 0 && nameTokens.every((token) => topicTokens.includes(token));
-  const explicitGoal = /(?:цель материала|задача материала)\s*:\s*(?:продвиг|прода|маркетинг|презентац)/i.test(input.accent);
-  return named || explicitGoal;
-}
-
-function keywordCoverageSections(
-  input: ReturnType<typeof normalizePayload>,
-  brandName: string,
-  profile: ReturnType<typeof sanatoriumTopicProfile>,
-  existingSections: string[],
-) {
-  const existing = existingSections.join("\n");
-  const subjectName = input.useBrand ? brandName : "Профильный санаторий";
-  return selectedKeywords(input)
-    .filter((keyword) => !containsKeywordPhrase(existing, keyword))
-    .map((keyword, index) => {
-      const heading = cleanTopic(keyword);
-      if (index === 0) {
-        return `${heading}\n\n${subjectName} раскрывает это направление через ${profile.specialist}, индивидуальное определение допустимой нагрузки и подтверждённые возможности лечебной базы. Конкретные назначения формируются после медицинской оценки.`;
-      }
-      if (index === 1) {
-        return `${heading}\n\nВ центре программы находятся ${profile.program}. Для гостя важен не общий перечень процедур, а их место в последовательном курсе и возможность корректировать назначения по самочувствию.`;
-      }
-      if (index === 2) {
-        return `${heading}\n\nПодтверждённые факты курорта связываются с задачей гостя без универсальных обещаний. Возможность применения каждого лечебного фактора и процедуры определяет врач с учётом показаний и ограничений.`;
-      }
-      return `${heading}\n\nДо поездки стоит подтвердить профиль программы, документы, продолжительность и состав путёвки. Это помогает согласовать ожидания с реальными возможностями курса.`;
-    });
-}
-
-function brandMarketingSanatoriumSections(input: ReturnType<typeof normalizePayload>, brandName: string) {
-  const topic = cleanTopic(input.topic);
-  const profile = sanatoriumTopicProfile(input);
-  const spineTopic = /остеохонд|позвоноч|сустав|опорно|двигател|спин|артр|артроз/i.test(`${input.topic} ${input.keywords}`);
-  const facts = listItems(input.brand.advantages);
-  const programFacts = facts.filter((item) => /программ|позвоноч|вытяж|массаж|гряз|озоно|бассейн|тренаж|мрт|корсет/i.test(item)).slice(0, 7);
-  const brandFacts = facts.filter((item) => !programFacts.includes(item)).slice(0, 5);
-  const focuses = parseEditorialFocuses(input.accent).filter((item) => item.required).map((item) => focusSection(item, input));
-  const base = [
-    `${topic}\n\n${brandName} — санаторий, где работа по профилю ${profile.area} строится вокруг медицинской оценки, последовательной программы и природных лечебных факторов Карелии. Здесь исходная тема раскрывается как конкретное предложение курорта, а не как общая инструкция по выбору здравницы.`,
-    `${spineTopic ? "Лечение спины" : "Профильное лечение"} в ${brandName}\n\nНаправление относится к профилю ${profile.area}. Важна не одна отдельная процедура, а сочетание ${profile.program}. Врач оценивает актуальное состояние, показания и ограничения, после чего определяет допустимую нагрузку и наполнение курса.`,
-    programFacts.length
-      ? `${spineTopic ? "Программа для позвоночника" : "Профильная программа"}\n\nВ профиле бренда подтверждены: ${naturalList(programFacts)}. Эти элементы образуют содержательную основу направления, но не являются одинаковым назначением для каждого гостя — итоговый набор и интенсивность процедур корректируются медицинским специалистом.`
-      : `Программа, собранная вокруг задачи\n\n${brandName} связывает ${profile.program}. Точный состав курса и применимость процедур подтверждаются после консультации; неподтверждённые сроки и назначения в материале не добавляются.`,
-    `Сильная медицинская база\n\nДля профильного лечения в санатории важны специалисты, возможность корректировать нагрузку и понятный маршрут гостя. В ${brandName} программа рассматривается как связный курс: консультация, назначенные процедуры, движение, отдых и наблюдение за самочувствием.`,
-    brandFacts.length
-      ? `Природные преимущества первого российского курорта\n\nСреди подтверждённых особенностей ${brandName} — ${naturalList(brandFacts)}. Природные факторы усиливают предложение курорта, но применяются только с учётом медицинских показаний и ограничений.`
-      : `Природные лечебные факторы Карелии\n\n${profile.factor}. Их задача — быть частью медицински обоснованной программы, а не самостоятельным обещанием результата.`,
-    ...focuses,
-    spineTopic && programFacts.some((item) => /мрт|корсет/i.test(item))
-      ? `Подготовка к программе\n\nДо заезда необходимо уточнить перечень документов и исследований, которые нужны именно для выбранного направления. Для программы позвоночника в профиле бренда указаны требования к актуальности МРТ и наличию полужёсткого корсета; окончательные требования и возможность участия следует подтвердить у санатория до бронирования.`
-      : `Подготовка к программе\n\nДо заезда уточните перечень документов и исследований для выбранного направления. Актуальные медицинские сведения помогают врачу оценить показания, ограничения и допустимый состав курса; точные требования следует подтвердить у санатория до бронирования.`,
-    `Курс, в котором лечение сочетается с восстановлением\n\nСанаторный формат позволяет распределить процедуры и физическую нагрузку по дням, оставить время на отдых и прогулки. Такой ритм помогает воспринимать программу как единый маршрут восстановления, а не как набор разрозненных кабинетов.`,
-    `Следующий шаг\n\nЧтобы подобрать программу в ${brandName}, подготовьте актуальные медицинские документы и свяжитесь с санаторием для предварительного уточнения профиля, продолжительности и условий путёвки. Назначения определяются врачом после оценки состояния.`,
-  ];
-  const keywordSections = keywordCoverageSections(input, brandName, profile, base);
-  return [base[0], ...keywordSections, ...base.slice(1)].filter((section, index, all) => {
-    const heading = section.split("\n")[0].trim().toLocaleLowerCase("ru-RU");
-    return all.findIndex((candidate) => candidate.split("\n")[0].trim().toLocaleLowerCase("ru-RU") === heading) === index;
-  });
-}
-
-function genericSections(topic: string, primaryKey: string) {
-  return [
-    `${topic} — задача, в которой полезно сначала определить ожидаемый результат, ограничения и критерии выбора. Чем точнее сформулирован запрос, тем проще отделить действительно подходящие варианты от привлекательных, но малоинформативных обещаний.`,
-    `С чего начать\n\nОпишите исходную ситуацию и зафиксируйте, что должно измениться после решения. Затем выделите обязательные условия и параметры, которыми вы готовы поступиться. Такой список помогает сравнивать предложения по существу, а не по общему впечатлению.`,
-    `Какие сведения проверить\n\nИщите конкретное описание процесса, состава услуги, ответственности сторон и возможных ограничений. Утверждения должны опираться на проверяемые факты. Если важная деталь не указана, запросите разъяснение до принятия решения.`,
-    `Как сравнивать варианты\n\nИспользуйте одинаковый набор критериев для всех предложений: содержание, сроки, полная стоимость, квалификация исполнителей, поддержка и условия изменения договорённостей. Так сравнение останется честным и наглядным.`,
-    `Ключевой запрос «${primaryKey}» должен получать прямой ответ, а не набор общих рекламных формулировок. Полезный материал объясняет различия, предупреждает об ограничениях и даёт читателю понятный следующий шаг.`,
-    `Вопросы перед решением\n\nУточните, что входит в предложение, какие исходные данные потребуются, кто отвечает за результат и как действовать при изменении условий. Ответы покажут не только содержание услуги, но и качество будущей коммуникации.`,
-    "Не торопитесь с решением под влиянием искусственной срочности. Сначала проверьте ключевые сведения, сопоставьте варианты и сохраните условия, которые имеют значение. Обоснованный выбор начинается с ясности, а не с давления.",
-  ];
-}
-
-function genericSocialSections(topic: string) {
-  return [
-    `${topic}: начните не с готового решения, а с результата, который действительно нужен. Так проще отделить полезные варианты от общих обещаний.`,
-    "Зафиксируйте обязательные условия, проверьте содержание предложения и задайте вопросы о деталях, которых нет в описании.",
-    "Сравнивайте варианты по одинаковым критериям: состав, сроки, полная стоимость, поддержка и ограничения. Один понятный список часто экономит больше времени, чем десятки вкладок.",
-    "Сохраните этот принцип для следующего выбора: сначала задача и факты, затем впечатление.",
-  ];
-}
-
-function genericAdSections(topic: string) {
-  return [
-    `${topic} без лишней неопределённости.`,
-    "Сравните содержание, условия и подтверждённые факты по одному понятному списку.",
-    "Уточните детали и выберите решение, которое соответствует вашей задаче.",
-  ];
-}
-
-function genericLandingSections(topic: string) {
-  return [
-    `${topic}: решение по понятным критериям\n\nСформулируйте ожидаемый результат и обязательные условия — это станет основой выбора.`,
-    "Содержание предложения\n\nПроверьте процесс, состав услуги, сроки, ответственность сторон и возможные ограничения. Значимые утверждения должны опираться на конкретные факты.",
-    "Честное сравнение\n\nИспользуйте одинаковые критерии для всех вариантов: содержание, полная стоимость, поддержка и условия изменения договорённостей.",
-    "Следующий шаг\n\nСоберите недостающие ответы до решения. Так выбор будет основан на ясных условиях, а не на искусственной срочности.",
-  ];
-}
-
-function sanatoriumTopicProfile(input: ReturnType<typeof normalizePayload>) {
-  const source = `${input.topic} ${input.keywords}`.toLocaleLowerCase("ru-RU");
-  if (/желуд|гастр|кишеч|пищевар|жкт|печен|желч/.test(source)) {
-    return {
-      area: "заболеваний желудка и органов пищеварения",
-      specialist: "гастроэнтерологический профиль и участие врача в подборе курса",
-      program: "питание, питьевой режим, допустимые процедуры и медицинское наблюдение",
-      factor: "минеральная вода и другие природные факторы применяются только по индивидуально определённой схеме",
-      question: "какие диагнозы и состояния входят в профиль, как организовано питание и кто определяет режим приёма минеральной воды",
-    };
-  }
-  if (/остеохонд|позвоноч|сустав|опорно|двигател|спин|артр|артроз/.test(source)) {
-    return {
-      area: "заболеваний опорно‑двигательного аппарата",
-      specialist: "профиль по опорно‑двигательному аппарату и участие врача в определении нагрузки",
-      program: "лечебная физкультура, допустимые процедуры, восстановительный режим и контроль самочувствия",
-      factor: "грязелечение, водные и аппаратные процедуры оцениваются как части индивидуальной программы",
-      question: "какие состояния входят в профиль, нужны ли актуальные исследования и как корректируется физическая нагрузка",
-    };
-  }
-  if (/сердц|кардио|сосуд|давлен|гипертон/.test(source)) {
-    return {
-      area: "сердечно‑сосудистого профиля",
-      specialist: "кардиологический профиль, медицинское наблюдение и допустимый уровень нагрузки",
-      program: "щадящий режим, назначенные процедуры, движение и контроль состояния",
-      factor: "любые лечебные факторы рассматриваются с учётом текущего состояния и терапии",
-      question: "какие документы нужны, кто оценивает допустимую нагрузку и как организовано наблюдение в ходе курса",
-    };
-  }
-  if (/дых|бронх|легк|лор|иммун/.test(source)) {
-    return {
-      area: "органов дыхания и восстановительных программ",
-      specialist: "профиль по органам дыхания и первичная оценка состояния",
-      program: "дыхательные практики, климатические факторы, допустимые процедуры и спокойный режим",
-      factor: "природные и аппаратные факторы назначаются после оценки показаний и ограничений",
-      question: "какие состояния входят в профиль, когда можно планировать поездку и как формируется программа",
-    };
-  }
-  if (/стресс|сон|тревож|нерв|переутом|выгоран/.test(source)) {
-    return {
-      area: "восстановления сна, нервной системы и ресурса",
-      specialist: "профиль восстановительных программ и участие медицинского специалиста",
-      program: "режим сна, умеренная активность, процедуры и снижение повседневной нагрузки",
-      factor: "природная среда поддерживает программу, но не заменяет медицинскую оценку состояния",
-      question: "как устроен распорядок, кто определяет процедуры и какие ограничения учитываются до заезда",
-    };
-  }
-  return {
-    area: `направления «${input.topic.trim()}»`,
-    specialist: "профиль санатория и участие врача в подборе программы",
-    program: "цель курса, допустимые процедуры, режим и медицинское сопровождение",
-    factor: "природные лечебные факторы рассматриваются только в контексте показаний и ограничений",
-    question: "входит ли конкретная задача в профиль, какие документы нужны и как формируется программа",
-  };
-}
-
-function focusSection(focus: EditorialFocus, input: ReturnType<typeof normalizePayload>) {
-  const label = focus.label.replace(/[.!?]+$/, "");
-  const source = `${focus.label} ${focus.guidance}`.toLocaleLowerCase("ru-RU");
-  const topic = input.topic.trim();
-  let paragraph = `При рассмотрении темы «${topic}» этот аспект нужно проверять по конкретным условиям санатория. Уточните, что подтверждено в описании программы, кто отвечает за этот этап и какие ограничения действуют. Общего обещания недостаточно: читателю нужны понятные факты и порядок действий.`;
-
-  if (/медицин|врач|специалист|профил/.test(source)) {
-    paragraph = `При запросе «${topic}» важны не должности в общем списке, а роль специалистов в маршруте гостя. Уточните, кто проводит первичную консультацию, на каких данных строятся назначения и как можно сообщить об изменении самочувствия. Профиль должен соответствовать конкретной задаче поездки.`;
-  } else if (/питан|диет|меню/.test(source)) {
-    paragraph = `Для темы «${topic}» питание нельзя оставлять бытовой деталью. До бронирования стоит уточнить формат меню, возможность учесть назначенную врачом диету, аллергии и индивидуальные ограничения. Санаторий должен подтвердить реальные возможности, а не ограничиваться словом «диетическое».`;
-  } else if (/минерал|вод|гряз|природ/.test(source)) {
-    paragraph = `Природный фактор не является универсальной процедурой для запроса «${topic}». Важно объяснить, как врач определяет возможность применения, режим и сочетание с другими назначениями. Происхождение воды или грязи само по себе не подтверждает показание и не гарантирует результат.`;
-  } else if (/программ|процедур|назначен/.test(source)) {
-    paragraph = `Состав программы по теме «${topic}» нужно оценивать как последовательность назначений, а не как длинный каталог процедур. Спросите, что входит в путёвку, кто формирует курс, можно ли заменить неподходящую процедуру и как распределяется нагрузка по дням.`;
-  } else if (/документ|подготов|обследован/.test(source)) {
-    paragraph = `Подготовка к поездке по теме «${topic}» начинается с актуальных медицинских данных. Заранее уточните требования к санаторно‑курортной карте, выпискам и исследованиям, а также сроки их действия. Точный перечень должен подтвердить выбранный санаторий.`;
-  } else if (/стоим|цен|бронир|путев/.test(source)) {
-    paragraph = `Сравнивать предложения по теме «${topic}» корректно только при одинаковом составе. Проверьте, входят ли в стоимость проживание, питание, консультации, диагностика и процедуры, какие услуги оплачиваются отдельно и каковы условия переноса или отмены.`;
-  } else if (/противопоказ|безопас|огранич/.test(source)) {
-    paragraph = `Для запроса «${topic}» ограничения так же важны, как перечень возможностей. Решение о поездке и допустимой программе принимается с врачом на основании актуального состояния. Текст санатория должен обозначать границы и не обещать одинаковый результат всем.`;
-  }
-
-  return `${label}\n\n${paragraph}`;
-}
-
-function topicAwareSanatoriumSections(input: ReturnType<typeof normalizePayload>, brandName: string) {
-  const topic = input.topic.trim();
-  const topicLower = topic.charAt(0).toLocaleLowerCase("ru-RU") + topic.slice(1);
-  const profile = sanatoriumTopicProfile(input);
-  const facts = listItems(input.useBrand ? input.brand.advantages : "");
-  const brandSection = input.useBrand
-    ? `Что подтверждено у ${brandName}\n\nВ профиле курорта указаны ${naturalList(facts.slice(0, 4)) || "медицинское сопровождение и природные лечебные факторы"}. Для запроса «${topicLower}» эти сведения важны только после подтверждения профильной программы и консультации врача. Наличие отдельного фактора или процедуры не означает, что они автоматически подходят конкретному человеку.`
-    : `Что подтвердить у выбранного санатория\n\nПо запросу «${topicLower}» запросите описание профильной программы, порядок консультации и перечень необходимых документов. Не переносите общие сведения о санатории на конкретное заболевание без подтверждения специалистов.`;
-  const selectedFocusSections = parseEditorialFocuses(input.accent)
-    .filter((item) => item.required)
-    .map((item) => focusSection(item, input));
-
-  const sections = [
-    `${topic} — это запрос о профильном санаторно‑курортном сопровождении, а не об отдыхе или выборе здравницы вообще. В центре решения должны быть ${profile.specialist}, актуальное состояние человека и ограничения. Конкретный курс определяют после медицинской оценки; статья может помочь подготовить вопросы, но не заменяет консультацию врача.`,
-    `Что именно означает этот запрос\n\nФраза «${topicLower}» может объединять разные диагнозы, задачи и этапы восстановления. Поэтому сначала уточняют, что именно беспокоит человека, есть ли установленный диагноз, как менялось состояние и какие рекомендации уже даны. Без этой информации невозможно корректно оценить профиль санатория и допустимую программу.`,
-    `Проверьте профиль по конкретному направлению\n\nИщите не общий раздел «лечение», а сведения о профиле ${profile.area}. Важно понять, какие специалисты участвуют в первичной консультации, какие документы они используют и кто принимает решение о назначениях. Если сайт перечисляет только процедуры, но не объясняет маршрут пациента, задайте эти вопросы до оплаты.`,
-    `Как формируется программа\n\nДля темы «${topicLower}» программа должна связывать ${profile.program}. Уточните, существует ли единый набор для всех или назначения корректируются после осмотра. Полезно заранее узнать, что произойдёт, если отдельная процедура окажется неподходящей, и можно ли пересмотреть нагрузку во время курса.`,
-    ...selectedFocusSections,
-    brandSection,
-    `Природные лечебные факторы без универсальных обещаний\n\n${profile.factor}. До поездки спросите, какое место конкретный фактор занимает в программе, кто определяет режим и какие медицинские сведения нужны для решения. Для темы «${topicLower}» происхождение природного ресурса не заменяет индивидуальную оценку.` ,
-    `Питание и режим дня\n\nДаже когда питание не является главным лечебным фактором, оно влияет на переносимость курса и повседневный комфорт. Уточните формат меню, возможность учесть назначенную диету, аллергии и ограничения, а также интервалы между едой, процедурами и отдыхом. Не предполагайте, что общая пометка «диетическое питание» автоматически решает вашу задачу.`,
-    `Документы и обследования до поездки\n\nСпросите, нужна ли санаторно‑курортная карта, какие выписки и результаты исследований следует взять и каков допустимый срок их давности. Для запроса «${topicLower}» особенно важно передать врачу актуальную информацию, а не восстанавливать историю состояния по памяти уже после заезда.`,
-    `Показания и ограничения\n\nПеречень услуг не отвечает на вопрос, подходит ли поездка конкретному человеку. До бронирования обсудите актуальное состояние с врачом и уточните противопоказания выбранной программы. Если состояние изменилось после оформления путёвки, нужно повторно проверить возможность поездки и состав курса, а не ориентироваться на прежние рекомендации.`,
-    `Сколько времени закладывать на курс\n\nПродолжительность должна соответствовать цели, логике назначений и возможности наблюдать реакцию на нагрузку. Короткий заезд и полноценная санаторная программа решают разные задачи. Попросите санаторий объяснить рекомендуемый срок именно для выбранного направления, не приписывая нескольким дням эффект длительного курса.`,
-    `Что входит в путёвку\n\nСравните проживание, питание, первичную и повторные консультации, диагностику, процедуры и дополнительные услуги. Для темы «${topicLower}» особенно важно увидеть не количество позиций, а связность программы. Отдельно проверьте возможные доплаты, правила замены назначений, переноса дат и отмены.` ,
-    `Как оценить медицинское сопровождение\n\nУточните, к кому обращаться при изменении самочувствия, доступна ли повторная консультация и как фиксируются корректировки. Хорошо организованное сопровождение объясняет пациенту логику назначений и границы программы. Оно не строится на дистанционных гарантиях и не подменяет лечащего врача.` ,
-    `Бытовые условия тоже влияют на курс\n\nРасположение корпуса и лечебной базы, расстояния между кабинетами, доступность лифта, тишина и удобство номера могут быть существенными. Если человеку сложно долго ходить или требуется сопровождающий, обсудите это заранее. Программа должна быть выполнимой не только на бумаге, но и в реальном распорядке дня.` ,
-    `Дорога и день заезда\n\nПроверьте маршрут, трансфер, время заселения и первой консультации. Длительная дорога и позднее прибытие могут изменить первый день программы. Уточните, как санаторий действует в такой ситуации и переносятся ли пропущенные этапы, не предполагая автоматически, что расписание будет перестроено.` ,
-    `Как читать отзывы\n\nИщите повторяющиеся детали по конкретному профилю: организация консультаций, понятность назначений, питание, расписание и решение вопросов. Эмоциональная оценка без контекста мало помогает запросу «${topicLower}». Полезнее сопоставлять наблюдения нескольких гостей и проверять спорные сведения у санатория.` ,
-    `Вопросы до бронирования\n\nСоберите короткий список: ${profile.question}; что входит в стоимость; можно ли изменить назначения; кому сообщать об изменении самочувствия. Попросите ответить письменно или дать ссылки на актуальные страницы. Так сравнение будет опираться на одинаковые критерии.` ,
-    `Итог\n\n${topic} — это прежде всего проверка профильности, медицинского маршрута и ограничений. Сначала подтвердите, что санаторий работает с нужным направлением, затем сопоставьте программу, документы, питание, длительность и бытовые условия. Финальное решение о допустимости поездки и назначениях принимайте вместе с врачом.`,
-  ];
-
-  return sections.filter((section, index, all) => {
-    const heading = section.split("\n")[0].trim().toLocaleLowerCase("ru-RU");
-    return all.findIndex((candidate) => candidate.split("\n")[0].trim().toLocaleLowerCase("ru-RU") === heading) === index;
-  });
-}
-
-function topicAwareSanatoriumFormatSections(input: ReturnType<typeof normalizePayload>, brandName: string) {
-  const topic = input.topic.trim();
-  const profile = sanatoriumTopicProfile(input);
-  const facts = listItems(input.useBrand ? input.brand.advantages : "");
-  const focuses = parseEditorialFocuses(input.accent).filter((item) => item.required).map((item) => focusSection(item, input));
-
-  if (isBrandMarketingTopic(input) && input.format === "seo") {
-    return brandMarketingSanatoriumSections(input, brandName);
-  }
-
-  if (input.format === "social") {
-    return [
-      `${topic} — это не общий вопрос о выборе санатория. Сначала нужно подтвердить профиль по направлению ${profile.area} и понять, кто определяет допустимую программу.`,
-      `До бронирования уточните: ${profile.question}. Перечень процедур сам по себе не показывает, подходит ли курс конкретному человеку.`,
-      ...focuses.slice(0, 2),
-      input.useBrand && facts.length ? `В профиле ${brandName} указаны ${naturalList(facts.slice(0, 3))}. Их применимость к конкретной задаче подтверждает врач после оценки состояния.` : "Опирайтесь на подтверждённые условия программы и медицинскую консультацию, а не на универсальные обещания.",
-      "Сохраните эти вопросы перед разговором с санаторием и обсудите допустимость поездки со своим врачом.",
-    ];
-  }
-
-  if (input.format === "ads") {
-    return [
-      `${topic}: начните с проверки профильной программы и консультации специалиста.`,
-      input.useBrand && facts.length ? `${brandName}: ${naturalList(facts.slice(0, 2))}. Применимость процедур определяется индивидуально.` : `Уточните ${profile.specialist}, состав курса и необходимые документы.`,
-      "Получите подтверждённую информацию о программе без дистанционных обещаний результата.",
-    ];
-  }
-
-  if (input.format === "landing") {
-    return [
-      `${topic}\n\nПрофильная санаторная программа начинается с медицинской оценки, а не с универсального набора процедур. Уточните задачу, документы и ограничения до бронирования.`,
-      `Профиль программы\n\nПроверьте направление ${profile.area}, участие специалиста и порядок первичной консультации.`,
-      `Программа, собранная вокруг цели поездки\n\nКурс связывает ${profile.program}. Назначения и допустимую нагрузку определяют индивидуально.`,
-      ...focuses.slice(0, 3),
-      input.useBrand && facts.length ? `Подтверждённые особенности ${brandName}\n\n${naturalList(facts.slice(0, 4))}. Эти сведения не заменяют проверку показаний и противопоказаний.` : "Факты вместо обещаний\n\nПопросите подтвердить состав программы, медицинское сопровождение и условия путёвки.",
-      `Следующий шаг\n\nПодготовьте актуальные медицинские документы и уточните у санатория: ${profile.question}.`,
-    ];
-  }
-
-  return topicAwareSanatoriumSections(input, brandName);
-}
-
 function materialFromRecord(parsed: Record<string, unknown>): GeneratedMaterial {
   const title = cleanText(parsed.title, 500);
   const body = cleanText(parsed.body, 50000);
@@ -810,54 +492,6 @@ function materialFromRecord(parsed: Record<string, unknown>): GeneratedMaterial 
     metaTitle: cleanText(parsed.meta_title, 500) || title.slice(0, 70),
     metaDescription: cleanText(parsed.meta_description, 1000),
     editorialComment: cleanText(parsed.editorial_comment, 1600),
-  };
-}
-
-function demoMaterial(input: ReturnType<typeof normalizePayload>, website: WebsiteContext): GeneratedMaterial {
-  const brandName = input.useBrand && input.brand.name ? input.brand.name : "компания";
-  const topic = cleanTopic(input.topic);
-  const keyList = input.keywords.split(",").map((item) => item.trim()).filter(Boolean);
-  const primaryKey = keyList[0] || topic.toLowerCase();
-  const sanatorium = isSanatoriumContext(input);
-  const title = topic;
-  const requestedSignature = input.useBrand && input.format === "social" ? input.brand.signature : "";
-  const signature = countWords(requestedSignature) <= Math.floor(input.length * 0.35) ? requestedSignature : "";
-  const baseSections = sanatorium
-    ? topicAwareSanatoriumFormatSections(input, brandName)
-    : input.format === "social"
-      ? genericSocialSections(topic)
-      : input.format === "ads"
-        ? genericAdSections(topic)
-        : input.format === "landing"
-          ? genericLandingSections(topic)
-          : genericSections(topic, primaryKey);
-  const keywordSections = sanatorium && input.format === "seo"
-    ? keywordCoverageSections(input, brandName, sanatoriumTopicProfile(input), baseSections)
-    : [];
-  const keywordEnhancedSections = baseSections.length
-    ? [baseSections[0], ...keywordSections, ...baseSections.slice(1)]
-    : baseSections;
-  const geographySection = demoGeographySection(input);
-  const sections = geographySection && keywordEnhancedSections.length
-    ? [keywordEnhancedSections[0], geographySection, ...keywordEnhancedSections.slice(1)]
-    : keywordEnhancedSections;
-  const signatureWords = countWords(signature);
-  const coreTarget = Math.max(1, input.length - signatureWords);
-  const coreBody = fitDemoLength(sections, coreTarget);
-  const body = signature ? `${coreBody}\n\n${signature}` : coreBody;
-  const actualWords = countWords(body);
-  const editorialFocuses = parseEditorialFocuses(input.accent).filter((item) => item.required);
-
-  return {
-    title,
-    body,
-    metaTitle: title.slice(0, 70),
-    metaDescription: sanatorium
-      ? isBrandMarketingTopic(input)
-        ? `${topic}: профильное направление, сильные стороны курорта, программа, лечебные факторы и подготовка к поездке.`.slice(0, 160)
-        : `${topic}: как проверить профиль санатория, медицинское сопровождение, состав программы, ограничения и условия поездки.`.slice(0, 160)
-      : `${topic}: критерии выбора, проверка условий и понятный следующий шаг.`.slice(0, 160),
-    editorialComment: `Тестовый режим применил контракт «${FORMAT_PLANS[input.format].title}» и сохранил предмет темы «${input.topic}» в композиции материала. ${editorialFocuses.length ? `Использованы редакционные ориентиры матрицы: ${editorialFocuses.map((item) => item.label).join(", ")}. ` : ""}Сформировано ${actualWords.toLocaleString("ru-RU")} слов при цели ${input.length.toLocaleString("ru-RU")}; ${websiteSourceLabel(website)}. Перед размещением проверьте медицинские сведения и актуальные условия.`,
   };
 }
 

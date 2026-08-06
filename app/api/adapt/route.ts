@@ -5,7 +5,7 @@ import {
   type AdaptationPlan,
   type ContentTone,
 } from "../../content-plans";
-import { readWebsiteContext, websiteSourceLabel, type WebsiteContext } from "../_lib/website-context";
+import { readWebsiteContext } from "../_lib/website-context";
 import { assertSecondaryQuotaAvailable, recordEditorialAction, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 import { AiCallError, callAiModel } from "../_lib/ai-router";
 import { adaptationReasoningEffort } from "../_lib/ai-config";
@@ -77,10 +77,6 @@ function wordCount(value: string) {
   return value.trim().split(/\s+/).filter(Boolean).length;
 }
 
-function capitalize(value: string) {
-  return value ? `${value.charAt(0).toLocaleUpperCase("ru-RU")}${value.slice(1)}` : value;
-}
-
 function normalizePayload(payload: AdaptPayload) {
   const requestedGoal = clean(payload.goal, 30) as AdaptationGoal;
   return {
@@ -92,158 +88,6 @@ function normalizePayload(payload: AdaptPayload) {
     useBrand: payload.useBrand !== false,
     brand: payload.brand ?? {},
   };
-}
-
-function sourceParts(sourceText: string) {
-  const blocks = sourceText.split(/\n\s*\n/).map((item) => item.trim()).filter(Boolean);
-  const firstLine = blocks[0]?.split("\n")[0]?.trim() || "Адаптированный материал";
-  const firstLooksLikeTitle = wordCount(firstLine) <= 14 && !/[.!?]$/.test(firstLine);
-  const title = firstLooksLikeTitle ? firstLine : "Адаптированный материал";
-  const bodyBlocks = firstLooksLikeTitle
-    ? [blocks[0].split("\n").slice(1).join(" ").trim(), ...blocks.slice(1)].filter(Boolean)
-    : blocks;
-  const body = bodyBlocks.join("\n\n").replace(/[ \t]+/g, " ");
-  return { title, body, blocks: bodyBlocks };
-}
-
-function sentences(value: string) {
-  return value
-    .replace(/\s+/g, " ")
-    .match(/[^.!?]+[.!?]+|[^.!?]+$/g)
-    ?.map((item) => item.trim())
-    .filter(Boolean) ?? [];
-}
-
-function takeToWordLimit(items: string[], limit: number) {
-  const selected: string[] = [];
-  let total = 0;
-  for (const item of items) {
-    const next = wordCount(item);
-    if (selected.length && total + next > limit) break;
-    selected.push(item);
-    total += next;
-  }
-  return selected.length ? selected : items.slice(0, 1);
-}
-
-function paragraphize(items: string[], groupSize = 2) {
-  const paragraphs: string[] = [];
-  for (let index = 0; index < items.length; index += groupSize) {
-    paragraphs.push(items.slice(index, index + groupSize).join(" "));
-  }
-  return paragraphs.join("\n\n");
-}
-
-function withoutTerminal(value: string) {
-  return value.trim().replace(/[.!?]+$/, "");
-}
-
-function lowerFirst(value: string) {
-  return value ? `${value.charAt(0).toLocaleLowerCase("ru-RU")}${value.slice(1)}` : value;
-}
-
-function truncateAtWord(value: string, limit: number) {
-  const normalized = value.replace(/\s+/g, " ").trim();
-  if (normalized.length <= limit) return normalized;
-  const clipped = normalized.slice(0, limit + 1);
-  const boundary = clipped.lastIndexOf(" ");
-  return `${clipped.slice(0, boundary > limit * 0.72 ? boundary : limit).replace(/[,:;\s]+$/, "")}…`;
-}
-
-function rewriteForClarity(value: string) {
-  const sentence = value.replace(/\s+/g, " ").trim();
-  if (/^При выборе санатория многие смотрят прежде всего на стоимость путёвки и фотографии номеров\.$/i.test(sentence)) {
-    return "Стоимость путёвки и фотографии номеров нередко оказываются первыми ориентирами при выборе санатория.";
-  }
-
-  if (/^Однако для восстановления важно учитывать медицинский профиль/i.test(sentence)) {
-    return "Для восстановительной поездки важнее медицинский профиль здравницы, природные лечебные факторы, квалификация специалистов и содержание программы.";
-  }
-
-  const bookingMatch = sentence.match(/^Перед бронированием стоит уточнить, (.+)\.$/i);
-  if (bookingMatch) return `До бронирования уточните: ${lowerFirst(bookingMatch[1])}.`;
-
-  const additionalMatch = sentence.match(/^Также имеют значение (.+)\.$/i);
-  if (additionalMatch) return `На решение также влияют ${additionalMatch[1]}.`;
-
-  return sentence
-    .replace(/^Однако\s+/i, "При этом ")
-    .replace(/^Также\s+/i, "Кроме того, ")
-    .replace(/\s+и\s+при этом\s+/gi, ", при этом ");
-}
-
-function sanatoriumSeoMaterial(
-  source: ReturnType<typeof sourceParts>,
-  primaryKeyword: string,
-) {
-  const brandName = source.body.match(/Санаторий\s+«[^»]+»/)?.[0] || "Санаторий";
-  const keyword = primaryKeyword || "санаторий для восстановления";
-  const title = /карели/i.test(keyword)
-    ? `${capitalize(keyword)}: как выбрать программу для восстановления`
-    : `Как выбрать ${lowerFirst(keyword)}: критерии для восстановления`;
-  const body = [
-    "Выбор санатория стоит начинать с цели поездки, а не только со стоимости путёвки и фотографий номеров. Для полноценного восстановления важно заранее понять, соответствует ли медицинский профиль здравницы вашим задачам и как сформирована лечебная программа.",
-    "Какие критерии действительно важны",
-    "Оцените природные лечебные факторы, квалификацию специалистов и состав процедур. Эти параметры помогают сравнить варианты по содержанию программы, а не только по условиям проживания.",
-    "Лечебная база и природные ресурсы",
-    `${brandName} — первый российский курорт, расположенный в Карелии. В санатории используют марциальную железистую воду и габозерские лечебные грязи. С гостями работают медицинские специалисты; доступны программы лечения, профилактики и восстановления.`,
-    "Что уточнить до бронирования",
-    "Заранее узнайте, какие документы потребуются, что входит в путёвку и как назначают процедуры. Важно также уточнить, можно ли скорректировать программу после консультации врача. Отдельно оцените питание, расположение корпусов и продолжительность курса.",
-    "Такой подход позволяет сопоставить собственные цели с возможностями санатория и принять решение на основе медицинской программы, природных факторов и условий поездки.",
-  ].join("\n\n");
-
-  return { title, body };
-}
-
-function sanatoriumLandingMaterial(source: ReturnType<typeof sourceParts>) {
-  const brandName = source.body.match(/Санаторий\s+«[^»]+»/)?.[0] || "Санаторий";
-  return {
-    title: "Восстановление в санатории: программа, факты и спокойный выбор",
-    body: [
-      "Восстановление начинается с понятной цели\n\nСтоимость путёвки и фотографии номеров важны, но сначала стоит определить задачу поездки. Медицинский профиль здравницы и содержание программы должны соответствовать тому, что вы хотите получить от курса.",
-      "Лечебная база, которую можно оценить заранее\n\nПриродные лечебные факторы, квалификация специалистов и состав процедур помогают сравнить санатории по существу. Важно узнать, кто назначает процедуры и можно ли скорректировать программу после консультации врача.",
-      `${brandName}: подтверждённые особенности\n\n${brandName} находится в Карелии и является первым российским курортом. Здесь используют марциальную железистую воду и габозерские лечебные грязи; доступны программы лечения, профилактики и восстановления. Эти сведения стоит рассматривать вместе с медицинскими рекомендациями и ограничениями.`,
-      "Подготовка до бронирования\n\nЗаранее уточните перечень документов, состав путёвки и продолжительность курса. На решение также влияют питание и расположение корпусов — особенно если поездка рассчитана на несколько дней или требует регулярного посещения процедур.",
-      "Обсудите программу до поездки\n\nСоберите вопросы о назначениях, документах и условиях проживания. Так консультация будет предметной, а ожидания от поездки — реалистичными.",
-    ].join("\n\n"),
-  };
-}
-
-function genericLandingMaterial(source: ReturnType<typeof sourceParts>) {
-  const rewritten = sentences(source.body).map(rewriteForClarity);
-  const midpoint = Math.max(1, Math.ceil(rewritten.length * 0.62));
-  return {
-    title: source.title,
-    body: [
-      paragraphize(rewritten.slice(0, 1), 1),
-      `${withoutTerminal(source.title)}: основные условия`,
-      paragraphize(rewritten.slice(1, midpoint), 2),
-      "Перед принятием решения",
-      paragraphize(rewritten.slice(midpoint), 2),
-    ].filter(Boolean).join("\n\n"),
-  };
-}
-
-function genericSeoMaterial(
-  source: ReturnType<typeof sourceParts>,
-  primaryKeyword: string,
-) {
-  const rewritten = sentences(source.body).map(rewriteForClarity);
-  const splitAt = Math.max(2, Math.ceil(rewritten.length * 0.58));
-  const introduction = rewritten.slice(0, Math.min(2, rewritten.length));
-  const details = rewritten.slice(Math.min(2, rewritten.length), splitAt);
-  const checks = rewritten.slice(splitAt);
-  const title = primaryKeyword
-    ? `${capitalize(primaryKeyword)}: ${lowerFirst(withoutTerminal(source.title))}`
-    : source.title;
-  const blocks = [
-    paragraphize(introduction, 2),
-    details.length ? "Основные факты и критерии" : "",
-    details.length ? paragraphize(details, 2) : "",
-    checks.length ? "Что важно проверить заранее" : "",
-    checks.length ? paragraphize(checks, 2) : "",
-  ].filter(Boolean);
-  return { title, body: blocks.join("\n\n") };
 }
 
 function similarity(left: string, right: string) {
@@ -262,58 +106,6 @@ function similarity(left: string, right: string) {
   let intersection = 0;
   leftSet.forEach((item) => { if (rightSet.has(item)) intersection += 1; });
   return intersection / (leftSet.size + rightSet.size - intersection);
-}
-
-function demoMaterial(input: ReturnType<typeof normalizePayload>, website: WebsiteContext): AdaptedMaterial {
-  const source = sourceParts(input.sourceText);
-  const allSentences = sentences(source.body);
-  const originalWords = wordCount(source.body);
-  const primaryKeyword = input.keywords.split(/[,;\n]/).map((item) => item.trim()).filter(Boolean)[0] || "";
-  let title = source.title;
-  let body = source.body;
-  let changes: string[] = [];
-
-  if (input.goal === "social") {
-    const selected = takeToWordLimit(allSentences, Math.min(180, Math.max(70, Math.round(originalWords * 0.68))))
-      .map(rewriteForClarity);
-    title = source.title.replace(/^Как\s+/i, "").replace(/[.!?]+$/, "");
-    body = [`Что действительно важно, когда ${lowerFirst(withoutTerminal(source.title))}?`, paragraphize(selected, 1)].join("\n\n");
-    changes = ["Добавлен короткий вход в тему", "Сокращён объём и сохранены основные факты", "Формулировки и ритм адаптированы для ленты"];
-  } else if (input.goal === "ads") {
-    const selected = takeToWordLimit(allSentences, Math.min(90, Math.max(40, Math.round(originalWords * 0.42))))
-      .map(rewriteForClarity);
-    title = primaryKeyword ? capitalize(primaryKeyword) : source.title;
-    body = `${paragraphize(selected, 1)}\n\nУточните условия и выберите подходящий формат.`;
-    changes = ["Выделена одна основная польза", "Текст собран в короткое рекламное сообщение", "Добавлен спокойный призыв без новых обещаний"];
-  } else if (input.goal === "shorten") {
-    body = paragraphize(takeToWordLimit(allSentences, Math.max(45, Math.round(originalWords * 0.52))).map(rewriteForClarity), 2);
-    changes = ["Объём сокращён примерно вдвое", "Удалены смысловые повторы", "Последовательность аргументов сохранена"];
-  } else if (input.goal === "landing") {
-    const material = /марциальн|габозерск/i.test(source.body) && /санатор/i.test(source.body)
-      ? sanatoriumLandingMaterial(source)
-      : genericLandingMaterial(source);
-    title = material.title;
-    body = material.body;
-    changes = ["Сформулирована ценность первого экрана", "Факты перегруппированы в блоки веб‑страницы", "Добавлены содержательные заголовки", "Сохранён один спокойный следующий шаг"];
-  } else {
-    const material = /марциальн|габозерск/i.test(source.body) && /санатор/i.test(source.body)
-      ? sanatoriumSeoMaterial(source, primaryKeyword)
-      : genericSeoMaterial(source, primaryKeyword);
-    title = material.title;
-    body = material.body;
-    changes = ["Создан новый поисковый заголовок", "Исходник перестроен в смысловые разделы", "Формулировки переработаны с сохранением фактов", "Сформированы отдельные Title и Description"];
-  }
-
-  const brandName = input.useBrand ? clean(input.brand.name, 160) : "";
-  const brandNote = brandName ? ` Профиль «${brandName}» использован только как ограничение по тону и фактам; ${websiteSourceLabel(website)}.` : "";
-  return {
-    title,
-    body,
-    metaTitle: title.slice(0, 70),
-    metaDescription: truncateAtWord(sentences(body).slice(0, 2).join(" "), 160),
-    editorialComment: `Применён план «${ADAPTATION_PLANS[input.goal].title}»: композиция и формулировки изменены, сходство с исходником — ${Math.round(similarity(source.body, body) * 100)}%. Новые факты не добавлялись.${brandNote}`,
-    changes,
-  };
 }
 
 function materialFromRecord(parsed: Record<string, unknown>): AdaptedMaterial | null {
