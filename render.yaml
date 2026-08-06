@@ -17,6 +17,10 @@ services:
           property: connectionString
       - key: OPENAI_API_KEY
         sync: false
+      # Comma-separated emails allowed to open /admin (users, plan usage,
+      # AI spend). Leave unset and nobody can open it.
+      - key: ADMIN_EMAILS
+        sync: false
       - key: RESEND_API_KEY
         sync: false
       - key: RESEND_FROM_EMAIL
