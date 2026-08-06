@@ -97,7 +97,7 @@ type ContentPlanItem = {
   id: string;
   title: string;
   cluster: string;
-  format: "SEO‑статья" | "Экспертный разбор" | "FAQ" | "Сравнение" | "Кейс" | "Посадочная страница" | "Пост";
+  format: "SEO‑статья" | "Экспертный разбор" | "FAQ" | "Сравнение" | "Кейс" | "Посадочная страница" | "Рекламный текст" | "Пост";
   intent: "Информационный" | "Коммерческий" | "Транзакционный" | "Смешанный" | "Навигационный";
   stage: "Знакомство" | "Выбор" | "Решение" | "Удержание";
   priority: "Высокий" | "Средний" | "Дополнительный";
@@ -121,6 +121,8 @@ type ContentPlanResult = {
   clusters: string[];
   dataNote: string;
 };
+
+type ContentPlanGoal = "mixed" | "seo" | "social" | "landing" | "ads";
 
 type BrandProfile = {
   name: string;
@@ -670,6 +672,37 @@ const defaultLengthByFormat: Record<Format, number> = {
   landing: 500,
 };
 
+// Контент-план works with its own, more editorial set of formats (SEO-
+// статья, кейс, FAQ...); the generator only knows the four production
+// formats above. Without this map, "В генератор" always sent every plan
+// item — including social posts — in as an SEO article at 1200 words,
+// which is unusable for a "Пост" item. Anything long-form-article-shaped
+// maps to seo; every format with a direct generator equivalent maps
+// straight to it.
+const contentPlanFormatToGeneratorFormat: Record<ContentPlanItem["format"], Format> = {
+  "SEO‑статья": "seo",
+  "Экспертный разбор": "seo",
+  FAQ: "seo",
+  Сравнение: "seo",
+  Кейс: "seo",
+  "Посадочная страница": "landing",
+  "Рекламный текст": "ads",
+  Пост: "social",
+};
+
+// What the whole plan is *for* — sent to /api/content-plan so the AI
+// strategist either balances formats across the funnel as before
+// ("mixed") or sticks to one production format throughout, matching how
+// the person actually intends to use the plan (e.g. filling an SMM
+// calendar shouldn't hand back landing-page topics).
+const CONTENT_PLAN_GOALS: { id: ContentPlanGoal; label: string; hint: string }[] = [
+  { id: "mixed", label: "Смешанный", hint: "КЛИО сама балансирует форматы по этапам воронки — как раньше." },
+  { id: "seo", label: "SEO‑статьи", hint: "План только из статей для блога или сайта." },
+  { id: "social", label: "Посты для соцсетей", hint: "План только из постов — готово для SMM‑календаря." },
+  { id: "landing", label: "Посадочные страницы", hint: "План только из продающих лендингов." },
+  { id: "ads", label: "Рекламные тексты", hint: "План только из коротких рекламных текстов." },
+];
+
 const sample: Record<Format, { title: string; body: string }> = {
   seo: {
     title: "Как выбрать санаторий для восстановления: практическое руководство",
@@ -909,7 +942,7 @@ function normalizeContentPlanItem(value: Partial<ContentPlanItem>, index: number
     id: typeof value.id === "string" && value.id ? value.id : `plan-${index + 1}`,
     title,
     cluster: typeof value.cluster === "string" && value.cluster ? value.cluster : "Основная тема",
-    format: ["SEO‑статья", "Экспертный разбор", "FAQ", "Сравнение", "Кейс", "Посадочная страница", "Пост"].includes(value.format || "")
+    format: ["SEO‑статья", "Экспертный разбор", "FAQ", "Сравнение", "Кейс", "Посадочная страница", "Рекламный текст", "Пост"].includes(value.format || "")
       ? value.format as ContentPlanItem["format"]
       : "SEO‑статья",
     intent: ["Информационный", "Коммерческий", "Транзакционный", "Смешанный", "Навигационный"].includes(value.intent || "")
@@ -1236,6 +1269,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     workspace ? [] : defaultCompetitorResult.topics.filter((item) => item.recommended).map((item) => item.id),
   );
   const [contentPlanQuery, setContentPlanQuery] = useState("");
+  const [contentPlanGoal, setContentPlanGoal] = useState<ContentPlanGoal>("mixed");
   const [contentPlanCount, setContentPlanCount] = useState(25);
   const [contentPlanResult, setContentPlanResult] = useState<ContentPlanResult>(emptyContentPlanResult);
   const [contentPlanMode, setContentPlanMode] = useState<ContentPlanMode>("idle");
@@ -1773,6 +1807,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       if (!saved) return;
       const parsed = JSON.parse(saved) as {
         query?: string;
+        goal?: ContentPlanGoal;
         count?: number;
         result?: ContentPlanResult;
         mode?: ContentPlanMode;
@@ -1780,6 +1815,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       };
       frame = window.requestAnimationFrame(() => {
         if (typeof parsed.query === "string") setContentPlanQuery(parsed.query);
+        if (CONTENT_PLAN_GOALS.some((goal) => goal.id === parsed.goal)) setContentPlanGoal(parsed.goal as ContentPlanGoal);
         if (parsed.count === 10 || parsed.count === 15 || parsed.count === 25) setContentPlanCount(parsed.count);
         const storedResult = normalizeStoredContentPlanResult(parsed.result);
         if (storedResult && parsed.mode === "ai") setContentPlanResult(storedResult);
@@ -3055,6 +3091,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
   function persistContentPlan(options: {
     query?: string;
+    goal?: ContentPlanGoal;
     count?: number;
     result?: ContentPlanResult;
     mode?: ContentPlanMode;
@@ -3062,6 +3099,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   } = {}) {
     window.localStorage.setItem("clio-content-plan-v1", JSON.stringify({
       query: options.query ?? contentPlanQuery,
+      goal: options.goal ?? contentPlanGoal,
       count: options.count ?? contentPlanCount,
       result: options.result ?? contentPlanResult,
       mode: options.mode ?? contentPlanMode,
@@ -3100,6 +3138,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query: cleanQuery,
+          goal: contentPlanGoal,
           count: contentPlanCount,
           semantics: semanticAnalysisReady ? selectedSemanticKeywords.map((item) => ({
             phrase: item.phrase,
@@ -3244,11 +3283,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   function sendPlanItemToGenerator(item: ContentPlanItem) {
     const cleanTitle = cleanContentPlanTitle(item.title);
     const structureLines = item.structure.map((section) => `• ${section}: раскрыть применительно к теме материала и опереться только на подтверждённые факты`);
-    setFormat("seo");
+    const targetFormat = contentPlanFormatToGeneratorFormat[item.format] ?? "seo";
+    setFormat(targetFormat);
     setGeneratorMode("advanced");
     setTopic(cleanTitle);
     setKeywords(uniqueText([item.primaryKeyword, ...item.lsi]).join(", "));
-    setLength(1200);
+    setLength(defaultLengthByFormat[targetFormat]);
     setCustomLength(false);
     setAccent([
       useBrand && item.intent !== "Информационный"
@@ -4139,6 +4179,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <div className="content-plan-query-row">
                   <label><span>Основная тема или направление</span><input value={contentPlanQuery} onChange={(event) => { const next = event.target.value; setContentPlanQuery(next); setContentPlanNeedsRefresh(true); setContentPlanError(""); persistContentPlan({ query: next, needsRefresh: true }); }} placeholder="Например: санаторий для лечения желудка" autoComplete="off"/></label>
                   <button type="button" onClick={useCurrentSemanticsForPlan} disabled={!semanticAnalysisReady}><Icon name="arrow"/> Взять из семантики</button>
+                </div>
+
+                <div className="content-plan-goal">
+                  <span>Для чего план</span>
+                  <div>{CONTENT_PLAN_GOALS.map((goal) => <button type="button" className={contentPlanGoal === goal.id ? "active" : ""} onClick={() => { setContentPlanGoal(goal.id); setContentPlanNeedsRefresh(true); persistContentPlan({ goal: goal.id, needsRefresh: true }); }} key={goal.id}>{goal.label}</button>)}</div>
+                  <small>{CONTENT_PLAN_GOALS.find((goal) => goal.id === contentPlanGoal)?.hint}</small>
                 </div>
 
                 <div className="content-plan-source-strip" aria-label="Источники будущего плана">

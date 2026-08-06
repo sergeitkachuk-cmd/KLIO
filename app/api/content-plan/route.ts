@@ -25,6 +25,7 @@ type BrandInput = {
 
 type ContentPlanPayload = {
   query?: unknown;
+  goal?: unknown;
   count?: unknown;
   semantics?: unknown;
   geography?: unknown;
@@ -32,11 +33,13 @@ type ContentPlanPayload = {
   brand?: unknown;
 };
 
+type ContentPlanGoal = "mixed" | "seo" | "social" | "landing" | "ads";
+
 type PlanItem = {
   id: string;
   title: string;
   cluster: string;
-  format: "SEO‑статья" | "Экспертный разбор" | "FAQ" | "Сравнение" | "Кейс" | "Посадочная страница" | "Пост";
+  format: "SEO‑статья" | "Экспертный разбор" | "FAQ" | "Сравнение" | "Кейс" | "Посадочная страница" | "Рекламный текст" | "Пост";
   intent: "Информационный" | "Коммерческий" | "Транзакционный" | "Смешанный" | "Навигационный";
   stage: "Знакомство" | "Выбор" | "Решение" | "Удержание";
   priority: "Высокий" | "Средний" | "Дополнительный";
@@ -80,8 +83,12 @@ function cleanPlanTitle(value: string) {
     .trim();
 }
 
+const CONTENT_PLAN_GOALS = new Set<ContentPlanGoal>(["mixed", "seo", "social", "landing", "ads"]);
+
 function normalizePayload(raw: ContentPlanPayload) {
   const query = clean(raw.query, 300);
+  const requestedGoal = clean(raw.goal, 20) as ContentPlanGoal;
+  const goal = CONTENT_PLAN_GOALS.has(requestedGoal) ? requestedGoal : "mixed";
   const countValue = Number(raw.count);
   const count = [10, 15, 25].includes(countValue) ? countValue : 15;
   const semantics = Array.isArray(raw.semantics) ? raw.semantics.slice(0, 40).map((item) => {
@@ -109,7 +116,7 @@ function normalizePayload(raw: ContentPlanPayload) {
     audience: clean(sourceBrand.audience, 1200),
     advantages: clean(sourceBrand.advantages, 2600),
   } satisfies BrandInput;
-  return { query, count, semantics, geography, competitorInsights, brand };
+  return { query, goal, count, semantics, geography, competitorInsights, brand };
 }
 
 const itemSchema = {
@@ -118,7 +125,7 @@ const itemSchema = {
     id: { type: "string" },
     title: { type: "string" },
     cluster: { type: "string" },
-    format: { type: "string", enum: ["SEO‑статья", "Экспертный разбор", "FAQ", "Сравнение", "Кейс", "Посадочная страница", "Пост"] },
+    format: { type: "string", enum: ["SEO‑статья", "Экспертный разбор", "FAQ", "Сравнение", "Кейс", "Посадочная страница", "Рекламный текст", "Пост"] },
     intent: { type: "string", enum: ["Информационный", "Коммерческий", "Транзакционный", "Смешанный", "Навигационный"] },
     stage: { type: "string", enum: ["Знакомство", "Выбор", "Решение", "Удержание"] },
     priority: { type: "string", enum: ["Высокий", "Средний", "Дополнительный"] },
@@ -154,6 +161,25 @@ function contentPlanSchema(count: number) {
   };
 }
 
+// What formats "mixed" is allowed to reach for, and what every other
+// goal locks the whole plan down to — kept in one place so the prompt
+// instruction and the post-generation check below can't drift apart.
+const GOAL_FORMAT_LOCK: Record<ContentPlanGoal, PlanItem["format"][]> = {
+  mixed: ["SEO‑статья", "Экспертный разбор", "FAQ", "Сравнение", "Кейс", "Посадочная страница", "Рекламный текст", "Пост"],
+  seo: ["SEO‑статья", "Экспертный разбор", "FAQ", "Сравнение", "Кейс"],
+  social: ["Пост"],
+  landing: ["Посадочная страница"],
+  ads: ["Рекламный текст"],
+};
+
+const GOAL_INSTRUCTION: Record<ContentPlanGoal, string> = {
+  mixed: "Свободно распределяй формат каждой темы (SEO‑статья, Экспертный разбор, FAQ, Сравнение, Кейс, Посадочная страница, Рекламный текст, Пост) по её месту в воронке.",
+  seo: "Обязательное ограничение: формат каждой темы — только SEO‑статья, Экспертный разбор, FAQ, Сравнение или Кейс. План собирается для блога/сайта; не используй Посадочную страницу, Рекламный текст или Пост.",
+  social: "Обязательное ограничение: формат каждой темы — только «Пост». План собирается как календарь публикаций для соцсетей, а не для сайта или рекламы.",
+  landing: "Обязательное ограничение: формат каждой темы — только «Посадочная страница». План собирается как набор продающих лендингов, а не блог, соцсети или реклама.",
+  ads: "Обязательное ограничение: формат каждой темы — только «Рекламный текст». План собирается как набор коротких рекламных текстов, а не блог, лендинги или соцсети.",
+};
+
 function validatePlan(plan: AiPlan, input: ReturnType<typeof normalizePayload>) {
   if (!Array.isArray(plan.items) || plan.items.length !== input.count) {
     throw new AiResponseError(`AI‑редакция подготовила неполный план. Требуется ${input.count} тем.`, 422);
@@ -179,9 +205,11 @@ function validatePlan(plan: AiPlan, input: ReturnType<typeof normalizePayload>) 
 
   const normalizedTitles = cleaned.map((item) => item.title.toLocaleLowerCase("ru-RU").replace(/ё/g, "е").replace(/[^a-zа-я0-9]+/gi, " ").trim());
   const duplicates = normalizedTitles.filter((title, index) => title && normalizedTitles.indexOf(title) !== index);
+  const allowedFormats = GOAL_FORMAT_LOCK[input.goal];
   const invalid = cleaned.filter((item) => (
     !item.title || !item.cluster || !item.primaryKeyword || !item.angle || !item.objective
     || item.lsi.length < 2 || item.structure.length < 3
+    || !allowedFormats.includes(item.format)
     || /(?:комментарий пользователя|редакционн(?:ая|ый) задач|используй|добавь|раскрой применительно|инструкц(?:ия|ии) для ии)/i.test(item.title)
   ));
 
@@ -202,6 +230,7 @@ export async function POST(request: Request) {
     const instructions = [
       "Ты — ведущий контент‑стратег и SEO‑редактор платформы КЛИО.",
       `Создай ровно ${input.count} готовых к работе тем для единой контент‑системы, а не перечень шаблонных заголовков.`,
+      GOAL_INSTRUCTION[input.goal],
       "Сначала определи предмет, аудиторию, поисковые интенты, коммерческую задачу и возможные тематические ветви. Не переносить знания или шаблоны из другой отрасли.",
       "Разведи ядро, широкие обзоры, средние подтемы, узкие long-tail вопросы и действительно смежные темы. Смежная тема должна поддерживать решение аудитории или экспертизу бренда, а не быть случайной ассоциацией.",
       "Сбалансируй воронку: знакомство, выбор, решение и удержание. Не делай весь план информационными инструкциями и не превращай коммерческие темы в статьи «как выбрать». Для темы с конкретным брендом или продуктом предусмотрены материалы о его предложении, доказательствах, сценариях применения и возражениях.",
@@ -222,6 +251,8 @@ export async function POST(request: Request) {
       instructions,
       input: JSON.stringify({
         main_topic: input.query,
+        plan_goal: input.goal,
+        allowed_formats: GOAL_FORMAT_LOCK[input.goal],
         selected_semantics: input.semantics,
         search_geography: input.geography,
         competitor_editorial_opportunities: input.competitorInsights,

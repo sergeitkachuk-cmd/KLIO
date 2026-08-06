@@ -7634,6 +7634,53 @@ footer nav a {
   height: 16px;
 }
 
+/* "Для чего план" — added together with .content-plan-setup's own dark
+   navy card, so unlike most controls in this module it never had a
+   light-theme version to override: written dark-native from the start. */
+.content-plan-goal {
+  display: grid;
+  gap: 9px;
+  padding: 0 29px 22px;
+}
+
+.content-plan-goal > span {
+  color: #d5c9fb;
+  font-size: 11px;
+  font-weight: 740;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.content-plan-goal > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.content-plan-goal button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.content-plan-goal button.active {
+  border-color: rgba(216, 255, 101, 0.5);
+  background: var(--acid);
+  color: var(--night);
+}
+
+.content-plan-goal > small {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .content-plan-source-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
