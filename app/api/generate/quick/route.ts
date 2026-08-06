@@ -167,7 +167,14 @@ export async function POST(request: Request) {
       targetLength,
     });
 
-    return Response.json({ material, mode: "ai", model: usedModel, format, tone, usage });
+    // The client's length/keyword coverage widgets are shared with the
+    // Advanced generator and default to whatever was last set there. Quick
+    // mode never asks for a target length or keywords, so it must hand
+    // back what it actually used (brief.targetLength — the objem nano
+    // inferred from the free-text prompt, before generation) so the client
+    // can sync its display instead of comparing this result against
+    // leftover Advanced-tab state.
+    return Response.json({ material, mode: "ai", model: usedModel, format, tone, targetLength: brief.targetLength, usage });
   } catch (error) {
     if (error instanceof WorkspaceAccessError) return workspaceErrorResponse(error);
     console.error("Quick generation route failed", error);

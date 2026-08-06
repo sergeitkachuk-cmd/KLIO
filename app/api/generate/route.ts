@@ -251,6 +251,26 @@ function trimToWordTarget(value: string, target: number) {
   return /[.!?]$/.test(stopped) ? stopped : `${stopped}.`;
 }
 
+// Deterministic overshoot backstop for a real AI-written body (see the
+// mechanical-trim step in POST below) — not the same as fitDemoLength,
+// which works on template sections built from scratch. Splits on blank
+// lines (the model always writes section breaks this way per the prompt's
+// "уместными подзаголовками" instruction) and, when there's more than one
+// section, keeps the last one — almost always the conclusion/CTA —
+// untouched, trimming only the sections before it. That avoids the one
+// thing a flat word-count cut risks: lopping off the ending entirely.
+function trimOverflowBody(body: string, target: number) {
+  const sections = body.split(/\n\s*\n/).map((item) => item.trim()).filter(Boolean);
+  if (sections.length <= 1) return trimToWordTarget(body, target);
+
+  const conclusion = sections.at(-1) || "";
+  const conclusionWords = countWords(conclusion);
+  if (conclusionWords >= target) return trimToWordTarget(body, target);
+
+  const core = trimToWordTarget(sections.slice(0, -1).join("\n\n"), target - conclusionWords);
+  return `${core}\n\n${conclusion}`;
+}
+
 function fitDemoLength(sections: string[], target: number) {
   const complete = sections.join("\n\n");
   if (countWords(complete) <= target) return complete;
@@ -1042,7 +1062,7 @@ export async function POST(request: Request) {
     // safe mechanical way to add real content, so a too-short result still
     // just shows the soft badge below.
     if (countWords(material.body) > maximumWords) {
-      material = { ...material, body: trimToWordTarget(material.body, input.length) };
+      material = { ...material, body: trimOverflowBody(material.body, input.length) };
       missingGeo = missingGeography(material, input);
       subjectCheck = topicCoverage(material, input);
       missingFocuses = missingEditorialFocuses(material, input);

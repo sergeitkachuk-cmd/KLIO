@@ -1325,16 +1325,26 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     const lengthProgress = Math.min(words / Math.max(length * 0.72, 1), 1);
     const structureCount = body.split(/\n\s*\n/).filter(Boolean).length;
     const structure = Math.min(structureCount / 5, 1);
-    const seo = Math.min(100, Math.round(28 + coverage * 37 + (primaryInTitle ? 15 : 0) + lengthProgress * 12 + structure * 8));
+    // Keyword coverage and "primary keyword in title" only mean anything
+    // when keywords were actually set — otherwise these two factors (52 of
+    // 100 points) were structurally impossible to earn, capping every
+    // keyword-free result (e.g. the "Новичок" quick-generate flow, which
+    // never sets keywords) at 48 regardless of how good the text was.
+    // Score purely on what's actually measurable when there are none.
+    const hasKeywords = keyList.length > 0;
+    const seo = hasKeywords
+      ? Math.min(100, Math.round(28 + coverage * 37 + (primaryInTitle ? 15 : 0) + lengthProgress * 12 + structure * 8))
+      : Math.min(100, Math.round(40 + lengthProgress * 30 + structure * 30));
     const readabilityInfo = readabilityDiagnostics(body);
 
     // Concrete, actionable notes instead of a bare "есть точки роста" —
     // each one names exactly what to change and, where relevant, by how
     // much. Capped so the card stays a quick glance, not a checklist wall.
     const seoTips: string[] = [];
-    if (keyList[0] && !primaryInTitle) seoTips.push(`Добавьте основной запрос «${keyList[0]}» в заголовок`);
-    if (keyList.length && keysFound < keyList.length) seoTips.push(`Используйте ещё ${keyList.length - keysFound} из ${keyList.length} ключевых фраз в тексте`);
+    if (hasKeywords && keyList[0] && !primaryInTitle) seoTips.push(`Добавьте основной запрос «${keyList[0]}» в заголовок`);
+    if (hasKeywords && keysFound < keyList.length) seoTips.push(`Используйте ещё ${keyList.length - keysFound} из ${keyList.length} ключевых фраз в тексте`);
     if (structureCount < 4) seoTips.push("Добавьте ещё один-два смысловых раздела с подзаголовком");
+    if (!hasKeywords) seoTips.push("Ключевые слова не заданы — добавьте их в брифе для более точной SEO‑оценки");
 
     const readabilityTips: string[] = [];
     if (readabilityInfo.sentenceLength > 20) readabilityTips.push("Сократите самые длинные предложения");
@@ -3344,6 +3354,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         material?: GeneratedMaterial;
         format?: Format;
         tone?: string;
+        targetLength?: number;
         usage?: { account?: WorkspaceAccount; archive?: GenerationArchiveItem } | null;
       };
       if (!response.ok || !payload.material) throw new Error(payload.error || "Не удалось сформировать материал.");
@@ -3352,6 +3363,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       if (payload.format && formats.some((item) => item.id === payload.format)) setFormat(payload.format);
       if (payload.tone) setTone(payload.tone);
       setTopic(quickPrompt.trim().slice(0, 300));
+      // Быстрый режим не показывает и не отправляет ни объём, ни ключи —
+      // без этого объём/SEO‑виджеты справа сравнивали бы результат с тем,
+      // что осталось от предыдущей работы в «Эксперте», а не с тем, что
+      // реально попросили в свободном поле.
+      if (payload.targetLength && payload.targetLength >= 30 && payload.targetLength <= 4000) {
+        setLength(Math.round(payload.targetLength));
+        setCustomLength(true);
+      }
+      setKeywords("");
       if (payload.mode !== "ai") throw new Error("Материал не получен от AI‑редакции.");
       applyGeneratedMaterial(payload.material, "ai", null);
       showToast("Материал создан КЛИО по вашему запросу");
