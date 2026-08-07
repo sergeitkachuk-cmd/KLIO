@@ -1427,6 +1427,42 @@ select:focus-visible {
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.08), inset 0 1px rgba(255, 255, 255, 0.86);
 }
 
+.brand-website-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Higher specificity than the base .brand-fields input rule on purpose
+   (this file has a known history of equal-specificity duplicate-ish
+   rules not reliably resolving by source order through the build's CSS
+   optimizer) - guarantees this wins regardless of where either rule
+   ends up, instead of fighting margin-top twice (row + input). */
+.brand-fields .brand-website-row input {
+  margin-top: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.brand-website-row button {
+  flex: 0 0 auto;
+  padding: 0 14px;
+  border: 1px solid rgba(124, 58, 237, 0.23);
+  border-radius: 12px;
+  color: var(--cobalt);
+  background: rgba(255, 255, 255, 0.68);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.brand-website-row button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .brand-profile-footer {
   display: flex;
   align-items: center;
@@ -14259,6 +14295,16 @@ footer nav a {
   border-color: rgba(255, 255, 255, 0.3);
   color: #fff;
   background: rgba(255, 255, 255, 0.1);
+}
+
+.brand-profile-body .brand-website-row button {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.brand-fields label > small.is-error {
+  color: #ff8f9a;
 }
 
 .brand-profile-body .profile-foundation-warning {

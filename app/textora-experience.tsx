@@ -3803,11 +3803,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
               {brandTab === "foundation" && <div className="brand-field-group" role="tabpanel">
                 <div className="brand-group-heading"><span>Основа бренда</span><p>Факты, которые определяют, о ком и для кого говорит каждый материал.</p></div>
-                <div className="profile-assistant-row"><div><span>Заполнение по сайту</span><p>КЛИО прочитает указанный сайт и предложит описание, позиционирование, аудиторию и факты — каждое поле после этого можно скорректировать вручную.</p></div><button type="button" className={brandAnalyzeBusy ? "is-busy" : ""} onClick={() => void analyzeBrandFromWebsite()} disabled={brandAnalyzeBusy || !brand.website.trim() || aiConnection !== "connected" || workspaceAccount.researchRemaining <= 0}>{brandAnalyzeBusy ? "КЛИО читает сайт…" : !brand.website.trim() ? "Сначала укажите сайт" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.researchRemaining <= 0 ? "Лимит исследований исчерпан" : "Заполнить с помощью ИИ"}</button></div>
-                {brandAnalyzeError && <p className="generation-error" role="alert">{brandAnalyzeError}</p>}
                 <div className="brand-fields">
                   <label>Компания<input value={brand.name} onChange={(event) => updateBrand("name", event.target.value)} autoComplete="off"/><small>Полное название, которое можно использовать в публикации.</small></label>
-                  <label>Сайт<input value={brand.website} onChange={(event) => updateBrand("website", event.target.value)} autoComplete="off"/><small>КЛИО читает открытую страницу при сборе семантики и генерации; недоступные сведения не додумываются.</small></label>
+                  <label>Сайт
+                    <div className="brand-website-row">
+                      <input value={brand.website} onChange={(event) => updateBrand("website", event.target.value)} autoComplete="off"/>
+                      <button type="button" className={brandAnalyzeBusy ? "is-busy" : ""} onClick={() => void analyzeBrandFromWebsite()} disabled={brandAnalyzeBusy || !brand.website.trim() || aiConnection !== "connected" || workspaceAccount.researchRemaining <= 0} title="КЛИО прочитает сайт и предложит описание, позиционирование, аудиторию и факты — каждое поле можно будет скорректировать вручную">{brandAnalyzeBusy ? "Читаем сайт…" : !brand.website.trim() ? "Укажите сайт" : aiConnection !== "connected" ? "ИИ не подключён" : workspaceAccount.researchRemaining <= 0 ? "Лимит исчерпан" : "Заполнить с помощью ИИ"}</button>
+                    </div>
+                    <small className={brandAnalyzeError ? "is-error" : ""}>{brandAnalyzeError || "КЛИО читает эту страницу при сборе семантики, генерации и по кнопке «Заполнить с помощью ИИ»; недоступные сведения не додумываются."}</small>
+                  </label>
                   <label className="wide">О компании<AutoTextarea rows={3} value={brand.description} onChange={(event) => updateBrand("description", event.target.value)}/><small>Короткая фактическая справка: сфера, география, услуги и масштаб.</small></label>
                   <label className="wide">Позиционирование<AutoTextarea rows={3} value={brand.positioning} onChange={(event) => updateBrand("positioning", event.target.value)}/><small>Какое место бренд хочет занимать в сознании аудитории — не рекламный слоган, а редакционный ориентир.</small></label>
                   <label>Основная аудитория<AutoTextarea rows={4} value={brand.audience} onChange={(event) => updateBrand("audience", event.target.value)}/><small>Кто читатель, с какой задачей и на каком уровне понимания темы.</small></label>
