@@ -4210,24 +4210,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <article><span>Готово</span><b>{contentPlanProgress.ready}</b><small>отмечено редактором</small></article>
                 </div>
 
-                <div className="content-plan-toolbar">
-                  <div className="content-plan-toolbar-actions"><button type="button" className="content-plan-save" onClick={() => void saveModuleMaterial("content_plan")} disabled={materialSavingType === "content_plan"}>{materialSavingType === "content_plan" ? "Сохраняем…" : moduleMaterialSources.content_plan ? "Сохранить новую версию" : "Сохранить в материалы"}</button>{moduleMaterialSources.content_plan && <button type="button" className="content-plan-copy" onClick={() => void saveModuleMaterial("content_plan", "copy")} disabled={materialSavingType === "content_plan"}>Копия</button>}<button type="button" className="content-plan-export" onClick={exportContentPlan}><Icon name="arrow"/> Экспорт CSV</button></div>
-                </div>
-
-                {selectedPlanItemIds.length > 0 && <div className="content-plan-selection-bar"><span><b>Выбрано: {selectedPlanItemIds.length}</b><small>Остальные темы и их статусы не изменятся.</small></span><div><button type="button" onClick={() => { setSelectedPlanItemIds([]); setPlanReplacements([]); setPlanReplacementOpen(false); }}>Снять выбор</button><button type="button" onClick={() => setPlanReplacementOpen(true)}>Заменить выбранные</button></div></div>}
-
-                {planReplacementOpen && <section className="content-plan-replacement" aria-label="Замена выбранных тем">
-                  <div className="content-plan-replacement-head"><div><span>Точечная замена</span><h3>Новые варианты только для выбранных тем</h3><p>Один запрос заменяет до пяти тем и расходует одно редакторское действие.</p></div><button type="button" onClick={() => { setPlanReplacementOpen(false); setPlanReplacements([]); setPlanReplacementError(""); }} aria-label="Закрыть замену">×</button></div>
-                  <div className="content-plan-replacement-options"><span>Что изменить</span><div>{["Другой ракурс", "Исключить похожие темы", "Более продающая тема", "Другой формат"].map((option) => <button type="button" className={planReplacementPreference === option ? "active" : ""} onClick={() => setPlanReplacementPreference(option)} key={option}>{option}</button>)}</div></div>
-                  <label className="content-plan-replacement-comment"><span>Дополнительное пожелание · необязательно</span><AutoTextarea rows={2} value={planReplacementComment} onChange={(event) => setPlanReplacementComment(event.target.value)} placeholder="Например: больше практических тем для аудитории 45+"/></label>
-                  {planReplacementError && <p className="generation-error" role="alert">{planReplacementError}</p>}
-                  <button className="button primary" type="button" onClick={() => void requestPlanReplacements()} disabled={planReplacementBusy || workspaceAccount.editorActionsRemaining <= 0}>{planReplacementBusy ? "Подбираем варианты…" : workspaceAccount.editorActionsRemaining <= 0 ? "Лимит AI‑редактуры исчерпан" : `Предложить замену для ${selectedPlanItemIds.length} ${selectedPlanItemIds.length === 1 ? "темы" : "тем"}`}</button>
-                  {planReplacements.length > 0 && <div className="content-plan-replacement-groups">{planReplacements.map((group) => {
-                    const source = contentPlanResult.items.find((item) => item.id === group.sourceId);
-                    return <article key={group.sourceId}><div><span>Исходная тема</span><h4>{source?.title}</h4><button type="button" onClick={() => keepOriginalPlanItem(group.sourceId)}>Оставить исходную</button></div><div>{group.alternatives.map((alternative) => <button type="button" onClick={() => applyPlanReplacement(group.sourceId, alternative)} key={alternative.id}><span>{alternative.format} · {alternative.intent}</span><b>{alternative.title}</b><small>{alternative.angle}</small><em>Выбрать вариант <Icon name="arrow"/></em></button>)}</div></article>;
-                  })}</div>}
-                </section>}
-
                 <div className="content-plan-list">
                   {contentPlanResult.items.map((item) => {
                     const originalIndex = contentPlanResult.items.findIndex((candidate) => candidate.id === item.id);
@@ -4253,7 +4235,35 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     </article>;
                   })}
                 </div>
-                <div className="content-plan-note"><i>i</i><p>{contentPlanResult.dataNote}</p><button type="button" onClick={exportContentPlan}>Скачать весь план ↗</button></div>
+
+                {contentPlanResult.dataNote && <div className="content-plan-note"><i>i</i><p>{contentPlanResult.dataNote}</p></div>}
+
+                <div className="content-plan-actions">
+                  <div className="content-plan-toolbar-actions">
+                    <button type="button" className="button ghost" onClick={() => void saveModuleMaterial("content_plan")} disabled={materialSavingType === "content_plan"}>{materialSavingType === "content_plan" ? "Сохраняем…" : moduleMaterialSources.content_plan ? "Сохранить новую версию" : "Сохранить в материалы"}</button>
+                    {moduleMaterialSources.content_plan && <button type="button" className="button ghost" onClick={() => void saveModuleMaterial("content_plan", "copy")} disabled={materialSavingType === "content_plan"}>Копия</button>}
+                    <button type="button" className="button ghost" onClick={exportContentPlan}><Icon name="arrow"/> Скачать план (CSV)</button>
+                  </div>
+                  <div className="content-plan-selection-bar">
+                    <span>{selectedPlanItemIds.length > 0 ? <><b>Выбрано: {selectedPlanItemIds.length}</b><small>Остальные темы и их статусы не изменятся</small></> : <small>Отметьте темы «Выбрать», чтобы заменить их на другие</small>}</span>
+                    <div>
+                      <button type="button" className="button ghost" onClick={() => { setSelectedPlanItemIds([]); setPlanReplacements([]); setPlanReplacementOpen(false); }} disabled={!selectedPlanItemIds.length}>Снять выбор</button>
+                      <button type="button" className="button primary" onClick={() => setPlanReplacementOpen(true)} disabled={!selectedPlanItemIds.length}>Заменить выбранные</button>
+                    </div>
+                  </div>
+                </div>
+
+                {planReplacementOpen && <section className="content-plan-replacement" aria-label="Замена выбранных тем">
+                  <div className="content-plan-replacement-head"><div><span>Точечная замена</span><h3>Новые варианты только для выбранных тем</h3><p>Один запрос заменяет до пяти тем и расходует одно редакторское действие.</p></div><button type="button" onClick={() => { setPlanReplacementOpen(false); setPlanReplacements([]); setPlanReplacementError(""); }} aria-label="Закрыть замену">×</button></div>
+                  <div className="content-plan-replacement-options"><span>Что изменить</span><div>{["Другой ракурс", "Исключить похожие темы", "Более продающая тема", "Другой формат"].map((option) => <button type="button" className={planReplacementPreference === option ? "active" : ""} onClick={() => setPlanReplacementPreference(option)} key={option}>{option}</button>)}</div></div>
+                  <label className="content-plan-replacement-comment"><span>Дополнительное пожелание · необязательно</span><AutoTextarea rows={2} value={planReplacementComment} onChange={(event) => setPlanReplacementComment(event.target.value)} placeholder="Например: больше практических тем для аудитории 45+"/></label>
+                  {planReplacementError && <p className="generation-error" role="alert">{planReplacementError}</p>}
+                  <button className="button primary" type="button" onClick={() => void requestPlanReplacements()} disabled={planReplacementBusy || workspaceAccount.editorActionsRemaining <= 0}>{planReplacementBusy ? "Подбираем варианты…" : workspaceAccount.editorActionsRemaining <= 0 ? "Лимит AI‑редактуры исчерпан" : `Предложить замену для ${selectedPlanItemIds.length} ${selectedPlanItemIds.length === 1 ? "темы" : "тем"}`}</button>
+                  {planReplacements.length > 0 && <div className="content-plan-replacement-groups">{planReplacements.map((group) => {
+                    const source = contentPlanResult.items.find((item) => item.id === group.sourceId);
+                    return <article key={group.sourceId}><div><span>Исходная тема</span><h4>{source?.title}</h4><button type="button" onClick={() => keepOriginalPlanItem(group.sourceId)}>Оставить исходную</button></div><div>{group.alternatives.map((alternative) => <button type="button" onClick={() => applyPlanReplacement(group.sourceId, alternative)} key={alternative.id}><span>{alternative.format} · {alternative.intent}</span><b>{alternative.title}</b><small>{alternative.angle}</small><em>Выбрать вариант <Icon name="arrow"/></em></button>)}</div></article>;
+                  })}</div>}
+                </section>}
               </> : <div className="content-plan-empty"><i>25</i><div><span>Контент‑стратегия</span><h3>Одна тема превращается в управляемую очередь</h3><p>AI‑стратег разведёт интенты, этапы воронки и форматы, подготовит SEO‑заголовок, метаописание, основной запрос, поддерживающую семантику, цель, фактуру и структуру. Любую строку можно передать в генератор одним действием.</p></div></div>}
             </div>
           </section>
