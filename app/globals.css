@@ -15698,3 +15698,435 @@ footer nav a {
 .cover-story::after {
   transition: none;
 }
+
+/* ---------------------------------------------------------------------
+   Light theme installment 3: Генератор (.studio - .brief-panel left /
+   .result-panel right) plus the shared form components it's built from
+   (.field, ModuleSelect, .format-tabs, .editorial-plan-card,
+   .generator-context-card) - these are dark-native (never had a light
+   version to begin with, unlike modules that started light and got a
+   dark pass later), so every rule below is a genuinely new light
+   design rather than an inversion of an existing one. Cool-blue-not-
+   violet convention continued from the earlier installments.
+
+   Shared components matter beyond this module: .field and ModuleSelect
+   in particular are reused by Семантика/Контент-план/Конкуренты/
+   Редакторы КЛИО, so this pass also lights those two pieces up wherever
+   they appear ahead of those modules' own installments.
+   --------------------------------------------------------------------- */
+[data-theme="light"] .studio {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 44px 110px rgba(20, 40, 80, 0.14), inset 0 1px rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"] .brief-panel {
+  border-right-color: rgba(15, 23, 42, 0.14);
+  color: #0d1b31;
+  background:
+    radial-gradient(circle at 15% 5%, rgba(53, 104, 212, 0.16), transparent 34%),
+    radial-gradient(circle at 100% 82%, rgba(53, 104, 212, 0.1), transparent 36%),
+    linear-gradient(145deg, #eef2f8 0%, #f4f7fb 58%, #ffffff 100%);
+}
+
+[data-theme="light"] .brief-step {
+  border-bottom-color: rgba(15, 23, 42, 0.12);
+}
+
+[data-theme="light"] .brief-step span,
+[data-theme="light"] .brief-reset {
+  color: #2452b8;
+}
+
+[data-theme="light"] .brief-reset:hover {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .generator-mode-switch {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .generator-mode-switch button {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .generator-mode-switch button > i {
+  border-color: rgba(15, 23, 42, 0.18);
+}
+
+[data-theme="light"] .generator-mode-switch button small {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .generator-mode-switch button.active {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(20, 40, 80, 0.1);
+}
+
+[data-theme="light"] .generator-mode-switch button.active > i {
+  border-color: rgba(53, 104, 212, 0.4);
+  color: #2452b8;
+  background: rgba(53, 104, 212, 0.12);
+}
+
+/* .field is shared with Семантика/Контент-план/Конкуренты/Редакторы
+   КЛИО, not just Генератор. */
+[data-theme="light"] .field {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .field input,
+[data-theme="light"] .field textarea,
+[data-theme="light"] .field select {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.75);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="light"] .field input::placeholder,
+[data-theme="light"] .field textarea::placeholder {
+  color: rgba(13, 27, 49, 0.35);
+}
+
+[data-theme="light"] .field input:focus,
+[data-theme="light"] .field textarea:focus,
+[data-theme="light"] .field select:focus {
+  border-color: #2452b8;
+  box-shadow: 0 0 0 3px rgba(53, 104, 212, 0.16);
+}
+
+[data-theme="light"] .field small {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+/* ModuleSelect (Стиль/Объём/Период/Статус) - portals to document.body,
+   so it's styled once here regardless of which module opened it. */
+[data-theme="light"] .module-select-trigger {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.75);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="light"] .module-select-trigger:hover,
+[data-theme="light"] .module-select.is-open .module-select-trigger {
+  border-color: rgba(53, 104, 212, 0.4);
+  background: linear-gradient(135deg, rgba(53, 104, 212, 0.12), rgba(255, 255, 255, 0.8));
+}
+
+[data-theme="light"] .module-select-trigger b {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .module-select-trigger > em {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .module-select-list {
+  border-color: rgba(15, 23, 42, 0.14);
+  color: #0d1b31;
+  background:
+    radial-gradient(circle at 85% -10%, rgba(53, 104, 212, 0.14), transparent 42%),
+    linear-gradient(155deg, #e3eaf6 0%, #f2f5fa 55%, #ffffff 100%);
+  box-shadow: 0 22px 55px rgba(20, 40, 80, 0.16), inset 0 1px rgba(255, 255, 255, 0.7);
+  scrollbar-color: rgba(53, 104, 212, 0.4) transparent;
+}
+
+[data-theme="light"] .module-select-list::-webkit-scrollbar-thumb {
+  background: rgba(53, 104, 212, 0.4);
+}
+
+[data-theme="light"] .module-select-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(53, 104, 212, 0.6);
+}
+
+[data-theme="light"] .module-select-list > button {
+  color: #0d1b31;
+  background: rgba(15, 23, 42, 0.03);
+}
+
+[data-theme="light"] .module-select-list > button:hover,
+[data-theme="light"] .module-select-list > button.active {
+  border-color: rgba(53, 104, 212, 0.35);
+  background: rgba(53, 104, 212, 0.1);
+}
+
+[data-theme="light"] .module-select-list > button > em {
+  color: #2452b8;
+}
+
+[data-theme="light"] .custom-length > div > span {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .format-tabs button {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: rgba(13, 27, 49, 0.65);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .format-tabs button.active {
+  border-color: rgba(53, 104, 212, 0.4);
+  color: #fff;
+  background: linear-gradient(115deg, #2452b8, #3568d4);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="light"] .generator-plan-card {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: linear-gradient(145deg, rgba(53, 104, 212, 0.1), rgba(255, 255, 255, 0.7));
+}
+
+[data-theme="light"] .editorial-plan-card > div > span {
+  color: #2452b8;
+}
+
+[data-theme="light"] .editorial-plan-card > div > b {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .editorial-plan-card > div > small,
+[data-theme="light"] .editorial-plan-card li {
+  color: rgba(13, 27, 49, 0.68);
+}
+
+[data-theme="light"] .editorial-plan-card li::before {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"] .editorial-plan-card > p {
+  border-top-color: rgba(15, 23, 42, 0.12);
+  color: rgba(13, 27, 49, 0.68);
+}
+
+[data-theme="light"] .editorial-plan-card > p i {
+  color: #2452b8;
+}
+
+[data-theme="light"] .tone-contract-note {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .tone-contract-note i {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .generator-context-card {
+  border-color: rgba(15, 23, 42, 0.16);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.75), rgba(53, 104, 212, 0.08));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .generator-context-head > span {
+  color: #2452b8;
+}
+
+[data-theme="light"] .generator-context-head > small {
+  color: rgba(13, 27, 49, 0.65);
+}
+
+[data-theme="light"] .generator-context-options > label {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .generator-context-options > label:hover,
+[data-theme="light"] .generator-context-options > label.is-checked {
+  border-color: rgba(53, 104, 212, 0.4);
+  background: linear-gradient(135deg, rgba(53, 104, 212, 0.14), rgba(255, 255, 255, 0.75));
+}
+
+[data-theme="light"] .generator-context-options > label.is-pending.is-checked small {
+  color: rgba(13, 27, 49, 0.68);
+}
+
+[data-theme="light"] .generator-context-options label > i {
+  border-color: rgba(15, 23, 42, 0.22);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .generator-context-options label b {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .generator-context-options label small {
+  color: rgba(13, 27, 49, 0.58);
+}
+
+[data-theme="light"] .result-panel {
+  --ink: #0d1b31;
+  --muted: rgba(13, 27, 49, 0.62);
+  --line: rgba(15, 23, 42, 0.14);
+  color: #0d1b31;
+  background:
+    radial-gradient(circle at 88% 0%, rgba(53, 104, 212, 0.12), transparent 32%),
+    linear-gradient(150deg, #ffffff 0%, #f4f7fb 55%, #eef2f8 100%);
+}
+
+/* .status/.status-ai/.status-demo/.status-example inside .result-head:
+   the dark-theme scoped override (.result-head .status-ai { color:
+   var(--acid) }, etc.) is unconditional, not gated behind [data-theme=
+   "dark"], so it was still winning here too - bright acid/gold text
+   that has no contrast problem on navy reads as too pale on the new
+   light panel. Also included .adaptation-result-head so Редакторы КЛИО
+   doesn't repeat this gap once that module gets its own installment. */
+[data-theme="light"] .result-head .status,
+[data-theme="light"] .adaptation-result-head .status {
+  color: rgba(13, 27, 49, 0.7);
+}
+
+[data-theme="light"] .result-head .status-demo,
+[data-theme="light"] .adaptation-result-head .status-demo {
+  color: #8a6412;
+}
+
+[data-theme="light"] .result-head .status-ai,
+[data-theme="light"] .adaptation-result-head .status-ai {
+  color: #2452b8;
+}
+
+[data-theme="light"] .result-head .status-ai i,
+[data-theme="light"] .adaptation-result-head .status-ai i {
+  background: #2452b8;
+  box-shadow: 0 0 0 5px rgba(53, 104, 212, 0.16);
+}
+
+[data-theme="light"] .result-head .status-example,
+[data-theme="light"] .adaptation-result-head .status-example {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .result-head button,
+[data-theme="light"] .result-footer button {
+  color: #2452b8;
+}
+
+[data-theme="light"] .result-clear {
+  color: rgba(13, 27, 49, 0.45) !important;
+}
+
+[data-theme="light"] .result-clear:hover:not(:disabled) {
+  color: #0d1b31 !important;
+}
+
+[data-theme="light"] .result-body {
+  color: rgba(13, 27, 49, 0.82);
+}
+
+[data-theme="light"] .editor-note {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(53, 104, 212, 0.1);
+}
+
+[data-theme="light"] .editor-note span {
+  color: #2452b8;
+}
+
+[data-theme="light"] .editor-note p {
+  color: rgba(13, 27, 49, 0.75);
+}
+
+[data-theme="light"] .editor-note small {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .seo-passport {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: linear-gradient(135deg, rgba(53, 104, 212, 0.1), rgba(255, 255, 255, 0.6));
+}
+
+[data-theme="light"] .seo-passport-head small {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .seo-passport > label {
+  border-top-color: rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="light"] .seo-passport textarea {
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"] .seo-passport .seo-field-label > button {
+  border-color: rgba(15, 23, 42, 0.18);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .seo-passport .seo-field-label > button:hover {
+  border-color: rgba(53, 104, 212, 0.4);
+  background: rgba(53, 104, 212, 0.12);
+}
+
+[data-theme="light"] .length-control {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .length-control > span {
+  color: #8a6412;
+}
+
+[data-theme="light"] .length-control > b {
+  color: rgba(13, 27, 49, 0.62);
+}
+
+[data-theme="light"] .length-control > u {
+  background: rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="light"] .length-control > small {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .length-control.is-ok > span {
+  color: #3f7d1c;
+}
+
+[data-theme="light"] .length-control.is-idle > span {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .generator-accent-field > small {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .generation-brief-check {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(53, 104, 212, 0.1);
+}
+
+[data-theme="light"] .generation-brief-check > div,
+[data-theme="light"] .generation-brief-check > p {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+[data-theme="light"] .generation-brief-check > div span {
+  color: #2452b8;
+}
+
+[data-theme="light"] .generation-brief-check > div small,
+[data-theme="light"] .generation-brief-check p small {
+  color: rgba(13, 27, 49, 0.58);
+}
+
+[data-theme="light"] .generation-brief-check > p > i {
+  background: rgba(53, 104, 212, 0.14);
+  color: #2452b8;
+}
+
+[data-theme="light"] .generation-brief-check > p.is-missing > i {
+  background: rgba(224, 73, 106, 0.14);
+  color: #c81e3a;
+}
+
+[data-theme="light"] .result-footer {
+  color: rgba(13, 27, 49, 0.55);
+}
