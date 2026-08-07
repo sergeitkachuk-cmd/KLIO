@@ -14943,6 +14943,30 @@ footer nav a {
   color: rgba(13, 27, 49, 0.55);
 }
 
+/* "+ Добавить бренд" - missed in the first pass. Its own selector
+   (.brand-project-switcher > button, not .workspace-project) is a
+   dashed acid-green outline built for the dark sidebar; same
+   unreadable-on-light problem as the nav "01" marker, same cool-blue
+   fix. */
+[data-theme="light"] .brand-project-switcher > button {
+  border-color: rgba(53, 104, 212, 0.4);
+  color: #2452b8;
+}
+
+[data-theme="light"] .brand-project-switcher > button:disabled {
+  color: rgba(36, 82, 184, 0.5);
+}
+
+[data-theme="light"] .brand-project-switcher select {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(53, 104, 212, 0.06);
+}
+
+[data-theme="light"] .brand-project-switcher label > i {
+  color: rgba(13, 27, 49, 0.5);
+}
+
 [data-theme="light"] .brand-menu-trigger {
   border-color: rgba(15, 23, 42, 0.18);
   color: #0d1b31;
