@@ -13424,11 +13424,18 @@ footer nav a {
   outline-offset: 2px;
 }
 
+/* Was margin-top: -4px, pulling this right up against .adaptation-
+   submit's bottom edge (and the acid button's own glow, box-shadow: 0
+   17px 48px rgba(216,255,101,.16), spreads well past its own border) -
+   at 10px it read as fused to the button rather than a caption below
+   it. Matches .archive-transform-panel > small's spacing/size now (the
+   equivalent quota note on the same kind of AI-submit button in
+   Материалы) instead of its own one-off smaller/tighter numbers. */
 .adaptation-quota-note {
   display: block;
-  margin-top: -4px;
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 10px;
+  margin-top: 10px;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 12px;
   line-height: 1.45;
 }
 
