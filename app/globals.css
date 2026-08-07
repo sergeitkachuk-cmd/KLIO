@@ -2287,7 +2287,14 @@ select:focus-visible {
   z-index: 100;
   display: grid;
   gap: 4px;
-  max-height: 280px;
+  /* Was 280px, which only fits ~6 of the 42px rows before scrolling -
+     every real options list here (Период: 8, Стиль: 10, Объём: up to 7)
+     is longer than that, so scrolling wasn't an edge case, it was the
+     default. 480px comfortably fits all of them on a normal viewport;
+     overflow-y stays on as a safety net for short viewports or a future
+     longer list, now with its own themed scrollbar (below) instead of
+     the bare OS one. */
+  max-height: 480px;
   padding: 7px;
   overflow-y: auto;
   border: 1px solid rgba(255, 255, 255, 0.16);
@@ -2299,6 +2306,24 @@ select:focus-visible {
   box-shadow: 0 22px 55px rgba(2, 10, 22, 0.5), inset 0 1px rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(24px);
   scrollbar-width: thin;
+  scrollbar-color: rgba(124, 58, 237, 0.45) transparent;
+}
+
+.module-select-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.module-select-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.module-select-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.45);
+}
+
+.module-select-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 58, 237, 0.65);
 }
 
 .module-select-list > button {
