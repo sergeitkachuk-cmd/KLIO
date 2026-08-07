@@ -11387,6 +11387,23 @@ footer nav a {
   cursor: pointer;
 }
 
+/* .editor-tone-picker lives in Редакторы КЛИО, dark-navy since the
+   adaptation pass — but this button style is shared with
+   .archive-tone-picker in the still-light "Материалы" modal, so the
+   light default above can't just be edited in place. Scoped override
+   for the dark home only; the modal keeps the original light pill. */
+.editor-tone-picker button {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.editor-tone-picker button:hover {
+  border-color: rgba(124, 58, 237, 0.4);
+  background: rgba(255, 255, 255, 0.13);
+}
+
 .archive-editor-modal {
   width: min(1480px, 100%);
   max-height: calc(100svh - 44px);
