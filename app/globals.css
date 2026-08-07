@@ -14857,12 +14857,12 @@ footer nav a {
 
 [data-theme="light"] .site-header,
 [data-theme="light"] .workspace-header {
-  border-color: rgba(15, 23, 42, 0.1);
+  border-color: rgba(15, 23, 42, 0.12);
   color: #0d1b31;
   background:
-    radial-gradient(circle at 78% -60%, rgba(124, 58, 237, 0.14), transparent 42%),
-    linear-gradient(115deg, rgba(255, 255, 255, 0.94), rgba(246, 244, 252, 0.9));
-  box-shadow: 0 20px 60px rgba(31, 24, 62, 0.08), inset 0 1px rgba(255, 255, 255, 0.7);
+    radial-gradient(circle at 78% -60%, rgba(124, 58, 237, 0.16), transparent 42%),
+    linear-gradient(115deg, rgba(226, 234, 244, 0.96), rgba(255, 255, 255, 0.92));
+  box-shadow: 0 20px 60px rgba(31, 24, 62, 0.1), inset 0 1px rgba(255, 255, 255, 0.7);
 }
 
 [data-theme="light"] .theme-toggle {
@@ -14904,8 +14904,8 @@ footer nav a {
 [data-theme="light"] .account-menu-list {
   border-color: rgba(15, 23, 42, 0.12);
   background:
-    radial-gradient(circle at 85% -10%, rgba(124, 58, 237, 0.1), transparent 42%),
-    linear-gradient(155deg, #ffffff 0%, #f6f4fb 55%, #eef1f8 100%);
+    radial-gradient(circle at 85% -10%, rgba(124, 58, 237, 0.14), transparent 42%),
+    linear-gradient(155deg, #e6ecf5 0%, #f2f5fa 55%, #ffffff 100%);
   box-shadow: 0 22px 55px rgba(31, 24, 62, 0.14), inset 0 1px rgba(255, 255, 255, 0.7);
 }
 
@@ -14921,11 +14921,11 @@ footer nav a {
 }
 
 [data-theme="light"] .workspace-sidebar {
-  border-right-color: rgba(15, 23, 42, 0.1);
+  border-right-color: rgba(15, 23, 42, 0.12);
   color: #0d1b31;
   background:
-    radial-gradient(circle at 15% 5%, rgba(124, 58, 237, 0.1), transparent 30%),
-    linear-gradient(165deg, #ffffff 0%, #f7f5fc 55%, #eef1f8 100%);
+    radial-gradient(circle at 15% 5%, rgba(124, 58, 237, 0.12), transparent 30%),
+    linear-gradient(165deg, #e6ecf5 0%, #f2f5fa 55%, #ffffff 100%);
 }
 
 [data-theme="light"] .workspace-project {
@@ -14937,15 +14937,15 @@ footer nav a {
 }
 
 [data-theme="light"] .brand-menu-trigger {
-  border-color: rgba(15, 23, 42, 0.14);
+  border-color: rgba(15, 23, 42, 0.16);
   color: #0d1b31;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(255, 255, 255, 0.7));
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(226, 234, 244, 0.75));
 }
 
 [data-theme="light"] .brand-menu-trigger:hover,
 [data-theme="light"] .brand-menu.is-open .brand-menu-trigger {
   border-color: rgba(124, 58, 237, 0.35);
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.14), rgba(255, 255, 255, 0.75));
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.16), rgba(226, 234, 244, 0.8));
 }
 
 [data-theme="light"] .brand-menu-trigger b,
@@ -14963,8 +14963,8 @@ footer nav a {
   border-color: rgba(15, 23, 42, 0.12);
   color: #0d1b31;
   background:
-    radial-gradient(circle at 85% -10%, rgba(124, 58, 237, 0.1), transparent 42%),
-    linear-gradient(155deg, #ffffff 0%, #f6f4fb 55%, #eef1f8 100%);
+    radial-gradient(circle at 85% -10%, rgba(124, 58, 237, 0.14), transparent 42%),
+    linear-gradient(155deg, #e6ecf5 0%, #f2f5fa 55%, #ffffff 100%);
   box-shadow: 0 22px 55px rgba(31, 24, 62, 0.14), inset 0 1px rgba(255, 255, 255, 0.7);
 }
 
@@ -14999,7 +14999,7 @@ footer nav a {
 [data-theme="light"] .workspace-sidebar nav button:hover {
   border-color: rgba(124, 58, 237, 0.28);
   color: #0d1b31;
-  background: linear-gradient(120deg, rgba(124, 58, 237, 0.1), rgba(255, 255, 255, 0.5));
+  background: linear-gradient(120deg, rgba(124, 58, 237, 0.14), rgba(226, 234, 244, 0.65));
 }
 
 [data-theme="light"] .workspace-sidebar nav i {
@@ -15011,8 +15011,8 @@ footer nav a {
 }
 
 [data-theme="light"] .workspace-stage {
-  border-color: rgba(15, 23, 42, 0.12);
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.06), rgba(255, 255, 255, 0.55));
+  border-color: rgba(15, 23, 42, 0.14);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(226, 234, 244, 0.7));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.7);
 }
 
@@ -15037,12 +15037,12 @@ footer nav a {
 }
 
 [data-theme="light"] .workspace-status {
-  border-color: rgba(15, 23, 42, 0.12);
+  border-color: rgba(15, 23, 42, 0.14);
   color: #0d1b31;
   background:
-    radial-gradient(circle at 90% 0%, rgba(124, 58, 237, 0.1), transparent 34%),
-    linear-gradient(135deg, #ffffff 0%, #f6f4fb 55%, #eef1f8 100%);
-  box-shadow: 0 16px 42px rgba(31, 24, 62, 0.1), inset 0 1px rgba(255, 255, 255, 0.7);
+    radial-gradient(circle at 90% 0%, rgba(124, 58, 237, 0.14), transparent 34%),
+    linear-gradient(135deg, #e6ecf5 0%, #f2f5fa 55%, #ffffff 100%);
+  box-shadow: 0 16px 42px rgba(31, 24, 62, 0.12), inset 0 1px rgba(255, 255, 255, 0.7);
 }
 
 [data-theme="light"] .workspace-status small {
@@ -15054,9 +15054,9 @@ footer nav a {
 [data-theme="light"] .cover-intro {
   color: #0d1b31;
   background:
-    radial-gradient(circle at 74% 32%, rgba(124, 58, 237, 0.16), transparent 30%),
-    radial-gradient(circle at 18% 84%, rgba(91, 33, 182, 0.1), transparent 34%),
-    linear-gradient(128deg, #ffffff 0%, #f5f3fb 56%, #eef1f8 100%);
+    radial-gradient(circle at 74% 32%, rgba(124, 58, 237, 0.18), transparent 30%),
+    radial-gradient(circle at 18% 84%, rgba(91, 33, 182, 0.12), transparent 34%),
+    linear-gradient(128deg, #e6ecf5 0%, #f2f5fa 56%, #ffffff 100%);
 }
 
 [data-theme="light"] .issue-line {
@@ -15096,9 +15096,9 @@ footer nav a {
 [data-theme="light"] .hero {
   color: #0d1b31;
   background:
-    radial-gradient(circle at 79% 27%, rgba(124, 58, 237, 0.14), transparent 30%),
-    radial-gradient(circle at 14% 87%, rgba(91, 33, 182, 0.08), transparent 32%),
-    linear-gradient(126deg, #ffffff 0%, #f5f3fb 50%, #eef1f8 100%);
+    radial-gradient(circle at 79% 27%, rgba(124, 58, 237, 0.16), transparent 30%),
+    radial-gradient(circle at 14% 87%, rgba(91, 33, 182, 0.1), transparent 32%),
+    linear-gradient(126deg, #e6ecf5 0%, #f2f5fa 50%, #ffffff 100%);
 }
 
 [data-theme="light"] .hero-mast span {
@@ -15138,9 +15138,10 @@ footer nav a {
 }
 
 [data-theme="light"] .cover-story {
-  border-color: rgba(15, 23, 42, 0.12);
+  border-color: rgba(15, 23, 42, 0.16);
   color: #0d1b31;
-  background: linear-gradient(150deg, rgba(255, 255, 255, 0.92), rgba(246, 244, 252, 0.85));
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.96), rgba(226, 234, 244, 0.88));
+  box-shadow: 0 42px 96px rgba(31, 24, 62, 0.16), inset 0 1px rgba(255, 255, 255, 0.8);
 }
 
 /* .story-no (the big faint "01" watermark) and .cover-story h2 i (the
@@ -15161,9 +15162,10 @@ footer nav a {
 }
 
 [data-theme="light"] .floating-leaf {
-  border-color: rgba(15, 23, 42, 0.12);
+  border-color: rgba(15, 23, 42, 0.16);
   color: #0d1b31;
-  background: linear-gradient(150deg, rgba(255, 255, 255, 0.94), rgba(246, 244, 252, 0.86));
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.97), rgba(226, 234, 244, 0.9));
+  box-shadow: 0 24px 65px rgba(31, 24, 62, 0.18), inset 0 1px rgba(255, 255, 255, 0.85);
 }
 
 [data-theme="light"] .floating-leaf small,
@@ -15178,9 +15180,9 @@ footer nav a {
 [data-theme="light"] .plan-section {
   color: #0d1b31;
   background:
-    radial-gradient(720px 520px at 78% 12%, rgba(124, 58, 237, 0.12), transparent 62%),
-    radial-gradient(520px 420px at 5% 90%, rgba(91, 33, 182, 0.08), transparent 68%),
-    linear-gradient(160deg, #ffffff 0%, #f5f3fb 55%, #eef1f8 100%);
+    radial-gradient(720px 520px at 78% 12%, rgba(124, 58, 237, 0.14), transparent 62%),
+    radial-gradient(520px 420px at 5% 90%, rgba(91, 33, 182, 0.1), transparent 68%),
+    linear-gradient(160deg, #e6ecf5 0%, #f2f5fa 55%, #ffffff 100%);
 }
 
 [data-theme="light"] .plan-copy .kicker {
@@ -15207,13 +15209,15 @@ footer nav a {
 }
 
 [data-theme="light"] .plan-table {
-  border-color: rgba(15, 23, 42, 0.12);
-  background: rgba(255, 255, 255, 0.55);
+  border-color: rgba(15, 23, 42, 0.16);
+  background: rgba(255, 255, 255, 0.75);
+  box-shadow: 0 20px 50px rgba(31, 24, 62, 0.1);
 }
 
 [data-theme="light"] .table-head {
-  border-bottom-color: rgba(15, 23, 42, 0.1);
+  border-bottom-color: rgba(15, 23, 42, 0.12);
   color: #0d1b31;
+  background: rgba(124, 58, 237, 0.06);
 }
 
 [data-theme="light"] .table-head span {
