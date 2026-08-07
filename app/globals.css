@@ -15669,34 +15669,46 @@ footer nav a {
 }
 
 /* ---------------------------------------------------------------------
-   Smooth light/dark crossfade: every element that actually changes
-   appearance already does so purely through color/background/border/
-   shadow (the [data-theme="light"] rules above never touch layout), so
-   transitioning those four properties site-wide is enough to turn the
-   toggle from an instant snap into a soft fade - no JS, no extra class
-   toggled on click. Scoped to *, not html/body alone, because the
-   colour change happens on hundreds of individual descendants (cards,
-   buttons, borders), each of which needs its own transition to animate;
-   it does not inherit from an ancestor's transition. Only fires on an
-   actual value change, so it's silent on first paint (the bootstrap
-   script in layout.tsx already set data-theme before anything rendered)
-   and does not fight component-specific transitions like .button's own
-   hover transform, which wins on specificity and keeps its full value. */
-*,
-*::before,
-*::after {
-  transition: background-color 380ms ease, color 380ms ease, border-color 380ms ease, box-shadow 380ms ease, fill 380ms ease, stroke 380ms ease;
+   Light/dark switch: a radial wipe via the View Transitions API,
+   replacing an earlier attempt at a blanket `* { transition: background
+   -color... }` rule. That approach looked like a stutter rather than a
+   fade: nearly every card here paints its surface with a multi-stop
+   background: radial-gradient(...), linear-gradient(...), and CSS has
+   no defined interpolation between two different gradients - browsers
+   mostly just snap them instantly - while plain solid colours on the
+   same page (text, borders) DID fade smoothly, so adjacent elements
+   visibly disagreed about whether they were animating.
+
+   View Transitions sidesteps the gradient problem entirely: the browser
+   diffs two full-page screenshots (before/after the DOM mutation in
+   toggleTheme's document.startViewTransition callback) rather than
+   animating individual CSS properties, so it doesn't matter how many
+   gradients are involved - it's just cross-fading pixels. --theme-x/-y
+   (click position) and --theme-r (distance from there to the screen's
+   farthest corner) are set in JS right before the transition starts;
+   the keyframe below turns them into a clip-path circle the *new*
+   theme's screenshot wipes in with, instead of the browser's default
+   plain cross-fade. Falls back to an instant switch (no animation) on
+   browsers without startViewTransition - same behaviour this had before
+   any transition effect existed. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
 }
 
-/* Long-running/looping animations must stay exactly as fast as they
-   were - the blanket rule above would otherwise also slow down their
-   own color keyframes (buttonBusyPulse's box-shadow, aurora's
-   background-position, etc.) to 380ms per step. */
-.is-busy,
-.hero::before,
-.quality-zone::after,
-.cover-story::after {
-  transition: none;
+::view-transition-new(root) {
+  animation: theme-reveal 600ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes theme-reveal {
+  from {
+    clip-path: circle(0px at var(--theme-x, 100%) var(--theme-y, 0%));
+  }
+
+  to {
+    clip-path: circle(var(--theme-r, 150vmax) at var(--theme-x, 100%) var(--theme-y, 0%));
+  }
 }
 
 /* ---------------------------------------------------------------------

@@ -1,12 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, TextareaHTMLAttributes } from "react";
+import type { CSSProperties, MouseEvent as ReactMouseEvent, TextareaHTMLAttributes } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { russianGeoTree } from "./geo-data";
 import { ADAPTATION_PLANS, FORMAT_PLANS, TONE_PLANS } from "./content-plans";
 import { PLAN_RULES, type PlanId } from "./plans";
+
+// startViewTransition isn't in every TS lib.dom.d.ts snapshot yet and
+// isn't implemented in every browser either (Safari/Firefox caught up
+// 2024-2025, but this still needs a runtime feature check, not just a
+// type one) - toggleTheme below checks for it at call time and falls
+// back to an instant theme switch when it's missing.
+type DocumentWithViewTransition = Document & {
+  startViewTransition?: (callback: () => void) => { ready: Promise<void>; finished: Promise<void> };
+};
 
 type Format = "seo" | "social" | "ads" | "landing";
 type GenerationMode = "example" | "demo" | "ai";
@@ -1629,18 +1638,50 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     });
   }, []);
 
-  function toggleTheme() {
-    setTheme((current) => {
-      const next = current === "dark" ? "light" : "dark";
-      document.documentElement.setAttribute("data-theme", next);
+  // The plain CSS transition this used to lean on (background-color/
+  // color/border-color on every element) looked like a stutter rather
+  // than a fade in practice: almost every card here paints its surface
+  // with a multi-stop background: radial-gradient(...), linear-
+  // gradient(...), and gradients don't have a well-defined CSS
+  // interpolation — browsers mostly just snap them instantly — while
+  // plain solid colors on the same page (text, borders) DID fade
+  // smoothly, so the two kinds of elements visibly disagreed mid-
+  // transition. The View Transitions API sidesteps that entirely: it
+  // diffs two full-page screenshots (before/after the DOM mutation)
+  // instead of animating individual CSS properties, so it doesn't care
+  // how many gradients are involved. --theme-x/-y/-r (click position +
+  // distance to the farthest corner) drive a clip-path circle the new
+  // screenshot wipes in with — see the ::view-transition-new(root)
+  // keyframe in globals.css. Falls back to an instant switch (no
+  // animation, same as before this feature existed) on browsers without
+  // startViewTransition.
+  function toggleTheme(event?: ReactMouseEvent<HTMLButtonElement>) {
+    const next = theme === "dark" ? "light" : "dark";
+    const x = event?.clientX ?? window.innerWidth;
+    const y = event?.clientY ?? 0;
+    const radius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y),
+    );
+    const root = document.documentElement;
+    root.style.setProperty("--theme-x", `${x}px`);
+    root.style.setProperty("--theme-y", `${y}px`);
+    root.style.setProperty("--theme-r", `${radius}px`);
+
+    const applyTheme = () => {
+      root.setAttribute("data-theme", next);
       try {
         window.localStorage.setItem("klio-theme", next);
       } catch {
         // Non-fatal — the toggle still works for the rest of this visit,
         // it just won't be remembered on the next one.
       }
-      return next;
-    });
+    };
+
+    const withViewTransition = (document as DocumentWithViewTransition).startViewTransition;
+    if (withViewTransition) withViewTransition.call(document, applyTheme);
+    else applyTheme();
+    setTheme(next);
   }
 
   useEffect(() => {
