@@ -82,7 +82,7 @@ export default async function AccountPage() {
 function AccountStyles() {
   return (
     <style>{`
-      .account-page { max-width: 760px; margin: 0 auto; padding: 40px 24px 80px; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #fff; background: var(--night); min-height: 100vh; }
+      .account-page { max-width: 760px; margin: 0 auto; padding: 40px 24px 80px; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #fff; background: radial-gradient(circle at 85% 0%, rgba(124,58,237,0.22), transparent 32%), linear-gradient(165deg, #041326 0%, #082947 60%, #051b31 100%); min-height: 100vh; }
       .account-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 32px; flex-wrap: wrap; }
       .account-back { color: rgba(255,255,255,0.62); font-size: 13px; text-decoration: none; }
       .account-back:hover { color: #fff; }
@@ -93,7 +93,7 @@ function AccountStyles() {
       .account-who small { color: rgba(255,255,255,0.55); font-size: 12px; }
       .account-title p { margin: 0 0 6px; color: var(--acid); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
       .account-title h1 { margin: 0 0 28px; font-size: 30px; letter-spacing: -0.02em; }
-      .account-card { margin-bottom: 20px; padding: 24px 26px; border: 1px solid rgba(255,255,255,0.14); border-radius: 20px; background: linear-gradient(120deg, rgba(18,15,28,0.9), rgba(39,29,55,0.75)); box-shadow: inset 0 1px rgba(255,255,255,0.08); }
+      .account-card { margin-bottom: 20px; padding: 24px 26px; border: 1px solid rgba(255,255,255,0.16); border-radius: 4px 28px 4px 4px; background: radial-gradient(circle at 92% 0%, rgba(124,58,237,0.26), transparent 32%), linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%); box-shadow: 0 24px 70px rgba(3,12,26,0.3), inset 0 1px rgba(255,255,255,0.1); }
       .account-card > span { display: block; margin-bottom: 12px; color: #d5c9fb; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
       .account-plan-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
       .account-plan-head span { color: #d5c9fb; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
