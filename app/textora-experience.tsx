@@ -3680,7 +3680,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         <section className="workspace-content">
           <div className="workspace-heading">
             <div><p>Рабочее пространство / выпуск 01</p><h1>Редакционная система</h1><span>Здесь находятся инструменты КЛИО. Маркетинговые разделы остались на публичной странице.</span></div>
-            <div className={`workspace-status ${workspaceDataError ? "has-error" : ""}`}><i/><span><b>{workspaceDataError ? "Ошибка сохранения" : !workspaceReady ? "Загружаем кабинет" : workspaceSaving ? "Сохраняем изменения" : "Все изменения сохранены"}</b><small>{workspaceDataError || (!workspaceReady ? "Генератор уже доступен — данные брендов появятся через мгновение" : `${activeWorkspaceBrand?.name || brand.name} · защищённое хранилище кабинета`)}</small></span></div>
+            <div className={`workspace-status ${workspaceDataError ? "has-error" : workspaceReady && !workspaceSaving ? "is-saved" : ""}`}><i/><span><b>{workspaceDataError ? "Ошибка сохранения" : !workspaceReady ? "Загружаем кабинет" : workspaceSaving ? "Сохраняем изменения" : "Все изменения сохранены"}</b><small>{workspaceDataError || (!workspaceReady ? "Генератор уже доступен — данные брендов появятся через мгновение" : `${activeWorkspaceBrand?.name || brand.name} · защищённое хранилище кабинета`)}</small></span></div>
           </div>
 
 

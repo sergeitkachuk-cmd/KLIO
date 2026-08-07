@@ -4692,12 +4692,23 @@ footer nav a {
   backdrop-filter: blur(20px);
 }
 
+/* Base dot color is amber — meant to read as "in progress" (loading the
+   cabinet / actively saving). It had no separate color for the actual
+   "Все изменения сохранены" success state, so the dot stayed amber even
+   when everything was genuinely fine, reading as a permanent warning.
+   .is-saved below is that missing state; amber now only shows while
+   workspaceReady is still false or workspaceSaving is true. */
 .workspace-status > i {
   width: 9px;
   height: 9px;
   border-radius: 50%;
   background: #d59b32;
   box-shadow: 0 0 0 5px rgba(213, 155, 50, 0.18);
+}
+
+.workspace-status.is-saved > i {
+  background: var(--acid);
+  box-shadow: 0 0 0 5px rgba(216, 255, 101, 0.18);
 }
 
 .workspace-status.has-error > i {
