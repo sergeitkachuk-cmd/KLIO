@@ -19,9 +19,6 @@ export const metadata: Metadata = {
   title: "КЛИО — цифровая редакция для SEO и контента",
   description:
     "Создавайте SEO‑статьи, публикации и рекламные материалы с анализом ключей, голосом бренда и проверкой качества.",
-  other: {
-    "codex-preview": "development",
-  },
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
