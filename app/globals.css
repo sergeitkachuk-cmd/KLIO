@@ -10454,10 +10454,10 @@ footer nav a {
 .workspace-content > .mvp-flow { order: 5; }
 .workspace-content > #brand-profile { order: 6; }
 .workspace-content > #generator { order: 7; }
-.workspace-content > #semantics { order: 8; }
-.workspace-content > #competitors { order: 9; }
-.workspace-content > #content-plan { order: 10; }
-.workspace-content > #adaptation { order: 11; }
+.workspace-content > #content-plan { order: 8; }
+.workspace-content > #adaptation { order: 9; }
+.workspace-content > #semantics { order: 10; }
+.workspace-content > #competitors { order: 11; }
 
 .workspace-ai-banner {
   display: grid;
@@ -12977,6 +12977,14 @@ footer nav a {
    selection-bar) just handle their own internal layout; this wrapper
    is what makes them read as one panel and one button language. */
 .content-plan-actions {
+  /* The old standalone .content-plan-selection-bar set color:#fff
+     itself, which is how its unstyled <b> ("Выбрано: N") got white text
+     through ordinary inheritance. That declaration moved here when the
+     bar's own panel chrome was stripped in favor of this shared
+     wrapper - but the color came along too, leaving <b> with no dark-
+     theme color anywhere above it, so it fell through to the page's
+     base (near-black) text color. Same "explicit color on the dark
+     container" fix as .semantic-shell etc. */
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -12985,6 +12993,7 @@ footer nav a {
   padding: 18px 20px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 4px 20px 4px 4px;
+  color: #fff;
   background: linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
   box-shadow: 0 18px 46px rgba(3, 12, 26, 0.26), inset 0 1px rgba(255, 255, 255, 0.1);
 }

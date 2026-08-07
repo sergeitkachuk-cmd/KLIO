@@ -3609,10 +3609,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           <nav aria-label="Рабочие модули">
             <a href="#brand-profile" onClick={() => setBrandOpen(true)}><i>+</i><span><b>Профиль бренда</b><small>по желанию</small></span></a>
             <a href="#generator"><i>01</i><span><b>Генерировать материал</b><small>быстрый старт</small></span></a>
-            <a href="#semantics" onClick={() => setSemanticOpen(true)}><i>+</i><span><b>Семантика</b><small>самостоятельно или в бриф</small></span></a>
-            <a href="#competitors" onClick={() => setCompetitorOpen(true)}><i>+</i><span><b>Конкуренты</b><small>По желанию</small></span></a>
             <a href="#content-plan" onClick={() => setContentPlanOpen(true)}><i>+</i><span><b>Контент‑план</b><small>самостоятельный инструмент</small></span></a>
             <a href="#adaptation" onClick={() => setAdaptationOpen(true)}><i>+</i><span><b>Редакторы КЛИО</b><small>12 режимов для готового текста</small></span></a>
+            <a href="#semantics" onClick={() => setSemanticOpen(true)}><i>+</i><span><b>Семантика</b><small>самостоятельно или в бриф</small></span></a>
+            <a href="#competitors" onClick={() => setCompetitorOpen(true)}><i>+</i><span><b>Конкуренты</b><small>По желанию</small></span></a>
           </nav>
           <div className="workspace-stage workspace-quota-stage"><span>Ваш тариф</span><b>{workspaceAccount.planName}</b><div className="workspace-quota-list"><p><span>Материалы</span><em>{workspaceAccount.generationsRemaining} / {workspaceAccount.generationLimit}</em><i><u style={{ width: `${generationProgress}%` }}/></i></p><p><span>Исследования</span><em>{workspaceAccount.researchRemaining} / {workspaceAccount.researchLimit}</em><i><u style={{ width: `${researchProgress}%` }}/></i></p><p><span>AI‑редактура</span><em>{workspaceAccount.editorActionsRemaining} / {workspaceAccount.editorActionLimit}</em><i><u style={{ width: `${editorProgress}%` }}/></i></p></div></div>
         </aside>
