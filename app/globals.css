@@ -306,6 +306,31 @@ select:focus-visible {
   text-decoration: none;
 }
 
+.theme-toggle {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.theme-toggle:hover {
+  border-color: rgba(216, 255, 101, 0.4);
+  background: rgba(216, 255, 101, 0.12);
+  transform: translateY(-1px);
+}
+
+.theme-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
 .brand {
   display: grid;
   grid-template-columns: 31px auto;
@@ -14795,4 +14820,432 @@ footer nav a {
 .brand-fields input,
 .brand-fields textarea {
   font-weight: 400;
+}
+
+/* =======================================================================
+   LIGHT THEME — installment 1: toggle + top-level shell/chrome only.
+   Dark (unconditional, unscoped) stays exactly as every rule above this
+   point already renders it - that's "our current theme" per the request,
+   left untouched on purpose. Everything below is purely additive: new
+   [data-theme="light"] rules that only take effect once the toggle in
+   .workspace-header/.site-header sets that attribute on <html> (see
+   toggleTheme() in textora-experience.tsx + the bootstrap script in
+   layout.tsx that applies it before first paint). Nothing here can
+   change the default dark experience for anyone who never touches the
+   toggle.
+
+   Scope of this installment, matching the agreed phased plan (module
+   cards - Профиль бренда, Контент-план, Семантика, Конкуренты,
+   Редакторы КЛИО, Генератор, Материалы/Личный кабинет - come in later
+   installments, same as the original dark pass was done module by
+   module): the workspace header/sidebar/status pill, and the public
+   page's header + cover intro + hero + "Контент-план" teaser section
+   (the only parts of the public marketing page that are actually dark
+   today - audience/showcase/modules/pricing/faq/closing/footer already
+   render on .site-shell's light canvas and needed no light variant).
+
+   Shared card formula, mirrored from the dark theme's own convention
+   (radial purple accent + directional gradient) but inverted to a soft
+   white-to-lavender blend instead of navy - this is the "переливы"
+   (colour flow) look requested, built the same way the dark cards get
+   theirs rather than a flat single colour. */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+/* ---- workspace header + sidebar + status pill ------------------------ */
+
+[data-theme="light"] .site-header,
+[data-theme="light"] .workspace-header {
+  border-color: rgba(15, 23, 42, 0.1);
+  color: #0d1b31;
+  background:
+    radial-gradient(circle at 78% -60%, rgba(124, 58, 237, 0.14), transparent 42%),
+    linear-gradient(115deg, rgba(255, 255, 255, 0.94), rgba(246, 244, 252, 0.9));
+  box-shadow: 0 20px 60px rgba(31, 24, 62, 0.08), inset 0 1px rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"] .theme-toggle {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .theme-toggle:hover {
+  border-color: rgba(124, 58, 237, 0.35);
+  background: rgba(124, 58, 237, 0.1);
+}
+
+[data-theme="light"] .workspace-header-actions > a {
+  color: rgba(13, 27, 49, 0.68);
+}
+
+[data-theme="light"] .workspace-account {
+  border-left-color: rgba(15, 23, 42, 0.14);
+}
+
+[data-theme="light"] .workspace-account i {
+  border-color: rgba(15, 23, 42, 0.24);
+  color: #0d1b31;
+  background: rgba(124, 58, 237, 0.08);
+}
+
+[data-theme="light"] .workspace-account small,
+[data-theme="light"] .workspace-account > em,
+[data-theme="light"] .workspace-history-button {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .workspace-history-button {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(15, 23, 42, 0.04);
+}
+
+[data-theme="light"] .account-menu-list {
+  border-color: rgba(15, 23, 42, 0.12);
+  background:
+    radial-gradient(circle at 85% -10%, rgba(124, 58, 237, 0.1), transparent 42%),
+    linear-gradient(155deg, #ffffff 0%, #f6f4fb 55%, #eef1f8 100%);
+  box-shadow: 0 22px 55px rgba(31, 24, 62, 0.14), inset 0 1px rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"] .account-menu-list button,
+[data-theme="light"] .account-menu-list a {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .account-menu-list button:hover,
+[data-theme="light"] .account-menu-list a:hover {
+  background: rgba(124, 58, 237, 0.08);
+  color: var(--cobalt);
+}
+
+[data-theme="light"] .workspace-sidebar {
+  border-right-color: rgba(15, 23, 42, 0.1);
+  color: #0d1b31;
+  background:
+    radial-gradient(circle at 15% 5%, rgba(124, 58, 237, 0.1), transparent 30%),
+    linear-gradient(165deg, #ffffff 0%, #f7f5fc 55%, #eef1f8 100%);
+}
+
+[data-theme="light"] .workspace-project {
+  border-bottom-color: rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="light"] .workspace-project small {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .brand-menu-trigger {
+  border-color: rgba(15, 23, 42, 0.14);
+  color: #0d1b31;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(255, 255, 255, 0.7));
+}
+
+[data-theme="light"] .brand-menu-trigger:hover,
+[data-theme="light"] .brand-menu.is-open .brand-menu-trigger {
+  border-color: rgba(124, 58, 237, 0.35);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.14), rgba(255, 255, 255, 0.75));
+}
+
+[data-theme="light"] .brand-menu-trigger b,
+[data-theme="light"] .brand-menu-list b {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .brand-menu-trigger small,
+[data-theme="light"] .brand-menu-list small,
+[data-theme="light"] .brand-menu-trigger > em {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .brand-menu-list {
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #0d1b31;
+  background:
+    radial-gradient(circle at 85% -10%, rgba(124, 58, 237, 0.1), transparent 42%),
+    linear-gradient(155deg, #ffffff 0%, #f6f4fb 55%, #eef1f8 100%);
+  box-shadow: 0 22px 55px rgba(31, 24, 62, 0.14), inset 0 1px rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"] .brand-menu-list > button {
+  color: #0d1b31;
+  background: rgba(15, 23, 42, 0.03);
+}
+
+[data-theme="light"] .brand-menu-list > button:hover,
+[data-theme="light"] .brand-menu-list > button.active {
+  border-color: rgba(124, 58, 237, 0.3);
+  background: rgba(124, 58, 237, 0.08);
+}
+
+[data-theme="light"] .brand-menu-list > button:not(.active) > i {
+  border-color: rgba(15, 23, 42, 0.14);
+  color: rgba(13, 27, 49, 0.65);
+  background: rgba(15, 23, 42, 0.04);
+}
+
+[data-theme="light"] .workspace-sidebar nav a,
+[data-theme="light"] .workspace-sidebar nav button {
+  color: rgba(13, 27, 49, 0.68);
+}
+
+[data-theme="light"] .workspace-sidebar nav a {
+  border-color: rgba(15, 23, 42, 0.1);
+  background: rgba(15, 23, 42, 0.025);
+}
+
+[data-theme="light"] .workspace-sidebar nav a:hover,
+[data-theme="light"] .workspace-sidebar nav button:hover {
+  border-color: rgba(124, 58, 237, 0.28);
+  color: #0d1b31;
+  background: linear-gradient(120deg, rgba(124, 58, 237, 0.1), rgba(255, 255, 255, 0.5));
+}
+
+[data-theme="light"] .workspace-sidebar nav i {
+  color: #6b8f1f;
+}
+
+[data-theme="light"] .workspace-sidebar nav small {
+  color: rgba(13, 27, 49, 0.48);
+}
+
+[data-theme="light"] .workspace-stage {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.06), rgba(255, 255, 255, 0.55));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"] .workspace-stage > i {
+  background: rgba(15, 23, 42, 0.08);
+}
+
+[data-theme="light"] .workspace-stage small {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .workspace-quota-list p > span {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .workspace-quota-list p > em {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .workspace-quota-list p > i {
+  background: rgba(15, 23, 42, 0.08);
+}
+
+[data-theme="light"] .workspace-status {
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #0d1b31;
+  background:
+    radial-gradient(circle at 90% 0%, rgba(124, 58, 237, 0.1), transparent 34%),
+    linear-gradient(135deg, #ffffff 0%, #f6f4fb 55%, #eef1f8 100%);
+  box-shadow: 0 16px 42px rgba(31, 24, 62, 0.1), inset 0 1px rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"] .workspace-status small {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+/* ---- public page: cover intro, hero, "Контент-план" teaser ----------- */
+
+[data-theme="light"] .cover-intro {
+  color: #0d1b31;
+  background:
+    radial-gradient(circle at 74% 32%, rgba(124, 58, 237, 0.16), transparent 30%),
+    radial-gradient(circle at 18% 84%, rgba(91, 33, 182, 0.1), transparent 34%),
+    linear-gradient(128deg, #ffffff 0%, #f5f3fb 56%, #eef1f8 100%);
+}
+
+[data-theme="light"] .issue-line {
+  border-top-color: rgba(15, 23, 42, 0.16);
+}
+
+[data-theme="light"] .issue-line span:first-child,
+[data-theme="light"] .intro-center p {
+  color: rgba(13, 27, 49, 0.62);
+}
+
+[data-theme="light"] .issue-line span:last-child {
+  color: rgba(13, 27, 49, 0.4);
+}
+
+[data-theme="light"] .intro-title span {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .cover-intro button {
+  border-color: rgba(15, 23, 42, 0.18);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+/* .intro-progress's track (rgba(255,255,255,.1)) and fill (linear-
+   gradient starting from #fff) are both built to sit on the splash's
+   original near-black background - near-invisible on light. */
+[data-theme="light"] .intro-progress {
+  background: rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="light"] .intro-progress i {
+  background: linear-gradient(90deg, var(--cobalt), var(--violet));
+}
+
+[data-theme="light"] .hero {
+  color: #0d1b31;
+  background:
+    radial-gradient(circle at 79% 27%, rgba(124, 58, 237, 0.14), transparent 30%),
+    radial-gradient(circle at 14% 87%, rgba(91, 33, 182, 0.08), transparent 32%),
+    linear-gradient(126deg, #ffffff 0%, #f5f3fb 50%, #eef1f8 100%);
+}
+
+[data-theme="light"] .hero-mast span {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .eyebrow {
+  color: var(--cobalt);
+}
+
+[data-theme="light"] .hero h1 {
+  color: #0d1b31;
+}
+
+/* .hero h1 em is a background-clip:text gradient (white -> lilac ->
+   violet) that reads fine on the hero's original near-black background
+   but would start invisible (white text-fill on a near-white page) on
+   the light hero background above - flipped to a dark-to-light violet
+   ramp that stays legible the same way the dark version does, just
+   mirrored. */
+[data-theme="light"] .hero h1 em {
+  background: linear-gradient(92deg, #4c1d95 0%, #7c3aed 55%, #a78bfa 100%);
+  background-clip: text;
+}
+
+[data-theme="light"] .hero-lead {
+  color: rgba(13, 27, 49, 0.65);
+}
+
+[data-theme="light"] .hero .text-link {
+  color: #0d1b31;
+}
+
+/* .scroll-cue i is a solid #fff 1px tick - invisible on light. */
+[data-theme="light"] .scroll-cue i {
+  background: rgba(13, 27, 49, 0.4);
+}
+
+[data-theme="light"] .cover-story {
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #0d1b31;
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.92), rgba(246, 244, 252, 0.85));
+}
+
+/* .story-no (the big faint "01" watermark) and .cover-story h2 i (the
+   italic word inside the headline) both assume the card's original
+   near-transparent glass look over a dark backdrop - rgba(255,255,255,
+   .2) and var(--lilac) are both too pale to read against the now-opaque
+   light card above. */
+[data-theme="light"] .story-no {
+  color: rgba(13, 27, 49, 0.12);
+}
+
+[data-theme="light"] .cover-story h2 i {
+  color: var(--cobalt);
+}
+
+[data-theme="light"] .cover-story p {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .floating-leaf {
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #0d1b31;
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.94), rgba(246, 244, 252, 0.86));
+}
+
+[data-theme="light"] .floating-leaf small,
+[data-theme="light"] .floating-leaf span {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .scroll-cue {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .plan-section {
+  color: #0d1b31;
+  background:
+    radial-gradient(720px 520px at 78% 12%, rgba(124, 58, 237, 0.12), transparent 62%),
+    radial-gradient(520px 420px at 5% 90%, rgba(91, 33, 182, 0.08), transparent 68%),
+    linear-gradient(160deg, #ffffff 0%, #f5f3fb 55%, #eef1f8 100%);
+}
+
+[data-theme="light"] .plan-copy .kicker {
+  color: var(--cobalt);
+}
+
+[data-theme="light"] .plan-copy p {
+  color: rgba(13, 27, 49, 0.65);
+}
+
+[data-theme="light"] .plan-copy li {
+  color: rgba(13, 27, 49, 0.75);
+}
+
+/* .button.light (white pill, dark text) is built to pop against the
+   dark backdrop this button is normally the only light element on -
+   near-invisible against the light plan-section background above it.
+   Only usage of .button.light on the whole page (checked), so scoping
+   to .plan-section rather than touching the shared .button.light rule
+   itself doesn't risk any other spot. */
+[data-theme="light"] .plan-section .button.light {
+  color: #fff;
+  background: linear-gradient(120deg, var(--cobalt), var(--violet));
+}
+
+[data-theme="light"] .plan-table {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+[data-theme="light"] .table-head {
+  border-bottom-color: rgba(15, 23, 42, 0.1);
+  color: #0d1b31;
+}
+
+[data-theme="light"] .table-head span {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .table-row {
+  border-bottom-color: rgba(15, 23, 42, 0.08);
+  color: rgba(13, 27, 49, 0.7);
+}
+
+[data-theme="light"] .table-row b {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .table-row span,
+[data-theme="light"] .table-row small {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .table-row i {
+  border-color: rgba(15, 23, 42, 0.14);
+  color: rgba(13, 27, 49, 0.6);
+  background: rgba(15, 23, 42, 0.04);
+}
+
+[data-theme="light"] .table-row i.done {
+  border-color: rgba(124, 58, 237, 0.3);
+  color: var(--cobalt);
+  background: rgba(124, 58, 237, 0.08);
+}
+
+[data-theme="light"] .plan-copy li svg {
+  color: var(--cobalt);
 }

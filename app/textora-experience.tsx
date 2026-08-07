@@ -1041,7 +1041,7 @@ function readabilityDiagnostics(value: string) {
   return { score, sentenceLength, paragraphLength };
 }
 
-function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" | "erase" }) {
+function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" | "erase" | "sun" | "moon" }) {
   const paths = {
     arrow: <><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></>,
     spark: <><path d="m12 2 1.7 5.3L19 9l-5.3 1.7L12 16l-1.7-5.3L5 9l5.3-1.7L12 2Z"/><path d="m5 16 .7 2.3L8 19l-2.3.7L5 22l-.7-2.3L2 19l2.3-.7L5 16Z"/></>,
@@ -1049,6 +1049,8 @@ function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" | 
     copy: <><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></>,
     edit: <><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></>,
     erase: <><path d="m18 6-12 12"/><path d="m6 6 12 12"/></>,
+    sun: <><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></>,
+    moon: <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/>,
   };
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
@@ -1217,6 +1219,7 @@ function MarqueeGroup({ hidden = false }: { hidden?: boolean }) {
 
 export default function TextoraExperience({ workspace = false }: { workspace?: boolean }) {
   const [intro, setIntro] = useState(true);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [format, setFormat] = useState<Format>("seo");
   const [topic, setTopic] = useState(workspace ? "" : "Как выбрать санаторий для восстановления");
   const [keywords, setKeywords] = useState(workspace ? "" : "санаторий для восстановления, лечение в Карелии, лечебные программы");
@@ -1601,6 +1604,44 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     archiveEditorItem.editorialComment !== archiveEditorOriginal.editorialComment,
     archiveEditorTone !== (archiveEditorOriginal.tone || "Экспертный"),
   ].some(Boolean));
+
+  useEffect(() => {
+    // Reads what the blocking bootstrap script in layout.tsx already
+    // wrote to <html data-theme> before first paint, so this effect
+    // exists to sync REACT'S OWN state with that (for toggleTheme below
+    // to flip from the right starting point), not to apply the theme
+    // itself - the DOM attribute is already correct by the time this
+    // runs. Same localStorage key, read the same defensive way.
+    // Deferred a tick (rather than calling setTheme directly in the
+    // effect body) purely to satisfy react-hooks/set-state-in-effect,
+    // which flags any synchronous setState in an effect on the
+    // assumption it causes a cascading render loop - not a real concern
+    // for a []-dependency, mount-only, hydration-safety sync like this
+    // one, but queueing it keeps the codebase's zero-eslint-disable
+    // baseline intact instead of carving out an exception.
+    queueMicrotask(() => {
+      try {
+        if (window.localStorage.getItem("klio-theme") === "light") setTheme("light");
+      } catch {
+        // localStorage can throw in some privacy-mode/embedded contexts;
+        // theme just stays dark for this visit.
+      }
+    });
+  }, []);
+
+  function toggleTheme() {
+    setTheme((current) => {
+      const next = current === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      try {
+        window.localStorage.setItem("klio-theme", next);
+      } catch {
+        // Non-fatal — the toggle still works for the rest of this visit,
+        // it just won't be remembered on the next one.
+      }
+      return next;
+    });
+  }
 
   useEffect(() => {
     const timer = window.setTimeout(() => setIntro(false), 3200);
@@ -3631,6 +3672,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         <Link className="wordmark" href="/" aria-label="КЛИО — вернуться на сайт"><Brand/></Link>
         <div className="workspace-header-actions">
           <Link href="/">На главную</Link>
+          <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"} title={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"}><Icon name={theme === "dark" ? "sun" : "moon"}/></button>
           <button className="workspace-history-button" type="button" onClick={() => setHistoryOpen((value) => !value)}><span>Материалы</span><b>{activeMaterialCount}</b></button>
           <div className={`account-menu ${accountMenuOpen ? "is-open" : ""}`} ref={accountMenuRef}>
             <button type="button" className="workspace-account" onClick={() => setAccountMenuOpen((value) => !value)} aria-haspopup="menu" aria-expanded={accountMenuOpen}>
@@ -4390,7 +4432,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     <header className="site-header">
       <a className="wordmark" href="#top" aria-label="КЛИО — на главную"><Brand/></a>
       <nav><a href="#audience">Для кого</a><a href="#modules">Как работает</a><a href="#plan">Контент‑план</a><a href="#pricing">Тарифы</a><a href="#faq">FAQ</a></nav>
-      <div><Link className="button ghost" href="/login">Войти</Link><Link className="button primary" href="/signup">Попробовать</Link></div>
+      <div>
+        <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"} title={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"}><Icon name={theme === "dark" ? "sun" : "moon"}/></button>
+        <Link className="button ghost" href="/login">Войти</Link><Link className="button primary" href="/signup">Попробовать</Link>
+      </div>
     </header>
 
     <section className="hero" id="top">

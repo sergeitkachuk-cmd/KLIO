@@ -25,6 +25,20 @@ export const metadata: Metadata = {
   },
 };
 
+// Sets data-theme on <html> before React hydrates/paints anything, from
+// the same localStorage key textora-experience.tsx's theme toggle reads
+// and writes (see setTheme there). Without this, the page would always
+// render server-side with no theme attribute (dark, the CSS default),
+// then flash to light a moment after hydration for anyone who'd
+// actually picked light - this blocking inline script runs before first
+// paint so there's nothing to flash. Wrapped in try/catch because
+// localStorage can throw in some privacy-mode/embedded contexts, and a
+// dead script here must never block the rest of the page from loading.
+const themeBootstrapScript = `try {
+  var t = localStorage.getItem("klio-theme");
+  if (t === "light") document.documentElement.setAttribute("data-theme", "light");
+} catch (e) {}`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -32,6 +46,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
+      </head>
       <body className={`${manrope.variable} antialiased`}>
         {children}
       </body>
