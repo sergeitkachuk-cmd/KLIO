@@ -15573,3 +15573,128 @@ footer nav a {
 [data-theme="light"] .brand-profile-body .profile-recommendation-footer {
   border-top-color: rgba(15, 23, 42, 0.12);
 }
+
+/* ---------------------------------------------------------------------
+   Light theme: the collapsed "quickstart" row (.mvp-flow + the closed
+   Профиль бренда card) - missed by both earlier installments since
+   neither is inside .brand-profile-body and .workspace-quickstart's own
+   collapsed-state rules (added in a later dark pass, scoped for
+   guaranteed-win specificity: .workspace-quickstart .brand-profile:not
+   (.is-open) .brand-profile-head p is 0,4,1) outrank the general
+   .brand-profile-head rules from installment 2. Result before this fix:
+   the card background stayed dark navy while .brand-profile-head h3's
+   *text* correctly went dark-navy too (from installment 2's plain
+   .brand-profile-head h3 override) - dark-on-dark, unreadable, exactly
+   what was reported. Every new selector here matches or exceeds the
+   specificity of the rule it needs to beat. */
+[data-theme="light"] .mvp-flow {
+  border-color: rgba(15, 23, 42, 0.14);
+  color: #0d1b31;
+  background:
+    radial-gradient(circle at 88% 0%, rgba(53, 104, 212, 0.16), transparent 35%),
+    linear-gradient(120deg, #e3eaf6, #f0f4fa 66%, #ffffff);
+  box-shadow: 0 24px 64px rgba(20, 40, 80, 0.12), inset 0 1px rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"] .mvp-flow-main > span {
+  color: #2452b8;
+}
+
+[data-theme="light"] .mvp-flow-step {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .mvp-flow-step b {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .mvp-flow-step small {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .mvp-flow-arrow {
+  color: rgba(13, 27, 49, 0.35);
+}
+
+[data-theme="light"] .mvp-flow-extra {
+  border-top-color: rgba(15, 23, 42, 0.12);
+}
+
+[data-theme="light"] .mvp-flow-extra > div {
+  border-color: rgba(15, 23, 42, 0.18);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="light"] .mvp-flow-extra > div > i {
+  color: #2452b8;
+  background: rgba(53, 104, 212, 0.1);
+}
+
+[data-theme="light"] .mvp-flow-extra b {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .mvp-flow-extra small {
+  color: rgba(13, 27, 49, 0.56);
+}
+
+[data-theme="light"] .workspace-quickstart .brand-profile:not(.is-open) {
+  border-color: rgba(15, 23, 42, 0.14);
+  background:
+    radial-gradient(circle at 88% 0%, rgba(53, 104, 212, 0.16), transparent 35%),
+    linear-gradient(120deg, #e3eaf6, #f0f4fa 66%, #ffffff);
+  box-shadow: 0 24px 64px rgba(20, 40, 80, 0.12), inset 0 1px rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"] .workspace-quickstart .brand-profile:not(.is-open) .brand-profile-head p {
+  color: rgba(13, 27, 49, 0.68);
+}
+
+[data-theme="light"] .workspace-quickstart .brand-profile:not(.is-open) .brand-profile-actions {
+  border-top-color: rgba(15, 23, 42, 0.12);
+}
+
+/* Toggle track (Профиль отключён/активен) had no light-theme colors at
+   all - the dark version's translucent-white track/thumb would be
+   near-invisible on the new light card. */
+[data-theme="light"] .brand-profile-head .brand-switch > span {
+  border-color: rgba(15, 23, 42, 0.22);
+  background: rgba(15, 23, 42, 0.08);
+}
+
+[data-theme="light"] .brand-profile-head .brand-switch input:checked + span {
+  border-color: rgba(53, 104, 212, 0.5);
+  background: #2452b8;
+}
+
+/* ---------------------------------------------------------------------
+   Smooth light/dark crossfade: every element that actually changes
+   appearance already does so purely through color/background/border/
+   shadow (the [data-theme="light"] rules above never touch layout), so
+   transitioning those four properties site-wide is enough to turn the
+   toggle from an instant snap into a soft fade - no JS, no extra class
+   toggled on click. Scoped to *, not html/body alone, because the
+   colour change happens on hundreds of individual descendants (cards,
+   buttons, borders), each of which needs its own transition to animate;
+   it does not inherit from an ancestor's transition. Only fires on an
+   actual value change, so it's silent on first paint (the bootstrap
+   script in layout.tsx already set data-theme before anything rendered)
+   and does not fight component-specific transitions like .button's own
+   hover transform, which wins on specificity and keeps its full value. */
+*,
+*::before,
+*::after {
+  transition: background-color 380ms ease, color 380ms ease, border-color 380ms ease, box-shadow 380ms ease, fill 380ms ease, stroke 380ms ease;
+}
+
+/* Long-running/looping animations must stay exactly as fast as they
+   were - the blanket rule above would otherwise also slow down their
+   own color keyframes (buttonBusyPulse's box-shadow, aurora's
+   background-position, etc.) to 380ms per step. */
+.is-busy,
+.hero::before,
+.quality-zone::after,
+.cover-story::after {
+  transition: none;
+}
