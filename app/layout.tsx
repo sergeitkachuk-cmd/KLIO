@@ -1,15 +1,20 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+// Was Geist, loaded with subsets:["latin"] only - on a Russian-language
+// site that's every visible character on the page. Geist has no
+// Cyrillic glyphs at all, so the browser was silently falling through
+// the rest of the --sans stack per character to whatever the visitor's
+// OS happened to have (Segoe UI on Windows, San Francisco on macOS,
+// etc.) instead of ever actually rendering Geist - inconsistent across
+// visitors and not really "a font choice" so much as "no font choice".
+// Inter renders the same everywhere, is one of the most widely used UI
+// typefaces around (Vercel, Linear, GitHub...), and its cyrillic subset
+// covers the letterforms people were seeing crowd together.
+const inter = Inter({
+  variable: "--font-sans",
+  subsets: ["latin", "cyrillic"],
 });
 
 export const metadata: Metadata = {
@@ -32,9 +37,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${inter.variable} antialiased`}>
         {children}
       </body>
     </html>

@@ -4458,6 +4458,17 @@ footer nav a {
   display: grid;
   gap: 7px;
   margin-top: 22px;
+  /* .workspace-stage below relies on margin-top:auto to push itself to
+     the bottom of the sidebar's flex column, which only works while
+     there's leftover space - on shorter viewports (or once the module
+     list + brand switcher content is tall enough), auto resolves to 0
+     and the tariff card ends up touching the last nav link with no
+     gap at all, reading as an overlap. A fixed minimum here guarantees
+     real breathing room either way: when there IS leftover space the
+     auto-margin just absorbs correspondingly less of it (visual result
+     unchanged), and when there isn't, this is what keeps the two apart
+     instead of collapsing to zero. */
+  margin-bottom: 24px;
 }
 
 .workspace-sidebar nav a,
@@ -11869,7 +11880,7 @@ footer nav a {
   --acid: #d8ff65;
   --line: rgba(24, 22, 38, 0.13);
   --line-light: rgba(255, 255, 255, 0.26);
-  --sans: var(--font-geist-sans), Inter, "Segoe UI", Arial, sans-serif;
+  --sans: var(--font-sans), "Segoe UI", Arial, sans-serif;
   --ink: #0d1b31;
   --night: #041225;
   --night-soft: #0a2340;
