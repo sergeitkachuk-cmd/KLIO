@@ -14855,14 +14855,21 @@ footer nav a {
 
 /* ---- workspace header + sidebar + status pill ------------------------ */
 
+/* Cool blue, not violet, for every light-theme block accent below -
+   .workspace-sidebar's radial glow, the brand switcher, nav-item
+   backgrounds/hover, the tariff card. var(--cobalt) (violet, #7c3aed)
+   stays untouched for text-only accents (kickers, eyebrows, table
+   headers) elsewhere in this file - only surface fills/borders/glows
+   switch, per "холоднее" feedback: the violet radial was reading warm/
+   purple rather than the requested blue. */
 [data-theme="light"] .site-header,
 [data-theme="light"] .workspace-header {
   border-color: rgba(15, 23, 42, 0.12);
   color: #0d1b31;
   background:
-    radial-gradient(circle at 78% -60%, rgba(124, 58, 237, 0.16), transparent 42%),
-    linear-gradient(115deg, rgba(226, 234, 244, 0.96), rgba(255, 255, 255, 0.92));
-  box-shadow: 0 20px 60px rgba(31, 24, 62, 0.1), inset 0 1px rgba(255, 255, 255, 0.7);
+    radial-gradient(circle at 78% -60%, rgba(53, 104, 212, 0.18), transparent 42%),
+    linear-gradient(115deg, rgba(224, 233, 245, 0.96), rgba(255, 255, 255, 0.92));
+  box-shadow: 0 20px 60px rgba(20, 40, 80, 0.1), inset 0 1px rgba(255, 255, 255, 0.7);
 }
 
 [data-theme="light"] .theme-toggle {
@@ -14872,8 +14879,8 @@ footer nav a {
 }
 
 [data-theme="light"] .theme-toggle:hover {
-  border-color: rgba(124, 58, 237, 0.35);
-  background: rgba(124, 58, 237, 0.1);
+  border-color: rgba(53, 104, 212, 0.4);
+  background: rgba(53, 104, 212, 0.12);
 }
 
 [data-theme="light"] .workspace-header-actions > a {
@@ -14887,7 +14894,7 @@ footer nav a {
 [data-theme="light"] .workspace-account i {
   border-color: rgba(15, 23, 42, 0.24);
   color: #0d1b31;
-  background: rgba(124, 58, 237, 0.08);
+  background: rgba(53, 104, 212, 0.1);
 }
 
 [data-theme="light"] .workspace-account small,
@@ -14904,9 +14911,9 @@ footer nav a {
 [data-theme="light"] .account-menu-list {
   border-color: rgba(15, 23, 42, 0.12);
   background:
-    radial-gradient(circle at 85% -10%, rgba(124, 58, 237, 0.14), transparent 42%),
-    linear-gradient(155deg, #e6ecf5 0%, #f2f5fa 55%, #ffffff 100%);
-  box-shadow: 0 22px 55px rgba(31, 24, 62, 0.14), inset 0 1px rgba(255, 255, 255, 0.7);
+    radial-gradient(circle at 85% -10%, rgba(53, 104, 212, 0.16), transparent 42%),
+    linear-gradient(155deg, #e3eaf6 0%, #f0f4fa 55%, #ffffff 100%);
+  box-shadow: 0 22px 55px rgba(20, 40, 80, 0.14), inset 0 1px rgba(255, 255, 255, 0.7);
 }
 
 [data-theme="light"] .account-menu-list button,
@@ -14916,16 +14923,16 @@ footer nav a {
 
 [data-theme="light"] .account-menu-list button:hover,
 [data-theme="light"] .account-menu-list a:hover {
-  background: rgba(124, 58, 237, 0.08);
-  color: var(--cobalt);
+  background: rgba(53, 104, 212, 0.1);
+  color: #2452b8;
 }
 
 [data-theme="light"] .workspace-sidebar {
   border-right-color: rgba(15, 23, 42, 0.12);
   color: #0d1b31;
   background:
-    radial-gradient(circle at 15% 5%, rgba(124, 58, 237, 0.12), transparent 30%),
-    linear-gradient(165deg, #e6ecf5 0%, #f2f5fa 55%, #ffffff 100%);
+    radial-gradient(circle at 15% 5%, rgba(53, 104, 212, 0.16), transparent 30%),
+    linear-gradient(165deg, #e3eaf6 0%, #f0f4fa 55%, #ffffff 100%);
 }
 
 [data-theme="light"] .workspace-project {
@@ -14937,15 +14944,15 @@ footer nav a {
 }
 
 [data-theme="light"] .brand-menu-trigger {
-  border-color: rgba(15, 23, 42, 0.16);
+  border-color: rgba(15, 23, 42, 0.18);
   color: #0d1b31;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(226, 234, 244, 0.75));
+  background: linear-gradient(135deg, rgba(53, 104, 212, 0.14), rgba(220, 229, 243, 0.8));
 }
 
 [data-theme="light"] .brand-menu-trigger:hover,
 [data-theme="light"] .brand-menu.is-open .brand-menu-trigger {
-  border-color: rgba(124, 58, 237, 0.35);
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.16), rgba(226, 234, 244, 0.8));
+  border-color: rgba(53, 104, 212, 0.4);
+  background: linear-gradient(135deg, rgba(53, 104, 212, 0.2), rgba(220, 229, 243, 0.85));
 }
 
 [data-theme="light"] .brand-menu-trigger b,
@@ -14963,9 +14970,9 @@ footer nav a {
   border-color: rgba(15, 23, 42, 0.12);
   color: #0d1b31;
   background:
-    radial-gradient(circle at 85% -10%, rgba(124, 58, 237, 0.14), transparent 42%),
-    linear-gradient(155deg, #e6ecf5 0%, #f2f5fa 55%, #ffffff 100%);
-  box-shadow: 0 22px 55px rgba(31, 24, 62, 0.14), inset 0 1px rgba(255, 255, 255, 0.7);
+    radial-gradient(circle at 85% -10%, rgba(53, 104, 212, 0.16), transparent 42%),
+    linear-gradient(155deg, #e3eaf6 0%, #f0f4fa 55%, #ffffff 100%);
+  box-shadow: 0 22px 55px rgba(20, 40, 80, 0.14), inset 0 1px rgba(255, 255, 255, 0.7);
 }
 
 [data-theme="light"] .brand-menu-list > button {
@@ -14975,8 +14982,8 @@ footer nav a {
 
 [data-theme="light"] .brand-menu-list > button:hover,
 [data-theme="light"] .brand-menu-list > button.active {
-  border-color: rgba(124, 58, 237, 0.3);
-  background: rgba(124, 58, 237, 0.08);
+  border-color: rgba(53, 104, 212, 0.35);
+  background: rgba(53, 104, 212, 0.1);
 }
 
 [data-theme="light"] .brand-menu-list > button:not(.active) > i {
@@ -14985,34 +14992,44 @@ footer nav a {
   background: rgba(15, 23, 42, 0.04);
 }
 
+/* Nav-item blocks (Профиль бренда / Генерировать материал / ...): were
+   background: rgba(15,23,42,.025) - 2.5% opacity, functionally
+   invisible, which is why they read as fused with the sidebar behind
+   them despite the border. Clearly visible cool-blue fill + border now,
+   matching the same "blocks must read as blocks" feedback as the
+   header/sidebar/stage panels. */
 [data-theme="light"] .workspace-sidebar nav a,
 [data-theme="light"] .workspace-sidebar nav button {
-  color: rgba(13, 27, 49, 0.68);
+  color: rgba(13, 27, 49, 0.7);
 }
 
 [data-theme="light"] .workspace-sidebar nav a {
-  border-color: rgba(15, 23, 42, 0.1);
-  background: rgba(15, 23, 42, 0.025);
+  border-color: rgba(53, 104, 212, 0.16);
+  background: rgba(53, 104, 212, 0.06);
 }
 
 [data-theme="light"] .workspace-sidebar nav a:hover,
 [data-theme="light"] .workspace-sidebar nav button:hover {
-  border-color: rgba(124, 58, 237, 0.28);
+  border-color: rgba(53, 104, 212, 0.4);
   color: #0d1b31;
-  background: linear-gradient(120deg, rgba(124, 58, 237, 0.14), rgba(226, 234, 244, 0.65));
+  background: linear-gradient(120deg, rgba(53, 104, 212, 0.18), rgba(220, 229, 243, 0.7));
 }
 
+/* Was #6b8f1f (dark olive) trying to keep the dark theme's acid-green
+   marker identity readable on light - still read as muddy/low-contrast
+   per feedback. Cool blue instead, matching the rest of this pass
+   rather than forcing green to work where it doesn't. */
 [data-theme="light"] .workspace-sidebar nav i {
-  color: #6b8f1f;
+  color: #2452b8;
 }
 
 [data-theme="light"] .workspace-sidebar nav small {
-  color: rgba(13, 27, 49, 0.48);
+  color: rgba(13, 27, 49, 0.5);
 }
 
 [data-theme="light"] .workspace-stage {
-  border-color: rgba(15, 23, 42, 0.14);
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(226, 234, 244, 0.7));
+  border-color: rgba(15, 23, 42, 0.16);
+  background: linear-gradient(135deg, rgba(53, 104, 212, 0.14), rgba(220, 229, 243, 0.75));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.7);
 }
 
@@ -15040,9 +15057,9 @@ footer nav a {
   border-color: rgba(15, 23, 42, 0.14);
   color: #0d1b31;
   background:
-    radial-gradient(circle at 90% 0%, rgba(124, 58, 237, 0.14), transparent 34%),
-    linear-gradient(135deg, #e6ecf5 0%, #f2f5fa 55%, #ffffff 100%);
-  box-shadow: 0 16px 42px rgba(31, 24, 62, 0.12), inset 0 1px rgba(255, 255, 255, 0.7);
+    radial-gradient(circle at 90% 0%, rgba(53, 104, 212, 0.16), transparent 34%),
+    linear-gradient(135deg, #e3eaf6 0%, #f0f4fa 55%, #ffffff 100%);
+  box-shadow: 0 16px 42px rgba(20, 40, 80, 0.12), inset 0 1px rgba(255, 255, 255, 0.7);
 }
 
 [data-theme="light"] .workspace-status small {
@@ -15054,9 +15071,9 @@ footer nav a {
 [data-theme="light"] .cover-intro {
   color: #0d1b31;
   background:
-    radial-gradient(circle at 74% 32%, rgba(124, 58, 237, 0.18), transparent 30%),
-    radial-gradient(circle at 18% 84%, rgba(91, 33, 182, 0.12), transparent 34%),
-    linear-gradient(128deg, #e6ecf5 0%, #f2f5fa 56%, #ffffff 100%);
+    radial-gradient(circle at 74% 32%, rgba(53, 104, 212, 0.2), transparent 30%),
+    radial-gradient(circle at 18% 84%, rgba(30, 58, 138, 0.14), transparent 34%),
+    linear-gradient(128deg, #e3eaf6 0%, #f0f4fa 56%, #ffffff 100%);
 }
 
 [data-theme="light"] .issue-line {
@@ -15096,9 +15113,9 @@ footer nav a {
 [data-theme="light"] .hero {
   color: #0d1b31;
   background:
-    radial-gradient(circle at 79% 27%, rgba(124, 58, 237, 0.16), transparent 30%),
-    radial-gradient(circle at 14% 87%, rgba(91, 33, 182, 0.1), transparent 32%),
-    linear-gradient(126deg, #e6ecf5 0%, #f2f5fa 50%, #ffffff 100%);
+    radial-gradient(circle at 79% 27%, rgba(53, 104, 212, 0.18), transparent 30%),
+    radial-gradient(circle at 14% 87%, rgba(30, 58, 138, 0.12), transparent 32%),
+    linear-gradient(126deg, #e3eaf6 0%, #f0f4fa 50%, #ffffff 100%);
 }
 
 [data-theme="light"] .hero-mast span {
@@ -15180,9 +15197,9 @@ footer nav a {
 [data-theme="light"] .plan-section {
   color: #0d1b31;
   background:
-    radial-gradient(720px 520px at 78% 12%, rgba(124, 58, 237, 0.14), transparent 62%),
-    radial-gradient(520px 420px at 5% 90%, rgba(91, 33, 182, 0.1), transparent 68%),
-    linear-gradient(160deg, #e6ecf5 0%, #f2f5fa 55%, #ffffff 100%);
+    radial-gradient(720px 520px at 78% 12%, rgba(53, 104, 212, 0.16), transparent 62%),
+    radial-gradient(520px 420px at 5% 90%, rgba(30, 58, 138, 0.12), transparent 68%),
+    linear-gradient(160deg, #e3eaf6 0%, #f0f4fa 55%, #ffffff 100%);
 }
 
 [data-theme="light"] .plan-copy .kicker {
@@ -15217,7 +15234,7 @@ footer nav a {
 [data-theme="light"] .table-head {
   border-bottom-color: rgba(15, 23, 42, 0.12);
   color: #0d1b31;
-  background: rgba(124, 58, 237, 0.06);
+  background: rgba(53, 104, 212, 0.08);
 }
 
 [data-theme="light"] .table-head span {
@@ -15245,9 +15262,9 @@ footer nav a {
 }
 
 [data-theme="light"] .table-row i.done {
-  border-color: rgba(124, 58, 237, 0.3);
-  color: var(--cobalt);
-  background: rgba(124, 58, 237, 0.08);
+  border-color: rgba(53, 104, 212, 0.35);
+  color: #2452b8;
+  background: rgba(53, 104, 212, 0.1);
 }
 
 [data-theme="light"] .plan-copy li svg {
