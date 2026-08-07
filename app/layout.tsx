@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Geist } from "next/font/google";
 import "./globals.css";
 
-// Was Geist, loaded with subsets:["latin"] only - on a Russian-language
-// site that's every visible character on the page. Geist has no
-// Cyrillic glyphs at all, so the browser was silently falling through
-// the rest of the --sans stack per character to whatever the visitor's
-// OS happened to have (Segoe UI on Windows, San Francisco on macOS,
-// etc.) instead of ever actually rendering Geist - inconsistent across
-// visitors and not really "a font choice" so much as "no font choice".
-// Inter renders the same everywhere, is one of the most widely used UI
-// typefaces around (Vercel, Linear, GitHub...), and its cyrillic subset
-// covers the letterforms people were seeing crowd together.
-const inter = Inter({
+// Trying Geist back on for a side-by-side look, this time actually
+// requesting the cyrillic subset. The original bug wasn't "Geist can't
+// do Cyrillic" - Geist added real Cyrillic support (better cyrillic
+// design landed in the vercel/geist-font project, google/fonts lists
+// cyrillic + cyrillic-ext subsets for it) - the bug was that this file
+// only ever asked next/font for subsets:["latin"], so the browser fell
+// through to a system font for every visible character on this
+// Russian-language site regardless of which typeface was named here.
+// Same --font-sans variable as the Inter swap, so no changes needed on
+// the globals.css side.
+const geist = Geist({
   variable: "--font-sans",
   subsets: ["latin", "cyrillic"],
 });
@@ -37,7 +37,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru">
-      <body className={`${inter.variable} antialiased`}>
+      <body className={`${geist.variable} antialiased`}>
         {children}
       </body>
     </html>
