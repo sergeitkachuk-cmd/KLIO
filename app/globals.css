@@ -8056,7 +8056,14 @@ footer nav a {
   min-width: 0;
   overflow-wrap: anywhere;
   color: var(--ink);
-  font-weight: 650;
+  /* Not bold - this is the query VALUE next to the "ОСНОВНОЙ ЗАПРОС"
+     label, which already carries all the visual weight (uppercase,
+     tracked, font-weight 680); a bold value on top of a bold label
+     read as everything shouting at once. Actual winning declaration is
+     the later dark-pass duplicate further down this file (same
+     selector, same specificity, later source order) - kept in sync
+     here to avoid the two disagreeing. */
+  font-weight: 400;
 }
 
 .content-plan-item.status-work {
@@ -14667,7 +14674,7 @@ footer nav a {
 
 .content-plan-item-copy > p b {
   color: rgba(255, 255, 255, 0.85);
-  font-weight: 550;
+  font-weight: 400;
 }
 
 /* Same bold-inheritance issue as .field above, one form over: each
