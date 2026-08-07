@@ -4181,14 +4181,17 @@ footer nav a {
 .workspace-history {
   margin-bottom: 18px;
   padding: 24px;
-  border: 1px solid rgba(124, 58, 237, 0.18);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 4px 24px 4px 4px;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 18px 48px rgba(43, 31, 79, 0.08);
+  background:
+    radial-gradient(circle at 92% 0%, rgba(124, 58, 237, 0.24), transparent 30%),
+    linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
+  box-shadow: 0 18px 48px rgba(3, 12, 26, 0.28);
 }
 
 .workspace-history-head span {
-  color: var(--cobalt);
+  color: #d5c9fb;
   font-size: 10px;
   font-weight: 720;
   letter-spacing: 0.11em;
@@ -4206,9 +4209,10 @@ footer nav a {
   align-content: start;
   min-width: 0;
   padding: 17px;
-  border: 1px solid rgba(68, 57, 107, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 3px 16px 3px 3px;
-  background: rgba(247, 246, 250, 0.86);
+  background: linear-gradient(135deg, #0c2848, #082849 60%, #061c34);
 }
 
 .workspace-history-list article > div,
@@ -4220,14 +4224,14 @@ footer nav a {
 }
 
 .workspace-history-list article > div span {
-  color: var(--cobalt);
+  color: #cabdf6;
   font-size: 10px;
   font-weight: 720;
   text-transform: uppercase;
 }
 
 .workspace-history-list article > div small {
-  color: #99939f;
+  color: rgba(255, 255, 255, 0.5);
   font-size: 10px;
 }
 
@@ -4240,19 +4244,19 @@ footer nav a {
 
 .workspace-history-list p {
   margin: 0 0 18px;
-  color: #746e7c;
+  color: rgba(255, 255, 255, 0.62);
   font-size: 12px;
 }
 
 .workspace-history-list footer {
   margin-top: auto;
   padding-top: 13px;
-  border-top: 1px solid rgba(67, 56, 103, 0.09);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .workspace-history-list footer span {
   overflow: hidden;
-  color: #8d8794;
+  color: rgba(255, 255, 255, 0.5);
   font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4263,11 +4267,11 @@ footer nav a {
 }
 
 .material-delete {
-  color: #a39da9 !important;
+  color: rgba(255, 255, 255, 0.55) !important;
 }
 
 .material-delete:hover {
-  color: #c0392b !important;
+  color: #ff8a7a !important;
 }
 
 .workspace-history-empty {
@@ -4275,7 +4279,8 @@ footer nav a {
   align-items: center;
   gap: 16px;
   padding: 28px;
-  border: 1px dashed rgba(72, 60, 111, 0.16);
+  color: #fff;
+  border: 1px dashed rgba(255, 255, 255, 0.22);
   border-radius: 14px;
 }
 
@@ -4285,8 +4290,8 @@ footer nav a {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  color: var(--cobalt);
-  background: rgba(124, 58, 237, 0.09);
+  color: #cabdf6;
+  background: rgba(124, 58, 237, 0.18);
   font-style: normal;
   font-weight: 700;
 }
@@ -4298,7 +4303,7 @@ footer nav a {
 
 .workspace-history-empty p {
   margin-top: 4px;
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.6);
   font-size: 12px;
 }
 
@@ -10768,11 +10773,11 @@ footer nav a {
   justify-content: space-between;
   gap: 24px;
   padding-bottom: 20px;
-  border-bottom: 1px solid rgba(68, 57, 107, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .archive-editor-head span {
-  color: var(--cobalt);
+  color: #d5c9fb;
   font-size: 10px;
   font-weight: 740;
   letter-spacing: 0.12em;
@@ -10781,6 +10786,7 @@ footer nav a {
 
 .archive-editor-head h2 {
   margin: 7px 0 5px;
+  color: #fff;
   font-size: clamp(28px, 3.4vw, 46px);
   font-weight: 540;
   letter-spacing: -0.045em;
@@ -10788,7 +10794,7 @@ footer nav a {
 
 .archive-editor-head p {
   margin: 0;
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.62);
   font-size: 13px;
 }
 
@@ -10838,14 +10844,18 @@ footer nav a {
   margin-bottom: 14px;
 }
 
+.archive-editor-document {
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
 .archive-editor-document textarea {
   width: 100%;
   padding: 12px 13px;
-  border: 1px solid rgba(65, 54, 103, 0.13);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 10px;
   outline: 0;
-  color: #322d39;
-  background: rgba(255, 255, 255, 0.78);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
   font: inherit;
   line-height: 1.55;
   resize: none;
@@ -10869,7 +10879,7 @@ footer nav a {
 }
 
 .archive-editor-comment small {
-  color: #948e9a;
+  color: rgba(255, 255, 255, 0.5);
   font-size: 10px;
 }
 
@@ -10885,9 +10895,10 @@ footer nav a {
   gap: 7px;
   min-height: 44px;
   padding: 0 14px;
-  border: 1px solid rgba(65, 54, 103, 0.13);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.08);
   cursor: pointer;
 }
 
@@ -11216,20 +11227,20 @@ footer nav a {
   flex: 0 0 auto;
   min-height: 40px;
   padding: 0 12px;
-  border: 1px solid rgba(110, 75, 180, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 11px;
-  color: #4c2f80;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(191, 165, 243, 0.28));
-  box-shadow: 0 9px 22px rgba(70, 47, 112, 0.1), inset 0 1px rgba(255, 255, 255, 0.92);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.09);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(16px) saturate(145%);
   font-size: 11px;
   white-space: nowrap;
 }
 
 .workspace-history-list footer button:hover {
-  border-color: rgba(104, 59, 188, 0.42);
-  color: #38205f;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(164, 123, 238, 0.38));
+  border-color: rgba(216, 255, 101, 0.4);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .workspace-history-list footer button svg {
@@ -11254,11 +11265,11 @@ footer nav a {
   gap: 9px;
   min-height: 40px;
   padding: 0 10px 0 14px;
-  border: 1px solid rgba(73, 57, 112, 0.13);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 999px;
-  color: #61596c;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(236, 231, 247, 0.54));
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.94), 0 7px 20px rgba(48, 35, 79, 0.055);
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(16px) saturate(140%);
   cursor: pointer;
 }
@@ -11279,8 +11290,8 @@ footer nav a {
   margin: 0;
   padding: 0 6px;
   border-radius: 999px;
-  color: #6c6178;
-  background: rgba(72, 57, 108, 0.08);
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.1);
   font-size: 10px;
   letter-spacing: 0;
 }
@@ -11335,6 +11346,24 @@ footer nav a {
   background: rgba(124, 58, 237, 0.07);
 }
 
+/* .seo-field-label is shared with the (still light-themed, out of scope)
+   generator result panel, so its own button color above has to stay
+   dark-on-light — scoped override for the dark cards that reuse it. */
+.content-plan-seo .seo-field-label > button,
+.adaptation-seo-fields .seo-field-label > button,
+.archive-editor-document .seo-field-label > button {
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.content-plan-seo .seo-field-label > button:hover,
+.adaptation-seo-fields .seo-field-label > button:hover,
+.archive-editor-document .seo-field-label > button:hover {
+  border-color: rgba(216, 255, 101, 0.4);
+  background: rgba(216, 255, 101, 0.12);
+}
+
 .seo-field-label > button svg {
   width: 13px;
   height: 13px;
@@ -11362,7 +11391,7 @@ footer nav a {
 .archive-tone-picker > span,
 .archive-active-plan > span,
 .archive-editor-change-log > span {
-  color: #716b7a;
+  color: rgba(255, 255, 255, 0.55);
   font-size: 10px;
   font-weight: 730;
   letter-spacing: 0.09em;
@@ -11408,17 +11437,23 @@ footer nav a {
   background: rgba(255, 255, 255, 0.13);
 }
 
+/* This modal's right column (.archive-transform-panel, the "Редакторы
+   КЛИО" picker) was already dark-navy from an earlier pass — only the
+   left column (.archive-editor-document, the actual title/body/SEO
+   fields) and the modal chrome around both were still the original
+   light theme, splitting the modal visually down the middle. */
 .archive-editor-modal {
   width: min(1480px, 100%);
   max-height: calc(100svh - 44px);
   padding: 25px;
   overflow: auto;
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 5px 28px 5px 5px;
   background:
-    radial-gradient(circle at 96% 0%, rgba(124, 58, 237, 0.15), transparent 27%),
-    linear-gradient(145deg, rgba(252, 251, 255, 0.99), rgba(239, 238, 245, 0.99));
-  box-shadow: 0 34px 100px rgba(0, 0, 0, 0.38), inset 0 1px #fff;
+    radial-gradient(circle at 96% 0%, rgba(124, 58, 237, 0.24), transparent 30%),
+    linear-gradient(145deg, #0a2340 0%, #082b4c 55%, #061c34 100%);
+  box-shadow: 0 34px 100px rgba(0, 0, 0, 0.5), inset 0 1px rgba(255, 255, 255, 0.1);
   overscroll-behavior: contain;
 }
 
@@ -11428,7 +11463,7 @@ footer nav a {
   top: -25px;
   margin: -25px -25px 0;
   padding: 24px 25px 19px;
-  background: rgba(248, 247, 251, 0.94);
+  background: rgba(6, 22, 42, 0.9);
   backdrop-filter: blur(20px);
 }
 
@@ -11441,8 +11476,8 @@ footer nav a {
 .archive-editor-head-actions > span {
   padding: 7px 9px;
   border-radius: 999px;
-  color: #5a766b;
-  background: rgba(56, 142, 109, 0.1);
+  color: #6fd9b3;
+  background: rgba(56, 142, 109, 0.2);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0;
@@ -11450,8 +11485,8 @@ footer nav a {
 }
 
 .archive-editor-head-actions > span.is-dirty {
-  color: #97516a;
-  background: rgba(184, 72, 105, 0.1);
+  color: #f0a0ae;
+  background: rgba(184, 72, 105, 0.2);
 }
 
 .archive-editor-head-actions > button {
@@ -11459,10 +11494,10 @@ footer nav a {
   place-items: center;
   width: 42px;
   height: 42px;
-  border: 1px solid rgba(66, 54, 105, 0.13);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 12px;
-  color: #3b3448;
-  background: rgba(255, 255, 255, 0.72);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
   font-size: 24px;
   cursor: pointer;
 }
@@ -11473,7 +11508,8 @@ footer nav a {
 }
 
 .archive-editor-modal .archive-editor-document {
-  background: rgba(255, 255, 255, 0.72);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .archive-editor-modal .archive-editor-body {
@@ -11489,16 +11525,16 @@ footer nav a {
   align-items: center;
   justify-content: end;
   padding: 14px 0 0;
-  background: linear-gradient(180deg, transparent, rgba(249, 248, 252, 0.98) 28%);
+  background: linear-gradient(180deg, transparent, #061c34 28%);
 }
 
 .archive-editor-actions > button {
   min-height: 44px;
   padding: 0 13px;
-  border: 1px solid rgba(65, 54, 103, 0.13);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 10px;
-  color: #4d4659;
-  background: rgba(255, 255, 255, 0.8);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
   font-size: 11px;
   font-weight: 680;
   cursor: pointer;
@@ -11678,9 +11714,9 @@ footer nav a {
 .archive-editor-change-log {
   margin: 0 0 14px;
   padding: 15px;
-  border: 1px solid rgba(124, 58, 237, 0.13);
+  border: 1px solid rgba(124, 58, 237, 0.3);
   border-radius: 13px;
-  background: rgba(124, 58, 237, 0.05);
+  background: rgba(124, 58, 237, 0.14);
 }
 
 .archive-editor-change-log > div {
@@ -11695,13 +11731,13 @@ footer nav a {
   align-items: flex-start;
   gap: 7px;
   margin: 0;
-  color: #5d566a;
+  color: rgba(255, 255, 255, 0.78);
   font-size: 11px;
   line-height: 1.4;
 }
 
 .archive-editor-change-log i {
-  color: var(--cobalt);
+  color: var(--acid);
   font-style: normal;
 }
 
@@ -12095,24 +12131,24 @@ footer nav a {
   margin-bottom: 20px;
   margin: 0 0 18px;
   padding: 18px 20px;
-  border: 1px solid rgba(69, 99, 139, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 4px 18px 4px 4px;
-  background: linear-gradient(135deg, rgba(221, 230, 242, 0.92), rgba(235, 237, 247, 0.8));
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .workspace-history-head h2 {
   margin: 7px 0 5px;
   font-size: clamp(24px, 3vw, 38px);
   letter-spacing: -0.04em;
-  color: #17314f;
+  color: #fff;
   font-weight: 590;
 }
 
 .workspace-history-head p {
   margin: 0;
   font-size: 13px;
-  color: #5f6d7e;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .workspace-history-head > button {
@@ -12121,12 +12157,11 @@ footer nav a {
   gap: 8px;
   min-height: 40px;
   padding: 0 12px;
-  border: 1px solid rgba(70, 58, 110, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 10px;
   cursor: pointer;
-  border-color: rgba(45, 79, 116, 0.14);
-  color: #244361;
-  background: rgba(255, 255, 255, 0.66);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .workspace-history-toolbar {
@@ -12156,11 +12191,11 @@ footer nav a {
   overflow-wrap: anywhere;
   gap: 6px;
   padding: 14px 16px;
-  border: 1px solid rgba(54, 92, 131, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 4px 13px 4px 4px;
-  color: #263d57;
-  background: linear-gradient(135deg, rgba(225, 234, 245, 0.92), rgba(242, 244, 249, 0.86));
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.88), 0 8px 22px rgba(31, 62, 94, 0.055);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
   font-size: 13px;
   line-height: 1.43;
 }
@@ -12168,7 +12203,7 @@ footer nav a {
 .archive-editor-meta b {
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #607792;
+  color: rgba(255, 255, 255, 0.55);
   font-size: 10px;
   font-weight: 760;
 }
@@ -12816,10 +12851,10 @@ footer nav a {
 .workspace-history-list article footer .material-export {
   min-height: 36px;
   padding: 0 12px;
-  border: 1px solid rgba(60, 89, 122, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 10px;
-  color: #38506c;
-  background: rgba(255, 255, 255, 0.72);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .module-material-bar {
