@@ -5439,7 +5439,7 @@ footer nav a {
 
 .semantic-data-note p {
   margin: 0;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.5;
 }
 
@@ -7286,8 +7286,8 @@ footer nav a {
   grid-template-columns: 20px minmax(0, 1fr);
   gap: 8px;
   margin: 0;
-  font-size: 12px;
-  line-height: 1.4;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .competitor-insights-grid p i {
@@ -7341,8 +7341,8 @@ footer nav a {
   grid-template-columns: 24px minmax(0, 1fr);
   align-items: start;
   gap: 7px;
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .competitor-insights-grid li i {
@@ -8158,8 +8158,8 @@ footer nav a {
   grid-column: 1 / -1;
   margin: 0;
   color: #3e3948;
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 .content-plan-brief-grid {
@@ -8196,15 +8196,15 @@ footer nav a {
   border-radius: 999px;
   background: rgba(124, 58, 237, 0.07);
   color: #5c536f;
-  font-size: 11px;
+  font-size: 12.5px;
   font-style: normal;
 }
 
 .content-plan-brief-grid section > p {
   margin: 9px 0 0;
   color: #5f5969;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.55;
 }
 
 .content-plan-brief-grid ol {
@@ -8221,8 +8221,8 @@ footer nav a {
   align-items: start;
   gap: 7px;
   color: #5f5969;
-  font-size: 12px;
-  line-height: 1.4;
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 .content-plan-brief-grid li > i {
@@ -8824,8 +8824,8 @@ footer nav a {
   border-color: rgba(255, 255, 255, 0.16);
   border-radius: 9px;
   background: rgba(255, 255, 255, 0.06);
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .adaptation-changes {
@@ -8849,8 +8849,8 @@ footer nav a {
   gap: 7px;
   margin: 0;
   color: rgba(255, 255, 255, 0.78);
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .adaptation-changes p i {
@@ -10788,8 +10788,8 @@ footer nav a {
 .content-plan-strategy p {
   margin: 8px 0 0;
   color: #4f4958;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.55;
 }
 
 .archive-editor {
