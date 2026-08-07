@@ -68,6 +68,7 @@ export type AiOperation =
   | "discover_competitors"
   | "analyze_competitors"
   | "revise_content"
+  | "analyze_brand_website"
   // Nano — short formalized steps
   | "normalize_quick_brief"
   | "validate_content"
@@ -117,6 +118,15 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // always a small, targeted rewrite of an already-generated draft, never
   // a fresh full generation.
   revise_content: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 12_000, structuredOutput: true, retryable: false, useWebSearch: false },
+  // Reads one site (already fetched server-side by readWebsiteContext) and
+  // distills it into 4 short profile fields — small output, but genuinely
+  // needs judgement (what's the real positioning vs. marketing filler,
+  // which facts are actually verifiable) rather than mechanical extraction,
+  // so this stays on Luna like the other research_* operations rather than
+  // nano. web_search stays on as a fallback for when the fetched page is
+  // thin or unreadable (SPA, blocked, etc.) — the model can still ground
+  // itself in public information about the company instead of guessing.
+  analyze_brand_website: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 3_500, structuredOutput: true, retryable: true, useWebSearch: true },
 
   normalize_quick_brief: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 800, structuredOutput: true, retryable: true, useWebSearch: false },
   validate_content: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 1_500, structuredOutput: true, retryable: true, useWebSearch: false },

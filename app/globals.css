@@ -1826,6 +1826,15 @@ select:focus-visible {
   cursor: pointer;
 }
 
+/* Wasn't needed until the "Заполнить с помощью ИИ" button on this row
+   started actually going disabled (empty site field, no AI connection,
+   research quota exhausted) — every other use of .profile-assistant-row
+   is a one-click prefill with nothing to validate first. */
+.profile-assistant-row button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .profile-foundation-warning {
   justify-content: flex-start;
   border-color: rgba(204, 142, 42, 0.22);

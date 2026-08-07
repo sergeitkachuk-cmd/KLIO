@@ -1230,6 +1230,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [brandSaved, setBrandSaved] = useState(false);
   const [brandTab, setBrandTab] = useState<BrandTab>("foundation");
   const [profileMode, setProfileMode] = useState<ProfileMode>("quick");
+  const [brandAnalyzeBusy, setBrandAnalyzeBusy] = useState(false);
+  const [brandAnalyzeError, setBrandAnalyzeError] = useState("");
   const [semanticQuery, setSemanticQuery] = useState("");
   const [semanticGeo, setSemanticGeo] = useState<SemanticGeo>(defaultSemanticGeo);
   const [semanticGeoOpen, setSemanticGeoOpen] = useState(false);
@@ -2337,6 +2339,64 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     if (!workspace) window.localStorage.setItem("clio-brand-profile-v1", JSON.stringify(defaultBrand));
     setBrandSaved(true);
     showToast("Базовый профиль восстановлен");
+  }
+
+  async function analyzeBrandFromWebsite() {
+    if (aiConnection !== "connected") {
+      setBrandAnalyzeError("ИИ не подключён. Сначала добавьте серверный AI‑ключ.");
+      return;
+    }
+    const website = brand.website.trim();
+    if (!website) {
+      setBrandAnalyzeError("Укажите сайт бренда, чтобы КЛИО могла его прочитать.");
+      return;
+    }
+
+    setBrandAnalyzeBusy(true);
+    setBrandAnalyzeError("");
+    try {
+      const response = await fetch("/api/brand/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          website,
+          name: brand.name,
+          description: brand.description,
+          positioning: brand.positioning,
+          audience: brand.audience,
+          advantages: brand.advantages,
+        }),
+      });
+      const payload = await safeJson(response) as {
+        error?: string;
+        mode?: "ai";
+        result?: { name: string; description: string; positioning: string; audience: string; advantages: string };
+        sources?: { website?: string };
+        usage?: { account?: WorkspaceAccount } | null;
+      };
+      if (!response.ok || payload.mode !== "ai" || !payload.result) {
+        throw new Error(payload.error || "Не удалось проанализировать сайт.");
+      }
+
+      const { result } = payload;
+      setBrand((current) => ({
+        ...current,
+        name: result.name || current.name,
+        description: result.description,
+        positioning: result.positioning,
+        audience: result.audience,
+        advantages: result.advantages,
+      }));
+      setBrandSaved(false);
+      setSemanticNeedsRefresh(true);
+      setContentPlanNeedsRefresh(true);
+      if (payload.usage?.account) setWorkspaceAccount(payload.usage.account);
+      showToast(payload.sources?.website === "loaded" ? "Основа бренда заполнена по сайту" : "Сайт прочитать не удалось — КЛИО использовала веб‑поиск");
+    } catch (error) {
+      setBrandAnalyzeError(error instanceof Error ? error.message : "Не удалось проанализировать сайт.");
+    } finally {
+      setBrandAnalyzeBusy(false);
+    }
   }
 
   function persistSemantics(
@@ -3743,6 +3803,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
               {brandTab === "foundation" && <div className="brand-field-group" role="tabpanel">
                 <div className="brand-group-heading"><span>Основа бренда</span><p>Факты, которые определяют, о ком и для кого говорит каждый материал.</p></div>
+                <div className="profile-assistant-row"><div><span>Заполнение по сайту</span><p>КЛИО прочитает указанный сайт и предложит описание, позиционирование, аудиторию и факты — каждое поле после этого можно скорректировать вручную.</p></div><button type="button" className={brandAnalyzeBusy ? "is-busy" : ""} onClick={() => void analyzeBrandFromWebsite()} disabled={brandAnalyzeBusy || !brand.website.trim() || aiConnection !== "connected" || workspaceAccount.researchRemaining <= 0}>{brandAnalyzeBusy ? "КЛИО читает сайт…" : !brand.website.trim() ? "Сначала укажите сайт" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.researchRemaining <= 0 ? "Лимит исследований исчерпан" : "Заполнить с помощью ИИ"}</button></div>
+                {brandAnalyzeError && <p className="generation-error" role="alert">{brandAnalyzeError}</p>}
                 <div className="brand-fields">
                   <label>Компания<input value={brand.name} onChange={(event) => updateBrand("name", event.target.value)} autoComplete="off"/><small>Полное название, которое можно использовать в публикации.</small></label>
                   <label>Сайт<input value={brand.website} onChange={(event) => updateBrand("website", event.target.value)} autoComplete="off"/><small>КЛИО читает открытую страницу при сборе семантики и генерации; недоступные сведения не додумываются.</small></label>
