@@ -1967,10 +1967,10 @@ select:focus-visible {
   display: grid;
   grid-template-columns: minmax(350px, 410px) minmax(0, 1fr);
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 5px 46px 5px 5px;
-  background: rgba(255, 255, 255, 0.48);
-  box-shadow: 0 44px 110px rgba(27, 20, 54, 0.14), inset 0 1px rgba(255, 255, 255, 0.86);
+  background: rgba(4, 18, 37, 0.4);
+  box-shadow: 0 44px 110px rgba(3, 12, 26, 0.35), inset 0 1px rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(28px) saturate(130%);
 }
 
@@ -2477,10 +2477,25 @@ select:focus-visible {
   transition: width 500ms ease;
 }
 
+/* Генератор dark navy pass — parity with .brief-panel (left pane, already
+   dark). Redefining --ink/--muted/--line locally lets every var(--ink)/
+   var(--muted)/var(--line) below (.result-title, .result-head border,
+   .seo-passport labels, etc.) resolve to the dark values automatically;
+   the explicit color:#fff breaks the stale light-inheritance chain for
+   descendants with no color of their own — see .semantic-shell for the
+   same pattern and why it's needed. Hardcoded light-theme literals (not
+   custom properties) on .status/.result-body/.editor-note/.seo-passport/
+   etc. still need their own overrides below. */
 .result-panel {
+  --ink: #fff;
+  --muted: rgba(255, 255, 255, 0.62);
+  --line: rgba(255, 255, 255, 0.14);
   min-width: 0;
   padding: 42px 48px 30px;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(247, 246, 252, 0.76));
+  color: #fff;
+  background:
+    radial-gradient(circle at 88% 0%, rgba(124, 58, 237, 0.18), transparent 32%),
+    linear-gradient(150deg, #051a31 0%, #082b4c 55%, #041225 100%);
 }
 
 .result-head {
@@ -2543,8 +2558,46 @@ select:focus-visible {
   box-shadow: 0 0 0 5px rgba(155, 152, 168, 0.12);
 }
 
+/* .status/.status-ai/.status-demo/.status-example are shared by three
+   places: Генератор's own .result-head (dark now, converted alongside
+   this rule), Контент-план's .content-plan-setup (already scoped dark
+   earlier — see .content-plan-setup .status* further down this file),
+   and Редакторы КЛИО's .adaptation-result-head, which turned out to
+   still be using the base light-theme text colors on its already-dark
+   card (missed during the earlier Адаптация pass — dark green/purple/
+   grey text on dark navy, same low-contrast bug class as everywhere
+   else). Scoping both remaining unfixed spots together here, as
+   compound selectors so they win on specificity regardless of source
+   order (the plain .status-ai etc. rules above are 0,1,0; these are
+   0,2,0) rather than fighting the file's known source-order quirks. */
+.result-head .status,
+.adaptation-result-head .status {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.result-head .status-demo,
+.adaptation-result-head .status-demo {
+  color: #f0c877;
+}
+
+.result-head .status-ai,
+.adaptation-result-head .status-ai {
+  color: var(--acid);
+}
+
+.result-head .status-ai i,
+.adaptation-result-head .status-ai i {
+  background: var(--acid);
+  box-shadow: 0 0 0 5px rgba(216, 255, 101, 0.16);
+}
+
+.result-head .status-example,
+.adaptation-result-head .status-example {
+  color: rgba(255, 255, 255, 0.55);
+}
+
 .result-head small {
-  color: #7b7a88;
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .result-head button,
@@ -2554,7 +2607,7 @@ select:focus-visible {
   gap: 8px;
   flex: 0 0 auto;
   border: 0;
-  color: var(--cobalt);
+  color: #cabdf6;
   background: none;
   font-size: 14px;
   font-weight: 650;
@@ -2570,11 +2623,11 @@ select:focus-visible {
 }
 
 .result-clear {
-  color: #8b8996 !important;
+  color: rgba(255, 255, 255, 0.5) !important;
 }
 
 .result-clear:hover:not(:disabled) {
-  color: #5f5d6b !important;
+  color: #fff !important;
 }
 
 .result-clear:disabled {
@@ -2617,7 +2670,7 @@ select:focus-visible {
   border: 0;
   outline: 0;
   resize: none;
-  color: #3e3c49;
+  color: rgba(255, 255, 255, 0.85);
   background: transparent;
   font-size: 18px;
   line-height: 1.75;
@@ -2636,9 +2689,9 @@ select:focus-visible {
   gap: 8px 18px;
   margin-top: 22px;
   padding: 17px 18px;
-  border: 1px solid rgba(50, 43, 86, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 14px;
-  background: rgba(124, 58, 237, 0.055);
+  background: rgba(124, 58, 237, 0.14);
 }
 
 .editor-note span,
@@ -2652,9 +2705,9 @@ select:focus-visible {
 .seo-passport {
   margin-top: 22px;
   padding: 18px;
-  border: 1px solid rgba(50, 43, 86, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 16px;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.04), rgba(255, 255, 255, 0.42));
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.14), rgba(255, 255, 255, 0.04));
 }
 
 .seo-passport-head {
@@ -2666,7 +2719,7 @@ select:focus-visible {
 }
 
 .seo-passport-head small {
-  color: #92909c;
+  color: rgba(255, 255, 255, 0.5);
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.09em;
@@ -2677,7 +2730,7 @@ select:focus-visible {
   display: grid;
   gap: 6px;
   padding: 11px 0;
-  border-top: 1px solid rgba(50, 43, 86, 0.09);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .seo-passport > label > span,
@@ -2700,8 +2753,8 @@ select:focus-visible {
   border: 0;
   border-radius: 7px;
   outline: none;
-  color: #373442;
-  background: rgba(255, 255, 255, 0.48);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
   font-size: 14px;
   line-height: 1.5;
   resize: none;
@@ -2719,14 +2772,14 @@ textarea[data-autosize="true"] {
 .editor-note span {
   grid-area: label;
   align-self: center;
-  color: var(--cobalt);
+  color: #cabdf6;
 }
 
 .editor-note p {
   grid-area: body;
   min-width: 0;
   margin: 0;
-  color: #5f5d6b;
+  color: rgba(255, 255, 255, 0.78);
   font-size: 14px;
   line-height: 1.55;
   overflow-wrap: anywhere;
@@ -2736,7 +2789,7 @@ textarea[data-autosize="true"] {
   grid-area: note;
   align-self: center;
   justify-self: end;
-  color: #92909c;
+  color: rgba(255, 255, 255, 0.5);
   white-space: nowrap;
 }
 
@@ -2929,7 +2982,7 @@ textarea[data-autosize="true"] {
   justify-content: space-between;
   gap: 18px;
   padding-top: 20px;
-  color: #7b7987;
+  color: rgba(255, 255, 255, 0.55);
   font-size: 13px;
 }
 
@@ -4575,10 +4628,11 @@ footer nav a {
   gap: 11px;
   flex: 0 0 auto;
   padding: 13px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 16px 16px 4px 16px;
-  background: rgba(255, 255, 255, 0.52);
-  box-shadow: 0 16px 42px rgba(28, 21, 55, 0.07), inset 0 1px rgba(255, 255, 255, 0.95);
+  color: #fff;
+  background: radial-gradient(circle at 90% 0%, rgba(124, 58, 237, 0.26), transparent 34%), linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
+  box-shadow: 0 16px 42px rgba(3, 12, 26, 0.24), inset 0 1px rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(20px);
 }
 
@@ -4587,7 +4641,12 @@ footer nav a {
   height: 9px;
   border-radius: 50%;
   background: #d59b32;
-  box-shadow: 0 0 0 5px rgba(213, 155, 50, 0.11);
+  box-shadow: 0 0 0 5px rgba(213, 155, 50, 0.18);
+}
+
+.workspace-status.has-error > i {
+  background: #ff8f9a;
+  box-shadow: 0 0 0 5px rgba(255, 143, 154, 0.18);
 }
 
 .workspace-status span {
@@ -4601,7 +4660,7 @@ footer nav a {
 }
 
 .workspace-status small {
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.6);
   font-size: 11px;
 }
 
@@ -7365,16 +7424,16 @@ footer nav a {
   gap: 7px 18px;
   margin-top: 18px;
   padding: 13px 15px;
-  border: 1px solid rgba(50, 43, 86, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 13px;
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .length-control > span {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #79602e;
+  color: #f0c877;
   font-size: 12px;
   font-weight: 690;
   letter-spacing: 0.06em;
@@ -7400,7 +7459,7 @@ footer nav a {
   height: 3px;
   overflow: hidden;
   border-radius: 5px;
-  background: rgba(50, 43, 86, 0.1);
+  background: rgba(255, 255, 255, 0.12);
   text-decoration: none;
 }
 
@@ -7414,12 +7473,12 @@ footer nav a {
 
 .length-control > small {
   grid-column: 1 / -1;
-  color: #8b8996;
+  color: rgba(255, 255, 255, 0.5);
   font-size: 11px;
 }
 
 .length-control.is-ok > span {
-  color: #476f24;
+  color: #9ee85a;
 }
 
 .length-control.is-ok > span i {
@@ -7432,7 +7491,7 @@ footer nav a {
 }
 
 .length-control.is-idle > span {
-  color: #858391;
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .length-control.is-idle > span i {
@@ -7451,7 +7510,7 @@ footer nav a {
 .generator-accent-field > small {
   display: block;
   margin-top: 7px;
-  color: #777386;
+  color: rgba(255, 255, 255, 0.54);
   font-size: 11px;
   line-height: 1.45;
 }
@@ -7462,9 +7521,9 @@ footer nav a {
   gap: 1px;
   margin: 22px 0 0;
   overflow: hidden;
-  border: 1px solid rgba(70, 58, 118, 0.13);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 4px 18px 4px 4px;
-  background: rgba(73, 63, 112, 0.12);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .generation-brief-check > div,
@@ -7472,7 +7531,7 @@ footer nav a {
   min-width: 0;
   margin: 0;
   padding: 14px 15px;
-  background: rgba(255, 255, 255, 0.76);
+  background: rgba(6, 22, 43, 0.82);
 }
 
 .generation-brief-check > div {
@@ -7481,7 +7540,7 @@ footer nav a {
 }
 
 .generation-brief-check > div span {
-  color: var(--cobalt);
+  color: #cabdf6;
   font-size: 11px;
   font-weight: 740;
   letter-spacing: 0.11em;
@@ -7491,7 +7550,7 @@ footer nav a {
 .generation-brief-check > div small,
 .generation-brief-check p small {
   margin-top: 4px;
-  color: #7e798c;
+  color: rgba(255, 255, 255, 0.6);
   font-size: 11px;
   line-height: 1.38;
 }
@@ -7509,16 +7568,16 @@ footer nav a {
   width: 25px;
   height: 25px;
   border-radius: 50%;
-  background: rgba(124, 58, 237, 0.1);
-  color: var(--cobalt);
+  background: rgba(124, 58, 237, 0.22);
+  color: #cabdf6;
   font-size: 12px;
   font-style: normal;
   font-weight: 760;
 }
 
 .generation-brief-check > p.is-missing > i {
-  background: rgba(224, 73, 106, 0.12);
-  color: #bb3151;
+  background: rgba(224, 73, 106, 0.22);
+  color: #ff8f9a;
 }
 
 .generation-brief-check p span {
@@ -11346,12 +11405,14 @@ footer nav a {
   background: rgba(124, 58, 237, 0.07);
 }
 
-/* .seo-field-label is shared with the (still light-themed, out of scope)
-   generator result panel, so its own button color above has to stay
-   dark-on-light — scoped override for the dark cards that reuse it. */
+/* .seo-field-label is shared across every module that has SEO fields.
+   The Генератор result panel (.seo-passport) used to be the one light
+   holdout this comment carved out as "still light-themed, out of scope" —
+   it's dark now too, so it joins the same scoped override as the rest. */
 .content-plan-seo .seo-field-label > button,
 .adaptation-seo-fields .seo-field-label > button,
-.archive-editor-document .seo-field-label > button {
+.archive-editor-document .seo-field-label > button,
+.seo-passport .seo-field-label > button {
   border-color: rgba(255, 255, 255, 0.22);
   color: #fff;
   background: rgba(255, 255, 255, 0.08);
@@ -11359,7 +11420,8 @@ footer nav a {
 
 .content-plan-seo .seo-field-label > button:hover,
 .adaptation-seo-fields .seo-field-label > button:hover,
-.archive-editor-document .seo-field-label > button:hover {
+.archive-editor-document .seo-field-label > button:hover,
+.seo-passport .seo-field-label > button:hover {
   border-color: rgba(216, 255, 101, 0.4);
   background: rgba(216, 255, 101, 0.12);
 }
