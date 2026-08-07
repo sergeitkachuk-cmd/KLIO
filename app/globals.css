@@ -15294,3 +15294,282 @@ footer nav a {
 [data-theme="light"] .plan-copy li svg {
   color: var(--cobalt);
 }
+
+/* ---------------------------------------------------------------------
+   Профиль бренда — installment 2 of the light theme, first module card
+   (the phased plan named after the shell/chrome installment). Mirrors
+   the dark navy pass comment above each rule 1:1: same selectors, same
+   cool-blue-instead-of-violet convention as the rest of this file's
+   light theme, var(--cobalt) kept only for text-only label accents. */
+[data-theme="light"] .brand-profile {
+  border-color: rgba(15, 23, 42, 0.12);
+  background:
+    radial-gradient(circle at 92% 0%, rgba(53, 104, 212, 0.1), transparent 34%),
+    linear-gradient(135deg, #ffffff 0%, #f5f7fb 100%);
+  box-shadow: 0 28px 82px rgba(20, 40, 80, 0.1), inset 0 1px rgba(255, 255, 255, 0.85);
+}
+
+[data-theme="light"] .brand-profile-head {
+  color: #0d1b31;
+  background:
+    radial-gradient(circle at 88% 0%, rgba(53, 104, 212, 0.18), transparent 42%),
+    linear-gradient(120deg, #e3eaf6, #f0f4fa);
+}
+
+[data-theme="light"] .brand-profile-head span {
+  color: #2452b8;
+}
+
+[data-theme="light"] .brand-profile-head h3,
+[data-theme="light"] .brand-profile-head .brand-switch b {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .brand-profile-head p {
+  color: rgba(13, 27, 49, 0.65);
+}
+
+[data-theme="light"] .brand-profile .profile-toggle {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: linear-gradient(135deg, rgba(53, 104, 212, 0.1), rgba(255, 255, 255, 0.6));
+}
+
+[data-theme="light"] .brand-profile-body {
+  color: #0d1b31;
+  background:
+    radial-gradient(circle at 88% 0%, rgba(53, 104, 212, 0.12), transparent 40%),
+    linear-gradient(135deg, #e3eaf6 0%, #f0f4fa 55%, #ffffff 100%);
+}
+
+[data-theme="light"] .profile-mode-bar {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.7), rgba(53, 104, 212, 0.1));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"] .profile-mode-bar > div:first-child span,
+[data-theme="light"] .brand-tab-navigation-head span,
+[data-theme="light"] .brand-group-heading span {
+  color: #2452b8;
+}
+
+[data-theme="light"] .profile-mode-bar > div:first-child small,
+[data-theme="light"] .brand-tab-navigation-head small,
+[data-theme="light"] .brand-group-heading p,
+[data-theme="light"] .brand-score p small,
+[data-theme="light"] .brand-checklist small,
+[data-theme="light"] .brand-fields label > small {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .profile-mode-switch {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(15, 23, 42, 0.04);
+}
+
+[data-theme="light"] .profile-mode-switch button {
+  color: rgba(13, 27, 49, 0.65);
+}
+
+[data-theme="light"] .profile-mode-switch button > i {
+  border-color: rgba(15, 23, 42, 0.2);
+  color: rgba(13, 27, 49, 0.75);
+}
+
+[data-theme="light"] .profile-mode-switch button.active {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(20, 40, 80, 0.14), inset 0 1px #fff;
+}
+
+[data-theme="light"] .profile-mode-switch button.active > i {
+  border-color: rgba(53, 104, 212, 0.35);
+  color: #2452b8;
+  background: rgba(53, 104, 212, 0.1);
+}
+
+[data-theme="light"] .brand-tab-navigation {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.75), rgba(53, 104, 212, 0.1));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .brand-tabs {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: rgba(15, 23, 42, 0.03);
+}
+
+[data-theme="light"] .brand-tabs button {
+  border-color: rgba(15, 23, 42, 0.12);
+  color: rgba(13, 27, 49, 0.65);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+[data-theme="light"] .brand-tabs button i {
+  border-color: rgba(15, 23, 42, 0.18);
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .brand-tabs button > span {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .brand-tabs button:hover {
+  border-color: rgba(53, 104, 212, 0.35);
+  color: #0d1b31;
+  background: rgba(53, 104, 212, 0.08);
+}
+
+[data-theme="light"] .brand-field-group {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.3));
+}
+
+[data-theme="light"] .brand-group-heading {
+  border-bottom-color: rgba(15, 23, 42, 0.12);
+}
+
+[data-theme="light"] .brand-fields label {
+  color: rgba(13, 27, 49, 0.78);
+}
+
+[data-theme="light"] .brand-score,
+[data-theme="light"] .brand-checklist {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .brand-score > div {
+  background: conic-gradient(var(--cobalt) var(--profile-score), rgba(15, 23, 42, 0.1) 0);
+}
+
+[data-theme="light"] .brand-score > div::after {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: #ffffff;
+}
+
+[data-theme="light"] .brand-score > div span {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .brand-checklist > div i {
+  border-color: rgba(15, 23, 42, 0.2);
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .brand-checklist > div.is-complete i {
+  border-color: rgba(53, 104, 212, 0.4);
+  color: #fff;
+  background: #2452b8;
+}
+
+/* Fields on the light card go back to a light input treatment - the
+   dark-pass rule (translucent white on navy) is what's active by
+   default; this mirrors that same rule's own light-mode logic. */
+[data-theme="light"] .brand-fields input,
+[data-theme="light"] .brand-fields textarea {
+  border: 1.5px solid rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.75);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="light"] .brand-fields input:focus,
+[data-theme="light"] .brand-fields textarea:focus {
+  border-color: #2452b8;
+  box-shadow: 0 0 0 3px rgba(53, 104, 212, 0.16);
+}
+
+[data-theme="light"] .brand-fields input::placeholder,
+[data-theme="light"] .brand-fields textarea::placeholder {
+  color: rgba(13, 27, 49, 0.35);
+}
+
+[data-theme="light"] .brand-fields label > small.is-error {
+  color: #c81e3a;
+}
+
+[data-theme="light"] .brand-profile-body .brand-profile-footer {
+  border-top-color: rgba(15, 23, 42, 0.12);
+}
+
+[data-theme="light"] .brand-profile-footer p {
+  color: rgba(13, 27, 49, 0.65);
+}
+
+[data-theme="light"] .brand-profile-body .brand-profile-footer > div > button:first-child {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .brand-profile-body .profile-ai-note,
+[data-theme="light"] .brand-profile-body .profile-assistant-row {
+  border-color: rgba(53, 104, 212, 0.3);
+  background: linear-gradient(120deg, rgba(53, 104, 212, 0.12), rgba(255, 255, 255, 0.6));
+}
+
+[data-theme="light"] .brand-profile-body .profile-ai-note span,
+[data-theme="light"] .brand-profile-body .profile-assistant-row span {
+  color: #2452b8;
+}
+
+[data-theme="light"] .brand-profile-body .profile-ai-note p,
+[data-theme="light"] .brand-profile-body .profile-assistant-row p,
+[data-theme="light"] .brand-profile-body .profile-recommendation-footer small {
+  color: rgba(13, 27, 49, 0.65);
+}
+
+[data-theme="light"] .brand-profile-body .profile-assistant-row button,
+[data-theme="light"] .brand-profile-body .brand-website-row button {
+  border-color: rgba(15, 23, 42, 0.18);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"] .brand-profile-body .profile-foundation-warning {
+  border-color: rgba(200, 140, 30, 0.4);
+  background: rgba(230, 172, 76, 0.14);
+}
+
+[data-theme="light"] .brand-profile-body .profile-foundation-warning p {
+  color: rgba(13, 27, 49, 0.75);
+}
+
+[data-theme="light"] .brand-profile-body .profile-foundation-warning > i {
+  border-color: rgba(200, 140, 30, 0.5);
+  color: #93650f;
+}
+
+[data-theme="light"] .brand-profile-body .profile-foundation-warning button {
+  border-color: rgba(200, 140, 30, 0.5);
+  color: #93650f;
+  background: rgba(230, 172, 76, 0.16);
+}
+
+[data-theme="light"] .brand-profile-body .profile-recommendation-grid article,
+[data-theme="light"] .brand-profile-body .format-recommendation-grid article {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="light"] .brand-profile-body .profile-recommendation-grid article > span,
+[data-theme="light"] .brand-profile-body .format-recommendation-grid article > div i {
+  color: #2452b8;
+}
+
+[data-theme="light"] .brand-profile-body .profile-recommendation-grid p,
+[data-theme="light"] .brand-profile-body .format-recommendation-grid p {
+  color: rgba(13, 27, 49, 0.78);
+}
+
+[data-theme="light"] .brand-profile-body .format-recommendation-grid article > div span {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .brand-profile-body .profile-recommendation-footer {
+  border-top-color: rgba(15, 23, 42, 0.12);
+}
