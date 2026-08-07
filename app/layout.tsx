@@ -1,18 +1,16 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Manrope } from "next/font/google";
 import "./globals.css";
 
-// Trying Geist back on for a side-by-side look, this time actually
-// requesting the cyrillic subset. The original bug wasn't "Geist can't
-// do Cyrillic" - Geist added real Cyrillic support (better cyrillic
-// design landed in the vercel/geist-font project, google/fonts lists
-// cyrillic + cyrillic-ext subsets for it) - the bug was that this file
-// only ever asked next/font for subsets:["latin"], so the browser fell
-// through to a system font for every visible character on this
-// Russian-language site regardless of which typeface was named here.
-// Same --font-sans variable as the Inter swap, so no changes needed on
-// the globals.css side.
-const geist = Geist({
+// Third typeface in the same side-by-side comparison (Inter, then
+// Geist, now Manrope) - all requesting subsets:["latin","cyrillic"] so
+// each one actually renders instead of silently falling through to a
+// system font the way the original Geist config did. Manrope in
+// particular was designed by Mikhail Sharanda, who's Belarusian, so its
+// Cyrillic isn't a bolted-on afterthought subset the way it sometimes
+// is on Western-designed typefaces. Same --font-sans variable name as
+// the earlier swaps, so globals.css needs no changes.
+const manrope = Manrope({
   variable: "--font-sans",
   subsets: ["latin", "cyrillic"],
 });
@@ -37,7 +35,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru">
-      <body className={`${geist.variable} antialiased`}>
+      <body className={`${manrope.variable} antialiased`}>
         {children}
       </body>
     </html>
