@@ -8034,10 +8034,19 @@ footer nav a {
 .content-plan-item-copy h3 {
   margin: 9px 0 8px;
   overflow-wrap: anywhere;
-  font-size: clamp(18px, 1.5vw, 23px);
-  font-weight: 560;
-  line-height: 1.2;
-  letter-spacing: -0.025em;
+  /* Was font-weight 560 at up to 23px with no color of its own, so it
+     inherited pure #fff from .content-plan-item — heavy weight + full
+     white + tight line-height on a saturated navy card read as "too
+     much bold text" (white-on-dark headlines optically look bolder
+     than the same weight does dark-on-light). Softened all three
+     levers instead of just one: lighter weight, slightly smaller cap,
+     a hair off full white, and looser line-height so two-line titles
+     don't feel like a solid block. */
+  color: rgba(255, 255, 255, 0.94);
+  font-size: clamp(17px, 1.35vw, 21px);
+  font-weight: 520;
+  line-height: 1.32;
+  letter-spacing: -0.02em;
 }
 
 .content-plan-item-copy > p {
@@ -10603,9 +10612,13 @@ footer nav a {
   padding-top: 72px; --module-accent: #9b536d; --module-tint: rgba(155, 83, 109, 0.065); }
 
 .workspace-module > .workspace-module-heading {
-  position: sticky;
+  /* Was position: sticky; top: 88px — floated over the module's own
+     content while scrolling. Static now, per request: the heading just
+     sits at the top of its module and scrolls away with it, same as it
+     already did on mobile (see the position:relative/top:auto override
+     below for narrow screens, now redundant but harmless). */
+  position: relative;
   z-index: 18;
-  top: 88px;
   margin: 0 0 20px;
   padding: 27px 30px;
   border: 1px solid rgba(255, 255, 255, 0.17);
@@ -13003,9 +13016,20 @@ footer nav a {
 }
 
 .content-plan-selection-bar {
+  /* Was bottom: 12px — but this bar sits near the TOP of the module,
+     above the whole item list. bottom-anchored sticky only catches an
+     element scrolling UP into the viewport from below; scrolling DOWN
+     past something already above the fold just lets it scroll off
+     normally, sticky or not. That's exactly what happened: check the
+     box on item 04+, the bar (and "Заменить выбранные") had already
+     scrolled off the top and stayed gone — read as "the button
+     disappeared". top-anchored sticky is the correct direction here,
+     with the same 88px offset the module heading used to stick at
+     (76px fixed site header + gap), so the bar now stays pinned right
+     under the header while scrolling down through the list. */
   position: sticky;
   z-index: 9;
-  bottom: 12px;
+  top: 88px;
   display: flex;
   align-items: center;
   justify-content: space-between;
