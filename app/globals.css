@@ -16761,6 +16761,18 @@ footer nav a {
   color: rgba(13, 27, 49, 0.55);
 }
 
+/* .adaptation-goals button small has no .active-specific counterpart in
+   the dark original either - it unconditionally sets one translucent-
+   white value that happens to read fine on both the active and inactive
+   dark button, because both have dark backgrounds. Light broke that
+   assumption: the inactive button is a light card (needs dark text,
+   above) but .active is now a solid saturated blue gradient (needs
+   light text) - the same unconditional rule can't serve both, so the
+   dark-navy subtitle sat on top of its own blue button, unreadable. */
+[data-theme="light"] .adaptation-goals button.active small {
+  color: rgba(255, 255, 255, 0.85);
+}
+
 [data-theme="light"] .adaptation-goal-scenario {
   border-color: rgba(53, 104, 212, 0.35);
   background: linear-gradient(135deg, rgba(53, 104, 212, 0.12), rgba(255, 255, 255, 0.55));
