@@ -19,7 +19,7 @@ type DocumentWithViewTransition = Document & {
 
 type Format = "seo" | "social" | "ads" | "landing";
 type GenerationMode = "example" | "demo" | "ai";
-type BrandTab = "foundation" | "voice" | "formats";
+type BrandTab = "foundation" | "voice";
 type ProfileMode = "quick" | "expert";
 type SemanticMode = "idle" | "demo" | "ai";
 type AiConnection = "checking" | "connected" | "disconnected";
@@ -149,10 +149,6 @@ type BrandProfile = {
   restrictions: string;
   signature: string;
   prohibited: string;
-  seoRules: string;
-  socialRules: string;
-  adsRules: string;
-  landingRules: string;
 };
 
 type GeneratedMaterial = {
@@ -356,10 +352,6 @@ const defaultBrand: BrandProfile = {
   restrictions: "Не обещать исцеление, не ставить диагнозы, не придумывать показания, цены, сроки и медицинские факты.",
   signature: "С заботой о вашем здоровье и отдыхе, санаторий «Марциальные воды» — первый российский курорт.",
   prohibited: "гарантированное исцеление; чудодейственный; лучший санаторий; уникальный результат; успейте любой ценой",
-  seoRules: "Полно отвечать на поисковый запрос, использовать ясные подзаголовки, естественно распределять ключевые фразы и не допускать медицинских обещаний без подтверждения.",
-  socialRules: "Говорить от лица санатория. Один главный тезис, короткие абзацы, спокойный дружелюбный призыв и фирменная подпись в финале.",
-  adsRules: "Конкретная польза без давления, ложной срочности и превосходных степеней. Один понятный следующий шаг.",
-  landingRules: "Сначала задача гостя, затем решение, факты и маршрут обращения. Услуги, сроки и цены не придумывать.",
 };
 
 const defaultSemanticResult: SemanticResult = {
@@ -628,15 +620,6 @@ function buildVoiceRecommendations(profile: BrandProfile): Pick<BrandProfile, "v
     restrictions: "Не придумывать цены, сроки, характеристики и результаты. Не давать гарантий без подтверждения. Спорные сведения оставлять на проверку специалисту.",
     signature: `С заботой о вас, ${brandName}.`,
     prohibited: "гарантированный результат; лучший на рынке; уникальный без доказательств; успейте любой ценой; никаких рисков; подходит всем",
-  };
-}
-
-function buildFormatRecommendations(): Pick<BrandProfile, "seoRules" | "socialRules" | "adsRules" | "landingRules"> {
-  return {
-    seoRules: "Полно отвечать на поисковый запрос. Использовать ясные подзаголовки, естественные ключевые фразы и только проверяемые факты.",
-    socialRules: "Один главный тезис на публикацию. Начинать с узнаваемой ситуации или пользы, писать короткими абзацами, говорить от лица бренда и завершать спокойным следующим шагом. Фирменную подпись добавлять только там, где она звучит естественно.",
-    adsRules: "Одна конкретная выгода и один понятный призыв. Не использовать давление, ложную срочность, неподтверждённые превосходные степени и обещания результата. Формулировки должны быть короткими и проверяемыми.",
-    landingRules: "Сначала показать задачу клиента, затем решение, подтверждающие факты и следующий шаг. Не придумывать условия и не перегружать первый экран деталями.",
   };
 }
 
@@ -1420,14 +1403,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     && brand.advantages.trim(),
   );
   const voiceRecommendations = useMemo(() => buildVoiceRecommendations(brand), [brand]);
-  const formatRecommendations = useMemo(
-    () => buildFormatRecommendations(),
-    [],
-  );
   const effectiveBrand = useMemo(() => {
     if (profileMode !== "quick" || !foundationReady) return brand;
-    return { ...brand, ...voiceRecommendations, ...formatRecommendations };
-  }, [brand, formatRecommendations, foundationReady, profileMode, voiceRecommendations]);
+    return { ...brand, ...voiceRecommendations };
+  }, [brand, foundationReady, profileMode, voiceRecommendations]);
   const brandChecklist = useMemo(() => [
     {
       label: "Основа",
@@ -1443,11 +1422,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       label: "Голос и безопасность",
       detail: "интонация, ограничения и стоп-слова",
       complete: Boolean(effectiveBrand.voice.trim() && effectiveBrand.restrictions.trim() && effectiveBrand.prohibited.trim()),
-    },
-    {
-      label: "Форматы",
-      detail: "правила для четырёх типов материалов",
-      complete: Boolean(effectiveBrand.seoRules.trim() && effectiveBrand.socialRules.trim() && effectiveBrand.adsRules.trim() && effectiveBrand.landingRules.trim()),
     },
   ], [effectiveBrand]);
   const brandScore = Math.round((brandChecklist.filter((item) => item.complete).length / brandChecklist.length) * 100);
@@ -2364,20 +2338,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setBrand((current) => ({ ...current, ...buildVoiceRecommendations(current) }));
     setBrandSaved(false);
     showToast("Рекомендации по голосу добавлены в профиль");
-  }
-
-  function applyFormatRecommendations() {
-    if (!foundationReady) {
-      setBrandTab("foundation");
-      showToast("Сначала заполните основу бренда, аудиторию и факты");
-      return;
-    }
-    setBrand((current) => {
-      const withVoice = { ...current, ...buildVoiceRecommendations(current) };
-      return { ...withVoice, ...buildFormatRecommendations() };
-    });
-    setBrandSaved(false);
-    showToast("Правила четырёх форматов предзаполнены");
   }
 
   function changeFormat(nextFormat: Format) {
@@ -3880,7 +3840,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <div className="brand-tabs" role="tablist" aria-label="Переключение разделов профиля бренда">
                   <button type="button" className={brandTab === "foundation" ? "active" : ""} onClick={() => setBrandTab("foundation")} role="tab" aria-selected={brandTab === "foundation"}><i>01</i><b>Основа бренда</b><span>›</span></button>
                   <button type="button" className={brandTab === "voice" ? "active" : ""} onClick={() => setBrandTab("voice")} role="tab" aria-selected={brandTab === "voice"}><i>02</i><b>Голос и ограничения</b><span>›</span></button>
-                  <button type="button" className={brandTab === "formats" ? "active" : ""} onClick={() => setBrandTab("formats")} role="tab" aria-selected={brandTab === "formats"}><i>03</i><b>Правила форматов</b><span>›</span></button>
                 </div>
               </div>
 
@@ -3920,28 +3879,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     <label className="wide">Фирменная подпись<AutoTextarea rows={2} value={brand.signature} onChange={(event) => updateBrand("signature", event.target.value)}/><small>Финальная формулировка для постов; КЛИО добавляет её только там, где она уместна.</small></label>
                     <label>Ограничения<AutoTextarea rows={4} value={brand.restrictions} onChange={(event) => updateBrand("restrictions", event.target.value)}/><small>Что нельзя обещать, утверждать или придумывать без проверки.</small></label>
                     <label>Стоп-слова и клише<AutoTextarea rows={4} value={brand.prohibited} onChange={(event) => updateBrand("prohibited", event.target.value)}/><small>Разделяйте слова и выражения точкой с запятой — они попадут в автоматическую проверку.</small></label>
-                  </div>
-                </>}
-              </div>}
-
-              {brandTab === "formats" && <div className="brand-field-group" role="tabpanel">
-                <div className="brand-group-heading"><span>Правила по площадкам</span><p>Один бренд говорит узнаваемо, но не одинаково в статье, посте, рекламе и на сайте.</p></div>
-                {!foundationReady ? <div className="profile-foundation-warning"><i>01</i><div><b>Правила появятся после заполнения основы</b><p>КЛИО подготовит четыре отдельных сценария с учётом аудитории, фактов и позиционирования.</p></div><button type="button" onClick={() => setBrandTab("foundation")}>Заполнить основу</button></div> : profileMode === "quick" ? <>
-                  <div className="profile-ai-note"><span><i>✦</i> Четыре готовых сценария</span><p>КЛИО уже адаптировала единый голос под разные задачи. Эти правила автоматически передаются в выбранный формат генератора.</p></div>
-                  <div className="format-recommendation-grid">
-                    <article><div><i>SEO</i><span>500–4 000 слов</span></div><h4>SEO‑статья</h4><p>{formatRecommendations.seoRules}</p></article>
-                    <article><div><i>SMM</i><span>80–500 слов</span></div><h4>Социальные сети</h4><p>{formatRecommendations.socialRules}</p></article>
-                    <article><div><i>ADS</i><span>50–300 слов</span></div><h4>Рекламный текст</h4><p>{formatRecommendations.adsRules}</p></article>
-                    <article><div><i>WEB</i><span>300–1 800 слов</span></div><h4>Текст для сайта</h4><p>{formatRecommendations.landingRules}</p></article>
-                  </div>
-                  <div className="profile-recommendation-footer"><small>Новичку достаточно проверить предложения; специалист может открыть все поля.</small><button className="recommendation-edit-button" type="button" onClick={() => changeProfileMode("expert")}><Icon name="edit"/> Изменить правила</button></div>
-                </> : <>
-                  <div className="profile-assistant-row"><div><span>Умное предзаполнение</span><p>КЛИО подготовит примеры для всех площадок; после этого каждое правило можно изменить.</p></div><button type="button" onClick={applyFormatRecommendations}>Подготовить 4 правила</button></div>
-                  <div className="brand-fields format-rule-fields">
-                    <label>SEO-статья<AutoTextarea rows={5} value={brand.seoRules} onChange={(event) => updateBrand("seoRules", event.target.value)}/><small>Обычно 500–4 000 слов: глубина, структура, ключи и требования к фактам.</small></label>
-                    <label>Социальные сети<AutoTextarea rows={5} value={brand.socialRules} onChange={(event) => updateBrand("socialRules", event.target.value)}/><small>Обычно 80–500 слов: подача от лица бренда, ритм, финал и подпись.</small></label>
-                    <label>Рекламный текст<AutoTextarea rows={5} value={brand.adsRules} onChange={(event) => updateBrand("adsRules", event.target.value)}/><small>Обычно 50–300 слов: конкретная выгода, допустимый призыв и уровень срочности.</small></label>
-                    <label>Текст для сайта<AutoTextarea rows={5} value={brand.landingRules} onChange={(event) => updateBrand("landingRules", event.target.value)}/><small>Обычно 300–1 800 слов: логика страницы, доказательства и следующий шаг.</small></label>
                   </div>
                 </>}
               </div>}

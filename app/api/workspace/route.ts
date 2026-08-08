@@ -47,10 +47,6 @@ function cleanProfile(value: unknown) {
     restrictions: clean(source.restrictions, 2000),
     signature: clean(source.signature, 1200),
     prohibited: clean(source.prohibited, 2000),
-    seoRules: clean(source.seoRules, 2400),
-    socialRules: clean(source.socialRules, 2400),
-    adsRules: clean(source.adsRules, 2400),
-    landingRules: clean(source.landingRules, 2400),
   };
 }
 

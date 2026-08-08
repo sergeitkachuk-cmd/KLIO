@@ -1827,10 +1827,6 @@ select:focus-visible {
   line-height: 1.45;
 }
 
-.format-rule-fields textarea {
-  min-height: 142px;
-}
-
 .profile-ai-note,
 .profile-assistant-row,
 .profile-foundation-warning {
@@ -1927,15 +1923,13 @@ select:focus-visible {
   font-weight: 700;
 }
 
-.profile-recommendation-grid,
-.format-recommendation-grid {
+.profile-recommendation-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
-.profile-recommendation-grid article,
-.format-recommendation-grid article {
+.profile-recommendation-grid article {
   min-width: 0;
   padding: 17px;
   border: 1px solid rgba(61, 50, 102, 0.12);
@@ -1952,39 +1946,11 @@ select:focus-visible {
   text-transform: uppercase;
 }
 
-.profile-recommendation-grid p,
-.format-recommendation-grid p {
+.profile-recommendation-grid p {
   margin: 9px 0 0;
   color: #555160;
   font-size: 14px;
   line-height: 1.58;
-}
-
-.format-recommendation-grid article > div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.format-recommendation-grid article > div i {
-  color: var(--cobalt);
-  font-size: 10px;
-  font-style: normal;
-  font-weight: 760;
-  letter-spacing: 0.12em;
-}
-
-.format-recommendation-grid article > div span {
-  color: #9792a0;
-  font-size: 11px;
-}
-
-.format-recommendation-grid h4 {
-  margin: 13px 0 0;
-  font-size: 18px;
-  font-weight: 650;
-  letter-spacing: -0.02em;
 }
 
 .profile-recommendation-footer {
@@ -10166,8 +10132,7 @@ footer nav a {
     width: 100%;
   }
 
-  .profile-recommendation-grid,
-  .format-recommendation-grid {
+  .profile-recommendation-grid {
     grid-template-columns: 1fr;
   }
 
@@ -14395,25 +14360,18 @@ footer nav a {
   background: rgba(230, 172, 76, 0.12);
 }
 
-.brand-profile-body .profile-recommendation-grid article,
-.brand-profile-body .format-recommendation-grid article {
+.brand-profile-body .profile-recommendation-grid article {
   border-color: rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.055);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
 }
 
-.brand-profile-body .profile-recommendation-grid article > span,
-.brand-profile-body .format-recommendation-grid article > div i {
+.brand-profile-body .profile-recommendation-grid article > span {
   color: #d5c9fb;
 }
 
-.brand-profile-body .profile-recommendation-grid p,
-.brand-profile-body .format-recommendation-grid p {
+.brand-profile-body .profile-recommendation-grid p {
   color: rgba(255, 255, 255, 0.78);
-}
-
-.brand-profile-body .format-recommendation-grid article > div span {
-  color: rgba(255, 255, 255, 0.5);
 }
 
 .brand-profile-body .profile-recommendation-footer {
@@ -15549,25 +15507,18 @@ footer nav a {
   background: rgba(230, 172, 76, 0.16);
 }
 
-[data-theme="light"] .brand-profile-body .profile-recommendation-grid article,
-[data-theme="light"] .brand-profile-body .format-recommendation-grid article {
+[data-theme="light"] .brand-profile-body .profile-recommendation-grid article {
   border-color: rgba(15, 23, 42, 0.14);
   background: rgba(255, 255, 255, 0.6);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.5);
 }
 
-[data-theme="light"] .brand-profile-body .profile-recommendation-grid article > span,
-[data-theme="light"] .brand-profile-body .format-recommendation-grid article > div i {
+[data-theme="light"] .brand-profile-body .profile-recommendation-grid article > span {
   color: #2452b8;
 }
 
-[data-theme="light"] .brand-profile-body .profile-recommendation-grid p,
-[data-theme="light"] .brand-profile-body .format-recommendation-grid p {
+[data-theme="light"] .brand-profile-body .profile-recommendation-grid p {
   color: rgba(13, 27, 49, 0.78);
-}
-
-[data-theme="light"] .brand-profile-body .format-recommendation-grid article > div span {
-  color: rgba(13, 27, 49, 0.5);
 }
 
 [data-theme="light"] .brand-profile-body .profile-recommendation-footer {

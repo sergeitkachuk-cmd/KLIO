@@ -29,10 +29,6 @@ type BrandProfile = {
   restrictions: string;
   signature: string;
   prohibited: string;
-  seoRules: string;
-  socialRules: string;
-  adsRules: string;
-  landingRules: string;
 };
 
 type GeneratePayload = {
@@ -100,13 +96,6 @@ const DEFAULT_LENGTHS: Record<Format, number> = {
   ads: 100,
   landing: 500,
 };
-
-function activeFormatRule(brand: BrandProfile, format: Format) {
-  if (format === "social") return brand.socialRules;
-  if (format === "ads") return brand.adsRules;
-  if (format === "landing") return brand.landingRules;
-  return brand.seoRules;
-}
 
 function cleanText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
@@ -220,10 +209,6 @@ function normalizePayload(raw: GeneratePayload) {
       restrictions: cleanText(sourceBrand.restrictions, 1200),
       signature: cleanText(sourceBrand.signature, 700),
       prohibited: cleanText(sourceBrand.prohibited, 1200),
-      seoRules: cleanText(sourceBrand.seoRules, 1400),
-      socialRules: cleanText(sourceBrand.socialRules, 1400),
-      adsRules: cleanText(sourceBrand.adsRules, 1400),
-      landingRules: cleanText(sourceBrand.landingRules, 1400),
     } satisfies BrandProfile,
   };
 }
@@ -569,7 +554,6 @@ export async function POST(request: Request) {
         restrictions: input.brand.restrictions,
         prohibited_phrases: input.brand.prohibited,
         signature: input.brand.signature,
-        format_rule: activeFormatRule(input.brand, input.format),
       } : null,
       website_snapshot: input.useBrand && website.status === "loaded"
         ? { url: website.resolvedUrl, text: website.text }
@@ -603,7 +587,7 @@ export async function POST(request: Request) {
           "Если для обязательного ориентира не хватает подтверждённых фактов в брифе, профиле бренда или снимке сайта, сначала выполни веб‑поиск по официальным и авторитетным источникам. Если поиск дал надёжный факт — используй его и отметь источник в editorial_comment. Если нет — раскрой безопасную практическую часть (критерии проверки, вопросы, ограничения) и укажи дефицит фактов в editorial_comment. Не игнорируй ориентир молча.",
           `Правила выбранной интонации «${input.tone}»:`,
           ...selectedToneRules,
-          "Следуй пользовательскому правилу формата из профиля, если оно не противоречит безопасности и контракту формата. Не используй выражения из prohibited. Фирменную подпись добавляй только когда она уместна для выбранного формата и прямо передана в профиле.",
+          "Не используй выражения из prohibited. Фирменную подпись добавляй только когда она уместна для выбранного формата и прямо передана в профиле.",
           "Выбранная география описывает территорию поискового спроса и должна заметно влиять на готовый материал. Если список не пуст, естественно упомяни каждую территорию из geography_contract.required_mentions хотя бы один раз — как контекст аудитории, маршрута, спроса или выбора.",
           "География спроса не доказывает, что бренд находится, работает или имеет филиал в этих местах. Не превращай её в факт о компании и не добавляй неподтверждённую локализацию.",
           "Поля source_facts и hidden_editorial_controls — внутренний бриф, а не содержание публикации. Никогда не пересказывай устройство брифа, профиль бренда, описание аудитории, выбранный стиль, ключевые слова или правила формата.",
