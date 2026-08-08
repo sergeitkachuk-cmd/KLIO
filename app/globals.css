@@ -16671,3 +16671,255 @@ footer nav a {
   border-color: rgba(53, 104, 212, 0.4);
   background: rgba(53, 104, 212, 0.12);
 }
+
+/* =======================================================================
+   LIGHT THEME - Редакторы КЛИО (.adaptation-*). Written dark-native from
+   the start, same as most of Контент-план's own one-off panels - a
+   single declaration each, no separate "dark navy pass" duplicate to
+   diff against. --ink/--muted/--line are redefined once on
+   .adaptation-shell (same pattern as .semantic-shell/.result-panel), so
+   anything using var(--ink)/var(--muted)/var(--line) - .adaptation-
+   input-card's border, .adaptation-field textarea's text color,
+   .adaptation-empty-state p, .adaptation-result-head's divider -
+   inherits correctly with no extra rule needed; only hardcoded colors
+   below need their own override. var(--cobalt) label text (the little
+   uppercase eyebrows: "ИСХОДНИК ЗАКАЗЧИКА", "ВЫБЕРИТЕ РЕЖИМ КЛИО" etc.)
+   is deliberately left alone, same as every other module - kept as a
+   text-only accent. #cabdf6/var(--acid) icons and badges convert to
+   #2452b8 like everywhere else acid/lilac text turned out unreadable on
+   a light card.
+   ------------------------------------------------------------------- */
+[data-theme="light"] .adaptation-shell {
+  --ink: #0d1b31;
+  --muted: rgba(13, 27, 49, 0.62);
+  --line: rgba(15, 23, 42, 0.14);
+  color: #0d1b31;
+  border-color: rgba(15, 23, 42, 0.14);
+  background:
+    radial-gradient(circle at 96% 0%, rgba(53, 104, 212, 0.16), transparent 32%),
+    linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%);
+  box-shadow: 0 28px 82px rgba(20, 40, 80, 0.1), inset 0 1px #fff;
+}
+
+[data-theme="light"] .adaptation-input-card {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="light"] .adaptation-result-card {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="light"] .adaptation-card-head > b {
+  border-color: rgba(15, 23, 42, 0.18);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+[data-theme="light"] .adaptation-source-field textarea,
+[data-theme="light"] .adaptation-field textarea {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+[data-theme="light"] .adaptation-source-field textarea:focus,
+[data-theme="light"] .adaptation-field textarea:focus,
+[data-theme="light"] .adaptation-result-card textarea:focus {
+  border-color: #2452b8;
+  box-shadow: 0 0 0 3px rgba(53, 104, 212, 0.16);
+}
+
+[data-theme="light"] .adaptation-source-field > small {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .adaptation-goals button {
+  border-color: rgba(15, 23, 42, 0.14);
+  color: rgba(13, 27, 49, 0.75);
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="light"] .adaptation-goals button:hover {
+  border-color: rgba(53, 104, 212, 0.35);
+  background: rgba(53, 104, 212, 0.08);
+}
+
+[data-theme="light"] .adaptation-goals button.active {
+  border-color: rgba(53, 104, 212, 0.4);
+  color: #fff;
+  background: linear-gradient(135deg, #2452b8, #3568d4);
+  box-shadow: 0 14px 36px rgba(20, 40, 80, 0.14), inset 0 1px rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="light"] .adaptation-goals button > i {
+  border-color: rgba(15, 23, 42, 0.2);
+  color: #0d1b31;
+}
+
+[data-theme="light"] .adaptation-goals button small {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .adaptation-goal-scenario {
+  border-color: rgba(53, 104, 212, 0.35);
+  background: linear-gradient(135deg, rgba(53, 104, 212, 0.12), rgba(255, 255, 255, 0.55));
+  box-shadow: 0 16px 34px rgba(20, 40, 80, 0.1), inset 0 1px rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="light"] .adaptation-goal-scenario > b {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .adaptation-goal-scenario li {
+  color: rgba(13, 27, 49, 0.72);
+}
+
+[data-theme="light"] .adaptation-goal-scenario li::before {
+  background: linear-gradient(135deg, #6f9eff, #3568d4);
+}
+
+[data-theme="light"] .adaptation-plan-card {
+  border-color: rgba(53, 104, 212, 0.3);
+  background: linear-gradient(145deg, rgba(53, 104, 212, 0.12), rgba(255, 255, 255, 0.6));
+}
+
+[data-theme="light"] .adaptation-plan-card > div > span {
+  color: #2452b8;
+}
+
+[data-theme="light"] .adaptation-plan-card > div > b {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .adaptation-plan-card > div > small,
+[data-theme="light"] .adaptation-plan-card li {
+  color: rgba(13, 27, 49, 0.65);
+}
+
+[data-theme="light"] .adaptation-plan-card li::before {
+  border-color: rgba(53, 104, 212, 0.35);
+  color: #2452b8;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .adaptation-field > span small {
+  color: rgba(13, 27, 49, 0.45);
+}
+
+[data-theme="light"] .adaptation-brand-switch {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="light"] .adaptation-brand-switch > i {
+  background: rgba(15, 23, 42, 0.14);
+}
+
+[data-theme="light"] .adaptation-brand-switch input:checked + i {
+  background: #2452b8;
+}
+
+[data-theme="light"] .adaptation-brand-switch small {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .adaptation-result-head > div > small {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .adaptation-result-head > button,
+[data-theme="light"] .adaptation-result-footer button {
+  color: #2452b8;
+}
+
+[data-theme="light"] .adaptation-result-body {
+  color: rgba(13, 27, 49, 0.85);
+}
+
+[data-theme="light"] .adaptation-seo-fields {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: rgba(15, 23, 42, 0.04);
+}
+
+[data-theme="light"] .adaptation-seo-fields label > span {
+  color: #2452b8;
+}
+
+[data-theme="light"] .adaptation-seo-fields textarea {
+  color: #0d1b31;
+  border-color: rgba(15, 23, 42, 0.16);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"] .adaptation-changes {
+  border-color: rgba(53, 104, 212, 0.28);
+  background: rgba(53, 104, 212, 0.1);
+}
+
+[data-theme="light"] .adaptation-changes p {
+  color: rgba(13, 27, 49, 0.75);
+}
+
+[data-theme="light"] .adaptation-changes p i {
+  color: #2452b8;
+}
+
+[data-theme="light"] .adaptation-changes > small {
+  border-top-color: rgba(53, 104, 212, 0.22);
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .adaptation-result-footer > span {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .adaptation-empty-state > i {
+  border-color: rgba(53, 104, 212, 0.3);
+  color: #2452b8;
+  background: rgba(53, 104, 212, 0.12);
+}
+
+[data-theme="light"] .adaptation-empty-state > div span {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+[data-theme="light"] .adaptation-empty-state > div b {
+  color: #2452b8;
+}
+
+[data-theme="light"] .adaptation-quota-note {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+/* Scoped to .editor-tone-picker only, not the combined .editor-tone-
+   picker/.archive-tone-picker selectors the dark rules use - .archive-
+   tone-picker lives in the still-light "Материалы" modal and must keep
+   its own separate treatment until that module gets its own pass. */
+[data-theme="light"] .editor-tone-picker > span {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .editor-tone-picker button {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: rgba(13, 27, 49, 0.7);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+[data-theme="light"] .editor-tone-picker button:hover {
+  border-color: rgba(53, 104, 212, 0.35);
+  background: rgba(53, 104, 212, 0.08);
+}
+
+[data-theme="light"] .editor-tone-picker button.active {
+  border-color: rgba(53, 104, 212, 0.4);
+  color: #fff;
+  background: linear-gradient(135deg, #2452b8, #3568d4);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.2), 0 9px 22px rgba(20, 40, 80, 0.16);
+}
+
+[data-theme="light"] .adaptation-source-field textarea.adaptation-source-textarea {
+  scrollbar-color: rgba(53, 104, 212, 0.4) transparent;
+}
