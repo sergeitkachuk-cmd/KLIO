@@ -16314,6 +16314,15 @@ footer nav a {
   color: rgba(13, 27, 49, 0.55);
 }
 
+/* The card itself, not just its text/icon - missed in the first pass,
+   which only converted .content-plan-note's <p> and <i> and left the
+   dark navy background+border on the wrapper untouched, so the note
+   stayed a solid dark block sitting in an otherwise light module. */
+[data-theme="light"] .content-plan-note {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%);
+}
+
 [data-theme="light"] .content-plan-note > i {
   background: rgba(53, 104, 212, 0.12);
   color: #2452b8;
@@ -16337,6 +16346,16 @@ footer nav a {
 
 /* .content-plan-item stays close to plain white on purpose - see the
    block comment above. */
+/* .content-plan-item-copy h3 (the topic title itself) was written
+   dark-native from the start - color: rgba(255,255,255,.94) directly on
+   the selector, no ambient inheritance and no dark-pass duplicate to
+   find by searching for a *second* declaration, which is exactly how it
+   slipped through the first pass: white text on the new light card,
+   invisible. */
+[data-theme="light"] .content-plan-item-copy h3 {
+  color: #0d1b31;
+}
+
 [data-theme="light"] .content-plan-item {
   color: #0d1b31;
   border-color: rgba(15, 23, 42, 0.12);
@@ -16431,6 +16450,10 @@ footer nav a {
 
 [data-theme="light"] .content-plan-seo label > p {
   color: rgba(13, 27, 49, 0.8);
+}
+
+[data-theme="light"] .content-plan-seo label > small {
+  color: rgba(13, 27, 49, 0.45);
 }
 
 [data-theme="light"] .content-plan-brief-grid section {
