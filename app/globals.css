@@ -16193,3 +16193,439 @@ footer nav a {
   border-color: rgba(53, 104, 212, 0.4);
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.75), rgba(53, 104, 212, 0.14));
 }
+
+/* =======================================================================
+   LIGHT THEME - Контент-план. This module has no ambient shell color the
+   way .brand-profile-body does - every card inside .content-plan-shell
+   (.content-plan-setup, .content-plan-item, .content-plan-summary
+   article, .content-plan-note, .content-plan-empty, .content-plan-
+   actions, .content-plan-replacement) sets its own full dark-navy
+   color+background directly, several of them "written dark-native" with
+   no light fallback at all (.content-plan-goal, .content-plan-source-
+   strip, .content-plan-summary, .content-plan-empty - see their own
+   comments above). Two tiers, matching the "stand out a shade darker
+   than the plain white module body" logic already used for .quality-
+   zone: the setup/summary/note/empty/actions/replacement panels get the
+   more saturated blue-lavender card treatment (they are one-off feature
+   panels); .content-plan-item stays close to plain white since it
+   repeats up to 25 times on screen and a strong tint on every single row
+   would read as a wall of blue rather than a list.
+   ------------------------------------------------------------------- */
+[data-theme="light"] .content-plan-setup {
+  color: #0d1b31;
+  border-color: rgba(15, 23, 42, 0.14);
+  background:
+    radial-gradient(circle at 93% 4%, rgba(53, 104, 212, 0.16), transparent 32%),
+    linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%);
+  box-shadow: 0 26px 80px rgba(20, 40, 80, 0.1), inset 0 1px #fff;
+}
+
+[data-theme="light"] .content-plan-setup-head > div > span,
+[data-theme="light"] .content-plan-item-copy > div > span,
+[data-theme="light"] .content-plan-brief section > span,
+[data-theme="light"] .content-plan-seo label > span {
+  color: #2452b8;
+}
+
+[data-theme="light"] .content-plan-setup-head p,
+[data-theme="light"] .content-plan-source-hint,
+[data-theme="light"] .content-plan-note p {
+  color: rgba(13, 27, 49, 0.65);
+}
+
+[data-theme="light"] .content-plan-query-row label > span,
+[data-theme="light"] .content-plan-controls > div > span {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .content-plan-query-row input {
+  border: 1.5px solid rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.75);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="light"] .content-plan-query-row input:focus {
+  border-color: #2452b8;
+  box-shadow: 0 0 0 4px rgba(53, 104, 212, 0.14);
+}
+
+[data-theme="light"] .content-plan-query-row > button,
+[data-theme="light"] .content-plan-controls > div button {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .content-plan-controls > div button.active {
+  border-color: rgba(53, 104, 212, 0.4);
+  color: #fff;
+  background: linear-gradient(115deg, #2452b8, #3568d4);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.2);
+}
+
+/* .content-plan-goal never had a light version at all (see its own
+   "written dark-native" comment above), same for -source-strip and
+   -summary below. */
+[data-theme="light"] .content-plan-goal > span {
+  color: #2452b8;
+}
+
+[data-theme="light"] .content-plan-goal button {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+[data-theme="light"] .content-plan-goal > small {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .content-plan-source-strip > button {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+[data-theme="light"] .content-plan-source-strip > button:hover {
+  border-color: rgba(53, 104, 212, 0.35);
+  background: rgba(53, 104, 212, 0.08);
+}
+
+[data-theme="light"] .content-plan-source-strip > button.is-ready {
+  border-color: rgba(53, 104, 212, 0.4);
+}
+
+[data-theme="light"] .content-plan-source-strip > button > i {
+  border-color: rgba(15, 23, 42, 0.18);
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .content-plan-source-strip > button.is-ready > i {
+  border-color: rgba(53, 104, 212, 0.4);
+  background: rgba(53, 104, 212, 0.12);
+  color: #2452b8;
+}
+
+[data-theme="light"] .content-plan-source-strip b {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .content-plan-source-strip small {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .content-plan-note > i {
+  background: rgba(53, 104, 212, 0.12);
+  color: #2452b8;
+}
+
+[data-theme="light"] .content-plan-summary article {
+  color: #0d1b31;
+  border-color: rgba(15, 23, 42, 0.14);
+  background: linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%);
+  box-shadow: 0 14px 36px rgba(20, 40, 80, 0.1), inset 0 1px #fff;
+}
+
+[data-theme="light"] .content-plan-summary article > span,
+[data-theme="light"] .content-plan-summary article > small {
+  color: rgba(13, 27, 49, 0.58);
+}
+
+[data-theme="light"] .content-plan-summary article > b {
+  color: #0d1b31;
+}
+
+/* .content-plan-item stays close to plain white on purpose - see the
+   block comment above. */
+[data-theme="light"] .content-plan-item {
+  color: #0d1b31;
+  border-color: rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 12px 35px rgba(20, 40, 80, 0.06), inset 0 1px #fff;
+}
+
+[data-theme="light"] .content-plan-item.is-expanded {
+  border-color: rgba(53, 104, 212, 0.3);
+}
+
+[data-theme="light"] .content-plan-item.status-work {
+  background: linear-gradient(120deg, rgba(53, 104, 212, 0.14), rgba(255, 255, 255, 0.86) 55%);
+}
+
+[data-theme="light"] .content-plan-item.status-done {
+  background: linear-gradient(120deg, rgba(111, 169, 58, 0.16), rgba(255, 255, 255, 0.86) 55%);
+}
+
+[data-theme="light"] .content-plan-index {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #2452b8;
+}
+
+[data-theme="light"] .content-plan-item-copy > div > i,
+[data-theme="light"] .content-plan-item-copy > div > em {
+  background: rgba(15, 23, 42, 0.06);
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .content-plan-item-copy > div > em.priority-high {
+  background: #2452b8;
+  color: #fff;
+}
+
+[data-theme="light"] .content-plan-item-copy > div > em.priority-medium {
+  background: rgba(124, 58, 237, 0.1);
+  color: #572eaa;
+}
+
+[data-theme="light"] .content-plan-item-copy > p {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .content-plan-item-copy > p span {
+  color: rgba(13, 27, 49, 0.42);
+}
+
+[data-theme="light"] .content-plan-item-copy > p b {
+  color: rgba(13, 27, 49, 0.85);
+}
+
+[data-theme="light"] .content-plan-status.status-work .module-select-trigger,
+[data-theme="light"] .content-plan-status.status-work .module-select-trigger b {
+  border-color: rgba(53, 104, 212, 0.4);
+  background: rgba(53, 104, 212, 0.14);
+  color: #2452b8;
+}
+
+[data-theme="light"] .content-plan-status.status-done .module-select-trigger {
+  border-color: rgba(111, 169, 58, 0.4);
+  background: rgba(111, 169, 58, 0.14);
+}
+
+[data-theme="light"] .content-plan-item-actions button {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+[data-theme="light"] .content-plan-strategy section {
+  border-color: rgba(15, 23, 42, 0.1);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.75), rgba(236, 242, 247, 0.6));
+}
+
+[data-theme="light"] .content-plan-strategy span {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .content-plan-strategy p {
+  color: rgba(13, 27, 49, 0.8);
+}
+
+[data-theme="light"] .content-plan-seo {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: rgba(15, 23, 42, 0.04);
+}
+
+[data-theme="light"] .content-plan-seo label {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"] .content-plan-seo label > p {
+  color: rgba(13, 27, 49, 0.8);
+}
+
+[data-theme="light"] .content-plan-brief-grid section {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.05);
+}
+
+[data-theme="light"] .content-plan-brief-grid section > p,
+[data-theme="light"] .content-plan-brief-grid li {
+  color: rgba(13, 27, 49, 0.72);
+}
+
+[data-theme="light"] .content-plan-brief-grid section > div > i {
+  background: rgba(15, 23, 42, 0.06);
+  color: rgba(13, 27, 49, 0.68);
+}
+
+[data-theme="light"] .content-plan-brief-grid li > i {
+  background: rgba(53, 104, 212, 0.12);
+  color: #2452b8;
+}
+
+[data-theme="light"] .content-plan-empty {
+  color: #0d1b31;
+  border-color: rgba(15, 23, 42, 0.2);
+  background: linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%);
+}
+
+[data-theme="light"] .content-plan-empty > i {
+  background: radial-gradient(circle at 35% 28%, #6f9eff, #3568d4 68%, #1e3a8a);
+  box-shadow: 0 22px 55px rgba(30, 58, 138, 0.22);
+}
+
+[data-theme="light"] .content-plan-empty > div > span {
+  color: #2452b8;
+}
+
+[data-theme="light"] .content-plan-empty p {
+  color: rgba(13, 27, 49, 0.65);
+}
+
+[data-theme="light"] .content-plan-setup .status {
+  color: rgba(13, 27, 49, 0.7);
+}
+
+[data-theme="light"] .content-plan-setup .status-ai {
+  color: #2452b8;
+}
+
+[data-theme="light"] .content-plan-setup .status-ai i {
+  background: #2452b8;
+  box-shadow: 0 0 0 5px rgba(53, 104, 212, 0.16);
+}
+
+[data-theme="light"] .content-plan-setup .status-example {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .content-plan-select > i {
+  border-color: rgba(15, 23, 42, 0.2);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .content-plan-select.is-selected > i {
+  border-color: #2452b8;
+  color: #fff;
+  background: #2452b8;
+}
+
+[data-theme="light"] .content-plan-select > span {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+/* "Точечная замена" panel (opened via "Заменить выбранные"). */
+[data-theme="light"] .content-plan-replacement {
+  border-color: rgba(15, 23, 42, 0.14);
+  background:
+    radial-gradient(circle at 93% 4%, rgba(53, 104, 212, 0.14), transparent 32%),
+    linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%);
+  box-shadow: 0 18px 46px rgba(20, 40, 80, 0.1), inset 0 1px #fff;
+}
+
+[data-theme="light"] .content-plan-replacement-head span,
+[data-theme="light"] .content-plan-replacement-options > span,
+[data-theme="light"] .content-plan-replacement-comment > span {
+  color: #2452b8;
+}
+
+[data-theme="light"] .content-plan-replacement-head h3 {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .content-plan-replacement-head p {
+  color: rgba(13, 27, 49, 0.65);
+}
+
+[data-theme="light"] .content-plan-replacement-head > button {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .content-plan-replacement-options button {
+  border-color: rgba(15, 23, 42, 0.14);
+  color: rgba(13, 27, 49, 0.75);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+[data-theme="light"] .content-plan-replacement-options button.active {
+  border-color: rgba(53, 104, 212, 0.4);
+  color: #2452b8;
+  background: rgba(53, 104, 212, 0.12);
+}
+
+[data-theme="light"] .content-plan-replacement-comment textarea {
+  border: 1.5px solid rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+[data-theme="light"] .content-plan-replacement-comment textarea::placeholder {
+  color: rgba(13, 27, 49, 0.35);
+}
+
+[data-theme="light"] .content-plan-replacement-comment textarea:focus {
+  border-color: #2452b8;
+  box-shadow: 0 0 0 3px rgba(53, 104, 212, 0.16);
+}
+
+[data-theme="light"] .content-plan-replacement-groups > article {
+  border-top-color: rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="light"] .content-plan-replacement-groups > article > div:first-child > span,
+[data-theme="light"] .content-plan-replacement-groups button > span {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .content-plan-replacement-groups h4 {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .content-plan-replacement-groups > article > div:first-child > button {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .content-plan-replacement-groups > article > div:last-child > button {
+  color: #0d1b31;
+  background: linear-gradient(135deg, #eef2fa, #ffffff);
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+[data-theme="light"] .content-plan-replacement-groups > article > div:last-child > button:hover {
+  border-color: rgba(53, 104, 212, 0.35);
+}
+
+[data-theme="light"] .content-plan-replacement-groups button > small {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .content-plan-replacement-groups button > em {
+  color: #2452b8;
+}
+
+/* Shared save/export panel below the item list. */
+[data-theme="light"] .content-plan-actions {
+  color: #0d1b31;
+  border-color: rgba(15, 23, 42, 0.14);
+  background: linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%);
+  box-shadow: 0 18px 46px rgba(20, 40, 80, 0.1), inset 0 1px #fff;
+}
+
+[data-theme="light"] .content-plan-selection-bar small {
+  color: rgba(13, 27, 49, 0.62);
+}
+
+/* .seo-field-label > button is shared across every module with SEO
+   fields - installment 3 (Генератор) only lit up .seo-passport's copy of
+   it; extending the same rule to Контент-план's here, and pre-emptively
+   to Редакторы КЛИО/Материалы's copies since it is the same three
+   values. */
+[data-theme="light"] .content-plan-seo .seo-field-label > button,
+[data-theme="light"] .adaptation-seo-fields .seo-field-label > button,
+[data-theme="light"] .archive-editor-document .seo-field-label > button {
+  border-color: rgba(15, 23, 42, 0.18);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .content-plan-seo .seo-field-label > button:hover,
+[data-theme="light"] .adaptation-seo-fields .seo-field-label > button:hover,
+[data-theme="light"] .archive-editor-document .seo-field-label > button:hover {
+  border-color: rgba(53, 104, 212, 0.4);
+  background: rgba(53, 104, 212, 0.12);
+}
