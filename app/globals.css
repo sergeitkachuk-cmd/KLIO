@@ -15827,6 +15827,17 @@ footer nav a {
   color: #2452b8;
 }
 
+/* .button.ghost is a shared class used all over the app (content-plan's
+   save/export bar, Материалы, Личный кабинет...) and had zero light-
+   theme coverage - color:#fff on a near-transparent white background
+   was built for sitting on a dark navy card, so on a light card it is
+   literally white text on white, invisible. */
+[data-theme="light"] .button.ghost {
+  border-color: rgba(15, 23, 42, 0.18);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.55);
+}
+
 [data-theme="light"] .custom-length > div > span {
   color: rgba(13, 27, 49, 0.5);
 }
@@ -16408,10 +16419,18 @@ footer nav a {
   color: rgba(13, 27, 49, 0.85);
 }
 
-[data-theme="light"] .content-plan-status.status-work .module-select-trigger,
-[data-theme="light"] .content-plan-status.status-work .module-select-trigger b {
+/* border/background belong on the trigger only - the dark rule this
+   mirrors only puts color on the nested <b>, not a second background,
+   which is what a combined selector here wrongly did: a visibly darker
+   rectangle stacked behind just the label text inside the already-
+   tinted pill. */
+[data-theme="light"] .content-plan-status.status-work .module-select-trigger {
   border-color: rgba(53, 104, 212, 0.4);
   background: rgba(53, 104, 212, 0.14);
+  color: #2452b8;
+}
+
+[data-theme="light"] .content-plan-status.status-work .module-select-trigger b {
   color: #2452b8;
 }
 
