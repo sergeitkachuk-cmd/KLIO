@@ -1666,13 +1666,24 @@ select:focus-visible {
   line-height: 1.35;
 }
 
-.brand-tab-navigation {
+/* Wraps the tab rail (.brand-tab-navigation) and whichever tabpanel
+   (.brand-field-group) is active in one continuous card - previously
+   each had its own border/background/shadow and read as two separate
+   floating blocks with a gap between them. Now the shell owns the outer
+   frame and the two inner pieces are just spacing regions inside it, so
+   switching tabs feels like flipping a page inside one folder instead of
+   jumping between disconnected panels. */
+.brand-tab-shell {
   margin: 0 0 20px;
   padding: 12px;
   border: 1px solid rgba(61, 50, 102, 0.12);
-  border-radius: 19px;
+  border-radius: 20px 20px 5px 20px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.64), rgba(235, 230, 249, 0.62));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.92);
+}
+
+.brand-tab-navigation {
+  margin: 0 0 14px;
 }
 
 .brand-tab-navigation-head {
@@ -1697,9 +1708,15 @@ select:focus-visible {
   line-height: 1.4;
 }
 
+/* flex + flex:1 on the buttons (below), not a fixed grid-template-columns
+   count - the button rail was hard-coded to 3 equal columns for three
+   tabs; once one tab was removed the buttons kept their old width and
+   left the rail visibly unbalanced with empty space on the right. Flex
+   sizing keeps the buttons evenly split across the full width no matter
+   how many tabs exist. */
 .brand-tabs {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin: 0;
   padding: 6px;
@@ -1709,6 +1726,7 @@ select:focus-visible {
 }
 
 .brand-tabs button {
+  flex: 1 1 200px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -1784,11 +1802,12 @@ select:focus-visible {
   color: #fff;
 }
 
+/* No border/background/radius of its own anymore - .brand-tab-shell is
+   the visible card now, this is just the tabpanel's inner spacing so it
+   doesn't sit flush against the shell's edges. */
 .brand-field-group {
-  padding: 22px;
-  border: 1px solid rgba(61, 50, 102, 0.11);
-  border-radius: 20px 20px 5px 20px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.62), rgba(250, 249, 253, 0.38));
+  margin: 0;
+  padding: 8px 10px 10px;
 }
 
 .brand-group-heading {
@@ -10154,7 +10173,7 @@ footer nav a {
   }
 
   .brand-tabs {
-    grid-template-columns: 1fr;
+    flex-direction: column;
   }
 
   .brand-tab-navigation-head {
@@ -10171,10 +10190,6 @@ footer nav a {
     align-items: flex-start;
     flex-direction: column;
     gap: 8px;
-  }
-
-  .brand-field-group {
-    padding: 18px;
   }
 
   .brand-profile-footer {
@@ -14192,7 +14207,7 @@ footer nav a {
   background: rgba(124, 58, 237, 0.1);
 }
 
-.brand-tab-navigation {
+.brand-tab-shell {
   border-color: rgba(255, 255, 255, 0.16);
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(124, 58, 237, 0.12));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
@@ -14223,11 +14238,6 @@ footer nav a {
   border-color: rgba(216, 255, 101, 0.4);
   color: #fff;
   background: rgba(255, 255, 255, 0.1);
-}
-
-.brand-field-group {
-  border-color: rgba(255, 255, 255, 0.14);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
 }
 
 .brand-group-heading {
@@ -15348,7 +15358,7 @@ footer nav a {
   background: rgba(53, 104, 212, 0.1);
 }
 
-[data-theme="light"] .brand-tab-navigation {
+[data-theme="light"] .brand-tab-shell {
   border-color: rgba(15, 23, 42, 0.14);
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.75), rgba(53, 104, 212, 0.1));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.6);
@@ -15379,11 +15389,6 @@ footer nav a {
   border-color: rgba(53, 104, 212, 0.35);
   color: #0d1b31;
   background: rgba(53, 104, 212, 0.08);
-}
-
-[data-theme="light"] .brand-field-group {
-  border-color: rgba(15, 23, 42, 0.12);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.3));
 }
 
 [data-theme="light"] .brand-group-heading {

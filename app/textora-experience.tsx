@@ -3835,6 +3835,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </div>
               </div>
 
+              <div className="brand-tab-shell">
               <div className="brand-tab-navigation">
                 <div className="brand-tab-navigation-head"><span>Разделы профиля</span><small>Нажимайте на кнопки, чтобы переключать настройки</small></div>
                 <div className="brand-tabs" role="tablist" aria-label="Переключение разделов профиля бренда">
@@ -3882,6 +3883,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   </div>
                 </>}
               </div>}
+              </div>
 
               <div className="brand-profile-footer"><p><i className={brandSaved ? "saved" : ""}/>{brandSaved ? "Профиль и данные бренда сохранены в кабинете" : "Есть несохранённые изменения"}</p><div><button type="button" onClick={restoreBrand}>Восстановить базовый профиль</button><button className="button primary" type="button" onClick={() => void saveBrand()}>Сохранить профиль</button></div></div>
             </div>}
