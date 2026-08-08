@@ -16142,3 +16142,98 @@ footer nav a {
 [data-theme="light"] .result-footer {
   color: rgba(13, 27, 49, 0.55);
 }
+
+/* .quality-zone ("Идеи для полировки") was left dark on purpose in
+   installment 3, reasoned as a deliberate "premium accent" card that
+   should stay dark regardless of theme - feedback was that it should
+   follow the theme like everything else, just a shade deeper than the
+   plain white result-panel around it so it still reads as its own
+   block. Soft blue-lavender instead of a second white-on-white card. */
+[data-theme="light"] .quality-zone {
+  border-color: rgba(36, 82, 184, 0.25);
+  color: #0d1b31;
+  background:
+    radial-gradient(circle at 90% 5%, rgba(53, 104, 212, 0.22), transparent 40%),
+    linear-gradient(135deg, #dbe4f7, #c9d6f0 62%, #d3ddf5);
+  box-shadow: 0 24px 60px rgba(20, 40, 80, 0.14), inset 0 1px rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .quality-head {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .quality-card {
+  border-color: rgba(36, 82, 184, 0.2);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.22));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"] .quality-card small {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .quality-card b em {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .quality-card > span {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .quality-card > i {
+  background: rgba(15, 23, 42, 0.12);
+}
+
+/* .quality-card > i u's fill ran var(--acid) -> #fff, invisible against
+   a light track/card. Acid -> cool blue instead. */
+[data-theme="light"] .quality-card > i u {
+  background: linear-gradient(90deg, var(--acid), #2452b8);
+}
+
+[data-theme="light"] .quality-tips {
+  border-top-color: rgba(36, 82, 184, 0.22);
+}
+
+[data-theme="light"] .quality-tips li {
+  color: rgba(13, 27, 49, 0.72);
+}
+
+/* ---------------------------------------------------------------------
+   Module heading bar (.workspace-module-heading) - shared across every
+   module (Семантика, Контент‑план, Конкуренты, Редакторы КЛИО...), both
+   collapsed and open (.tool-collapsed only changes its margin/padding,
+   not its background, so one rule covers both states). Same "a shade
+   deeper than the plain card below it" brief as .quality-zone above,
+   not the near-black it was. */
+[data-theme="light"] .workspace-module > .workspace-module-heading {
+  border-color: rgba(15, 23, 42, 0.14);
+  color: #0d1b31;
+  background:
+    radial-gradient(circle at 88% 0%, color-mix(in srgb, var(--module-accent, #3568d4) 18%, transparent), transparent 42%),
+    linear-gradient(120deg, #dde6f7, #eef2fa);
+  box-shadow: 0 20px 54px rgba(20, 40, 80, 0.12), inset 0 1px rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .workspace-module-heading span {
+  color: #2452b8;
+}
+
+[data-theme="light"] .workspace-module-heading h2 {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .workspace-module-heading > p {
+  color: rgba(13, 27, 49, 0.68);
+}
+
+[data-theme="light"] .tool-heading > button {
+  border-color: rgba(15, 23, 42, 0.18);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.65);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="light"] .tool-heading > button:hover {
+  border-color: rgba(53, 104, 212, 0.4);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.75), rgba(53, 104, 212, 0.14));
+}
