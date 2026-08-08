@@ -17419,3 +17419,480 @@ footer nav a {
   color: #0d1b31;
   border-bottom-color: #2452b8;
 }
+
+/* =======================================================================
+   LIGHT THEME - Конкуренты (.competitor-*). Same dark-native pattern as
+   every module this session. Two accent panels get the deliberately
+   more-saturated "quality-zone" treatment instead of matching the plain
+   card tone: .competitor-summary-accent ("Возможности" in the stat
+   row) and .competitor-opportunity-card ("Точки роста" in the insights
+   row) both stand out darker/bluer than their plain siblings in dark
+   theme too, so light keeps that same relative contrast rather than
+   flattening it. .competitor-actionbar gets the same "near-black accent
+   panel -> light-blue accent panel" treatment as .semantic-actionbar.
+   Pale/saturated-but-unreadable colors (#a6ecd4 mint, #6fd9b3 mint,
+   #f0a0ae pink, #cabdf6/#d5c9fb lilac, acid text) convert the same way
+   they did in every earlier module. .competitor-opportunity-card's
+   !important is kept for the same reason .semantic-optional-route's
+   was - a normal-weight override can't beat it regardless of
+   specificity. .module-material-bar/.module-save-button/.module-copy-
+   button are also fixed here even though .module-material-bar first
+   appears in Семантика too - neither module's own installment covered
+   this shared "save to materials" bar, so it stayed fully dark in both
+   until now.
+   ------------------------------------------------------------------- */
+[data-theme="light"] .competitor-entry-card {
+  border-color: rgba(15, 23, 42, 0.14);
+  color: #0d1b31;
+  background:
+    radial-gradient(circle at 90% 0%, rgba(53, 104, 212, 0.16), transparent 32%),
+    linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%);
+  box-shadow: 0 18px 54px rgba(20, 40, 80, 0.1), inset 0 1px #fff;
+}
+
+[data-theme="light"] .competitor-entry-copy > span {
+  color: #2452b8;
+}
+
+[data-theme="light"] .competitor-entry-copy small {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .competitor-entry-action {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .competitor-entry-action i {
+  background: linear-gradient(145deg, #3568d4, #6f9eff);
+}
+
+[data-theme="light"] .competitor-setup-card,
+[data-theme="light"] .competitor-matrix-card,
+[data-theme="light"] .competitor-insights-grid article,
+[data-theme="light"] .competitor-actionbar {
+  border-color: rgba(15, 23, 42, 0.14);
+  box-shadow: 0 24px 70px rgba(20, 40, 80, 0.1), inset 0 1px #fff;
+}
+
+[data-theme="light"] .competitor-setup-card {
+  color: #0d1b31;
+  background:
+    radial-gradient(circle at 96% 0%, rgba(53, 104, 212, 0.16), transparent 32%),
+    linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%);
+}
+
+[data-theme="light"] .competitor-setup-head > div > span,
+[data-theme="light"] .competitor-source-head > span,
+[data-theme="light"] .competitor-source-head > div > span,
+[data-theme="light"] .competitor-matrix-head > div > span,
+[data-theme="light"] .competitor-insights-grid article > span,
+[data-theme="light"] .competitor-actionbar > div:first-child > span {
+  color: #2452b8;
+}
+
+[data-theme="light"] .competitor-setup-head h3,
+[data-theme="light"] .competitor-matrix-head h3,
+[data-theme="light"] .competitor-insights-grid h3 {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .competitor-setup-head p,
+[data-theme="light"] .competitor-matrix-head p {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .competitor-mode {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+[data-theme="light"] .competitor-comparison-guide {
+  border-color: rgba(53, 104, 212, 0.26);
+  background: rgba(53, 104, 212, 0.1);
+}
+
+[data-theme="light"] .competitor-comparison-guide > div + div {
+  border-left-color: rgba(15, 23, 42, 0.12);
+}
+
+[data-theme="light"] .competitor-comparison-guide > div > i {
+  background: linear-gradient(145deg, #3568d4, #6f9eff);
+}
+
+[data-theme="light"] .competitor-comparison-guide small {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .competitor-query-row > label {
+  border-color: rgba(53, 104, 212, 0.35);
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 12px 32px rgba(20, 40, 80, 0.1);
+}
+
+[data-theme="light"] .competitor-query-row label > span,
+[data-theme="light"] .competitor-source-row label > span,
+[data-theme="light"] .competitor-setup-footer label > span {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .competitor-query-row label > span em,
+[data-theme="light"] .competitor-source-row label > span em {
+  color: #2452b8;
+  background: rgba(53, 104, 212, 0.14);
+}
+
+[data-theme="light"] .competitor-query-row input,
+[data-theme="light"] .competitor-source-row input,
+[data-theme="light"] .competitor-setup-footer textarea {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .competitor-query-sources > button {
+  border-color: rgba(15, 23, 42, 0.14);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="light"] .competitor-query-sources > button:hover,
+[data-theme="light"] .competitor-query-sources > button.is-active {
+  border-color: rgba(53, 104, 212, 0.45);
+  background: rgba(53, 104, 212, 0.14);
+  box-shadow: 0 11px 28px rgba(20, 40, 80, 0.1);
+}
+
+[data-theme="light"] .competitor-query-sources > button > i {
+  background: #2452b8;
+}
+
+[data-theme="light"] .competitor-query-sources > button small {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .competitor-source-list {
+  border-block-color: rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.25);
+}
+
+[data-theme="light"] .competitor-source-head small {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .competitor-discover {
+  border-color: rgba(53, 104, 212, 0.3);
+  color: #fff;
+  background: linear-gradient(135deg, #2452b8, #3568d4);
+  box-shadow: 0 10px 26px rgba(20, 40, 80, 0.18);
+}
+
+[data-theme="light"] .competitor-search-status {
+  border-color: rgba(53, 104, 212, 0.28);
+  color: #0d1b31;
+  background: rgba(53, 104, 212, 0.1);
+}
+
+[data-theme="light"] .competitor-search-status > i {
+  background: #2452b8;
+}
+
+[data-theme="light"] .competitor-search-status small {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+/* #a6ecd4 (pale mint) is readable on the dark green-tinted card but not
+   on light - the accompanying svg icon (#12835e, a dark green) already
+   works on both and is left alone. */
+[data-theme="light"] .competitor-discovery-note {
+  border-color: rgba(15, 150, 110, 0.35);
+  color: #0d7a54;
+  background: rgba(30, 185, 128, 0.12);
+}
+
+[data-theme="light"] .competitor-source-row {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="light"] .competitor-source-row > i {
+  color: rgba(13, 27, 49, 0.4);
+}
+
+[data-theme="light"] .competitor-url-field a {
+  color: #2452b8;
+}
+
+[data-theme="light"] .competitor-url-field,
+[data-theme="light"] .competitor-source-row .competitor-url-field {
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+[data-theme="light"] .competitor-remove {
+  color: rgba(13, 27, 49, 0.55);
+  background: rgba(15, 23, 42, 0.05);
+}
+
+[data-theme="light"] .competitor-remove:hover {
+  color: #0d1b31;
+  background: rgba(53, 104, 212, 0.16);
+}
+
+[data-theme="light"] .competitor-add {
+  border-color: rgba(53, 104, 212, 0.4);
+  color: #2452b8;
+  background: rgba(53, 104, 212, 0.08);
+}
+
+[data-theme="light"] .competitor-add span {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .competitor-requirement {
+  border-color: rgba(15, 23, 42, 0.14);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="light"] .competitor-requirement > i {
+  background: linear-gradient(145deg, #3568d4, #6f9eff);
+}
+
+[data-theme="light"] .competitor-requirement small {
+  color: rgba(13, 27, 49, 0.58);
+}
+
+[data-theme="light"] .competitor-setup-footer > label {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="light"] .competitor-analysis-action {
+  border-color: rgba(53, 104, 212, 0.28);
+  background: rgba(53, 104, 212, 0.1);
+}
+
+[data-theme="light"] .competitor-analysis-action.needs-refresh {
+  border-color: rgba(200, 140, 30, 0.4);
+  background: rgba(230, 172, 76, 0.16);
+}
+
+[data-theme="light"] .competitor-analysis-action > span {
+  color: rgba(13, 27, 49, 0.65);
+}
+
+[data-theme="light"] .competitor-source-note {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .competitor-error {
+  border-color: rgba(53, 104, 212, 0.3);
+  color: #0d1b31;
+  background: rgba(53, 104, 212, 0.12);
+}
+
+[data-theme="light"] .competitor-error > i,
+[data-theme="light"] .competitor-source-note i {
+  background: #2452b8;
+}
+
+[data-theme="light"] .competitor-summary-grid article {
+  color: #0d1b31;
+  border-color: rgba(15, 23, 42, 0.14);
+  background: linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%);
+  box-shadow: 0 14px 36px rgba(20, 40, 80, 0.1), inset 0 1px #fff;
+}
+
+[data-theme="light"] .competitor-summary-grid span {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .competitor-summary-grid b small {
+  color: rgba(13, 27, 49, 0.45);
+}
+
+[data-theme="light"] .competitor-summary-grid p {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .competitor-summary-grid .competitor-summary-accent {
+  color: #0d1b31;
+  background: linear-gradient(135deg, #dbe4f7, #c9d6f0);
+  border-color: rgba(53, 104, 212, 0.3);
+}
+
+[data-theme="light"] .competitor-summary-accent span,
+[data-theme="light"] .competitor-summary-accent p {
+  color: rgba(13, 27, 49, 0.7);
+}
+
+[data-theme="light"] .competitor-matrix-card {
+  color: #0d1b31;
+  background: linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%);
+}
+
+[data-theme="light"] .competitor-matrix-head {
+  border-bottom-color: rgba(15, 23, 42, 0.12);
+}
+
+[data-theme="light"] .competitor-legend span {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .competitor-table th,
+[data-theme="light"] .competitor-table td {
+  border-color: rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="light"] .competitor-table thead th {
+  background: rgba(15, 23, 42, 0.03);
+}
+
+[data-theme="light"] .competitor-table thead th > span {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .competitor-table thead th > small {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .competitor-table thead th > small.source-loaded {
+  color: #0d7a54;
+}
+
+[data-theme="light"] .competitor-table thead th > small.source-blocked,
+[data-theme="light"] .competitor-table thead th > small.source-unavailable {
+  color: #b33a52;
+}
+
+[data-theme="light"] .competitor-table thead th > em,
+[data-theme="light"] .competitor-table thead th > a {
+  color: rgba(13, 27, 49, 0.45);
+}
+
+[data-theme="light"] .competitor-table thead th > a {
+  color: #2452b8;
+}
+
+[data-theme="light"] .competitor-table .brand-column {
+  background: rgba(53, 104, 212, 0.1);
+}
+
+[data-theme="light"] .competitor-table tbody tr.is-selected {
+  background: rgba(53, 104, 212, 0.1);
+}
+
+[data-theme="light"] .competitor-table tbody th > button {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .competitor-table tbody th > button > i {
+  border-color: rgba(15, 23, 42, 0.22);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .competitor-table tbody th small {
+  color: #2452b8;
+}
+
+[data-theme="light"] .competitor-table tbody th em {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .coverage > small {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .competitor-matrix-footer {
+  background: rgba(15, 23, 42, 0.03);
+}
+
+[data-theme="light"] .competitor-matrix-footer p {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .competitor-matrix-footer button {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+[data-theme="light"] .competitor-insights-grid article {
+  color: #0d1b31;
+  background: linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%);
+}
+
+[data-theme="light"] .competitor-insights-grid article > small {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+/* .competitor-insights-grid prefix kept, not just .competitor-
+   opportunity-card alone - the dark rule is the same two-class compound
+   selector (0,2,0), and a same-specificity light rule would depend on
+   source order to win, which this file has a documented history of not
+   reliably preserving for duplicate selectors. */
+[data-theme="light"] .competitor-insights-grid .competitor-opportunity-card {
+  color: #0d1b31;
+  background:
+    radial-gradient(circle at 90% 10%, rgba(53, 104, 212, 0.18), transparent 28%),
+    linear-gradient(140deg, #dbe4f7, #c9d6f0 70%, #d3ddf5);
+}
+
+[data-theme="light"] .competitor-opportunity-card > span,
+[data-theme="light"] .competitor-opportunity-card > small {
+  color: rgba(13, 27, 49, 0.7) !important;
+}
+
+[data-theme="light"] .competitor-insights-grid li i {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+/* Same "shade darker than the plain shell" treatment as
+   .semantic-actionbar - a deliberately near-black accent panel in dark
+   theme, so its light counterpart should stand out from the plain
+   cards around it rather than matching them. */
+[data-theme="light"] .competitor-actionbar {
+  color: #0d1b31;
+  background: linear-gradient(120deg, #dde6f7, #eef2fa 64%, #e3eaf6);
+}
+
+[data-theme="light"] .competitor-actionbar.needs-refresh {
+  border-color: rgba(200, 140, 30, 0.4);
+}
+
+[data-theme="light"] .competitor-actionbar small {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .competitor-selected-topics span {
+  border-color: rgba(15, 23, 42, 0.12);
+  color: rgba(13, 27, 49, 0.7);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Shared "save to materials" bar - used by both Семантика and
+   Конкуренты (Семантика's own buttons render with no className at all,
+   styled purely via the .module-material-bar button descendant
+   selector; Конкуренты's use the explicit .module-save-button/.module-
+   copy-button classes) - neither module's own installment covered it,
+   so it was still fully dark in both until now. */
+[data-theme="light"] .module-material-bar {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: linear-gradient(135deg, rgba(227, 234, 246, 0.9), rgba(240, 244, 250, 0.85));
+  box-shadow: inset 0 1px #fff;
+}
+
+[data-theme="light"] .module-material-bar b {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .module-material-bar small {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .module-material-bar button,
+[data-theme="light"] .module-save-button,
+[data-theme="light"] .module-copy-button {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.65);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.5);
+}
