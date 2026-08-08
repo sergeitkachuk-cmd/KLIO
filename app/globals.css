@@ -16935,3 +16935,487 @@ footer nav a {
 [data-theme="light"] .adaptation-source-field textarea.adaptation-source-textarea {
   scrollbar-color: rgba(53, 104, 212, 0.4) transparent;
 }
+
+/* =======================================================================
+   LIGHT THEME - Семантика (.semantic-*). Written dark-native like every
+   other module so far, --ink/--muted/--line redefined once on
+   .semantic-shell (same pattern as .adaptation-shell/.result-panel).
+   Biggest module yet - the geography picker alone is a full tree
+   widget (округ -> регион -> город) with its own popup, checkboxes and
+   scroll list. var(--cobalt) label text is left alone as always.
+   var(--lilac)/var(--violet) (.semantic-optional-route > span > i,
+   .semantic-actionbar > div > span) convert to #2452b8 like every other
+   pale/bright accent that turned out to fight the light background -
+   .semantic-analysis-action.needs-refresh reuses the established amber
+   "needs attention" palette from .profile-foundation-warning instead of
+   acid, which was already established this session as unreadable on
+   light. .semantic-optional-route > span keeps its !important - the
+   dark rule uses one too, and a normal-weight override can never beat
+   an !important declaration regardless of selector specificity.
+   ------------------------------------------------------------------- */
+[data-theme="light"] .semantic-shell {
+  --ink: #0d1b31;
+  --muted: rgba(13, 27, 49, 0.62);
+  --line: rgba(15, 23, 42, 0.14);
+  color: #0d1b31;
+  border-color: rgba(15, 23, 42, 0.14);
+  background:
+    radial-gradient(circle at 92% 3%, rgba(53, 104, 212, 0.16), transparent 32%),
+    linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%);
+  box-shadow: 0 28px 82px rgba(20, 40, 80, 0.1), inset 0 1px #fff;
+}
+
+[data-theme="light"] .semantic-mode {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+[data-theme="light"] .semantic-primary-query {
+  border-color: rgba(53, 104, 212, 0.35);
+  background:
+    radial-gradient(circle at 5% 0%, rgba(53, 104, 212, 0.14), transparent 36%),
+    rgba(255, 255, 255, 0.5);
+  box-shadow: 0 16px 40px rgba(20, 40, 80, 0.1), inset 0 1px rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="light"] .semantic-primary-label i {
+  background: #2452b8;
+}
+
+[data-theme="light"] .semantic-primary-label b {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .semantic-primary-query input {
+  border-color: rgba(15, 23, 42, 0.18);
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .semantic-primary-query input::placeholder {
+  color: rgba(13, 27, 49, 0.35);
+}
+
+[data-theme="light"] .semantic-primary-query input:focus {
+  border-color: #2452b8;
+  box-shadow: 0 0 0 4px rgba(53, 104, 212, 0.16);
+}
+
+[data-theme="light"] .semantic-primary-query label > small {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .semantic-geo-picker {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="light"] .semantic-geo-picker.is-open {
+  border-color: rgba(53, 104, 212, 0.35);
+  box-shadow: 0 16px 42px rgba(20, 40, 80, 0.12);
+}
+
+[data-theme="light"] .semantic-geo-trigger:hover {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+[data-theme="light"] .semantic-geo-trigger > span > small {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .semantic-geo-trigger > em {
+  border-color: rgba(53, 104, 212, 0.3);
+  color: #2452b8;
+  background: rgba(53, 104, 212, 0.12);
+}
+
+[data-theme="light"] .semantic-geo-chips > button {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .semantic-geo-chips > button small {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .semantic-geo-chips > button > i {
+  color: #2452b8;
+  background: rgba(53, 104, 212, 0.12);
+}
+
+[data-theme="light"] .semantic-geo-chips > span {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .semantic-geo-menu {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: linear-gradient(155deg, #e3eaf6 0%, #f2f5fa 55%, #ffffff 100%);
+  box-shadow: 0 24px 64px rgba(20, 40, 80, 0.18);
+}
+
+[data-theme="light"] .semantic-geo-menu-head {
+  border-bottom-color: rgba(15, 23, 42, 0.12);
+  background: rgba(15, 23, 42, 0.03);
+}
+
+[data-theme="light"] .semantic-geo-menu-head label > span {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .semantic-geo-menu-head input {
+  border-color: rgba(15, 23, 42, 0.18);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"] .semantic-geo-menu-head input:focus {
+  border-color: #2452b8;
+  box-shadow: 0 0 0 3px rgba(53, 104, 212, 0.16);
+}
+
+[data-theme="light"] .semantic-geo-menu-head > button {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .semantic-geo-district {
+  border-color: rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.35);
+}
+
+[data-theme="light"] .region-node {
+  border-top-color: rgba(15, 23, 42, 0.08);
+  background: rgba(15, 23, 42, 0.02);
+}
+
+[data-theme="light"] .semantic-geo-checkbox {
+  border-color: rgba(15, 23, 42, 0.22);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+[data-theme="light"] .semantic-geo-checkbox.is-checked,
+[data-theme="light"] .semantic-geo-checkbox.is-mixed {
+  border-color: #2452b8;
+  color: #fff;
+  background: #2452b8;
+}
+
+[data-theme="light"] .semantic-geo-checkbox.is-mixed {
+  background: #3568d4;
+}
+
+[data-theme="light"] .semantic-geo-node-label small {
+  color: rgba(13, 27, 49, 0.45);
+}
+
+[data-theme="light"] .semantic-geo-node-label > i {
+  color: rgba(13, 27, 49, 0.45);
+}
+
+[data-theme="light"] .semantic-geo-region {
+  border-left-color: rgba(53, 104, 212, 0.16);
+}
+
+[data-theme="light"] .semantic-geo-cities {
+  border-top-color: rgba(15, 23, 42, 0.06);
+  background: rgba(15, 23, 42, 0.015);
+}
+
+[data-theme="light"] .semantic-geo-cities > button {
+  color: rgba(13, 27, 49, 0.68);
+}
+
+[data-theme="light"] .semantic-geo-cities > button:hover {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+[data-theme="light"] .semantic-geo-cities > button.is-checked {
+  border-color: rgba(53, 104, 212, 0.3);
+  color: #0d1b31;
+  background: rgba(53, 104, 212, 0.12);
+}
+
+[data-theme="light"] .semantic-geo-cities > button > i {
+  border-color: rgba(15, 23, 42, 0.22);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .semantic-geo-cities > button.is-checked > i {
+  border-color: #2452b8;
+  color: #fff;
+  background: #2452b8;
+}
+
+[data-theme="light"] .semantic-geo-empty {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .semantic-geo-menu-footer {
+  border-top-color: rgba(15, 23, 42, 0.1);
+  background: rgba(15, 23, 42, 0.03);
+}
+
+[data-theme="light"] .semantic-geo-menu-footer > span {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .semantic-geo-menu-footer > span b {
+  color: #2452b8;
+}
+
+[data-theme="light"] .semantic-geo-summary {
+  border-top-color: rgba(15, 23, 42, 0.08);
+}
+
+[data-theme="light"] .semantic-geo-summary b {
+  color: rgba(13, 27, 49, 0.7);
+}
+
+[data-theme="light"] .semantic-analysis-action {
+  border-color: rgba(53, 104, 212, 0.28);
+  background: linear-gradient(120deg, rgba(53, 104, 212, 0.14), rgba(255, 255, 255, 0.55));
+}
+
+[data-theme="light"] .semantic-analysis-action.needs-refresh {
+  border-color: rgba(200, 140, 30, 0.4);
+  background: linear-gradient(120deg, rgba(230, 172, 76, 0.18), rgba(255, 255, 255, 0.55));
+}
+
+[data-theme="light"] .semantic-analysis-action > div > span {
+  color: #2452b8;
+}
+
+[data-theme="light"] .semantic-analysis-action.needs-refresh > div > span {
+  color: #93650f;
+}
+
+[data-theme="light"] .semantic-analysis-action > div > b {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .semantic-analysis-action > div > small {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .semantic-data-note {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .semantic-data-note > i {
+  border-color: rgba(53, 104, 212, 0.35);
+  color: #2452b8;
+  background: rgba(53, 104, 212, 0.12);
+}
+
+[data-theme="light"] .semantic-insight-grid article > .semantic-result-source {
+  border-top-color: rgba(15, 23, 42, 0.08);
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .semantic-waiting-state {
+  background:
+    radial-gradient(circle at 8% 50%, rgba(53, 104, 212, 0.12), transparent 30%),
+    rgba(255, 255, 255, 0.4);
+}
+
+[data-theme="light"] .semantic-waiting-mark {
+  color: #2452b8;
+}
+
+[data-theme="light"] .semantic-waiting-mark span {
+  border-color: rgba(53, 104, 212, 0.3);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 15px 38px rgba(20, 40, 80, 0.14);
+}
+
+[data-theme="light"] .semantic-waiting-state li {
+  color: rgba(13, 27, 49, 0.68);
+}
+
+[data-theme="light"] .semantic-waiting-state li i {
+  color: #2452b8;
+  background: rgba(53, 104, 212, 0.12);
+}
+
+[data-theme="light"] .semantic-clusters {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+[data-theme="light"] .semantic-clusters nav button {
+  color: rgba(13, 27, 49, 0.65);
+}
+
+[data-theme="light"] .semantic-clusters nav button b {
+  color: rgba(13, 27, 49, 0.65);
+  background: rgba(15, 23, 42, 0.06);
+}
+
+[data-theme="light"] .semantic-clusters nav button.active {
+  border-color: rgba(53, 104, 212, 0.4);
+  color: #0d1b31;
+  background: rgba(53, 104, 212, 0.1);
+  box-shadow: inset 3px 0 #2452b8;
+}
+
+[data-theme="light"] .semantic-cluster-tip {
+  border-color: rgba(53, 104, 212, 0.26);
+  background: rgba(53, 104, 212, 0.1);
+}
+
+[data-theme="light"] .semantic-cluster-tip > i {
+  color: #2452b8;
+}
+
+[data-theme="light"] .semantic-keywords-head button {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+[data-theme="light"] .semantic-keywords-head button:first-child {
+  border-color: rgba(53, 104, 212, 0.4);
+  color: #2452b8;
+  background: rgba(53, 104, 212, 0.1);
+}
+
+[data-theme="light"] .semantic-selected-strip {
+  border-color: rgba(15, 23, 42, 0.18);
+  background: rgba(255, 255, 255, 0.35);
+}
+
+[data-theme="light"] .semantic-selected-strip.has-items {
+  border-color: rgba(53, 104, 212, 0.3);
+  background: rgba(53, 104, 212, 0.08);
+}
+
+[data-theme="light"] .semantic-selected-strip > div button {
+  border-color: rgba(53, 104, 212, 0.3);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .semantic-selected-strip > div button i {
+  color: #2452b8;
+  background: rgba(53, 104, 212, 0.12);
+}
+
+[data-theme="light"] .semantic-table {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="light"] .semantic-table-head {
+  color: rgba(13, 27, 49, 0.5);
+  background: rgba(15, 23, 42, 0.04);
+}
+
+[data-theme="light"] .semantic-keyword-row {
+  border-top-color: rgba(15, 23, 42, 0.08);
+  color: rgba(13, 27, 49, 0.7);
+}
+
+[data-theme="light"] .semantic-keyword-row:hover {
+  background: rgba(15, 23, 42, 0.03);
+}
+
+[data-theme="light"] .semantic-keyword-row.is-selected {
+  background: linear-gradient(90deg, rgba(53, 104, 212, 0.14), rgba(255, 255, 255, 0.4));
+}
+
+[data-theme="light"] .semantic-keyword-row > span:first-child > i {
+  border-color: rgba(15, 23, 42, 0.2);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .semantic-keyword-row > span:nth-child(2) small {
+  color: rgba(13, 27, 49, 0.45);
+}
+
+[data-theme="light"] .semantic-keyword-row > span:nth-child(2) em {
+  color: #2452b8;
+  background: rgba(53, 104, 212, 0.12);
+}
+
+[data-theme="light"] .semantic-keyword-copy {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: rgba(13, 27, 49, 0.6);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+[data-theme="light"] .semantic-keyword-copy:hover {
+  border-color: rgba(53, 104, 212, 0.4);
+  color: #2452b8;
+}
+
+/* Mobile-only: the intent/relation/breadth columns collapse into small
+   labels under the phrase at narrow widths, with their own hardcoded
+   grey (#777382) instead of inheriting .semantic-keyword-row's color -
+   not scoped to the media query since nothing at desktop width uses
+   this selector's color (it inherits the row's own color there), so
+   this only ever competes with the mobile-scoped dark declaration. */
+[data-theme="light"] .semantic-keyword-row > span:nth-child(3),
+[data-theme="light"] .semantic-keyword-row > span:nth-child(4),
+[data-theme="light"] .semantic-keyword-row > span:nth-child(5) {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+/* The deliberately more saturated "accent panel" of this module, same
+   "shade darker than the plain card body" brief as .quality-zone -
+   .semantic-actionbar is a near-black panel in dark theme, distinct
+   from the shell's own navy, so its light counterpart should stand out
+   from .semantic-shell's own light gradient the same way. */
+[data-theme="light"] .semantic-actionbar {
+  color: #0d1b31;
+  background:
+    radial-gradient(circle at 78% -30%, rgba(53, 104, 212, 0.22), transparent 38%),
+    linear-gradient(120deg, #dde6f7, #eef2fa);
+}
+
+[data-theme="light"] .semantic-actionbar > div > span {
+  color: #2452b8;
+}
+
+[data-theme="light"] .semantic-actionbar small {
+  color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .semantic-brand-route {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="light"] .semantic-brand-route > i {
+  background: rgba(15, 23, 42, 0.14);
+}
+
+[data-theme="light"] .semantic-brand-route input:checked + i {
+  background: #2452b8;
+}
+
+[data-theme="light"] .semantic-optional-route {
+  border-top-color: rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="light"] .semantic-optional-route > span {
+  color: #0d1b31 !important;
+}
+
+[data-theme="light"] .semantic-optional-route > span > i {
+  color: #2452b8;
+}
+
+[data-theme="light"] .semantic-optional-route > button {
+  border-bottom-color: rgba(15, 23, 42, 0.3);
+  color: rgba(13, 27, 49, 0.75);
+}
+
+[data-theme="light"] .semantic-optional-route > button:hover {
+  color: #0d1b31;
+  border-bottom-color: #2452b8;
+}
