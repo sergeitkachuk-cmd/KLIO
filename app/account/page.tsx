@@ -115,6 +115,32 @@ function AccountStyles() {
       .account-facts dt { color: rgba(255,255,255,0.55); font-size: 13px; }
       .account-facts dd { margin: 0; font-size: 13px; font-weight: 600; text-align: right; }
       .account-empty { color: rgba(255,255,255,0.6); }
+
+      /* Light theme - this page renders its own inline <style> instead of
+         globals.css, but data-theme is still set on <html> by the same
+         bootstrap script for every route, so scoping to it here works
+         identically. Same conversion table as every other module: acid
+         text -> #2452b8 (unreadable on light), #d5c9fb lilac labels ->
+         #2452b8, acid+night pairings (.account-who i avatar,
+         .account-upgrade pill) and the acid progress-bar fill left
+         theme-agnostic since none of them are text needing contrast
+         against the page's own background. */
+      [data-theme="light"] .account-page { color: #0d1b31; background: radial-gradient(circle at 85% 0%, rgba(53,104,212,0.12), transparent 32%), linear-gradient(165deg, #e3eaf6 0%, #f0f4fa 60%, #ffffff 100%); }
+      [data-theme="light"] .account-back { color: rgba(13,27,49,0.6); }
+      [data-theme="light"] .account-back:hover { color: #0d1b31; }
+      [data-theme="light"] .account-who small { color: rgba(13,27,49,0.5); }
+      [data-theme="light"] .account-title p { color: #2452b8; }
+      [data-theme="light"] .account-card { border-color: rgba(15,23,42,0.14); background: radial-gradient(circle at 92% 0%, rgba(53,104,212,0.16), transparent 32%), linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%); box-shadow: 0 24px 70px rgba(20,40,80,0.1), inset 0 1px #fff; }
+      [data-theme="light"] .account-card > span { color: #2452b8; }
+      [data-theme="light"] .account-plan-head span { color: #2452b8; }
+      [data-theme="light"] .account-plan-head small { color: rgba(13,27,49,0.5); }
+      [data-theme="light"] .account-progress span { color: rgba(13,27,49,0.6); }
+      [data-theme="light"] .account-progress b small { color: rgba(13,27,49,0.45); }
+      [data-theme="light"] .account-progress i { background: rgba(15,23,42,0.1); }
+      [data-theme="light"] .account-plan-note { color: rgba(13,27,49,0.5); }
+      [data-theme="light"] .account-facts > div { border-bottom-color: rgba(15,23,42,0.08); }
+      [data-theme="light"] .account-facts dt { color: rgba(13,27,49,0.5); }
+      [data-theme="light"] .account-empty { color: rgba(13,27,49,0.55); }
     `}</style>
   );
 }
