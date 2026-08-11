@@ -1,4 +1,5 @@
 import { AiResponseError, openAiErrorResponse } from "../_lib/openai-response";
+import { CORE_SYSTEM_RULES, FINAL_QA_RULES } from "../../content-plans";
 import { callAiModel } from "../_lib/ai-router";
 import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 
@@ -17,10 +18,21 @@ type GeographyInput = {
 
 type BrandInput = {
   name: string;
+  website: string;
   description: string;
   positioning: string;
   audience: string;
   advantages: string;
+  products: string;
+  services: string;
+  proof: string;
+  geography: string;
+  voice: string;
+  restrictions: string;
+  prohibited: string;
+  signature: string;
+  vocabulary: string;
+  cta: string;
 };
 
 type ContentPlanPayload = {
@@ -111,10 +123,21 @@ function normalizePayload(raw: ContentPlanPayload) {
   const sourceBrand = raw.brand && typeof raw.brand === "object" ? raw.brand as Record<string, unknown> : {};
   const brand = {
     name: clean(sourceBrand.name, 160),
+    website: clean(sourceBrand.website, 220),
     description: clean(sourceBrand.description, 2200),
     positioning: clean(sourceBrand.positioning, 1600),
     audience: clean(sourceBrand.audience, 1200),
     advantages: clean(sourceBrand.advantages, 2600),
+    products: clean(sourceBrand.products, 1800),
+    services: clean(sourceBrand.services, 1800),
+    proof: clean(sourceBrand.proof, 1800),
+    geography: clean(sourceBrand.geography, 600),
+    voice: clean(sourceBrand.voice, 1200),
+    restrictions: clean(sourceBrand.restrictions, 1200),
+    prohibited: clean(sourceBrand.prohibited, 1200),
+    signature: clean(sourceBrand.signature, 700),
+    vocabulary: clean(sourceBrand.vocabulary, 1200),
+    cta: clean(sourceBrand.cta, 500),
   } satisfies BrandInput;
   return { query, goal, count, semantics, geography, competitorInsights, brand };
 }
@@ -229,18 +252,23 @@ export async function POST(request: Request) {
 
     const instructions = [
       "Ты — ведущий контент‑стратег и SEO‑редактор платформы КЛИО.",
+      ...CORE_SYSTEM_RULES,
+      "Работай как редакционная система бренда, а не генератор общих заголовков. Сначала используй весь доступный профиль: предложение, аудиторию, позиционирование, подтверждённые преимущества, доказательства, географию, голос и ограничения.",
       `Создай ровно ${input.count} готовых к работе тем для единой контент‑системы, а не перечень шаблонных заголовков.`,
       GOAL_INSTRUCTION[input.goal],
       "Сначала определи предмет, аудиторию, поисковые интенты, коммерческую задачу и возможные тематические ветви. Не переносить знания или шаблоны из другой отрасли.",
       "Разведи ядро, широкие обзоры, средние подтемы, узкие long-tail вопросы и действительно смежные темы. Смежная тема должна поддерживать решение аудитории или экспертизу бренда, а не быть случайной ассоциацией.",
       "Сбалансируй воронку: знакомство, выбор, решение и удержание. Не делай весь план информационными инструкциями и не превращай коммерческие темы в статьи «как выбрать». Для темы с конкретным брендом или продуктом предусмотрены материалы о его предложении, доказательствах, сценариях применения и возражениях.",
+      "Не строй план вокруг одного преимущества и не превращай его в каталог услуг. Разделяй образовательные, коммерческие, репутационные и вовлекающие задачи; не выдумывай сезонность, статистику, тренды или кейсы.",
       "Каждый title — чистый публикационный заголовок без номера, комментария, редакционной команды, пояснения в скобках и фраз вроде «использовать выводы». Не добавляй одинаковые каркасы «полный разбор», «основные ошибки», «пошаговый маршрут» ко всем темам.",
       "Каждая строка должна иметь собственный ракурс, коммуникационную цель, целевую аудиторию, основной запрос, 2–8 поддерживающих формулировок и предметную структуру из 3–8 разделов.",
       "Поле lsi означает поддерживающие формулировки, сущности и вопросы. Не называй их LSI‑факторами и не имитируй частотность.",
       "Title и Description должны точно соответствовать теме. Не обещай позиции, результат лечения, доход, сроки, цены и иные факты, которых нет в источниках.",
       "В evidenceNeeded перечисли, какие факты, документы, цифры, кейсы или экспертные комментарии нужны редактору. В sources укажи только реально переданные слои: Тема, Семантика, География, Матрица, Профиль бренда.",
+      "Для каждой строки сначала сформируй скрытый editorialBrief: вопрос читателя, интент, сегмент аудитории, ракурс, ключевое сообщение, формат, тон, авторскую позицию, структуру, ключевые пункты, ключи, известные факты, неизвестные данные, возражения, CTA и ограничения. Во внешний JSON выводи только поля текущей схемы; не раскрывай editorialBrief в title или описании.",
       "Используй веб-поиск, чтобы опираться на реальные формулировки запросов и подтемы этой ниши, а не только на входной запрос и его парафразы.",
       "Верни только структурированный результат по заданной JSON‑схеме.",
+      ...FINAL_QA_RULES,
     ].join("\n");
 
     const { result: aiPlan, model } = await callAiModel<AiPlan>({
@@ -257,6 +285,13 @@ export async function POST(request: Request) {
         search_geography: input.geography,
         competitor_editorial_opportunities: input.competitorInsights,
         brand_profile: input.brand.name ? input.brand : null,
+        editorial_brief_contract: {
+          topic: "title", intent: "intent", objective: "objective", audience: "audience", angle: "angle", format: "format",
+          structure: "structure", keywords: ["primaryKeyword", "lsi"], evidenceNeeded: "evidenceNeeded", sources: "sources",
+          knownFacts: input.brand.name ? [input.brand.description, input.brand.positioning, input.brand.advantages, input.brand.products, input.brand.services, input.brand.proof].filter(Boolean) : [],
+          restrictions: [input.brand.restrictions, input.brand.prohibited].filter(Boolean),
+          authorPosition: "brand for commercial brand materials; neutral or expert otherwise",
+        },
         required_items: input.count,
       }, null, 2),
     });

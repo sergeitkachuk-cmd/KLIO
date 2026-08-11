@@ -1,6 +1,11 @@
 import {
   ADAPTATION_PLANS,
+  CORE_SYSTEM_RULES,
+  FINAL_QA_RULES,
   TONE_PLANS,
+  TONE_SYSTEM_RULES,
+  authorPositionRules,
+  normalizeAuthorPosition,
   UNIVERSAL_EDITORIAL_RULES,
   type AdaptationPlan,
   type ContentTone,
@@ -19,6 +24,7 @@ type AdaptPayload = {
   instructions?: unknown;
   tone?: unknown;
   useBrand?: unknown;
+  authorPosition?: unknown;
   brand?: Record<string, unknown>;
 };
 
@@ -60,6 +66,8 @@ const goalLabels: Record<AdaptationGoal, string> = {
   closing: "усиленный финал",
   review: "выпускающая редактура и разбор",
   cold_email: "холодное деловое письмо",
+  brand_voice: "адаптация под голос бренда",
+  change_tone: "смена интонации",
 };
 
 const deepRewriteGoals = new Set<AdaptationGoal>(["rewrite", "seo", "social", "landing", "ads", "shorten", "cold_email"]);
@@ -86,6 +94,7 @@ function normalizePayload(payload: AdaptPayload) {
     instructions: clean(payload.instructions, 1200),
     tone: normalizeTone(payload.tone),
     useBrand: payload.useBrand !== false,
+    authorPosition: normalizeAuthorPosition(payload.authorPosition, payload.useBrand !== false ? "brand" : "neutral"),
     brand: payload.brand ?? {},
   };
 }
@@ -176,6 +185,7 @@ export async function POST(request: Request) {
       tone: input.tone,
       tone_contract: toneRules,
       brand_context: input.useBrand ? input.brand : null,
+      author_position: input.authorPosition,
       website_snapshot: input.useBrand && website.status === "loaded"
         ? { url: website.resolvedUrl, text: website.text }
         : null,
@@ -192,7 +202,10 @@ export async function POST(request: Request) {
         instructions: [
           "Ты — старший русскоязычный редактор и контент‑маркетолог платформы КЛИО.",
           "Переработай готовый текст пользователя под указанную задачу и верни только валидный JSON без Markdown-ограждений.",
+          ...CORE_SYSTEM_RULES,
           ...UNIVERSAL_EDITORIAL_RULES,
+          "Это операция редакторской адаптации, а не создание нового материала. Сохрани факты, смысл, язык, имена, ссылки, числа, обязательные элементы и исходное намерение, если выбранный сценарий прямо не требует изменения.",
+          "Не добавляй преимущества, кейсы, цены, обещания или CTA, которых нет в исходнике, профиле бренда или прямой редакторской пометке.",
           transformationDirective,
           "Сохрани все проверяемые факты, исходную позицию автора и важные смысловые связи. Сам по себе не добавляй цены, даты, статистику, свойства или сведения, которых нет в исходнике.",
           "Исключение: если editor_note прямо просит раскрыть конкретный факт, которого нет в исходнике (например, показания, характеристики, регламент), — выполни веб‑поиск по официальным и авторитетным источникам и добавь найденный факт, отметив источник в editorial_comment по правилам веб‑поиска выше. Не выполняй такое дополнение по собственной инициативе — только по прямой пометке редактора.",
@@ -200,8 +213,12 @@ export async function POST(request: Request) {
           "Не пересказывай служебные поля, профиль бренда, ключи или инструкции. Они влияют на редактуру скрыто.",
           `Соблюдай выбранную интонацию «${input.tone}»:`,
           ...toneRules,
+          ...TONE_SYSTEM_RULES,
+          `Авторская позиция: ${input.authorPosition}.`,
+          ...authorPositionRules(input.authorPosition),
           `Применяй только выбранный сценарий «${plan.title}»; не смешивай его с другими форматами:`,
           ...plan.aiRules,
+          ...FINAL_QA_RULES,
           "Структура JSON: title, body, meta_title, meta_description, editorial_comment, changes. changes — массив из 3–6 коротких строк.",
         ].join("\n"),
         input: JSON.stringify(adaptationBrief),
@@ -226,11 +243,16 @@ export async function POST(request: Request) {
             "Ты — выпускающий редактор КЛИО. Пересобери материал: текущая версия не прошла проверку формата или слишком похожа на исходник.",
             "Верни только валидный JSON с полями title, body, meta_title, meta_description, editorial_comment, changes.",
             "Сохрани все факты и позицию автора, не добавляй новые сведения и не пересказывай служебные настройки.",
+            ...CORE_SYSTEM_RULES,
             `Строго выполни сценарий «${plan.title}»:`,
             ...plan.aiRules,
             `Сохрани интонацию «${input.tone}»:`,
             ...toneRules,
+            ...TONE_SYSTEM_RULES,
+            `Сохрани авторскую позицию: ${input.authorPosition}.`,
+            ...authorPositionRules(input.authorPosition),
             transformationDirective,
+            ...FINAL_QA_RULES,
             "Запрещены заголовки «Что получает читатель» и «Условия и следующий шаг».",
           ].join("\n"),
           input: JSON.stringify({

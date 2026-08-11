@@ -145,6 +145,12 @@ type BrandProfile = {
   positioning: string;
   audience: string;
   advantages: string;
+  products: string;
+  services: string;
+  proof: string;
+  geography: string;
+  vocabulary: string;
+  cta: string;
   voice: string;
   restrictions: string;
   signature: string;
@@ -348,6 +354,12 @@ const defaultBrand: BrandProfile = {
   positioning: "Исторический курорт с сильной медицинской базой, природными лечебными факторами и внимательным отношением к гостю.",
   audience: "Взрослые 35–70 лет: санаторное лечение, восстановление после нагрузки, профилактика и спокойный отдых в Карелии.",
   advantages: "Программа «Здоровый позвоночник»: бассейн, озонотерапия, подводное вытяжение позвоночника, ручной массаж, габозерские лечебные грязи и тренажёр Маркелова; курс программы «Здоровый позвоночник» — 13 суток; для программы требуется МРТ не старше одного года и полужёсткий корсет; марциальная железистая вода; габозерские лечебные грязи; медицинские специалисты; широкий набор процедур; историческое наследие первого российского курорта; природа Карелии.",
+  products: "Санаторные путёвки и программы восстановления.",
+  services: "Лечение, реабилитация, профилактика, процедуры и консультации специалистов.",
+  proof: "Природные лечебные факторы, медицинские специалисты и условия программ — только после подтверждения профильными документами.",
+  geography: "Карелия; территорию целевого спроса задавайте отдельно в семантике.",
+  vocabulary: "восстановление; программа; консультация; процедуры; спокойный отдых",
+  cta: "Узнать условия программы и получить консультацию.",
   voice: "Экспертно, понятно и доброжелательно. Сложное объяснять простыми словами, без канцеляризмов и рекламного давления.",
   restrictions: "Не обещать исцеление, не ставить диагнозы, не придумывать показания, цены, сроки и медицинские факты.",
   signature: "С заботой о вашем здоровье и отдыхе, санаторий «Марциальные воды» — первый российский курорт.",
@@ -578,7 +590,7 @@ function normalizeStoredGeo(value: unknown, fallbackRegion?: string): SemanticGe
 
 const adaptationGoalIds: AdaptationGoal[] = [
   "proofread", "clarity", "rewrite", "shorten", "opening", "closing",
-  "review", "social", "seo", "landing", "ads", "cold_email",
+  "review", "social", "seo", "landing", "ads", "cold_email", "brand_voice", "change_tone",
 ];
 
 const adaptationGoals: { id: AdaptationGoal; label: string; detail: string }[] = adaptationGoalIds
@@ -1216,9 +1228,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [topic, setTopic] = useState(workspace ? "" : "Как выбрать санаторий для восстановления");
   const [keywords, setKeywords] = useState(workspace ? "" : "санаторий для восстановления, лечение в Карелии, лечебные программы");
   const [tone, setTone] = useState("Экспертный");
+  const [authorPosition, setAuthorPosition] = useState("brand");
   const [length, setLength] = useState(1200);
   const [customLength, setCustomLength] = useState(false);
   const [accent, setAccent] = useState("");
+  const [editorialBrief, setEditorialBrief] = useState<Record<string, unknown> | null>(null);
   const [brand, setBrand] = useState<BrandProfile>(defaultBrand);
   const [useBrand, setUseBrand] = useState(true);
   const [brandOpen, setBrandOpen] = useState(false);
@@ -2284,6 +2298,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           goal: archiveTransformGoal,
           tone: archiveEditorTone,
           keywords: archiveEditorItem.keywords || "",
+          authorPosition,
           instructions: "Доработать сохранённый материал внутри редактора. Сохранить подтверждённые факты; текущий черновик генератора не изменять.",
           brand: archivedBrand,
           useBrand: Boolean(archivedBrand),
@@ -2626,6 +2641,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     useBrand: boolean;
     useSemantics?: boolean;
     useCompetitors?: boolean;
+    authorPosition?: string;
+    editorialBrief?: Record<string, unknown> | null;
   }) {
     const includeBrand = requestBody.useBrand && generatorBrandReady;
     const includeSemantics = requestBody.useSemantics !== false && generatorSemanticsReady;
@@ -2666,6 +2683,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           gaps: competitorResult.gaps,
           suggestedStructure: competitorResult.suggestedStructure,
         } : null,
+        authorPosition: requestBody.authorPosition || authorPosition,
+        editorialBrief: requestBody.editorialBrief ?? null,
       }),
     });
     const payload = await safeJson(response) as {
@@ -3387,6 +3406,26 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     const structureLines = item.structure.map((section) => `• ${section}: раскрыть применительно к теме материала и опереться только на подтверждённые факты`);
     const targetFormat = contentPlanFormatToGeneratorFormat[item.format] ?? "seo";
     setFormat(targetFormat);
+    setAuthorPosition(item.intent === "Информационный" ? "expert" : "brand");
+    setEditorialBrief({
+      topic: cleanTitle,
+      intent: item.intent,
+      objective: item.objective,
+      audience: item.audience,
+      angle: item.angle,
+      format: item.format,
+      tone,
+      authorPosition: item.intent === "Информационный" ? "expert" : "brand",
+      structure: item.structure,
+      keyPoints: item.structure,
+      keywords: uniqueText([item.primaryKeyword, ...item.lsi]),
+      evidenceNeeded: item.evidenceNeeded,
+      knownFacts: [],
+      unknowns: item.evidenceNeeded,
+      objections: [],
+      cta: item.cta,
+      restrictions: useBrand ? [effectiveBrand.restrictions, effectiveBrand.prohibited].filter(Boolean) : [],
+    });
     setGeneratorMode("advanced");
     setTopic(cleanTitle);
     setKeywords(uniqueText([item.primaryKeyword, ...item.lsi]).join(", "));
@@ -3462,6 +3501,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         useBrand: useBrand && generatorUseBrand,
         useSemantics: generatorUseSemantics,
         useCompetitors: generatorUseCompetitors,
+        authorPosition,
+        editorialBrief,
       });
       applyGeneratedMaterial(response.material, response.mode, response.coverage);
       showToast("Материал создан КЛИО");
@@ -3552,7 +3593,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setTopic("");
     setKeywords("");
     setAccent("");
+    setEditorialBrief(null);
     setTone("Экспертный");
+    setAuthorPosition("brand");
     setLength(defaultLengthByFormat[format]);
     setCustomLength(false);
     setQuickPrompt("");
@@ -3583,6 +3626,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           tone: adaptationTone,
           keywords: adaptationKeywords,
           instructions: adaptationInstructions,
+          authorPosition,
           brand: effectiveBrand,
           useBrand,
         }),
@@ -3859,6 +3903,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <label className="wide">Позиционирование<AutoTextarea rows={3} value={brand.positioning} onChange={(event) => updateBrand("positioning", event.target.value)}/><small>Какое место бренд хочет занимать в сознании аудитории — не рекламный слоган, а редакционный ориентир.</small></label>
                   <label>Основная аудитория<AutoTextarea rows={4} value={brand.audience} onChange={(event) => updateBrand("audience", event.target.value)}/><small>Кто читатель, с какой задачей и на каком уровне понимания темы.</small></label>
                   <label>Факты и преимущества<AutoTextarea rows={4} value={brand.advantages} onChange={(event) => updateBrand("advantages", event.target.value)}/><small>Только подтверждённые особенности, на которые можно опираться в тексте.</small></label>
+                  <label>Продукты и программы<AutoTextarea rows={3} value={brand.products} onChange={(event) => updateBrand("products", event.target.value)}/><small>Конкретные предложения бренда; не включайте предположения.</small></label>
+                  <label>Услуги<AutoTextarea rows={3} value={brand.services} onChange={(event) => updateBrand("services", event.target.value)}/><small>Что компания реально делает для аудитории.</small></label>
+                  <label>Доказательства и источники<AutoTextarea rows={3} value={brand.proof} onChange={(event) => updateBrand("proof", event.target.value)}/><small>Документы, подтверждённые условия, исследования или другие основания для claims.</small></label>
+                  <label>География бренда<AutoTextarea rows={3} value={brand.geography} onChange={(event) => updateBrand("geography", event.target.value)}/><small>Рынок и территория работы. Не путайте с географией поискового спроса.</small></label>
                 </div>
               </div>}
 
@@ -3877,6 +3925,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <div className="profile-assistant-row"><div><span>Умное предзаполнение</span><p>Можно взять рекомендации из основы, а затем скорректировать каждое поле.</p></div><button type="button" onClick={applyVoiceRecommendations}>Предзаполнить поля</button></div>
                   <div className="brand-fields">
                     <label className="wide">Голос бренда<AutoTextarea rows={4} value={brand.voice} onChange={(event) => updateBrand("voice", event.target.value)}/><small>Интонация, сложность языка, длина фраз и степень эмоциональности.</small></label>
+                    <label className="wide">Словарь бренда<AutoTextarea rows={2} value={brand.vocabulary} onChange={(event) => updateBrand("vocabulary", event.target.value)}/><small>Предпочтительные термины и формулировки, которые помогают узнаваемости.</small></label>
+                    <label className="wide">Предпочтительный CTA<AutoTextarea rows={2} value={brand.cta} onChange={(event) => updateBrand("cta", event.target.value)}/><small>Естественный следующий шаг, если он подходит задаче материала.</small></label>
                     <label className="wide">Фирменная подпись<AutoTextarea rows={2} value={brand.signature} onChange={(event) => updateBrand("signature", event.target.value)}/><small>Финальная формулировка для постов; КЛИО добавляет её только там, где она уместна.</small></label>
                     <label>Ограничения<AutoTextarea rows={4} value={brand.restrictions} onChange={(event) => updateBrand("restrictions", event.target.value)}/><small>Что нельзя обещать, утверждать или придумывать без проверки.</small></label>
                     <label>Стоп-слова и клише<AutoTextarea rows={4} value={brand.prohibited} onChange={(event) => updateBrand("prohibited", event.target.value)}/><small>Разделяйте слова и выражения точкой с запятой — они попадут в автоматическую проверку.</small></label>
@@ -4184,6 +4234,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <p><i>Итог</i>{activeFormatPlan.result}</p>
                 </div>
                 <label className="field">Тема материала<input value={topic} onChange={(event) => { setTopic(event.target.value); setGenerationCoverage(null); }} autoComplete="off" /></label>
+                <div className="field"><ModuleSelect label="Авторская позиция" value={authorPosition} options={[
+                  { value: "brand", label: "От лица бренда" }, { value: "expert", label: "Эксперт" }, { value: "journalist", label: "Журналист" }, { value: "customer", label: "Клиент" }, { value: "neutral", label: "Нейтральная" },
+                ]} onChange={setAuthorPosition}/><small>Позиция задаёт местоимения и дистанцию: тон меняет подачу, но не заменяет голос автора.</small></div>
                 <label className="field">Ключевые слова<AutoTextarea value={keywords} onChange={(event) => { setKeywords(event.target.value); setGenerationCoverage(null); }} /><small>Разделяйте запросы запятыми или получите их после анализа выдачи</small></label>
                 <label className="field generator-accent-field">Дополнительный акцент<AutoTextarea rows={3} value={accent} onChange={(event) => { setAccent(event.target.value); setGenerationCoverage(null); }} placeholder="Например: раскрыть питание, ограничения и порядок консультации"/><small>{(accent.match(/^\s*[•*\-–—]\s+/gm) ?? []).length ? `Распознано обязательных редакционных ориентиров: ${(accent.match(/^\s*[•*\-–—]\s+/gm) ?? []).length}` : "Можно ввести вручную или передать выводы из матрицы. Ориентиры влияют на разделы статьи, а не остаются служебной заметкой."}</small></label>
                 <div className="generator-context-card">

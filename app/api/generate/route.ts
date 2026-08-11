@@ -1,6 +1,11 @@
 import {
   FORMAT_PLANS,
+  CORE_SYSTEM_RULES,
+  FINAL_QA_RULES,
   TONE_PLANS,
+  TONE_SYSTEM_RULES,
+  authorPositionRules,
+  normalizeAuthorPosition,
   UNIVERSAL_EDITORIAL_RULES,
   type ContentFormat,
   type ContentTone,
@@ -29,6 +34,12 @@ type BrandProfile = {
   restrictions: string;
   signature: string;
   prohibited: string;
+  products: string;
+  services: string;
+  proof: string;
+  geography: string;
+  vocabulary: string;
+  cta: string;
 };
 
 type GeneratePayload = {
@@ -46,6 +57,8 @@ type GeneratePayload = {
   geography?: unknown;
   semanticContext?: unknown;
   competitorContext?: unknown;
+  authorPosition?: unknown;
+  editorialBrief?: unknown;
 };
 
 type GeneratedMaterial = {
@@ -169,6 +182,22 @@ function cleanCompetitorContext(value: unknown) {
   return result.query || result.selectedTopics.length ? result : null;
 }
 
+function cleanEditorialBrief(value: unknown) {
+  const source = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const list = (item: unknown, limit: number, maxLength: number) => Array.isArray(item)
+    ? item.slice(0, limit).map((entry) => cleanText(entry, maxLength)).filter(Boolean)
+    : [];
+  return {
+    topic: cleanText(source.topic, 300), intent: cleanText(source.intent, 80), objective: cleanText(source.objective, 600),
+    audience: cleanText(source.audience, 700), angle: cleanText(source.angle, 600), readerQuestion: cleanText(source.readerQuestion, 500),
+    keyMessage: cleanText(source.keyMessage, 700), format: cleanText(source.format, 100), tone: cleanText(source.tone, 80),
+    authorPosition: typeof source.authorPosition === "string" ? normalizeAuthorPosition(source.authorPosition) : "", structure: list(source.structure, 8, 180), keyPoints: list(source.keyPoints, 8, 240),
+    keywords: list(source.keywords, 12, 180), evidenceNeeded: list(source.evidenceNeeded ?? source.factsNeeded, 8, 220),
+    knownFacts: list(source.knownFacts, 12, 300), unknowns: list(source.unknowns, 8, 220), objections: list(source.objections, 8, 220),
+    cta: cleanText(source.cta, 300), restrictions: list(source.restrictions, 8, 220),
+  };
+}
+
 function toneRules(tone: string) {
   return TONE_PLANS[tone as ContentTone] ?? TONE_PLANS["Экспертный"];
 }
@@ -183,6 +212,7 @@ function normalizePayload(raw: GeneratePayload) {
   const sourceBrand = raw.brand ?? {};
   const semanticContext = cleanSemanticContext(raw.semanticContext);
   const competitorContext = cleanCompetitorContext(raw.competitorContext);
+  const editorialBrief = cleanEditorialBrief(raw.editorialBrief);
 
   return {
     brandId: cleanText(raw.brandId, 100),
@@ -195,6 +225,8 @@ function normalizePayload(raw: GeneratePayload) {
     useBrand: raw.useBrand !== false,
     useSemantics: raw.useSemantics === true && Boolean(semanticContext),
     useCompetitors: raw.useCompetitors === true && Boolean(competitorContext),
+    authorPosition: normalizeAuthorPosition(raw.authorPosition, raw.useBrand !== false ? "brand" : "neutral"),
+    editorialBrief,
     geography: cleanGeography(raw.geography),
     semanticContext,
     competitorContext,
@@ -209,6 +241,12 @@ function normalizePayload(raw: GeneratePayload) {
       restrictions: cleanText(sourceBrand.restrictions, 1200),
       signature: cleanText(sourceBrand.signature, 700),
       prohibited: cleanText(sourceBrand.prohibited, 1200),
+      products: cleanText(sourceBrand.products, 1800),
+      services: cleanText(sourceBrand.services, 1800),
+      proof: cleanText(sourceBrand.proof, 1800),
+      geography: cleanText(sourceBrand.geography, 600),
+      vocabulary: cleanText(sourceBrand.vocabulary, 1200),
+      cta: cleanText(sourceBrand.cta, 500),
     } satisfies BrandProfile,
   };
 }
@@ -512,6 +550,15 @@ export async function POST(request: Request) {
         rules: formatPlan.aiRules,
       },
       topic: input.topic,
+      editorialBrief: {
+        ...input.editorialBrief,
+        topic: input.editorialBrief.topic || input.topic,
+        format: input.editorialBrief.format || FORMAT_LABELS[input.format],
+        tone: input.editorialBrief.tone || input.tone,
+        authorPosition: input.editorialBrief.authorPosition || input.authorPosition,
+        keywords: input.editorialBrief.keywords.length ? input.editorialBrief.keywords : selectedKeywords(input),
+      },
+      author_position: input.authorPosition,
       topic_contract: {
         primary_subject: input.topic,
         required_subject_terms: semanticTokens(input.topic).slice(0, 5),
@@ -548,12 +595,18 @@ export async function POST(request: Request) {
         positioning: input.brand.positioning,
         audience: input.brand.audience,
         verified_advantages: input.brand.advantages,
+        products: input.brand.products,
+        services: input.brand.services,
+        proof: input.brand.proof,
+        geography: input.brand.geography,
       } : null,
       hidden_editorial_controls: input.useBrand ? {
         voice: input.brand.voice,
         restrictions: input.brand.restrictions,
         prohibited_phrases: input.brand.prohibited,
         signature: input.brand.signature,
+        vocabulary: input.brand.vocabulary,
+        default_cta: input.brand.cta,
       } : null,
       website_snapshot: input.useBrand && website.status === "loaded"
         ? { url: website.resolvedUrl, text: website.text }
@@ -572,11 +625,15 @@ export async function POST(request: Request) {
         instructions: [
           "Ты — старший русскоязычный редактор и контент‑маркетолог платформы КЛИО.",
           "Создай готовый к публикации материал по брифу и верни только валидный JSON без Markdown-ограждений.",
+          ...CORE_SYSTEM_RULES,
           ...UNIVERSAL_EDITORIAL_RULES,
           `Контракт выбранного формата «${formatPlan.title}» обязателен и важнее стилистической окраски:`,
           ...formatPlan.aiRules,
           "Тема — главный контракт материала. Сначала выдели конкретный предмет запроса, затем построй вокруг него вступление, подзаголовки, аргументацию и финал.",
           "Перед написанием классифицируй коммуникационную задачу по формулировке темы и брифу: рассказать о конкретном бренде/продукте/услуге, дать экспертный ответ, сформировать спрос, снять возражение или привести к действию. Не выбирай автоматически формат инструкции.",
+          `Авторская позиция: ${input.authorPosition}.`,
+          ...authorPositionRules(input.authorPosition),
+          "editorialBrief — скрытое техническое задание редактора. Если он передан, используй его вопрос читателя, ракурс, интент, структуру, факты и ограничения как конкретизацию темы; не пересказывай его в публикации.",
           "Если тема содержит название активного бренда, компании, продукта, программы или услуги, создай маркетинговый материал именно об этом предложении: раскрой его релевантность задаче аудитории, подтверждённые сильные стороны, программу или процесс и следующий шаг. Не подменяй такую тему инструкцией по выбору категории.",
           "Если названный в теме бренд, компания или продукт реальны, но source_facts и website_snapshot не переданы (профиль бренда не заполнен или выключен), не выдумывай его функции, программу или преимущества. Сначала выполни веб‑поиск, найди официальный сайт и реальные факты об этом конкретном предложении, и уже на них построй материал. Если поиск не подтвердил, что это за компания или продукт, пиши осторожнее и опирайся только на то, что подтвердилось, отметив пробелы в editorial_comment — не подменяй недостающие факты правдоподобно звучащими выдумками.",
           "Не переносить примеры, отраслевые признаки, терминологию, структуру и факты из других запросов. Тема про финансы, технологии, образование, недвижимость или любую иную сферу должна оставаться в своей сфере во всех разделах.",
@@ -587,6 +644,7 @@ export async function POST(request: Request) {
           "Если для обязательного ориентира не хватает подтверждённых фактов в брифе, профиле бренда или снимке сайта, сначала выполни веб‑поиск по официальным и авторитетным источникам. Если поиск дал надёжный факт — используй его и отметь источник в editorial_comment. Если нет — раскрой безопасную практическую часть (критерии проверки, вопросы, ограничения) и укажи дефицит фактов в editorial_comment. Не игнорируй ориентир молча.",
           `Правила выбранной интонации «${input.tone}»:`,
           ...selectedToneRules,
+          ...TONE_SYSTEM_RULES,
           "Не используй выражения из prohibited. Фирменную подпись добавляй только когда она уместна для выбранного формата и прямо передана в профиле.",
           "Выбранная география описывает территорию поискового спроса и должна заметно влиять на готовый материал. Если список не пуст, естественно упомяни каждую территорию из geography_contract.required_mentions хотя бы один раз — как контекст аудитории, маршрута, спроса или выбора.",
           "География спроса не доказывает, что бренд находится, работает или имеет филиал в этих местах. Не превращай её в факт о компании и не добавляй неподтверждённую локализацию.",
@@ -600,6 +658,7 @@ export async function POST(request: Request) {
           "Структура JSON: title, body, meta_title, meta_description, editorial_comment. Все значения — строки.",
           "body должен быть цельным русским текстом с абзацами и уместными подзаголовками без служебных комментариев.",
           "editorial_comment кратко объясняет использованный ракурс, соблюдение голоса бренда и возможные места для фактчекинга; он не является частью статьи.",
+          ...FINAL_QA_RULES,
         ].join("\n"),
         input: `Подготовь материал по этому брифу:\n${userBrief}`,
       });
@@ -634,12 +693,16 @@ export async function POST(request: Request) {
           instructions: [
             "Ты — выпускающий редактор платформы КЛИО.",
             "Приведи материал к заданному объёму, сохранив тему, факты, ключевые фразы, структуру и голос бренда.",
+            ...CORE_SYSTEM_RULES,
             `Требуемый объём: ${input.length} слов. Допустимый диапазон: ${minimumWords}–${maximumWords} слов.`,
             "Не добавляй неподтверждённые факты и не повторяй абзацы ради объёма.",
             `Сохрани контракт формата «${formatPlan.title}»:`,
             ...formatPlan.aiRules,
             `Сохрани правила интонации «${input.tone}»:`,
             ...selectedToneRules,
+            ...TONE_SYSTEM_RULES,
+            `Сохрани авторскую позицию: ${input.authorPosition}.`,
+            ...authorPositionRules(input.authorPosition),
             "Удали весь метатекст о брифе, профиле бренда, аудитории, стиле, ключевых словах и правилах формата. Читатель должен видеть только готовую публикацию по теме.",
             !subjectCheck.passes
               ? `Основной текст подменил или недостаточно раскрыл предмет «${input.topic}». Перестрой композицию так, чтобы конкретный предмет запроса содержательно присутствовал минимум в ${subjectCheck.requiredSections} разделах, а не только в заголовке.`
@@ -654,6 +717,7 @@ export async function POST(request: Request) {
               ? `Материал не применил выбранную географию: ${missingGeo.join(", ")}. Естественно упомяни эти территории как контекст аудитории, маршрута, спроса или выбора, не называя их местонахождением бренда без подтверждения.`
               : "Сохрани уже применённую географию спроса и не подменяй её местонахождением бренда.",
             "Верни только валидный JSON с полями title, body, meta_title, meta_description, editorial_comment.",
+            ...FINAL_QA_RULES,
           ].join("\n"),
           input: JSON.stringify({ brief: JSON.parse(userBrief), current_material: material }),
         });
