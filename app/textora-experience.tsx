@@ -2925,6 +2925,18 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     window.setTimeout(() => document.getElementById("competitors")?.scrollIntoView({ behavior: "smooth", block: "start" }), 40);
   }
 
+  function resetCompetitorSearch() {
+    const next = defaultCompetitors.map((item) => ({ ...item, id: `${item.id}-${Date.now()}`, origin: "manual" as const }));
+    setCompetitors(next);
+    setCompetitorDiscoveryNote("");
+    setCompetitorError("");
+    setCompetitorResult(emptyCompetitorResult);
+    setCompetitorMode("example");
+    setSelectedCompetitorTopicIds([]);
+    setCompetitorNeedsRefresh(false);
+    persistCompetitorWorkspace({ entries: next, result: emptyCompetitorResult, mode: "example", selectedIds: [], needsRefresh: false });
+  }
+
   async function discoverCompetitors() {
     if (aiConnection !== "connected") {
       setCompetitorError("Автопоиск требует подключённого ИИ. КЛИО не придумывает ссылки — добавьте их вручную или подключите серверный AI‑доступ.");
@@ -4250,7 +4262,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </div>
 
                 <div className="competitor-source-list">
-                <div className="competitor-source-head"><div><span>Сайты прямых конкурентов</span><small>Добавьте сайты компаний с сопоставимой услугой или используйте автоматический подбор. Агрегаторы, СМИ и страницы с упоминаниями бренда не подходят.</small></div><button type="button" className={`competitor-discover ${competitorDiscoveryBusy ? "is-busy" : ""}`} onClick={discoverCompetitors} disabled={competitorDiscoveryBusy || aiConnection !== "connected"}><Icon name="spark"/>{competitorDiscoveryBusy ? "Ищем в интернете…" : aiConnection === "connected" ? "Подобрать автоматически" : aiConnection === "checking" ? "Проверяем подключение…" : "Автопоиск не подключён"}</button></div>
+                <div className="competitor-source-head"><div><span>Сайты прямых конкурентов</span><small>Добавьте сайты компаний с сопоставимой услугой или используйте автоматический подбор. Агрегаторы, СМИ и страницы с упоминаниями бренда не подходят.</small></div><div className="competitor-source-actions"><button type="button" className="competitor-reset" onClick={resetCompetitorSearch} disabled={competitorDiscoveryBusy}>Очистить список</button><button type="button" className={`competitor-discover ${competitorDiscoveryBusy ? "is-busy" : ""}`} onClick={discoverCompetitors} disabled={competitorDiscoveryBusy || aiConnection !== "connected"}><Icon name="spark"/>{competitorDiscoveryBusy ? "Ищем в интернете…" : aiConnection === "connected" ? "Подобрать автоматически" : aiConnection === "checking" ? "Проверяем подключение…" : "Автопоиск не подключён"}</button></div></div>
                 {aiConnection === "disconnected" && <p className="competitor-search-status"><i>i</i><span><b>Почему ссылки не подставляются автоматически</b><small>В текущей версии не подключён реальный AI‑доступ к веб‑поиску. Поэтому КЛИО не имитирует поиск и не придумывает адреса: пока используйте ручные ссылки.</small></span></p>}
                 {competitorDiscoveryNote && <p className="competitor-discovery-note"><Icon name="check"/>{competitorDiscoveryNote}</p>}
                 {competitors.map((competitor, index) => <div className="competitor-source-row" key={competitor.id}>

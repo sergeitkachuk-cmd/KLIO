@@ -6757,6 +6757,29 @@ footer nav a {
   font-size: 11px;
 }
 
+.competitor-source-head > .competitor-source-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 9px;
+}
+
+.competitor-reset {
+  min-height: 41px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 11px;
+  color: rgba(255, 255, 255, 0.72);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.competitor-reset:hover { border-color: rgba(124, 58, 237, 0.6); color: #fff; }
+.competitor-reset:disabled { cursor: default; opacity: 0.5; }
+
 .competitor-discover {
   display: inline-flex;
   align-items: center;
@@ -9712,6 +9735,12 @@ footer nav a {
   .competitor-discover {
     width: 100%;
   }
+
+  .competitor-source-head > .competitor-source-actions {
+    width: 100%;
+  }
+
+  .competitor-source-actions > button { flex: 1 1 0; }
 
   .competitor-source-row {
     grid-template-columns: 26px minmax(0, 1fr) 32px;
@@ -17811,6 +17840,13 @@ footer nav a {
   background: linear-gradient(135deg, #2452b8, #3568d4);
   box-shadow: 0 10px 26px rgba(20, 40, 80, 0.18);
 }
+
+[data-theme="light"] .competitor-reset {
+  border-color: rgba(13, 27, 49, 0.18);
+  color: rgba(13, 27, 49, 0.68);
+}
+
+[data-theme="light"] .competitor-reset:hover { border-color: rgba(53, 104, 212, 0.5); color: #0d1b31; }
 
 [data-theme="light"] .competitor-search-status {
   border-color: rgba(53, 104, 212, 0.28);
