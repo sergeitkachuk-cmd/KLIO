@@ -18008,47 +18008,49 @@ footer nav a {
 }
 
 [data-theme="light"] .workspace-history-list .material-article {
-  border-color: rgba(124, 58, 237, 0.42);
-  background: linear-gradient(115deg, #eee7ff 0%, #e4d8ff 62%, #c9b0ff 100%);
+  border-color: #7753ad;
+  background: linear-gradient(115deg, #402b70 0%, #56398e 58%, #8762bd 100%);
 }
 
 [data-theme="light"] .workspace-history-list .material-content_plan {
-  border-color: rgba(13, 148, 136, 0.42);
-  background: linear-gradient(115deg, #dcf7f0 0%, #c5eee4 62%, #80d7c5 100%);
+  border-color: #238b80;
+  background: linear-gradient(115deg, #075d58 0%, #0d756b 58%, #259f8f 100%);
 }
 
 [data-theme="light"] .workspace-history-list .material-semantics {
-  border-color: rgba(202, 138, 4, 0.44);
-  background: linear-gradient(115deg, #fff5c7 0%, #ffeca0 62%, #efc657 100%);
+  border-color: #ae7a1f;
+  background: linear-gradient(115deg, #765009 0%, #966616 58%, #bf8c2d 100%);
 }
 
 [data-theme="light"] .workspace-history-list .material-competitors {
-  border-color: rgba(37, 99, 235, 0.42);
-  background: linear-gradient(115deg, #e2edff 0%, #cadeff 62%, #8bb8ff 100%);
+  border-color: #437fca;
+  background: linear-gradient(115deg, #204f97 0%, #2d67b4 58%, #518ed5 100%);
 }
 
-[data-theme="light"] .workspace-history-list .material-article > div span {
-  border-color: rgba(124, 58, 237, 0.35);
-  color: #5b34a8;
-  background: rgba(255, 255, 255, 0.45);
+[data-theme="light"] .workspace-history-list .material-card,
+[data-theme="light"] .workspace-history-list .material-card h3,
+[data-theme="light"] .workspace-history-list .material-card p,
+[data-theme="light"] .workspace-history-list .material-card footer span,
+[data-theme="light"] .workspace-history-list .material-card > div small {
+  color: rgba(255, 255, 255, 0.9);
 }
 
-[data-theme="light"] .workspace-history-list .material-content_plan > div span {
-  border-color: rgba(13, 148, 136, 0.36);
-  color: #087b6e;
-  background: rgba(255, 255, 255, 0.45);
+[data-theme="light"] .workspace-history-list .material-card h3 {
+  color: #fff;
 }
 
-[data-theme="light"] .workspace-history-list .material-semantics > div span {
-  border-color: rgba(202, 138, 4, 0.4);
-  color: #865800;
-  background: rgba(255, 255, 255, 0.48);
+[data-theme="light"] .workspace-history-list .material-card > div span {
+  border-color: rgba(255, 255, 255, 0.38);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
 }
 
-[data-theme="light"] .workspace-history-list .material-competitors > div span {
-  border-color: rgba(37, 99, 235, 0.36);
-  color: #2158aa;
-  background: rgba(255, 255, 255, 0.46);
+[data-theme="light"] .workspace-history-list .material-card footer {
+  border-top-color: rgba(255, 255, 255, 0.22);
+}
+
+[data-theme="light"] .workspace-history-list .material-card .material-delete {
+  color: rgba(255, 255, 255, 0.72) !important;
 }
 
 [data-theme="light"] .workspace-history-list footer {

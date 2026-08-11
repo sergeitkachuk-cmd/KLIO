@@ -3210,15 +3210,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     }
   }
 
-  // Used by the content-plan "источники" strip: each chip is a shortcut
-  // to the module it reports on, not just a read-only status light —
-  // open that module and scroll it into view instead of leaving people
-  // to hunt for it themselves.
-  function goToModule(id: string, open: () => void) {
-    open();
-    window.setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-  }
-
   function persistContentPlan(options: {
     query?: string;
     goal?: ContentPlanGoal;
@@ -4365,14 +4356,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <div>{CONTENT_PLAN_GOALS.map((goal) => <button type="button" className={contentPlanGoal === goal.id ? "active" : ""} onClick={() => { setContentPlanGoal(goal.id); setContentPlanNeedsRefresh(true); persistContentPlan({ goal: goal.id, needsRefresh: true }); }} key={goal.id}>{goal.label}</button>)}</div>
                   <small>{CONTENT_PLAN_GOALS.find((goal) => goal.id === contentPlanGoal)?.hint}</small>
                 </div>
-
-                <div className="content-plan-source-strip" aria-label="Источники будущего плана">
-                  <button type="button" className={semanticAnalysisReady ? "is-ready" : ""} onClick={() => goToModule("semantics", () => setSemanticOpen(true))}><i>{semanticAnalysisReady ? "✓" : "02"}</i><span><b>Семантика</b><small>{semanticAnalysisReady ? `${selectedSemanticKeywords.length} выбранных фраз` : "можно собрать или пропустить"}</small></span></button>
-                  <button type="button" className={selectedGeoScopes.length ? "is-ready" : ""} onClick={() => goToModule("semantics", () => setSemanticOpen(true))}><i>{selectedGeoScopes.length ? "✓" : "—"}</i><span><b>География</b><small>{selectedGeoScopes.length ? semanticGeoSummary : "вся Россия"}</small></span></button>
-                  <button type="button" className={!competitorNeedsRefresh && selectedCompetitorTopics.length ? "is-ready" : ""} onClick={() => goToModule("competitors", () => setCompetitorOpen(true))}><i>{!competitorNeedsRefresh && selectedCompetitorTopics.length ? "✓" : "+"}</i><span><b>Матрица</b><small>{!competitorNeedsRefresh && selectedCompetitorTopics.length ? `${selectedCompetitorTopics.length} ориентиров` : "необязательно"}</small></span></button>
-                  <button type="button" className={useBrand ? "is-ready" : ""} onClick={() => goToModule("brand-profile", () => setBrandOpen(true))}><i>{useBrand ? "✓" : "—"}</i><span><b>Бренд</b><small>{useBrand ? effectiveBrand.name : "профиль отключён"}</small></span></button>
-                </div>
-                <p className="content-plan-source-hint">Не просто статус — можно кликнуть, чтобы перейти в нужный модуль и заполнить его. Включаются в модулях 01–03 выше.</p>
 
                 <div className="content-plan-controls">
                   <div><span>Количество тем</span><div>{[10, 15, 25].map((value) => <button type="button" className={contentPlanCount === value ? "active" : ""} onClick={() => { setContentPlanCount(value); setContentPlanNeedsRefresh(true); persistContentPlan({ count: value, needsRefresh: true }); }} key={value}>{value}</button>)}</div></div>
