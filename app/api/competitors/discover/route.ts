@@ -28,7 +28,7 @@ type Citation = {
 };
 
 type CandidateSelection = {
-  candidates: { candidate_id: string; segment: "industry_leader" | "regional_competitor" | "market_competitor"; reason: string }[];
+  candidates: { candidate_id: string; name: string; segment: "industry_leader" | "regional_competitor" | "market_competitor"; reason: string }[];
 };
 
 function clean(value: unknown, maxLength: number) {
@@ -243,10 +243,11 @@ function selectionSchema(candidateIds: string[]) {
           type: "object",
           properties: {
             candidate_id: { type: "string", enum: candidateIds },
+            name: { type: "string" },
             segment: { type: "string", enum: ["industry_leader", "regional_competitor", "market_competitor"] },
             reason: { type: "string" },
           },
-          required: ["candidate_id", "segment", "reason"],
+          required: ["candidate_id", "name", "segment", "reason"],
           additionalProperties: false,
         },
       },
@@ -317,7 +318,7 @@ export async function POST(request: Request) {
         seen.add(key);
         return true;
       })
-      .slice(0, 12)
+      .slice(0, 20)
       .map((item, index) => ({ id: `candidate-${index + 1}`, ...item }));
 
     if (pool.length < 2) {
@@ -329,6 +330,7 @@ export async function POST(request: Request) {
     const readablePool = pool.map((item, index) => ({
       id: item.id,
       domain: readableDomain(item.url),
+      search_title: item.title,
       url: item.url,
       search_rank: item.searchRank ?? null,
       status: pageContexts[index].status,
@@ -352,6 +354,7 @@ export async function POST(request: Request) {
         "Опирайся только на переданные URL и page_text. Не угадывай тип страницы. Если подходящих компаний меньше двух, не возвращай неподходящие варианты ради количества.",
         "segment=industry_leader ставь сильному участнику отрасли, заметному в верхней части поисковой выдачи или явно значимому для темы. segment=market_competitor ставь компании, которые ближе всего конкурируют за выбранную аудиторию и запрос. Для каждого кандидата дай короткую причину на основе его страницы. Не выбирай более одной страницы одного домена.",
         "Segment contract: use industry_leader only for a strong company visible in the general search results for this demand. If a target geography is supplied and the page clearly serves that geography, use regional_competitor. Use market_competitor for another direct competitor. These are discovery labels, not a quality score and not a measured SEO position. Do not label an organisation regional only because its postal address happens to be there.",
+        "Select up to five verified direct competitors from the supplied candidates. Return fewer only when fewer than five candidates actually qualify. name must be the familiar company or property name, never a domain name. reason must be one short, plain-language sentence explaining why this company is relevant to the same customer demand; do not write a generic list of its services.",
       ].join("\n"),
       input: JSON.stringify({ comparison_topic: query, active_brand: brand.name ? { name: brand.name, website: brand.website } : null, target_geography: geography, candidates: readablePool }),
     });
@@ -365,7 +368,7 @@ export async function POST(request: Request) {
         const candidate = poolById.get(item.candidate_id)!;
         return {
           id: `ai-${Date.now()}-${selectedIds.size}`,
-          label: readableDomain(candidate.url),
+          label: clean(item.name, 120) || clean(candidate.title, 120) || readableDomain(candidate.url),
           url: candidate.url,
           origin: "ai" as const,
           segment: item.segment,

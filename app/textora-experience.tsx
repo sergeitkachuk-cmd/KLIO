@@ -2971,7 +2971,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
       setCompetitors(next);
       setCompetitorNeedsRefresh(true);
-      setCompetitorDiscoveryNote(`ИИ нашёл ${payload.candidates.length} ${payload.candidates.length === 1 ? "страницу" : payload.candidates.length < 5 ? "страницы" : "страниц"}. Они добавлены в список — при необходимости отредактируйте его и постройте матрицу.`);
+      setCompetitorDiscoveryNote(payload.candidates.length < 5
+        ? `КЛИО добавил ${payload.candidates.length} проверенных прямых конкурента. Сомнительные сайты, агрегаторы и публикации о бренде исключены — при необходимости добавьте ещё компании вручную.`
+        : "КЛИО добавил 5 проверенных прямых конкурентов. При необходимости отредактируйте список и постройте матрицу.");
       persistCompetitorWorkspace({ query: cleanQuery, entries: next, needsRefresh: true });
       showToast(`${payload.candidates.length} страниц конкурентов добавлены из веб‑поиска`);
     } catch (error) {
