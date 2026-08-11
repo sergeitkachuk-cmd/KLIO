@@ -6730,14 +6730,14 @@ footer nav a {
 }
 
 .competitor-serp-card > div { display: grid; gap: 3px; }
-.competitor-serp-card > div > span { color: #fff; font-size: 17px; font-weight: 760; }
-.competitor-serp-card > div > small, .competitor-serp-card > p { color: rgba(255, 255, 255, 0.66); font-size: 13px; line-height: 1.5; }
+.competitor-serp-card > div > span { color: #fff; font-size: 17px; font-weight: 520; }
+.competitor-serp-card > div > small, .competitor-serp-card > p { color: rgba(255, 255, 255, 0.66); font-size: 13px; font-weight: 400; line-height: 1.5; }
 .competitor-serp-card > ol { display: grid; gap: 2px; margin: 16px 0 0; padding: 0; list-style: none; }
 .competitor-serp-card li { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid rgba(255, 255, 255, 0.08); }
-.competitor-serp-card li > b { color: var(--acid); font-size: 16px; text-align: center; }
-.competitor-serp-card li > a { overflow: hidden; color: rgba(255, 255, 255, 0.92); font-size: 16px; font-weight: 650; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+.competitor-serp-card li > b { color: var(--acid); font-size: 16px; font-weight: 560; text-align: center; }
+.competitor-serp-card li > a { overflow: hidden; color: rgba(255, 255, 255, 0.92); font-size: 16px; font-weight: 450; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
 .competitor-serp-card li > a:hover { color: #fff; text-decoration: underline; }
-.competitor-serp-card li > em { padding: 6px 9px; border-radius: 999px; color: rgba(255, 255, 255, 0.72); background: rgba(255, 255, 255, 0.08); font-size: 11px; font-style: normal; font-weight: 650; white-space: nowrap; }
+.competitor-serp-card li > em { padding: 6px 9px; border-radius: 999px; color: rgba(255, 255, 255, 0.72); background: rgba(255, 255, 255, 0.08); font-size: 11px; font-style: normal; font-weight: 500; white-space: nowrap; }
 .competitor-serp-card li > em.is-brand { color: #dfff74; background: rgba(194, 255, 64, 0.12); }
 .competitor-serp-card li > em.is-competitor { color: #d7c5ff; background: rgba(124, 58, 237, 0.22); }
 .competitor-serp-card li > em.is-aggregator { color: #ffd99b; background: rgba(227, 146, 45, 0.16); }
