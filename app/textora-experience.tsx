@@ -1279,8 +1279,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [quickBusy, setQuickBusy] = useState(false);
   const [quickError, setQuickError] = useState("");
   const [generatorUseBrand, setGeneratorUseBrand] = useState(true);
-  const [generatorUseSemantics, setGeneratorUseSemantics] = useState(true);
-  const [generatorUseCompetitors, setGeneratorUseCompetitors] = useState(true);
+  const [generatorUseSemantics, setGeneratorUseSemantics] = useState(false);
+  const [generatorUseCompetitors, setGeneratorUseCompetitors] = useState(false);
   const [selectedCompetitorTopicIds, setSelectedCompetitorTopicIds] = useState<string[]>(
     workspace ? [] : defaultCompetitorResult.topics.filter((item) => item.recommended).map((item) => item.id),
   );
@@ -2098,8 +2098,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setGenerationMode("example");
     setGenerationCoverage(null);
     setGeneratorUseBrand(true);
-    setGeneratorUseSemantics(true);
-    setGeneratorUseCompetitors(true);
+    setGeneratorUseSemantics(false);
+    setGeneratorUseCompetitors(false);
     setQuickPrompt("");
     setQuickError("");
     setGenerationError("");
