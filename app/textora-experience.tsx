@@ -1185,7 +1185,7 @@ function CoverageIcon({ coverage }: { coverage: CompetitorCoverage }) {
 }
 
 function Brand() {
-  return <span className="brand"><i>К</i><b>ЛИО<span aria-hidden="true">.</span></b><small>Цифровая редакция</small></span>;
+  return <span className="brand"><i>К</i><b>КЛИО<span aria-hidden="true">.</span></b><small>Цифровая редакция</small></span>;
 }
 
 function MetricNumber({ value, replay }: { value: number; replay: number }) {
