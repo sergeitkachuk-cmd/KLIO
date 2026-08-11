@@ -3312,7 +3312,7 @@ textarea[data-autosize="true"] {
 .table-head,
 .table-row {
   display: grid;
-  grid-template-columns: 48px minmax(220px, 1fr) 78px 88px;
+  grid-template-columns: 48px minmax(220px, 1fr) 78px 132px;
   align-items: center;
   min-height: 70px;
   padding: 0 22px;
@@ -3345,7 +3345,8 @@ textarea[data-autosize="true"] {
 }
 
 .table-row i {
-  padding: 7px 8px;
+  min-width: 0;
+  padding: 7px 10px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 99px;
   color: rgba(255, 255, 255, 0.58);
@@ -3353,6 +3354,7 @@ textarea[data-autosize="true"] {
   font-size: 12px;
   font-style: normal;
   text-align: center;
+  white-space: nowrap;
 }
 
 .table-row i.done {
@@ -10435,7 +10437,7 @@ footer nav a {
 
   .table-head,
   .table-row {
-    min-width: 650px;
+    min-width: 700px;
   }
 
   .price-card {
