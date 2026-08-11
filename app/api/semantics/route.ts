@@ -34,7 +34,7 @@ async function wordstat(query: string) {
   const folderId = process.env.YANDEX_FOLDER_ID?.trim();
   if (!apiKey || !folderId) throw new AiResponseError("Частотность не подключена: добавьте YANDEX_SEARCH_API_KEY и YANDEX_FOLDER_ID на сервере.", 503);
   const response = await fetch("https://searchapi.api.cloud.yandex.net/v2/wordstat/topRequests", {
-    method: "POST", headers: { Authorization: `Api-Key ${apiKey}`, "Content-Type": "application/json" },
+    method: "POST", headers: { Authorization: `Api-key ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({ phrase: query, numPhrases: 100, devices: ["DEVICE_ALL"], folderId }),
   });
   if (!response.ok) {
