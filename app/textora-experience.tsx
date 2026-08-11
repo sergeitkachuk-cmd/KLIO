@@ -4507,7 +4507,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
     <header className="site-header">
       <a className="wordmark" href="#top" aria-label="КЛИО — на главную"><Brand/></a>
-      <nav><a href="#audience">Для кого</a><a href="#modules">Как работает</a><a href="#plan">Контент‑план</a><a href="#pricing">Тарифы</a><a href="#faq">FAQ</a></nav>
+      <nav><a href="#audience">Для кого</a><a href="#modules">Как работает</a><Link href="/examples">Примеры задач</Link><a href="#plan">Контент‑план</a><a href="#pricing">Тарифы</a><a href="#faq">FAQ</a></nav>
       <div>
         <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"} title={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"}><Icon name={theme === "dark" ? "sun" : "moon"}/></button>
         <Link className="button ghost" href="/login">Войти</Link><Link className="button primary" href="/signup">Попробовать</Link>
@@ -4591,7 +4591,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         <div className="magazine-scene" aria-hidden="true"><div className="magazine-spread"><div className="magazine-page magazine-left"><span>КЛИО / 01</span><b>Слова,<br/>которые<br/><em>видят.</em></b><i>Цифровая редакция для бизнеса</i></div><div className="magazine-fold"/><div className="magazine-page magazine-right"><span>Материал номера</span><div className="magazine-photo"><u/><small>Спрос → смысл → публикация</small></div><p>Контент, собранный на основе данных и голоса вашего бренда.</p><strong>КЛИО</strong></div></div></div>
       </div>
     </section>
-    <footer><a className="wordmark" href="#top"><Brand/></a><p>Контент‑платформа для бизнеса, экспертов и агентств.</p><nav><a href="#modules">Возможности</a><a href="#plan">Контент‑план</a><a href="#pricing">Тарифы</a></nav><small>© 2026 КЛИО</small></footer>
+    <footer><a className="wordmark" href="#top"><Brand/></a><p>Контент‑платформа для бизнеса, экспертов и агентств.</p><nav><a href="#modules">Возможности</a><Link href="/examples">Примеры задач</Link><a href="#plan">Контент‑план</a><a href="#pricing">Тарифы</a></nav><small>© 2026 КЛИО</small></footer>
     {toast && <div className="toast" role="status"><Icon name="check"/><span>{toast}</span></div>}
   </main>;
 }
