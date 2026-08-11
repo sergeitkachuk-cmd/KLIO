@@ -4273,7 +4273,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </div>
 
               {competitorSerp.length > 0 && <div className="competitor-serp-card">
-                <div><span>Топ‑10 по текущему запросу</span><small>Снимок поисковой выдачи: это позиции сайтов, а не оценка качества компаний.</small></div>
+                <div><span>Топ‑10 поисковой выдачи</span><small>Здесь видны все результаты по запросу: ваш сайт, площадки продаж, карты, отзывы и другие страницы. Это не список отраслевых конкурентов для матрицы.</small></div>
                 <ol>{competitorSerp.map((item) => <li key={`${item.rank}-${item.url}`}><b>{item.rank}</b><a href={item.url} target="_blank" rel="noreferrer">{item.title}</a><em className={`is-${item.kind}`}>{item.kind === "brand" ? "ваш сайт" : item.kind === "competitor" ? "в анализе" : item.kind === "aggregator" ? "площадка продаж" : item.kind === "candidate" ? "не в анализе" : "не в анализе"}</em></li>)}</ol>
                 {!competitorSerp.some((item) => item.kind === "brand") && <p>Ваш сайт не найден в первых 10 результатах по этому запросу.</p>}
               </div>}
