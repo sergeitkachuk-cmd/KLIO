@@ -136,19 +136,25 @@ function materialFromRecord(parsed: Record<string, unknown>): AdaptedMaterial | 
   };
 }
 
-function adaptationHasViolation(
+function adaptationViolationReason(
   input: ReturnType<typeof normalizePayload>,
   material: AdaptedMaterial,
 ) {
   const sourceWords = Math.max(1, wordCount(input.sourceText));
   const resultWords = wordCount(material.body);
-  if (deepRewriteGoals.has(input.goal) && similarity(input.sourceText, material.body) > 0.82) return true;
-  if (/^(?:Что получает читатель|Условия и следующий шаг)$/im.test(material.body)) return true;
-  if (input.goal === "social" && (resultWords < 60 || resultWords > 220)) return true;
-  if (input.goal === "ads" && (resultWords < 30 || resultWords > 120)) return true;
-  if (input.goal === "cold_email" && (resultWords < 45 || resultWords > 190)) return true;
-  if (input.goal === "shorten" && (resultWords / sourceWords < 0.38 || resultWords / sourceWords > 0.68)) return true;
-  return false;
+  if (deepRewriteGoals.has(input.goal) && similarity(input.sourceText, material.body) > 0.82) return "Версия слишком похожа на исходник для выбранного сценария.";
+  if (/^(?:Что получает читатель|Условия и следующий шаг)$/im.test(material.body)) return "В тексте появился служебный шаблонный заголовок.";
+  if (input.goal === "social" && (resultWords < 60 || resultWords > 220)) return "Длина публикации для социальных сетей должна быть от 60 до 220 слов.";
+  if (input.goal === "ads" && (resultWords < 30 || resultWords > 120)) return "Длина рекламного текста должна быть от 30 до 120 слов.";
+  if (input.goal === "cold_email" && (resultWords < 45 || resultWords > 190)) return "Длина холодного письма должна быть от 45 до 190 слов.";
+  if (input.goal === "shorten" && (resultWords / sourceWords < 0.45 || resultWords / sourceWords > 0.6)) {
+    return `Режим «Сжатие» требует 45–60% от исходника: ${sourceWords} слов в исходнике, нужно от ${Math.ceil(sourceWords * 0.45)} до ${Math.floor(sourceWords * 0.6)} слов в результате, сейчас ${resultWords}.`;
+  }
+  return null;
+}
+
+function adaptationHasViolation(input: ReturnType<typeof normalizePayload>, material: AdaptedMaterial) {
+  return Boolean(adaptationViolationReason(input, material));
 }
 
 export async function POST(request: Request) {
@@ -175,6 +181,9 @@ export async function POST(request: Request) {
     const transformationDirective = deepRewriteGoals.has(input.goal)
       ? "Создай самостоятельную редакторскую версию: измени композицию, порядок подачи и формулировки в объёме, необходимом для выбранного сценария."
       : "Выполни точечную редактуру в границах выбранного сценария: сохраняй удачные фрагменты, композицию и объём там, где их изменение не требуется задачей.";
+    const shortenLengthDirective = input.goal === "shorten"
+      ? `В режиме «Сжатие» длина поля body обязательна: от ${Math.ceil(wordCount(input.sourceText) * 0.45)} до ${Math.floor(wordCount(input.sourceText) * 0.6)} слов (45–60% от ${wordCount(input.sourceText)} слов исходника). Проверь число слов перед ответом.`
+      : "";
     const adaptationBrief = {
       target: goalLabels[input.goal],
       adaptation_contract: {
@@ -208,6 +217,7 @@ export async function POST(request: Request) {
           ...CORE_SYSTEM_RULES,
           ...ADAPTATION_CORE_RULES,
           transformationDirective,
+          shortenLengthDirective,
           `Соблюдай выбранную интонацию «${input.tone}»:`,
           ...toneRules,
           ...TONE_SYSTEM_RULES,
@@ -249,6 +259,7 @@ export async function POST(request: Request) {
             `Сохрани авторскую позицию: ${input.authorPosition}.`,
             ...authorPositionRules(input.authorPosition),
             transformationDirective,
+            shortenLengthDirective,
             ...FINAL_QA_RULES,
             "Запрещены заголовки «Что получает читатель» и «Условия и следующий шаг».",
           ].join("\n"),
@@ -256,7 +267,7 @@ export async function POST(request: Request) {
             brief: adaptationBrief,
             rejected_material: material ?? null,
             validation_failure: material
-              ? "Материал нарушил ограничения выбранного сценария."
+              ? adaptationViolationReason(input, material) ?? "Материал нарушил ограничения выбранного сценария."
               : "Обязательные поля title и body отсутствуют или пусты.",
           }),
         });
