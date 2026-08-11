@@ -16382,6 +16382,29 @@ footer nav a {
   box-shadow: 0 6px 16px rgba(53, 104, 212, 0.14), inset 0 1px rgba(255, 255, 255, 0.82);
 }
 
+/* The generator's advanced toggle lives in a dark-native brief panel.
+   Override its white copy and acid control explicitly for light mode. */
+[data-theme="light"] .brief-panel .generator-advanced-toggle {
+  border-color: rgba(53, 104, 212, 0.26);
+  color: #0d1b31;
+  background: linear-gradient(120deg, rgba(220, 232, 250, 0.92), rgba(241, 246, 253, 0.86));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.82), 0 9px 22px rgba(53, 104, 212, 0.08);
+}
+
+[data-theme="light"] .brief-panel .generator-advanced-toggle b {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .brief-panel .generator-advanced-toggle small {
+  color: rgba(13, 27, 49, 0.62);
+}
+
+[data-theme="light"] .brief-panel .generator-advanced-toggle > i {
+  border: 1px solid rgba(53, 104, 212, 0.34);
+  color: #2452b8;
+  background: linear-gradient(135deg, #d4e3ff, #e5f4f3);
+}
+
 [data-theme="light"] .content-plan-goal > small {
   color: rgba(13, 27, 49, 0.6);
 }
