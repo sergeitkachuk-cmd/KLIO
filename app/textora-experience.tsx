@@ -3044,8 +3044,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         error?: string;
         candidates?: CompetitorEntry[];
         serp?: CompetitorSerpItem[];
+        usage?: { account?: WorkspaceAccount } | null;
       };
       if (!response.ok || !payload.candidates?.length) throw new Error(payload.error || "ИИ не нашёл подходящие страницы.");
+      if (payload.usage?.account) setWorkspaceAccount(payload.usage.account);
 
       // Keep only what the visitor typed themselves — re-running discovery
       // is a request for fresh candidates. Previously this kept *every*

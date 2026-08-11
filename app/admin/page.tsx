@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { desc, sql } from "drizzle-orm";
 import { getCurrentUser } from "../identity";
 import { isAdminEmail } from "../api/_lib/admin";
+import type { AiOperation } from "../api/_lib/ai-config";
 import { getDb } from "../../db";
 import { accounts, aiUsage, brands } from "../../db/schema";
 import { planRule } from "../plans";
@@ -35,7 +36,10 @@ function formatNumber(value: number): string {
   return value.toLocaleString("ru-RU");
 }
 
-const OPERATION_LABELS: Record<string, string> = {
+// Typed against AiOperation so adding a new operation to ai-config.ts
+// without a matching label here is a compile error, not a silent
+// snake_case fallback in the table.
+const OPERATION_LABELS: Record<AiOperation, string> = {
   generate_seo_article: "Генерация: SEO-статья",
   generate_social_post: "Генерация: соцсети",
   generate_ad_copy: "Генерация: реклама",
@@ -48,8 +52,10 @@ const OPERATION_LABELS: Record<string, string> = {
   discover_competitors: "Поиск конкурентов",
   analyze_competitors: "Матрица конкурентов",
   revise_content: "Коррекция черновика",
+  analyze_brand_website: "Анализ сайта бренда",
   normalize_quick_brief: "Разбор брифа (nano)",
   validate_content: "Проверка качества (nano)",
+  condense_overflow: "Сжатие переполнения (nano)",
 };
 
 export default async function AdminPage() {
@@ -174,7 +180,7 @@ export default async function AdminPage() {
           <tbody>
             {byOperationRows.map((row) => (
               <tr key={row.operation}>
-                <td>{OPERATION_LABELS[row.operation] ?? row.operation}</td>
+                <td>{OPERATION_LABELS[row.operation as AiOperation] ?? row.operation}</td>
                 <td>{formatNumber(num(row.totalCalls))}</td>
                 <td>{formatUsd(num(row.totalCostUsd))}</td>
               </tr>

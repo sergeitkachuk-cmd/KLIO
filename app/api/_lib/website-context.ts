@@ -91,6 +91,40 @@ function extractWebsiteText(html: string) {
   return [...new Set([...title, ...description, ...headings, ...content])].join("\n").slice(0, 14_000);
 }
 
+const MAX_REDIRECTS = 5;
+
+// Follows redirects manually (redirect: "manual") so every hop — not just
+// the URL the visitor typed — is re-checked against normalizePublicUrl().
+// With redirect: "follow", a public-looking URL that later 30x's to a
+// private/internal address (loopback, link-local metadata, LAN) would be
+// fetched server-side without ever re-running the private-IP guard.
+async function fetchPublicHtml(url: URL) {
+  let current = url;
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
+    const response = await fetch(current, {
+      method: "GET",
+      redirect: "manual",
+      headers: {
+        Accept: "text/html,application/xhtml+xml",
+        "User-Agent": "KLIO-Brand-Context/1.0",
+      },
+      signal: AbortSignal.timeout(4_500),
+    });
+
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+      if (!location) return response;
+      const next = normalizePublicUrl(new URL(location, current).toString());
+      if (!next) return null;
+      current = next;
+      continue;
+    }
+
+    return response;
+  }
+  return null;
+}
+
 export async function readWebsiteContext(value: string): Promise<WebsiteContext> {
   const requestedUrl = value.trim();
   if (!requestedUrl) return EMPTY_CONTEXT;
@@ -98,15 +132,8 @@ export async function readWebsiteContext(value: string): Promise<WebsiteContext>
   if (!url) return { ...EMPTY_CONTEXT, requestedUrl, status: "blocked" };
 
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      redirect: "follow",
-      headers: {
-        Accept: "text/html,application/xhtml+xml",
-        "User-Agent": "KLIO-Brand-Context/1.0",
-      },
-      signal: AbortSignal.timeout(4_500),
-    });
+    const response = await fetchPublicHtml(url);
+    if (!response) return { ...EMPTY_CONTEXT, requestedUrl, resolvedUrl: url.toString(), status: "blocked" };
     const contentType = response.headers.get("content-type") || "";
     if (!response.ok || !/text\/html|application\/xhtml\+xml/i.test(contentType)) {
       return { ...EMPTY_CONTEXT, requestedUrl, resolvedUrl: response.url || url.toString(), status: "unavailable" };

@@ -558,8 +558,10 @@ export async function POST(request: Request) {
       }, { status: 503 });
     }
 
-    const identity = await workspaceIdentity();
-    const website = input.useBrand ? await readWebsiteContext(input.brand.website) : await readWebsiteContext("");
+    const [identity, website] = await Promise.all([
+      workspaceIdentity(),
+      readWebsiteContext(input.useBrand ? input.brand.website : ""),
+    ]);
     const operation = FORMAT_OPERATION[input.format];
     const formatPlan = FORMAT_PLANS[input.format];
     const selectedToneRules = toneRules(input.tone);

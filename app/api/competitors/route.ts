@@ -252,9 +252,8 @@ export async function POST(request: Request) {
 
     const topics = aiResult.topics.map((topic, index) => {
       const coverage = Object.fromEntries(
-        sources.map((source) => {
+        sources.map((source, sourceIndex) => {
           const match = topic.competitor_coverage.find((item) => item.competitor_id === source.id);
-          const sourceIndex = sources.findIndex((item) => item.id === source.id);
           return [source.id, verifiedCoverage(match?.coverage, match?.evidence ?? "", competitorWebsites[sourceIndex]?.text ?? "", source.status === "loaded")];
         }),
       ) as Record<string, CompetitorCoverage>;
@@ -294,7 +293,7 @@ export async function POST(request: Request) {
     const gaps = topics.filter((topic) => topic.recommended).slice(0, 5).map((topic) => topic.title);
     const suggestedStructure = topics
       .filter((topic) => topic.recommended)
-      .sort((left, right) => (left.priority === "Высокий" ? -1 : 0) - (right.priority === "Высокий" ? -1 : 0))
+      .sort((left, right) => Number(right.priority === "Высокий") - Number(left.priority === "Высокий"))
       .slice(0, 6)
       .map((topic) => topic.title);
     const loadedCount = loadedSources.length;

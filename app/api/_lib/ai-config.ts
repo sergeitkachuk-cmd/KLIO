@@ -140,7 +140,7 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   condense_overflow: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 8_000, structuredOutput: true, retryable: true, useWebSearch: false },
 };
 
-// adapt_text's 12 KLIO editor goals (see app/content-plans.ts
+// adapt_text's 14 KLIO editor goals (see app/content-plans.ts
 // ADAPTATION_PLANS) don't share one reasoning weight — a spelling pass
 // and a full SEO rebuild are not the same amount of work.
 const ADAPT_GOAL_REASONING: Record<string, ReasoningEffort> = {
@@ -152,10 +152,15 @@ const ADAPT_GOAL_REASONING: Record<string, ReasoningEffort> = {
   social: "none",
   ads: "none",
   cold_email: "none",
+  // Mechanical restyling of an existing draft — same weight as shorten/social.
+  change_tone: "none",
   rewrite: "low",
   review: "low",
   landing: "low",
   seo: "low",
+  // Judgement call (match lexicon/rhythm to the brand profile without
+  // inventing voice from an empty one) comparable to rewrite/review.
+  brand_voice: "low",
 };
 
 export function adaptationReasoningEffort(goal: string): ReasoningEffort {

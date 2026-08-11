@@ -157,7 +157,11 @@ async function requestOnce(params: {
   includeSources?: boolean;
 }) {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) throw new AiCallError("ИИ пока не подключён. Добавьте OPENAI_API_KEY на сервере.", 503);
+  if (!apiKey) {
+    const error = new AiCallError("ИИ пока не подключён. Добавьте OPENAI_API_KEY на сервере.", 503);
+    (error as { configError?: boolean }).configError = true;
+    throw error;
+  }
 
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
@@ -287,7 +291,12 @@ export async function callAiModel<T = Record<string, unknown>>(
       lastError = error;
       const isTransient = error instanceof AiCallError && (error as { transient?: boolean }).transient;
       const isInvalidOutput = error instanceof AiCallError && (error as { invalidOutput?: boolean }).invalidOutput;
-      const isAuthOrConfig = error instanceof AiCallError && (error.status === 401 || error.status === 403 || error.status === 503);
+      // Note: a genuine transient 503 from OpenAI (server.status >= 500 in
+      // requestOnce) also carries status 503, but only the missing-API-key
+      // case is marked configError — that's the only 503 that should skip
+      // retry/fallback outright.
+      const isAuthOrConfig = error instanceof AiCallError
+        && (error.status === 401 || error.status === 403 || (error.status === 503 && (error as { configError?: boolean }).configError === true));
       // Auth/config errors (bad key, missing key) never retry or fall back.
       if (isAuthOrConfig) break;
 

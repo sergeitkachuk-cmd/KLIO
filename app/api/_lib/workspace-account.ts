@@ -45,7 +45,7 @@ export async function ensureAccount(user: ChatGPTUser) {
     [account] = await db.insert(accounts).values({
       email: user.email,
       displayName: user.displayName,
-      planId: "pro",
+      planId: "start",
       generationMonth: currentMonth,
       generationsUsed: 0,
       researchUsed: 0,

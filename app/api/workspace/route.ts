@@ -6,6 +6,7 @@ import {
   ensureAccount,
   getWorkspaceDb,
   workspaceDatabaseAvailable,
+  WorkspaceAccessError,
   workspaceErrorResponse,
   workspaceIdentity,
 } from "../_lib/workspace-account";
@@ -59,7 +60,7 @@ function cleanProfile(value: unknown) {
 function cleanWorkspace(value: unknown) {
   if (!value || typeof value !== "object") return {};
   const serialized = JSON.stringify(value);
-  if (serialized.length > 240_000) throw new Error("Рабочее состояние бренда превышает допустимый объём.");
+  if (serialized.length > 240_000) throw new WorkspaceAccessError("Рабочее состояние бренда превышает допустимый объём.", 400);
   return JSON.parse(serialized);
 }
 
@@ -82,8 +83,8 @@ function cleanSavedMaterial(value: unknown) {
   const type = clean(source.type, 40);
   const payload = source.payload && typeof source.payload === "object" ? source.payload : {};
   const payloadJson = JSON.stringify(payload);
-  if (!MATERIAL_TYPES.has(type)) throw new Error("Неизвестный тип материала.");
-  if (payloadJson.length > 240_000) throw new Error("Материал превышает допустимый объём.");
+  if (!MATERIAL_TYPES.has(type)) throw new WorkspaceAccessError("Неизвестный тип материала.", 400);
+  if (payloadJson.length > 240_000) throw new WorkspaceAccessError("Материал превышает допустимый объём.", 400);
   return {
     brandId: clean(source.brandId, 100),
     sourceId: clean(source.sourceId, 100),

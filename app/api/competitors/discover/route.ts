@@ -1,5 +1,5 @@
 import { AiCallError, callAiModel } from "../../_lib/ai-router";
-import { workspaceIdentity } from "../../_lib/workspace-account";
+import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../../_lib/workspace-account";
 import { readWebsiteContext } from "../../_lib/website-context";
 
 type BrandInput = {
@@ -283,6 +283,11 @@ export async function POST(request: Request) {
       return Response.json({ error: "Укажите тему либо заполните описание и позиционирование бренда." }, { status: 400 });
     }
 
+    // Two real Luna calls (one with forced web_search) plus a Yandex Search
+    // call and up to 20 page fetches per request — metered like every other
+    // research route so this endpoint can't be looped for unbounded spend.
+    await assertSecondaryQuotaAvailable("research");
+
     if (!process.env.OPENAI_API_KEY?.trim()) {
       return Response.json({ error: "Автоподбор требует подключённого AI‑доступа. Пока добавьте ссылки вручную." }, { status: 503 });
     }
@@ -296,25 +301,35 @@ export async function POST(request: Request) {
 
     let responseBody: unknown;
     let model = "";
+    let yandexResults: Citation[] = [];
     try {
-      const call = await callAiModel({
-        operation: "discover_competitors",
-        ownerEmail: identity.email,
-        toolChoice: "required",
-        includeSources: true,
-        instructions: [
-          "Ты находишь прямых контентных конкурентов для сравнительной матрицы КЛИО.",
-          "Обязательно выполни веб‑поиск по категории, услуге и поисковому интенту, а не только по названию бренда. Найди 5–10 открытых страниц реальных компаний по той же теме.",
-          "Нужны именно страницы продуктов, услуг, программ или содержательные тематические страницы прямых конкурентов.",
-          "Не предлагай сайт бренда, его зеркала, страницы с упоминанием бренда, поисковую выдачу, агрегаторы, каталоги, карты, соцсети, энциклопедии, отзывы, новости и редакционные публикации.",
-          "Если география указана, используй её как территорию целевого спроса, а не как неподтверждённое местонахождение бренда.",
-          "Для каждого кандидата напиши отдельный короткий пункт: название страницы и почему она релевантна. Каждый пункт обязан содержать кликабельную веб‑цитату.",
-          "Не придумывай адреса и не перечисляй страницы, которые не были найдены веб‑поиском.",
-        ].join("\n"),
-        input: `Найди страницы конкурентов по этому брифу:\n${brief}`,
-      });
+      // yandexSearch never throws (it catches internally and resolves to
+      // []), so Promise.all's rejection can only come from callAiModel —
+      // the catch below keeps the exact same AiCallError handling as before,
+      // it just no longer waits for the AI call before starting the
+      // independent Yandex Search request.
+      const [call, yandex] = await Promise.all([
+        callAiModel({
+          operation: "discover_competitors",
+          ownerEmail: identity.email,
+          toolChoice: "required",
+          includeSources: true,
+          instructions: [
+            "Ты находишь прямых контентных конкурентов для сравнительной матрицы КЛИО.",
+            "Обязательно выполни веб‑поиск по категории, услуге и поисковому интенту, а не только по названию бренда. Найди 5–10 открытых страниц реальных компаний по той же теме.",
+            "Нужны именно страницы продуктов, услуг, программ или содержательные тематические страницы прямых конкурентов.",
+            "Не предлагай сайт бренда, его зеркала, страницы с упоминанием бренда, поисковую выдачу, агрегаторы, каталоги, карты, соцсети, энциклопедии, отзывы, новости и редакционные публикации.",
+            "Если география указана, используй её как территорию целевого спроса, а не как неподтверждённое местонахождение бренда.",
+            "Для каждого кандидата напиши отдельный короткий пункт: название страницы и почему она релевантна. Каждый пункт обязан содержать кликабельную веб‑цитату.",
+            "Не придумывай адреса и не перечисляй страницы, которые не были найдены веб‑поиском.",
+          ].join("\n"),
+          input: `Найди страницы конкурентов по этому брифу:\n${brief}`,
+        }),
+        yandexSearch(marketQuery(query, brand)),
+      ]);
       responseBody = call.rawResponse;
       model = call.model;
+      yandexResults = yandex;
     } catch (error) {
       if (error instanceof AiCallError) {
         return Response.json({ error: error.message }, { status: error.status });
@@ -323,7 +338,6 @@ export async function POST(request: Request) {
     }
 
     const brandDomain = domainOf(brand.website);
-    const yandexResults = await yandexSearch(marketQuery(query, brand));
     const seen = new Set<string>();
     const pool = [...yandexResults, ...citationsFromResponse(responseBody)]
       .filter((item) => isDirectCandidate(item.url, brandDomain))
@@ -420,8 +434,10 @@ export async function POST(request: Request) {
       };
     });
 
-    return Response.json({ candidates, serp, mode: "ai", model: selection.model || model });
+    const usage = await recordResearch();
+    return Response.json({ candidates, serp, mode: "ai", model: selection.model || model, usage });
   } catch (error) {
+    if (error instanceof WorkspaceAccessError) return workspaceErrorResponse(error);
     console.error("Competitor discovery route failed", error);
     return Response.json({ error: "Не удалось выполнить поиск конкурентов. Попробуйте ещё раз или добавьте ссылки вручную." }, { status: 500 });
   }

@@ -68,8 +68,7 @@ export async function POST(request: Request) {
 
     await assertSecondaryQuotaAvailable("research");
     if (!process.env.OPENAI_API_KEY?.trim()) throw new AiNotConfiguredError();
-    const identity = await workspaceIdentity();
-    const website = await readWebsiteContext(input.website);
+    const [identity, website] = await Promise.all([workspaceIdentity(), readWebsiteContext(input.website)]);
     if (website.status === "blocked") {
       return Response.json({ error: "Этот адрес сайта отклонён проверкой безопасности. Проверьте ссылку и попробуйте снова." }, { status: 400 });
     }

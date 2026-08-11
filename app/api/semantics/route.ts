@@ -133,8 +133,7 @@ export async function POST(request: Request) {
     });
     const seeds = [query, ...seedPlan.result.seeds.map((item) => clean(item, 180))].filter(Boolean)
       .filter((item, index, all) => all.findIndex((candidate) => normalize(candidate) === normalize(item)) === index).slice(0, 6);
-    const collected: Array<{ phrase: string; frequency: number }> = [];
-    for (const seed of seeds) collected.push(...await wordstat(seed, searchRegion.ids));
+    const collected = (await Promise.all(seeds.map((seed) => wordstat(seed, searchRegion.ids)))).flat();
     const counts = new Map<string, number>();
     for (const candidate of collected) {
       const key = normalize(candidate.phrase);
