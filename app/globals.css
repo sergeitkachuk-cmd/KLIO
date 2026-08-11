@@ -6751,6 +6751,75 @@ footer nav a {
   background: rgba(255, 255, 255, 0.035);
 }
 
+.competitor-serp-recommendation {
+  display: grid;
+  gap: 5px;
+  margin: 0 30px 10px;
+  padding: 14px 16px;
+  border: 1px solid rgba(216, 255, 101, 0.28);
+  border-radius: 13px;
+  color: #fff;
+  background: rgba(216, 255, 101, 0.08);
+}
+
+.competitor-serp-recommendation > span {
+  color: var(--acid);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.competitor-serp-recommendation > b {
+  font-size: 16px;
+  font-weight: 520;
+}
+
+.competitor-serp-recommendation > small {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.competitor-serp-disclosure {
+  margin: 0 30px 24px;
+}
+
+.competitor-serp-disclosure > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 2px;
+  color: rgba(255, 255, 255, 0.74);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  list-style: none;
+}
+
+.competitor-serp-disclosure > summary::-webkit-details-marker { display: none; }
+.competitor-serp-disclosure > summary::before { content: "+"; color: var(--acid); font-size: 18px; line-height: 1; }
+.competitor-serp-disclosure[open] > summary::before { content: "−"; }
+.competitor-serp-disclosure > summary > span { color: rgba(255, 255, 255, 0.48); font-size: 11px; }
+.competitor-serp-disclosure .competitor-serp-card { margin: 4px 0 0; }
+
+@media (max-width: 640px) {
+  .competitor-serp-recommendation,
+  .competitor-serp-disclosure {
+    margin-inline: 18px;
+  }
+
+  .competitor-serp-card li {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .competitor-serp-card li > em {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
 .competitor-serp-card > div { display: grid; gap: 3px; }
 .competitor-serp-card > div > span { color: #fff; font-size: 17px; font-weight: 520; }
 .competitor-serp-card > div > small, .competitor-serp-card > p { color: rgba(255, 255, 255, 0.66); font-size: 13px; font-weight: 400; line-height: 1.5; }
@@ -17823,6 +17892,11 @@ footer nav a {
 [data-theme="light"] .competitor-market-scope small { color: rgba(13, 27, 49, 0.58); }
 
 [data-theme="light"] .competitor-serp-card { border-color: rgba(13, 27, 49, 0.14); background: rgba(255, 255, 255, 0.58); }
+[data-theme="light"] .competitor-serp-recommendation { border-color: rgba(53, 104, 212, 0.22); color: #0d1b31; background: rgba(53, 104, 212, 0.08); }
+[data-theme="light"] .competitor-serp-recommendation > span { color: #2452b8; }
+[data-theme="light"] .competitor-serp-recommendation > small { color: rgba(13, 27, 49, 0.64); }
+[data-theme="light"] .competitor-serp-disclosure > summary { color: rgba(13, 27, 49, 0.7); }
+[data-theme="light"] .competitor-serp-disclosure > summary > span { color: rgba(13, 27, 49, 0.48); }
 [data-theme="light"] .competitor-serp-card > div > span { color: #0d1b31; }
 [data-theme="light"] .competitor-serp-card > div > small, [data-theme="light"] .competitor-serp-card > p { color: rgba(13, 27, 49, 0.58); }
 [data-theme="light"] .competitor-serp-card li { border-top-color: rgba(13, 27, 49, 0.1); }

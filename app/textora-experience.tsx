@@ -1569,6 +1569,31 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     () => competitorResult.topics.filter(isCompetitorArticleOpportunity),
     [competitorResult.topics],
   );
+  const competitorSerpRecommendation = useMemo(() => {
+    const brandRank = competitorSerp.find((item) => item.kind === "brand")?.rank;
+    const directCompetitors = competitorSerp.filter((item) => item.kind === "competitor").length;
+    const salesPlatforms = competitorSerp.filter((item) => item.kind === "aggregator").length;
+    if (brandRank && brandRank <= 3) return {
+      title: `Ваш сайт уже в верхней части выдачи — позиция ${brandRank}`,
+      text: "Не создавайте дубль страницы под этот же запрос. Матрица ниже поможет проверить, есть ли смысл усилить существующую страницу или перейти к другому кластеру.",
+    };
+    if (brandRank) return {
+      title: `Ваш сайт найден на позиции ${brandRank}`,
+      text: "Проверьте в матрице, чего не хватает вашей странице. Если разрывов нет, для роста лучше выбрать другой поисковый кластер, а не писать похожую статью.",
+    };
+    if (directCompetitors > 0) return {
+      title: "Ваш сайт не попал в первые 10 результатов",
+      text: "В выдаче есть прямые конкуренты. Сначала проверьте в матрице, есть ли подтверждённый смысловой разрыв; только тогда создавайте новый материал.",
+    };
+    if (salesPlatforms >= 3) return {
+      title: "В выдаче преобладают площадки продаж",
+      text: "По этому запросу люди чаще ищут бронирование или сравнение предложений, а не статью. Проверьте карточки и условия продаж; для контента выберите более информационный запрос.",
+    };
+    return {
+      title: "Ваш сайт не найден в первых 10 результатах",
+      text: "Проверьте, какую задачу решают страницы в выдаче, и выберите подходящий поисковый кластер в семантике. Матрица подскажет, есть ли тема для нового материала.",
+    };
+  }, [competitorSerp]);
   const generatorBrandReady = useBrand && Boolean(effectiveBrand.name.trim());
   const generatorSemanticsReady = semanticAnalysisReady && selectedSemanticKeywords.length > 0;
   const generatorCompetitorsReady = competitorMode !== "example" && !competitorNeedsRefresh && selectedCompetitorArticleTopics.length > 0;
@@ -4310,11 +4335,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <small>{competitorMarketScope === "national" ? "Подходит для онлайн-сервисов и брендов, которые работают по всей России." : "Можно указать регион самостоятельно. Данные из семантики и профиля только подставляются для удобства."}</small>
               </div>
 
-              {competitorSerp.length > 0 && <div className="competitor-serp-card">
-                <div><span>Топ‑10 поисковой выдачи</span><small>Здесь видны все результаты по запросу: ваш сайт, площадки продаж, карты, отзывы и другие страницы. Это не список отраслевых конкурентов для матрицы.</small></div>
+              {competitorSerp.length > 0 && <><div className="competitor-serp-recommendation"><span>Что делать с этой выдачей</span><b>{competitorSerpRecommendation.title}</b><small>{competitorSerpRecommendation.text}</small></div><details className="competitor-serp-disclosure"><summary>Посмотреть результаты поиска <span>Top‑10</span></summary><div className="competitor-serp-card">
+                <div><span>Результаты по текущему запросу</span><small>Это снимок выдачи: здесь могут быть ваш сайт, площадки продаж, карты, отзывы и другие страницы. Это не список конкурентов для матрицы.</small></div>
                 <ol>{competitorSerp.map((item) => <li key={`${item.rank}-${item.url}`}><b>{item.rank}</b><a href={item.url} target="_blank" rel="noreferrer">{item.title}</a><em className={`is-${item.kind}`}>{item.kind === "brand" ? "ваш сайт" : item.kind === "competitor" ? "прямой конкурент" : item.kind === "aggregator" ? "площадка продаж" : item.kind === "candidate" ? "не отобран для матрицы" : "другой результат выдачи"}</em></li>)}</ol>
-                {!competitorSerp.some((item) => item.kind === "brand") && <p>Ваш сайт не найден в первых 10 результатах по этому запросу.</p>}
-              </div>}
+              </div></details></>}
 
                 <div className="competitor-source-list">
                 <div className="competitor-source-head"><div><span>Сайты прямых конкурентов</span><small>Добавьте сайты компаний с сопоставимой услугой или используйте автоматический подбор. Агрегаторы, СМИ и страницы с упоминаниями бренда не подходят.</small></div><div className="competitor-source-actions"><button type="button" className="competitor-reset" onClick={resetCompetitorSearch} disabled={competitorDiscoveryBusy}>Очистить список</button><button type="button" className={`competitor-discover ${competitorDiscoveryBusy ? "is-busy" : ""}`} onClick={discoverCompetitors} disabled={competitorDiscoveryBusy || aiConnection !== "connected"}><Icon name="spark"/>{competitorDiscoveryBusy ? "Ищем в интернете…" : aiConnection === "connected" ? "Подобрать автоматически" : aiConnection === "checking" ? "Проверяем подключение…" : "Автопоиск не подключён"}</button></div></div>
