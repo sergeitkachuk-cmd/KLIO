@@ -43,6 +43,7 @@ type ContentPlanPayload = {
   geography?: unknown;
   competitorInsights?: unknown;
   brand?: unknown;
+  existingTitles?: unknown;
 };
 
 type ContentPlanGoal = "mixed" | "seo" | "social" | "landing" | "ads";
@@ -95,10 +96,18 @@ function cleanPlanTitle(value: string) {
     .trim();
 }
 
+function titleKey(value: string) {
+  return cleanPlanTitle(value)
+    .toLocaleLowerCase("ru-RU")
+    .replace(/ё/g, "е")
+    .replace(/[^a-zа-я0-9]+/gi, " ")
+    .trim();
+}
+
 const CONTENT_PLAN_GOALS = new Set<ContentPlanGoal>(["mixed", "seo", "social", "landing", "ads"]);
 
 function normalizePayload(raw: ContentPlanPayload) {
-  const query = clean(raw.query, 300);
+  const requestedQuery = clean(raw.query, 300);
   const requestedGoal = clean(raw.goal, 20) as ContentPlanGoal;
   const goal = CONTENT_PLAN_GOALS.has(requestedGoal) ? requestedGoal : "mixed";
   const countValue = Number(raw.count);
@@ -139,7 +148,11 @@ function normalizePayload(raw: ContentPlanPayload) {
     vocabulary: clean(sourceBrand.vocabulary, 1200),
     cta: clean(sourceBrand.cta, 500),
   } satisfies BrandInput;
-  return { query, goal, count, semantics, geography, competitorInsights, brand };
+  const query = requestedQuery || [brand.name, brand.positioning || brand.description].filter(Boolean).join(": ").slice(0, 300);
+  const existingTitles = unique(Array.isArray(raw.existingTitles)
+    ? raw.existingTitles.map((item) => clean(item, 240)).filter(Boolean).slice(0, 120)
+    : []);
+  return { query, requestedQuery, goal, count, semantics, geography, competitorInsights, brand, existingTitles };
 }
 
 const itemSchema = {
@@ -226,8 +239,10 @@ function validatePlan(plan: AiPlan, input: ReturnType<typeof normalizePayload>) 
     sources: unique((Array.isArray(item.sources) ? item.sources : []).map((value) => clean(value, 80))).slice(0, 8),
   }));
 
-  const normalizedTitles = cleaned.map((item) => item.title.toLocaleLowerCase("ru-RU").replace(/ё/g, "е").replace(/[^a-zа-я0-9]+/gi, " ").trim());
+  const normalizedTitles = cleaned.map((item) => titleKey(item.title));
   const duplicates = normalizedTitles.filter((title, index) => title && normalizedTitles.indexOf(title) !== index);
+  const existingTitleKeys = new Set(input.existingTitles.map(titleKey).filter(Boolean));
+  const repeatsExisting = cleaned.filter((item) => existingTitleKeys.has(titleKey(item.title)));
   const allowedFormats = GOAL_FORMAT_LOCK[input.goal];
   const invalid = cleaned.filter((item) => (
     !item.title || !item.cluster || !item.primaryKeyword || !item.angle || !item.objective
@@ -236,7 +251,7 @@ function validatePlan(plan: AiPlan, input: ReturnType<typeof normalizePayload>) 
     || /(?:комментарий пользователя|редакционн(?:ая|ый) задач|используй|добавь|раскрой применительно|инструкц(?:ия|ии) для ии)/i.test(item.title)
   ));
 
-  if (duplicates.length || invalid.length) {
+  if (duplicates.length || repeatsExisting.length || invalid.length) {
     throw new AiResponseError("AI‑редакция подготовила слабый или повторяющийся контент‑план. Запустите анализ ещё раз.", 422);
   }
   return cleaned;
@@ -246,7 +261,7 @@ export async function POST(request: Request) {
   try {
     const raw = await request.json() as ContentPlanPayload;
     const input = normalizePayload(raw);
-    if (!input.query) return Response.json({ error: "Укажите основную тему контент‑плана." }, { status: 400 });
+    if (!input.query) return Response.json({ error: "Укажите тему или заполните название и основу профиля бренда." }, { status: 400 });
     await assertSecondaryQuotaAvailable("research");
     const identity = await workspaceIdentity();
 
@@ -254,6 +269,7 @@ export async function POST(request: Request) {
       "Ты — ведущий контент‑стратег и SEO‑редактор платформы КЛИО.",
       ...CORE_SYSTEM_RULES,
       "Работай как редакционная система бренда, а не генератор общих заголовков. Сначала используй весь доступный профиль: предложение, аудиторию, позиционирование, подтверждённые преимущества, доказательства, географию, голос и ограничения.",
+      input.requestedQuery ? "Основная тема пользователя задаёт фокус плана; не выходи за неё без явной связи с брендом." : "Отдельная тема не задана: построй разнообразный общий контент‑план на основе полного профиля бренда, его предложений, аудитории, задач и подтверждённой экспертизы. Не сужай план до одного преимущества или одной услуги.",
       `Создай ровно ${input.count} готовых к работе тем для единой контент‑системы, а не перечень шаблонных заголовков.`,
       GOAL_INSTRUCTION[input.goal],
       "Сначала определи предмет, аудиторию, поисковые интенты, коммерческую задачу и возможные тематические ветви. Не переносить знания или шаблоны из другой отрасли.",
@@ -261,6 +277,7 @@ export async function POST(request: Request) {
       "Сбалансируй воронку: знакомство, выбор, решение и удержание. Не делай весь план информационными инструкциями и не превращай коммерческие темы в статьи «как выбрать». Для темы с конкретным брендом или продуктом предусмотрены материалы о его предложении, доказательствах, сценариях применения и возражениях.",
       "Не строй план вокруг одного преимущества и не превращай его в каталог услуг. Разделяй образовательные, коммерческие, репутационные и вовлекающие задачи; не выдумывай сезонность, статистику, тренды или кейсы.",
       "Каждый title — чистый публикационный заголовок без номера, комментария, редакционной команды, пояснения в скобках и фраз вроде «использовать выводы». Не добавляй одинаковые каркасы «полный разбор», «основные ошибки», «пошаговый маршрут» ко всем темам.",
+      input.existingTitles.length ? `Это уже созданные темы и материалы бренда. Не повторяй их, не делай близкие перефразировки и не возвращай ту же задачу с переставленными словами: ${input.existingTitles.map((title) => `«${title}»`).join("; ")}` : "Если ранее созданные темы не переданы, всё равно не повторяй идеи внутри текущего плана.",
       "Каждая строка должна иметь собственный ракурс, коммуникационную цель, целевую аудиторию, основной запрос, 2–8 поддерживающих формулировок и предметную структуру из 3–8 разделов.",
       "Поле lsi означает поддерживающие формулировки, сущности и вопросы. Не называй их LSI‑факторами и не имитируй частотность.",
       "Title и Description должны точно соответствовать теме. Не обещай позиции, результат лечения, доход, сроки, цены и иные факты, которых нет в источниках.",
@@ -279,12 +296,14 @@ export async function POST(request: Request) {
       instructions,
       input: JSON.stringify({
         main_topic: input.query,
+        plan_basis: input.requestedQuery ? "user_topic" : "brand_profile",
         plan_goal: input.goal,
         allowed_formats: GOAL_FORMAT_LOCK[input.goal],
         selected_semantics: input.semantics,
         search_geography: input.geography,
         competitor_editorial_opportunities: input.competitorInsights,
         brand_profile: input.brand.name ? input.brand : null,
+        existing_titles_to_exclude: input.existingTitles,
         editorial_brief_contract: {
           topic: "title", intent: "intent", objective: "objective", audience: "audience", angle: "angle", format: "format",
           structure: "structure", keywords: ["primaryKeyword", "lsi"], evidenceNeeded: "evidenceNeeded", sources: "sources",

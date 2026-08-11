@@ -1589,6 +1589,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       ? []
       : activeBrandSavedMaterials.filter((item) => item.type === materialsFilter))
     .filter((item) => isWithinMaterialsDateRange(item.createdAt, materialsDateRange));
+  const visibleMaterials = [
+    ...visibleBrandArticles.map((item) => ({ kind: "article" as const, item })),
+    ...visibleBrandSavedMaterials.map((item) => ({ kind: "saved" as const, item })),
+  ].sort((left, right) => new Date(right.item.createdAt).getTime() - new Date(left.item.createdAt).getTime());
   const activeMaterialCount = activeBrandArticles.length + activeBrandSavedMaterials.length;
   const generationProgress = Math.min(100, Math.round((workspaceAccount.generationsUsed / Math.max(workspaceAccount.generationLimit, 1)) * 100));
   const researchProgress = Math.min(100, Math.round((workspaceAccount.researchUsed / Math.max(workspaceAccount.researchLimit, 1)) * 100));
@@ -3242,16 +3246,41 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     showToast("Тема и выбранная семантика готовы для контент‑плана");
   }
 
+  function useBrandForPlan() {
+    if (!useBrand || !effectiveBrand.name.trim() || !effectiveBrand.description.trim()) {
+      showToast("Сначала включите и заполните основу профиля бренда");
+      return;
+    }
+    setContentPlanQuery("");
+    setContentPlanNeedsRefresh(true);
+    setContentPlanError("");
+    persistContentPlan({ query: "", needsRefresh: true });
+    showToast("Контент‑план будет построен по полному профилю бренда");
+  }
+
   async function buildContentPlan() {
     if (aiConnection !== "connected") {
       setContentPlanError("ИИ не подключён. Контент‑план не строится по демонстрационным заготовкам — сначала подключите серверный AI‑доступ.");
       return;
     }
-    const cleanQuery = contentPlanQuery.trim() || (semanticAnalysisReady ? semanticResult.primaryQuery || semanticQuery : topic.trim());
+    const requestedQuery = contentPlanQuery.trim() || (semanticAnalysisReady ? semanticResult.primaryQuery || semanticQuery : "");
+    const cleanQuery = requestedQuery || (useBrand ? brandComparisonTheme(effectiveBrand) : topic.trim());
     if (!cleanQuery) {
-      setContentPlanError("Укажите основную тему контент‑плана или возьмите её из семантики.");
+      setContentPlanError("Заполните профиль бренда или укажите тему контент‑плана.");
       return;
     }
+    const savedPlanTitles = activeBrandSavedMaterials.flatMap((item) => {
+      if (item.type !== "content_plan") return [];
+      const payload = item.payload as { result?: { items?: Array<{ title?: unknown }> } };
+      return Array.isArray(payload.result?.items)
+        ? payload.result.items.map((planItem) => typeof planItem.title === "string" ? planItem.title : "").filter(Boolean)
+        : [];
+    });
+    const existingTitles = uniqueText([
+      ...contentPlanResult.items.map((item) => item.title),
+      ...activeBrandArticles.map((item) => item.title),
+      ...savedPlanTitles,
+    ]).slice(0, 120);
     setContentPlanBusy(true);
     setContentPlanError("");
     try {
@@ -3259,7 +3288,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          query: cleanQuery,
+          query: requestedQuery,
           goal: contentPlanGoal,
           count: contentPlanCount,
           semantics: semanticAnalysisReady ? selectedSemanticKeywords.map((item) => ({
@@ -3272,6 +3301,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           geography: selectedGeoScopes.map(({ label, detail }) => ({ label, detail })),
           competitorInsights: !competitorNeedsRefresh ? selectedCompetitorTopics.map((item) => `${item.title}: ${item.opportunity}`) : [],
           brand: useBrand ? effectiveBrand : null,
+          existingTitles,
         }),
       });
       const payload = await safeJson(response) as {
@@ -3288,7 +3318,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         items: payload.result.items.map((item, index) => normalizeContentPlanItem({ ...item, status: "Запланировано" }, index)),
       };
       const mode: ContentPlanMode = "ai";
-      setContentPlanQuery(cleanQuery);
+      setContentPlanQuery(requestedQuery);
       setContentPlanResult(result);
       setContentPlanMode(mode);
       setContentPlanNeedsRefresh(false);
@@ -3296,7 +3326,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setSelectedPlanItemIds([]);
       setPlanReplacements([]);
       setPlanReplacementOpen(false);
-      persistContentPlan({ query: cleanQuery, result, mode, needsRefresh: false });
+      persistContentPlan({ query: requestedQuery, result, mode, needsRefresh: false });
       showToast(`${result.items.length} тем собраны в единую контентную систему`);
     } catch (error) {
       setContentPlanError(error instanceof Error ? error.message : "Не удалось собрать контент‑план.");
@@ -3779,10 +3809,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </div>
               <ModuleSelect label="Период" value={materialsDateRange} options={MATERIALS_DATE_RANGE_OPTIONS} onChange={(value) => setMaterialsDateRange(value as MaterialsDateRange)}/>
             </div>}
-            {visibleBrandArticles.length || visibleBrandSavedMaterials.length ? <div className="workspace-history-list">{visibleBrandArticles.map((item) => {
-              const formatLabel = formats.find((candidate) => candidate.id === item.format)?.label || item.format;
-              return <article className="material-card material-article" key={item.id}><div><span>{formatLabel}</span><small>{archiveDate(item.createdAt)}</small></div><h3>{item.title}</h3><p>{item.topic}</p><footer><span>Статья или текст</span><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал">Удалить</button><button type="button" onClick={() => openArchiveItem(item)}>В редактор <Icon name="arrow"/></button></div></footer></article>;
-            })}{visibleBrandSavedMaterials.map((item) => {
+            {visibleMaterials.length ? <div className="workspace-history-list">{visibleMaterials.map(({ kind, item }) => {
+              if (kind === "article") {
+                const formatLabel = formats.find((candidate) => candidate.id === item.format)?.label || item.format;
+                return <article className="material-card material-article" key={item.id}><div><span>{formatLabel}</span><small>{archiveDate(item.createdAt)}</small></div><h3>{item.title}</h3><p>{item.topic}</p><footer><span>Статья или текст</span><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал">Удалить</button><button type="button" onClick={() => openArchiveItem(item)}>В редактор <Icon name="arrow"/></button></div></footer></article>;
+              }
               const typeLabel = item.type === "content_plan" ? "Контент‑план" : item.type === "semantics" ? "Семантика" : "Анализ конкурентов";
               return <article className={`material-card material-${item.type}`} key={item.id}><div><span>{typeLabel}</span><small>{archiveDate(item.createdAt)} · версия {item.versionNumber}</small></div><h3>{item.title}</h3><p>{item.status}</p><footer><span>Сохранённый снимок</span><div><button type="button" className="material-delete" onClick={() => void deleteSavedMaterial(item)} aria-label="Удалить материал">Удалить</button><button type="button" className="material-export" onClick={() => exportSavedMaterial(item)}>Экспорт</button><button type="button" onClick={() => openSavedMaterial(item)}>В модуль <Icon name="arrow"/></button></div></footer></article>;
             })}</div> : <div className="workspace-history-empty"><i>Аа</i><div><h3>{activeMaterialCount > 0 ? "Нет материалов за выбранный период" : "У этого бренда пока нет материалов"}</h3><p>{activeMaterialCount > 0 ? "Попробуйте выбрать другой период или фильтр." : "Сгенерированные тексты появятся здесь автоматически. Семантику, анализ конкурентов и контент‑планы можно зафиксировать кнопкой «Сохранить в материалы»."}</p></div></div>}
@@ -4313,13 +4344,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <div className="content-plan-shell">
               <article className="content-plan-setup">
                 <div className="content-plan-setup-head">
-                  <div><span>Основа плана</span><h3>От запроса к серии публикаций</h3><p>Можно начать вручную или взять текущую тему из раздела «Семантика». Для одной статьи этот этап не нужен.</p></div>
+                  <div><span>Основа плана</span><h3>От профиля бренда к серии публикаций</h3><p>Соберите общий план по бренду или сузьте его темой и семантикой. Для одного материала этот этап не нужен.</p></div>
                   <span className={`status status-${contentPlanMode === "ai" ? "ai" : "example"}`}><i/>{contentPlanMode === "ai" ? "AI‑план" : aiConnection === "connected" ? "Ожидает тему" : "ИИ не подключён"}</span>
                 </div>
 
                 <div className="content-plan-query-row">
-                  <label><span>Основная тема или направление</span><input value={contentPlanQuery} onChange={(event) => { const next = event.target.value; setContentPlanQuery(next); setContentPlanNeedsRefresh(true); setContentPlanError(""); persistContentPlan({ query: next, needsRefresh: true }); }} placeholder="Например: санаторий для лечения желудка" autoComplete="off"/></label>
-                  <button type="button" onClick={useCurrentSemanticsForPlan} disabled={!semanticAnalysisReady}><Icon name="arrow"/> Взять из семантики</button>
+                  <label><span>Тема или фокус <small>необязательно</small></span><input value={contentPlanQuery} onChange={(event) => { const next = event.target.value; setContentPlanQuery(next); setContentPlanNeedsRefresh(true); setContentPlanError(""); persistContentPlan({ query: next, needsRefresh: true }); }} placeholder="Оставьте пустым для разнообразного плана по профилю бренда" autoComplete="off"/><small>Без темы КЛИО сама соберёт общий план по предложениям, аудитории и экспертизе бренда. Тема нужна только чтобы сузить фокус.</small></label>
+                  <button type="button" onClick={useBrandForPlan} disabled={!useBrand || !foundationReady}><Icon name="arrow"/> По профилю бренда</button>
+                  <button type="button" onClick={useCurrentSemanticsForPlan} disabled={!semanticAnalysisReady}><Icon name="arrow"/> Из семантики</button>
                 </div>
 
                 <div className="content-plan-goal">

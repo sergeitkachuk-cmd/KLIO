@@ -4357,10 +4357,60 @@ footer nav a {
 }
 
 .workspace-history-list article > div span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid rgba(202, 189, 246, 0.45);
+  border-radius: 999px;
+  background: rgba(181, 156, 255, 0.14);
   color: #cabdf6;
   font-size: 10px;
   font-weight: 720;
   text-transform: uppercase;
+}
+
+/* Type is visible before a visitor reads the title: each saved material gets
+   its own restrained accent, while articles keep the existing violet tone. */
+.workspace-history-list .material-article {
+  border-color: rgba(181, 156, 255, 0.42);
+}
+
+.workspace-history-list .material-article > div span {
+  color: #cabdf6;
+}
+
+.workspace-history-list .material-content_plan {
+  border-color: rgba(94, 234, 212, 0.45);
+  background: linear-gradient(135deg, #082d43, #073247 60%, #061c34);
+}
+
+.workspace-history-list .material-content_plan > div span {
+  border-color: rgba(94, 234, 212, 0.5);
+  background: rgba(45, 212, 191, 0.16);
+  color: #83f3df;
+}
+
+.workspace-history-list .material-semantics {
+  border-color: rgba(250, 204, 21, 0.46);
+  background: linear-gradient(135deg, #30280d, #24260f 60%, #151b20);
+}
+
+.workspace-history-list .material-semantics > div span {
+  border-color: rgba(250, 204, 21, 0.52);
+  background: rgba(250, 204, 21, 0.16);
+  color: #fde68a;
+}
+
+.workspace-history-list .material-competitors {
+  border-color: rgba(96, 165, 250, 0.48);
+  background: linear-gradient(135deg, #102d4c, #0b2845 60%, #071b33);
+}
+
+.workspace-history-list .material-competitors > div span {
+  border-color: rgba(96, 165, 250, 0.55);
+  background: rgba(96, 165, 250, 0.16);
+  color: #93c5fd;
 }
 
 .workspace-history-list article > div small {
@@ -7758,7 +7808,7 @@ footer nav a {
 
 .content-plan-query-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: end;
   gap: 12px;
   padding: 0 29px 22px;
@@ -12975,14 +13025,24 @@ footer nav a {
   position: relative;
 }
 
-.workspace-history-list .material-content_plan::before,
-.workspace-history-list .material-semantics::before,
-.workspace-history-list .material-competitors::before {
+.workspace-history-list .material-card::before {
   position: absolute;
   inset: 0 auto 0 0;
   width: 3px;
   content: "";
-  background: linear-gradient(180deg, #7c3aed, #3f7e70);
+  background: #b59cff;
+}
+
+.workspace-history-list .material-content_plan::before {
+  background: #2dd4bf;
+}
+
+.workspace-history-list .material-semantics::before {
+  background: #facc15;
+}
+
+.workspace-history-list .material-competitors::before {
+  background: #60a5fa;
 }
 
 .workspace-history-list article footer > div {
