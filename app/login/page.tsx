@@ -86,7 +86,7 @@ export default function LoginPage() {
     <main className="auth-shell">
       <div className="auth-card">
         <Link className="wordmark" href="/" aria-label="КЛИО — на главную">
-          <span className="brand"><b>КЛИО<span aria-hidden="true">.</span></b><small>Цифровая редакция</small></span>
+          <span className="brand"><i>К</i><b>ЛИО<span aria-hidden="true">.</span></b><small>Цифровая редакция</small></span>
         </Link>
         <h1>Вход в кабинет</h1>
         <p className="auth-subtitle">Личный кабинет с генератором материалов, профилями брендов и архивом.</p>
