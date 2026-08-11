@@ -7102,22 +7102,11 @@ footer nav a {
   grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr);
   align-items: center;
   gap: 18px;
-  padding: 12px 14px;
-  border: 1px solid rgba(124, 58, 237, 0.3);
-  border-radius: 14px;
-  background: rgba(124, 58, 237, 0.14);
+  padding: 0;
 }
 
-.competitor-analysis-action.needs-refresh {
-  border-color: rgba(216, 255, 101, 0.4);
-  background: rgba(216, 255, 101, 0.12);
-}
-
-.competitor-analysis-action > span {
-  color: rgba(255, 255, 255, 0.68);
-  font-size: 13px;
-  line-height: 1.4;
-  text-align: left;
+.competitor-analysis-action .competitor-requirement {
+  margin-top: 0;
 }
 
 .competitor-analysis-action .button {

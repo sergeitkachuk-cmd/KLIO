@@ -4313,12 +4313,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <button type="button" className="competitor-remove" onClick={() => removeCompetitorEntry(competitor.id)} aria-label={`Удалить строку ${index + 1}`}>×</button>
                 </div>)}
                 <button type="button" className="competitor-add" onClick={addCompetitorEntry} disabled={competitors.length >= 5}>+ Добавить конкурента <span>{competitors.length}/5</span></button>
-                <div className={`competitor-requirement ${validCompetitorEntries >= 2 ? "is-ready" : "is-needed"}`}><i>{validCompetitorEntries >= 2 ? <Icon name="check"/> : "2+"}</i><span><b>{validCompetitorEntries >= 2 ? "Сайтов достаточно для анализа" : "Добавьте минимум два сайта прямых конкурентов"}</b><small>{validCompetitorEntries >= 2 ? `${validCompetitorEntries} ссылок будут проверены при построении матрицы.` : aiConnection === "connected" ? "Можно вставить ссылки вручную или подобрать их автоматически." : "Сейчас доступны ручные ссылки; автопоиск появится после подключения AI‑доступа."}</small></span></div>
               </div>
 
               <div className="competitor-setup-footer competitor-setup-footer-simple">
                 <div className={`competitor-analysis-action ${competitorNeedsRefresh ? "needs-refresh" : ""}`}>
-                  <span>{competitorNeedsRefresh ? "Данные изменены — обновите матрицу" : competitorMode === "example" ? "Можно запустить свой анализ" : "Матрица соответствует текущим настройкам"}</span>
+                  <div className={`competitor-requirement ${validCompetitorEntries >= 2 ? "is-ready" : "is-needed"}`}><i>{validCompetitorEntries >= 2 ? <Icon name="check"/> : "2+"}</i><span><b>{validCompetitorEntries >= 2 ? "Сайтов достаточно для анализа" : "Добавьте минимум два сайта прямых конкурентов"}</b><small>{validCompetitorEntries >= 2 ? `${validCompetitorEntries} ссылок будут проверены при построении матрицы.` : aiConnection === "connected" ? "Можно вставить ссылки вручную или подобрать их автоматически." : "Сейчас доступны ручные ссылки; автопоиск появится после подключения AI‑доступа."}</small></span></div>
                   <button className={`button primary large ${competitorBusy ? "is-busy" : ""}`} type="button" onClick={analyzeCompetitors} disabled={competitorBusy || workspaceAccount.researchRemaining <= 0}><Icon name="spark"/>{competitorBusy ? "Читаем страницы…" : workspaceAccount.researchRemaining <= 0 ? "Лимит исследований исчерпан" : competitorMode === "example" ? "Построить матрицу" : "Обновить матрицу"}</button>
                 </div>
               </div>
