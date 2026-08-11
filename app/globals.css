@@ -7808,9 +7808,7 @@ footer nav a {
 
 .content-plan-query-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: end;
-  gap: 12px;
+  gap: 14px;
   padding: 0 29px 22px;
 }
 
@@ -7844,7 +7842,8 @@ footer nav a {
   box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.08);
 }
 
-.content-plan-query-row > button {
+.content-plan-query-row > button,
+.content-plan-basis-actions > button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -7861,6 +7860,17 @@ footer nav a {
 }
 
 .content-plan-query-row > button:disabled {
+  cursor: default;
+  opacity: 0.46;
+}
+
+.content-plan-basis-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.content-plan-basis-actions > button:disabled {
   cursor: default;
   opacity: 0.46;
 }
@@ -10508,6 +10518,7 @@ footer nav a {
   }
 
   .content-plan-query-row > button,
+  .content-plan-basis-actions > button,
   .content-plan-controls > .button {
     width: 100%;
   }
@@ -14492,6 +14503,7 @@ footer nav a {
 }
 
 .content-plan-query-row > button,
+.content-plan-basis-actions > button,
 .content-plan-controls > div button {
   border-color: rgba(255, 255, 255, 0.24);
   color: #fff;
@@ -16322,6 +16334,7 @@ footer nav a {
 }
 
 [data-theme="light"] .content-plan-query-row > button,
+[data-theme="light"] .content-plan-basis-actions > button,
 [data-theme="light"] .content-plan-controls > div button {
   border-color: rgba(15, 23, 42, 0.16);
   color: #0d1b31;
@@ -17955,4 +17968,144 @@ footer nav a {
   color: #0d1b31;
   background: rgba(255, 255, 255, 0.65);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.5);
+}
+
+/* Workspace materials are a dark-native panel, so give the complete
+   surface its own light treatment rather than leaving an isolated navy card
+   inside the light workspace. */
+[data-theme="light"] .workspace-history {
+  color: #0d1b31;
+  border-color: rgba(15, 23, 42, 0.14);
+  background:
+    radial-gradient(circle at 92% 0%, rgba(53, 104, 212, 0.18), transparent 32%),
+    linear-gradient(135deg, #e3eaf6, #f0f4fa 57%, #fff);
+  box-shadow: 0 18px 48px rgba(20, 40, 80, 0.12), inset 0 1px #fff;
+}
+
+[data-theme="light"] .workspace-history-head span {
+  color: #2452b8;
+}
+
+[data-theme="light"] .workspace-history-head p,
+[data-theme="light"] .workspace-history-list p,
+[data-theme="light"] .workspace-history-list article > div small,
+[data-theme="light"] .workspace-history-list footer span,
+[data-theme="light"] .workspace-history-empty p {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .workspace-history-head > button {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+[data-theme="light"] .workspace-history-list article {
+  color: #0d1b31;
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"] .workspace-history-list .material-article {
+  border-color: rgba(124, 58, 237, 0.32);
+  background: linear-gradient(135deg, #f4f0ff, #fff 72%);
+}
+
+[data-theme="light"] .workspace-history-list .material-content_plan {
+  border-color: rgba(13, 148, 136, 0.32);
+  background: linear-gradient(135deg, #e7faf6, #fff 72%);
+}
+
+[data-theme="light"] .workspace-history-list .material-semantics {
+  border-color: rgba(202, 138, 4, 0.34);
+  background: linear-gradient(135deg, #fff9df, #fff 72%);
+}
+
+[data-theme="light"] .workspace-history-list .material-competitors {
+  border-color: rgba(37, 99, 235, 0.32);
+  background: linear-gradient(135deg, #eaf2ff, #fff 72%);
+}
+
+[data-theme="light"] .workspace-history-list footer {
+  border-top-color: rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="light"] .material-delete {
+  color: rgba(13, 27, 49, 0.55) !important;
+}
+
+[data-theme="light"] .workspace-history-empty {
+  color: #0d1b31;
+  border-color: rgba(53, 104, 212, 0.32);
+  background: rgba(255, 255, 255, 0.42);
+}
+
+/* The two shortcuts are actions, not plain white utility buttons: profile
+   is the primary starting point and semantics remains a visible secondary.
+   Disabled states keep the same hierarchy without looking inactive by bug. */
+[data-theme="light"] .content-plan-query-row > button,
+[data-theme="light"] .content-plan-basis-actions > button {
+  border-color: rgba(36, 82, 184, 0.72);
+  color: #fff;
+  background: linear-gradient(120deg, #2452b8, #3568d4);
+  box-shadow: 0 8px 20px rgba(36, 82, 184, 0.18), inset 0 1px rgba(255, 255, 255, 0.22);
+}
+
+[data-theme="light"] .content-plan-basis-actions > button + button {
+  border-color: rgba(36, 82, 184, 0.32);
+  color: #2452b8;
+  background: rgba(53, 104, 212, 0.1);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.65);
+}
+
+[data-theme="light"] .content-plan-query-row > button:hover:not(:disabled),
+[data-theme="light"] .content-plan-basis-actions > button:hover:not(:disabled) {
+  border-color: #163f98;
+  background: linear-gradient(120deg, #163f98, #2452b8);
+}
+
+[data-theme="light"] .content-plan-basis-actions > button + button:hover:not(:disabled) {
+  color: #163f98;
+  background: rgba(53, 104, 212, 0.18);
+}
+
+/* Individual plan actions: the brief is a secondary action, while moving an
+   approved topic into the generator is the clear primary next step. */
+[data-theme="light"] .content-plan-item-actions button {
+  border-color: rgba(36, 82, 184, 0.3);
+  color: #2452b8;
+  background: rgba(53, 104, 212, 0.1);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.72);
+}
+
+[data-theme="light"] .content-plan-item-actions button:hover {
+  border-color: rgba(36, 82, 184, 0.56);
+  color: #163f98;
+  background: rgba(53, 104, 212, 0.18);
+}
+
+[data-theme="light"] .content-plan-item-actions button:last-child {
+  border-color: #2452b8;
+  color: #fff;
+  background: linear-gradient(120deg, #2452b8, #3568d4);
+  box-shadow: 0 8px 18px rgba(36, 82, 184, 0.18), inset 0 1px rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="light"] .content-plan-item-actions button:last-child:hover {
+  border-color: #163f98;
+  color: #fff;
+  background: linear-gradient(120deg, #163f98, #2452b8);
+}
+
+[data-theme="light"] .content-plan-status .module-select-trigger {
+  border-color: rgba(36, 82, 184, 0.3);
+  color: #2452b8;
+  background: rgba(53, 104, 212, 0.1);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.72);
+}
+
+[data-theme="light"] .content-plan-status .module-select-trigger b,
+[data-theme="light"] .content-plan-status .module-select-trigger > i {
+  color: inherit;
 }
