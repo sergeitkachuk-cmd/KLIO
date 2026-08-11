@@ -4122,8 +4122,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </article>
                 <article className="semantic-selection-card">
                   <span>Собрано для брифа</span>
-                  <div><b>{selectedSemanticKeywords.length}</b><small>из 6 фраз максимум</small></div>
-                  <p>{selectedClusters === 1 ? "один смысловой кластер" : "выберите один смысловой кластер"} · основной запрос {selectedSemanticKeywords.some((item) => item.role === "Основной") ? "выбран" : "не выбран"}</p>
+                  <div><b>{selectedSemanticKeywords.length}</b><small>КЛИО учтёт {selectedSemanticKeywords.length} похожих запросов в этой статье</small></div>
+                  <p>{selectedClusters === 1 ? "Статья будет отвечать на один вопрос читателя" : "Выберите одну группу похожих запросов"} · основной запрос {selectedSemanticKeywords.some((item) => item.role === "Основной") ? "выбран" : "не выбран"}</p>
                 </article>
               </div>
 
