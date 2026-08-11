@@ -2770,6 +2770,43 @@ select:focus-visible {
   word-break: break-word;
 }
 
+.result-subtitle-field {
+  display: grid;
+  gap: 7px;
+  margin: 0 0 24px;
+  padding: 14px 16px;
+  border-left: 3px solid var(--acid);
+  border-radius: 0 12px 12px 0;
+  background: rgba(124, 58, 237, 0.1);
+}
+
+.result-subtitle-field > span {
+  color: var(--acid);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.result-subtitle {
+  display: block;
+  width: 100%;
+  min-height: 2.6em;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  outline: 0;
+  resize: none;
+  color: rgba(255, 255, 255, 0.8);
+  background: transparent;
+  font-size: 18px;
+  font-weight: 420;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+.result-subtitle::placeholder { color: rgba(255, 255, 255, 0.42); }
+
 .result-body {
   display: block;
   width: 100%;
@@ -16323,6 +16360,15 @@ footer nav a {
 [data-theme="light"] .result-body {
   color: rgba(13, 27, 49, 0.82);
 }
+
+[data-theme="light"] .result-subtitle-field {
+  border-left-color: #2452b8;
+  background: rgba(53, 104, 212, 0.08);
+}
+
+[data-theme="light"] .result-subtitle-field > span { color: #2452b8; }
+[data-theme="light"] .result-subtitle { color: rgba(13, 27, 49, 0.72); }
+[data-theme="light"] .result-subtitle::placeholder { color: rgba(13, 27, 49, 0.4); }
 
 [data-theme="light"] .editor-note {
   border-color: rgba(15, 23, 42, 0.14);
