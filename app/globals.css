@@ -7076,7 +7076,10 @@ footer nav a {
   padding: 24px 30px 18px;
 }
 
-.competitor-setup-footer-simple { grid-template-columns: minmax(0, 1fr); }
+.competitor-setup-footer-simple {
+  grid-template-columns: minmax(0, 1fr);
+  padding-block: 16px;
+}
 
 .competitor-setup-footer > label {
   display: grid;
@@ -7096,9 +7099,10 @@ footer nav a {
 
 .competitor-analysis-action {
   display: grid;
-  align-content: center;
-  gap: 10px;
-  padding: 14px;
+  grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr);
+  align-items: center;
+  gap: 18px;
+  padding: 12px 14px;
   border: 1px solid rgba(124, 58, 237, 0.3);
   border-radius: 14px;
   background: rgba(124, 58, 237, 0.14);
@@ -7111,13 +7115,14 @@ footer nav a {
 
 .competitor-analysis-action > span {
   color: rgba(255, 255, 255, 0.68);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.4;
-  text-align: center;
+  text-align: left;
 }
 
 .competitor-analysis-action .button {
   width: 100%;
+  min-height: 52px;
 }
 
 .competitor-analysis-action .button:disabled {
@@ -9466,6 +9471,15 @@ footer nav a {
   .competitor-query-row,
   .competitor-setup-footer {
     grid-template-columns: 1fr;
+  }
+
+  .competitor-analysis-action {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .competitor-analysis-action > span {
+    text-align: center;
   }
 
   .competitor-comparison-guide {
