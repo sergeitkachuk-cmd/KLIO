@@ -40,7 +40,16 @@ async function wordstat(query: string) {
   if (!response.ok) {
     const detail = await response.text();
     console.error("Yandex Wordstat request failed", response.status, detail.slice(0, 800));
-    throw new AiResponseError(response.status === 401 || response.status === 403 ? "Yandex Wordstat не принял ключ или у сервисного аккаунта нет роли search-api.webSearch.user." : "Yandex Wordstat временно не ответил. Повторите попытку позже.", 502);
+    let providerMessage = "";
+    try {
+      const parsed = JSON.parse(detail) as { message?: unknown; error?: { message?: unknown } };
+      providerMessage = clean(parsed.message ?? parsed.error?.message, 360);
+    } catch { /* A non-JSON error is still useful in the server log only. */ }
+    const explanation = providerMessage ? ` Ответ Yandex: ${providerMessage}` : "";
+    if (response.status === 401 || response.status === 403) {
+      throw new AiResponseError(`Yandex Wordstat отклонил доступ.${explanation} Проверьте API-ключ, настоящий folderId, роль search-api.webSearch.user и активный платёжный аккаунт каталога.`, 502);
+    }
+    throw new AiResponseError(`Yandex Wordstat временно не ответил.${explanation} Повторите попытку позже.`, 502);
   }
   const body = await response.json() as { results?: WordstatItem[]; associations?: WordstatItem[] };
   const source = [...(body.results ?? []), ...(body.associations ?? [])];
