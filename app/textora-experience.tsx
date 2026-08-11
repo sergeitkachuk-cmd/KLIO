@@ -86,7 +86,7 @@ type CompetitorSerpItem = {
   rank: number;
   title: string;
   url: string;
-  kind: "brand" | "competitor" | "candidate" | "other";
+  kind: "brand" | "competitor" | "aggregator" | "candidate" | "other";
 };
 
 type CompetitorCoverage = "strong" | "partial" | "missing" | "unknown";
@@ -4274,7 +4274,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
               {competitorSerp.length > 0 && <div className="competitor-serp-card">
                 <div><span>Топ‑10 по текущему запросу</span><small>Снимок поисковой выдачи: это позиции сайтов, а не оценка качества компаний.</small></div>
-                <ol>{competitorSerp.map((item) => <li key={`${item.rank}-${item.url}`}><b>{item.rank}</b><a href={item.url} target="_blank" rel="noreferrer">{item.title}</a><em className={`is-${item.kind}`}>{item.kind === "brand" ? "ваш сайт" : item.kind === "competitor" ? "в анализе" : item.kind === "candidate" ? "кандидат" : "не в анализе"}</em></li>)}</ol>
+                <ol>{competitorSerp.map((item) => <li key={`${item.rank}-${item.url}`}><b>{item.rank}</b><a href={item.url} target="_blank" rel="noreferrer">{item.title}</a><em className={`is-${item.kind}`}>{item.kind === "brand" ? "ваш сайт" : item.kind === "competitor" ? "в анализе" : item.kind === "aggregator" ? "площадка продаж" : item.kind === "candidate" ? "не в анализе" : "не в анализе"}</em></li>)}</ol>
                 {!competitorSerp.some((item) => item.kind === "brand") && <p>Ваш сайт не найден в первых 10 результатах по этому запросу.</p>}
               </div>}
 

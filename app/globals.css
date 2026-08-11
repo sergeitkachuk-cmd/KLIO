@@ -6740,6 +6740,7 @@ footer nav a {
 .competitor-serp-card li > em { padding: 6px 9px; border-radius: 999px; color: rgba(255, 255, 255, 0.72); background: rgba(255, 255, 255, 0.08); font-size: 11px; font-style: normal; font-weight: 650; white-space: nowrap; }
 .competitor-serp-card li > em.is-brand { color: #dfff74; background: rgba(194, 255, 64, 0.12); }
 .competitor-serp-card li > em.is-competitor { color: #d7c5ff; background: rgba(124, 58, 237, 0.22); }
+.competitor-serp-card li > em.is-aggregator { color: #ffd99b; background: rgba(227, 146, 45, 0.16); }
 .competitor-serp-card > p { margin: 12px 0 0; }
 
 .competitor-query-sources > button b {

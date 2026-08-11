@@ -29,6 +29,7 @@ type Citation = {
 
 type CandidateSelection = {
   candidates: { candidate_id: string; name: string; segment: "industry_leader" | "regional_competitor" | "market_competitor"; reason: string }[];
+  rejected: { candidate_id: string; kind: "aggregator" | "editorial" | "unrelated"; reason: string }[];
 };
 
 function clean(value: unknown, maxLength: number) {
@@ -251,8 +252,22 @@ function selectionSchema(candidateIds: string[]) {
           additionalProperties: false,
         },
       },
+      rejected: {
+        type: "array",
+        maxItems: 20,
+        items: {
+          type: "object",
+          properties: {
+            candidate_id: { type: "string", enum: candidateIds },
+            kind: { type: "string", enum: ["aggregator", "editorial", "unrelated"] },
+            reason: { type: "string" },
+          },
+          required: ["candidate_id", "kind", "reason"],
+          additionalProperties: false,
+        },
+      },
     },
-    required: ["candidates"],
+    required: ["candidates", "rejected"],
     additionalProperties: false,
   } as const;
 }
@@ -355,6 +370,7 @@ export async function POST(request: Request) {
         "segment=industry_leader ставь сильному участнику отрасли, заметному в верхней части поисковой выдачи или явно значимому для темы. segment=market_competitor ставь компании, которые ближе всего конкурируют за выбранную аудиторию и запрос. Для каждого кандидата дай короткую причину на основе его страницы. Не выбирай более одной страницы одного домена.",
         "Segment contract: use industry_leader only for a strong company visible in the general search results for this demand. If a target geography is supplied and the page clearly serves that geography, use regional_competitor. Use market_competitor for another direct competitor. These are discovery labels, not a quality score and not a measured SEO position. Do not label an organisation regional only because its postal address happens to be there.",
         "Select up to five verified direct competitors from the supplied candidates. Return fewer only when fewer than five candidates actually qualify. name must be the familiar company or property name, never a domain name. reason must be one short, plain-language sentence explaining why this company is relevant to the same customer demand; do not write a generic list of its services.",
+        "For every readable candidate that you do not select, add it to rejected. Use aggregator for marketplaces, booking platforms, tour operators and resellers, editorial for media/reviews/articles, and unrelated for other non-comparable pages. These rejected pages must never enter the competitor matrix.",
       ].join("\n"),
       input: JSON.stringify({ comparison_topic: query, active_brand: brand.name ? { name: brand.name, website: brand.website } : null, target_geography: geography, candidates: readablePool }),
     });
@@ -382,6 +398,10 @@ export async function POST(request: Request) {
     }
 
     const selectedDomains = new Set(candidates.map((item) => domainOf(item.url)));
+    const rejectedByDomain = new Map(selection.result.rejected.map((item) => {
+      const candidate = poolById.get(item.candidate_id);
+      return [candidate ? domainOf(candidate.url) : "", item.kind] as const;
+    }));
     const serp = yandexResults.slice(0, 10).map((item, index) => {
       const domain = domainOf(item.url);
       return {
@@ -392,6 +412,8 @@ export async function POST(request: Request) {
           ? "brand"
           : selectedDomains.has(domain)
             ? "competitor"
+            : rejectedByDomain.get(domain) === "aggregator"
+              ? "aggregator"
             : isDirectCandidate(item.url, brandDomain)
               ? "candidate"
               : "other",
