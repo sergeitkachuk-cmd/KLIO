@@ -3124,7 +3124,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setSelectedCompetitorTopicIds(next);
     setContentPlanNeedsRefresh(true);
     persistCompetitorWorkspace({ selectedIds: next });
-    showToast("Рекомендованные выводы добавлены в будущий бриф");
+    showToast(`КЛИО выбрал ${next.length} тем для будущей статьи`);
   }
 
   function sendCompetitorInsightsToGenerator() {
@@ -4351,30 +4351,29 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   })}</tbody>
                 </table>
               </div>
-              <div className="competitor-matrix-footer"><p>{competitorResult.dataNote}</p><button type="button" onClick={selectRecommendedCompetitorTopics}>Выбрать рекомендации КЛИО</button></div>
+              <div className="competitor-matrix-footer"><p>{competitorResult.dataNote}</p><button type="button" onClick={selectRecommendedCompetitorTopics}>{competitorResult.topics.filter((item) => item.recommended).length ? `Выбрать ${competitorResult.topics.filter((item) => item.recommended).length} тем для статьи` : "Выбрать темы для статьи"}</button></div>
             </div>
 
             <div className="competitor-insights-grid">
               <article>
-                <span>Обязательный минимум</span><h3>Что раскрывают чаще всего</h3>
+                <span>Что стоит учесть</span><h3>Что читатель ожидает увидеть</h3>
                 <div>{competitorResult.commonTopics.length ? competitorResult.commonTopics.map((item) => <p key={item}><i>✓</i>{item}</p>) : <p><i>·</i>Недостаточно доступных страниц для общего вывода</p>}</div>
-                <small>Эти темы нужны для полноты ответа, но сами по себе не дают отличия.</small>
+                <small>Это базовые темы для полноценного ответа на запрос.</small>
               </article>
-              <article className="competitor-opportunity-card">
-                <span>Точки роста</span><h3>Где можно быть полезнее</h3>
+              {competitorResult.gaps.length > 0 && <article className="competitor-opportunity-card">
+                <span>Можно усилить</span><h3>Что стоит добавить, если это подтверждено</h3>
                 <div>{competitorResult.gaps.map((item) => <p key={item}><i>↗</i>{item}</p>)}</div>
-                <small>Пробел — это редакционная возможность, а не автоматическая рекомендация добавить неподтверждённый факт.</small>
-              </article>
+                <small>Добавляйте только информацию, которую можете подтвердить на своём сайте или у специалиста.</small>
+              </article>}
               <article>
-                <span>Черновая структура</span><h3>{competitorResult.suggestedTitle}</h3>
+                <span>Вариант будущей статьи</span><h3>{competitorResult.suggestedTitle}</h3>
                 <ol>{competitorResult.suggestedStructure.map((item, index) => <li key={item}><i>{String(index + 1).padStart(2, "0")}</i>{item}</li>)}</ol>
               </article>
             </div>
 
             <div className={`competitor-actionbar ${competitorNeedsRefresh ? "needs-refresh" : ""}`}>
-              <div><span>Необязательное усиление</span><b>{selectedCompetitorTopics.length ? `${selectedCompetitorTopics.length} выводов готовы для материала` : "Выберите темы в матрице"}</b><small>В генераторе тема будет заполнена текущим запросом, а выводы попадут в поле «Дополнительный акцент». Уже выбранные ключевые слова не изменятся.</small></div>
-              <div className="competitor-selected-topics">{selectedCompetitorTopics.slice(0, 3).map((item) => <span key={item.id}>{item.title}</span>)}{selectedCompetitorTopics.length > 3 && <span>+{selectedCompetitorTopics.length - 3}</span>}</div>
-              <div className="competitor-action-buttons"><button type="button" className="module-save-button" onClick={() => void saveModuleMaterial("competitors")} disabled={materialSavingType === "competitors" || competitorNeedsRefresh}>{materialSavingType === "competitors" ? "Сохраняем…" : moduleMaterialSources.competitors ? "Сохранить новую версию" : "Сохранить в материалы"}</button>{moduleMaterialSources.competitors && <button type="button" className="module-copy-button" onClick={() => void saveModuleMaterial("competitors", "copy")} disabled={materialSavingType === "competitors"}>Копия</button>}<button className={`button primary large ${!selectedCompetitorTopics.length || competitorNeedsRefresh ? "is-blocked" : ""}`} type="button" onClick={sendCompetitorInsightsToGenerator} aria-disabled={!selectedCompetitorTopics.length || competitorNeedsRefresh}>Передать тему и выводы <Icon name="arrow"/></button></div>
+              <div><span>Следующий шаг</span><b>{selectedCompetitorTopics.length ? `Выбрано тем для статьи: ${selectedCompetitorTopics.length}` : "Выберите темы для будущей статьи"}</b><small>{selectedCompetitorTopics.length ? "КЛИО передаст тему и выбранные разделы в генератор. Там вы сможете дополнить бриф и создать статью." : "Отметьте темы в таблице или нажмите «Выбрать темы для статьи» выше."}</small></div>
+              <div className="competitor-action-buttons"><button type="button" className="module-save-button" onClick={() => void saveModuleMaterial("competitors")} disabled={materialSavingType === "competitors" || competitorNeedsRefresh}>{materialSavingType === "competitors" ? "Сохраняем…" : moduleMaterialSources.competitors ? "Сохранить анализ" : "Сохранить анализ в материалы"}</button>{moduleMaterialSources.competitors && <button type="button" className="module-copy-button" onClick={() => void saveModuleMaterial("competitors", "copy")} disabled={materialSavingType === "competitors"}>Копия</button>}<button className={`button primary large ${!selectedCompetitorTopics.length || competitorNeedsRefresh ? "is-blocked" : ""}`} type="button" onClick={sendCompetitorInsightsToGenerator} aria-disabled={!selectedCompetitorTopics.length || competitorNeedsRefresh}>Открыть в генераторе <Icon name="arrow"/></button></div>
             </div>
               </div>}
             </div>
