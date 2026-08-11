@@ -11,6 +11,10 @@ type SemanticKeyword = { id: string; phrase: string; cluster: string; intent: In
 type SemanticResult = { primaryQuery: string; intent: { label: string; stage: string; summary: string }; suggestedTopic: string; recommendedLength: number; keywords: SemanticKeyword[]; dataNote: string };
 type SemanticPayload = { query?: unknown; geography?: unknown; region?: unknown; brand?: unknown };
 type WordstatItem = { phrase?: unknown; count?: unknown };
+type GeographyTarget = { label: string };
+type RegionNode = { id?: unknown; label?: unknown; children?: unknown };
+
+let regionIndexPromise: Promise<Map<string, string>> | null = null;
 
 const clean = (value: unknown, limit: number) => typeof value === "string" ? value.trim().slice(0, limit) : "";
 const normalize = (value: string) => value.toLocaleLowerCase("ru-RU").replace(/ё/g, "е").replace(/\s+/g, " ").trim();
@@ -41,13 +45,46 @@ function cleanBrand(value: unknown) {
   return { name: clean(source.name, 160), description: clean(source.description, 1200), positioning: clean(source.positioning, 900), services: clean(source.services, 1600), audience: clean(source.audience, 900) };
 }
 
-async function wordstat(query: string) {
+function cleanGeography(value: unknown) {
+  return Array.isArray(value) ? value.slice(0, 24).map((item) => ({ label: clean(item && typeof item === "object" ? (item as Record<string, unknown>).label : "", 140) })).filter((item): item is GeographyTarget => Boolean(item.label)) : [];
+}
+
+async function regionIndex() {
+  if (regionIndexPromise) return regionIndexPromise;
+  regionIndexPromise = (async () => {
+    const apiKey = process.env.YANDEX_SEARCH_API_KEY?.trim();
+    const folderId = process.env.YANDEX_FOLDER_ID?.trim();
+    if (!apiKey || !folderId) throw new AiResponseError("Частотность не подключена: добавьте YANDEX_SEARCH_API_KEY и YANDEX_FOLDER_ID на сервере.", 503);
+    const response = await fetch("https://searchapi.api.cloud.yandex.net/v2/wordstat/regionsTree", { method: "POST", headers: { Authorization: `Api-key ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ folderId }) });
+    if (!response.ok) throw new AiResponseError("Не удалось получить справочник регионов для выбранной географии.", 502);
+    const body = await response.json() as { regions?: unknown };
+    const index = new Map<string, string>();
+    const visit = (node: RegionNode) => {
+      const label = clean(node.label, 180); const id = clean(node.id, 40);
+      if (label && id) index.set(normalize(label), id);
+      if (Array.isArray(node.children)) node.children.forEach((child) => { if (child && typeof child === "object") visit(child as RegionNode); });
+    };
+    if (Array.isArray(body.regions)) body.regions.forEach((item) => { if (item && typeof item === "object") visit(item as RegionNode); });
+    return index;
+  })();
+  try { return await regionIndexPromise; } catch (error) { regionIndexPromise = null; throw error; }
+}
+
+async function resolveRegions(geography: GeographyTarget[]) {
+  if (!geography.length) return { ids: ["225"], label: "Россия" };
+  const index = await regionIndex();
+  const ids = geography.map((item) => index.get(normalize(item.label))).filter((item): item is string => Boolean(item));
+  if (!ids.length) throw new AiResponseError("Не удалось сопоставить выбранную географию с поисковым регионом. Измените географию и повторите анализ.", 422);
+  return { ids: [...new Set(ids)], label: geography.map((item) => item.label).join(", ") };
+}
+
+async function wordstat(query: string, regions: string[]) {
   const apiKey = process.env.YANDEX_SEARCH_API_KEY?.trim();
   const folderId = process.env.YANDEX_FOLDER_ID?.trim();
   if (!apiKey || !folderId) throw new AiResponseError("Частотность не подключена: добавьте YANDEX_SEARCH_API_KEY и YANDEX_FOLDER_ID на сервере.", 503);
   const response = await fetch("https://searchapi.api.cloud.yandex.net/v2/wordstat/topRequests", {
     method: "POST", headers: { Authorization: `Api-key ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ phrase: query, numPhrases: 100, devices: ["DEVICE_ALL"], folderId }),
+    body: JSON.stringify({ phrase: query, numPhrases: 100, regions, devices: ["DEVICE_ALL"], folderId }),
   });
   if (!response.ok) {
     const detail = await response.text();
@@ -82,19 +119,22 @@ export async function POST(request: Request) {
     if (!process.env.OPENAI_API_KEY?.trim()) throw new AiNotConfiguredError();
     const identity = await workspaceIdentity();
     const brand = cleanBrand(payload.brand);
+    const geography = cleanGeography(payload.geography);
+    const searchRegion = await resolveRegions(geography);
     const seedPlan = await callAiModel<{ market: string; seeds: string[] }>({
       operation: "research_semantics", ownerEmail: identity.email, schemaName: "klio_semantic_growth_seeds", schema: seedSchema(),
       instructions: [
         "Ты SEO-стратег. Определи рынок и сформируй 3–5 коротких русскоязычных исходных фраз для поиска НОВОЙ аудитории.",
         "Если исходная тема — бренд, его название нельзя использовать в seeds. Отталкивайся от категории, услуг, географии и задач потенциального клиента.",
+        "Используй только переданную географию спроса. География присутствия бренда не имеет права сужать охват, выбранный пользователем.",
         "Не давай сверхширокие одиночные слова. Каждая seed-фраза должна выражать самостоятельный реальный спрос будущего клиента.",
         "Не называй частотность и не возвращай пояснения вне JSON.",
-      ].join("\n"), input: JSON.stringify({ query, brand: brand.name ? brand : null }, null, 2),
+      ].join("\n"), input: JSON.stringify({ query, search_demand_geography: searchRegion.label, brand: brand.name ? brand : null }, null, 2),
     });
     const seeds = [query, ...seedPlan.result.seeds.map((item) => clean(item, 180))].filter(Boolean)
       .filter((item, index, all) => all.findIndex((candidate) => normalize(candidate) === normalize(item)) === index).slice(0, 6);
     const collected: Array<{ phrase: string; frequency: number }> = [];
-    for (const seed of seeds) collected.push(...await wordstat(seed));
+    for (const seed of seeds) collected.push(...await wordstat(seed, searchRegion.ids));
     const counts = new Map<string, number>();
     for (const candidate of collected) {
       const key = normalize(candidate.phrase);
@@ -108,10 +148,11 @@ export async function POST(request: Request) {
       instructions: [
         "Ты SEO-стратег. Классифицируй только фразы, переданные из проверенных поисковых данных.",
         "Нельзя придумывать, заменять или перефразировать фразы; частотность не оценивай и не называй.",
+        "Работай только с переданной географией спроса: не подменяй её регионом присутствия бренда.",
         "Раздели фразы на кластеры по одному поисковому намерению. По умолчанию выбери для recommended ОДИН небрендовый кластер, который приводит новую аудиторию; брендовый кластер выбирай только если небрендовых фраз нет.",
         "Для одного будущего материала отметь recommended только 1 основной и 3–5 близких поддерживающих фраз из ОДНОГО кластера. Внутри кластера предпочитай более частотные и недублирующие фразы.",
         "Не смешивай в recommended коммерческие, информационные, навигационные и иные несовместимые намерения. Верни 8–30 фраз из списка.",
-      ].join("\n"), input: JSON.stringify({ original_query: query, market: clean(seedPlan.result.market, 180), brand_name: brand.name || null, growth_seeds: seeds.slice(1), verified_candidates_last_30_days: candidates }, null, 2),
+      ].join("\n"), input: JSON.stringify({ original_query: query, search_demand_geography: searchRegion.label, market: clean(seedPlan.result.market, 180), brand_name: brand.name || null, growth_seeds: seeds.slice(1), verified_candidates_last_30_days: candidates }, null, 2),
     });
     const seen = new Set<string>();
     const keywords = ai.result.keywords.map((item, index) => {
@@ -135,7 +176,7 @@ export async function POST(request: Request) {
       recommended: selectedIds.has(item.id),
     })).sort((a, b) => Number(b.recommended) - Number(a.recommended) || b.frequency - a.frequency);
     const usage = await recordResearch();
-    return Response.json({ result: { primaryQuery: query, intent: ai.result.intent, suggestedTopic: clean(ai.result.suggestedTopic, 240) || query, recommendedLength: Math.min(3000, Math.max(700, Number(ai.result.recommendedLength) || 1200)), keywords: finalKeywords, dataNote: "Фразы и частотность подтверждены актуальными поисковыми данными за последние 30 дней. В карте отдельно выделяются брендовый спрос и запросы новой аудитории; рекомендации собраны из одного наиболее сильного кластера." }, mode: "ai", model: ai.model, sources: { searchDemand: "verified", candidates: candidates.length, market: clean(seedPlan.result.market, 180) }, usage });
+    return Response.json({ result: { primaryQuery: query, intent: ai.result.intent, suggestedTopic: clean(ai.result.suggestedTopic, 240) || query, recommendedLength: Math.min(3000, Math.max(700, Number(ai.result.recommendedLength) || 1200)), keywords: finalKeywords, dataNote: `Фразы и частотность подтверждены актуальными поисковыми данными за последние 30 дней для географии: ${searchRegion.label}. В карте отдельно выделяются брендовый спрос и запросы новой аудитории; рекомендации собраны из одного наиболее сильного кластера.` }, mode: "ai", model: ai.model, sources: { searchDemand: "verified", geography: searchRegion.label, candidates: candidates.length, market: clean(seedPlan.result.market, 180) }, usage });
   } catch (error) {
     if (error instanceof WorkspaceAccessError) return workspaceErrorResponse(error);
     return openAiErrorResponse(error, "Не удалось получить поисковые данные для семантики.");
