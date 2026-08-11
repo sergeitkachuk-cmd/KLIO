@@ -106,10 +106,10 @@ const FORMAT_OPERATION: Record<Format, AiOperation> = {
 
 const ALLOWED_FORMATS = new Set<Format>(["seo", "social", "ads", "landing"]);
 const DEFAULT_LENGTHS: Record<Format, number> = {
-  seo: 1200,
-  social: 150,
-  ads: 100,
-  landing: 500,
+  seo: 8400,
+  social: 1050,
+  ads: 700,
+  landing: 3500,
 };
 
 function cleanText(value: unknown, maxLength: number) {
@@ -215,7 +215,7 @@ function normalizePayload(raw: GeneratePayload) {
   const requestedFormat = cleanText(raw.format, 20) as Format;
   const format = ALLOWED_FORMATS.has(requestedFormat) ? requestedFormat : "seo";
   const requestedLength = Number(raw.length);
-  const length = Number.isFinite(requestedLength) && requestedLength >= 30 && requestedLength <= 4000
+  const length = Number.isFinite(requestedLength) && requestedLength >= 300 && requestedLength <= 30000
     ? Math.round(requestedLength)
     : DEFAULT_LENGTHS[format];
   const sourceBrand = raw.brand ?? {};
@@ -260,24 +260,12 @@ function normalizePayload(raw: GeneratePayload) {
   };
 }
 
-function countWords(value: string) {
-  return value.trim().split(/\s+/).filter(Boolean).length;
+function countCharacters(value: string) {
+  return value.trim().length;
 }
 
-function trimToWordTarget(value: string, target: number) {
-  const parts = value.match(/\S+|\s+/g) ?? [];
-  let words = 0;
-  let result = "";
-
-  for (const part of parts) {
-    if (/\S/.test(part)) {
-      if (words >= target) break;
-      words += 1;
-    }
-    result += part;
-  }
-
-  const trimmed = result.trim();
+function trimToCharacterTarget(value: string, target: number) {
+  const trimmed = value.trim().slice(0, target).trim();
   const lastStop = Math.max(trimmed.lastIndexOf("."), trimmed.lastIndexOf("!"), trimmed.lastIndexOf("?"));
   const stopped = lastStop >= trimmed.length * 0.96 ? trimmed.slice(0, lastStop + 1) : trimmed;
   return /[.!?]$/.test(stopped) ? stopped : `${stopped}.`;
@@ -292,13 +280,13 @@ function trimToWordTarget(value: string, target: number) {
 // word-count cut risks: lopping off the ending entirely.
 function trimOverflowBody(body: string, target: number) {
   const sections = body.split(/\n\s*\n/).map((item) => item.trim()).filter(Boolean);
-  if (sections.length <= 1) return trimToWordTarget(body, target);
+  if (sections.length <= 1) return trimToCharacterTarget(body, target);
 
   const conclusion = sections.at(-1) || "";
-  const conclusionWords = countWords(conclusion);
-  if (conclusionWords >= target) return trimToWordTarget(body, target);
+  const conclusionLength = countCharacters(conclusion);
+  if (conclusionLength >= target) return trimToCharacterTarget(body, target);
 
-  const core = trimToWordTarget(sections.slice(0, -1).join("\n\n"), target - conclusionWords);
+  const core = trimToCharacterTarget(sections.slice(0, -1).join("\n\n"), target - conclusionLength);
   return `${core}\n\n${conclusion}`;
 }
 
@@ -407,7 +395,7 @@ function topicCoverage(material: GeneratedMaterial, input: ReturnType<typeof nor
   const sections = material.body.split(/\n\s*\n/).map((item) => item.trim()).filter(Boolean);
   const matchedTerms = terms.filter((term) => tokenMentioned(material.body, term));
   const matchingSections = sections.filter((section) => terms.some((term) => tokenMentioned(section, term))).length;
-  const requiredSections = input.length >= 650 ? 3 : input.length >= 160 ? 2 : 1;
+  const requiredSections = input.length >= 4500 ? 3 : input.length >= 1100 ? 2 : 1;
   const requiredTermCount = Math.max(1, Math.ceil(terms.length * 0.6));
   return {
     terms,
@@ -595,7 +583,7 @@ export async function POST(request: Request) {
       topic_contract: {
         primary_subject: input.topic,
         required_subject_terms: semanticTokens(input.topic).slice(0, 5),
-        minimum_body_sections_with_subject: input.length >= 650 ? 3 : input.length >= 160 ? 2 : 1,
+        minimum_body_sections_with_subject: input.length >= 4500 ? 3 : input.length >= 1100 ? 2 : 1,
         prohibited_substitution: "не заменять предмет запроса общей статьёй о категории, другой отрасли, выборе поставщика или абстрактном бренде",
       },
       keywords: input.keywords,
@@ -606,7 +594,7 @@ export async function POST(request: Request) {
       },
       tone: input.tone,
       tone_contract: selectedToneRules,
-      target_words: input.length,
+      target_characters_with_spaces: input.length,
       additional_focus: input.accent,
       mandatory_editorial_focus: activeEditorialFocuses(input).map((item) => ({
         label: item.label,
@@ -687,7 +675,7 @@ export async function POST(request: Request) {
           "Поля source_facts и hidden_editorial_controls — внутренний бриф, а не содержание публикации. Никогда не пересказывай устройство брифа, профиль бренда, описание аудитории, выбранный стиль, ключевые слова или правила формата.",
           "Не используй мета-фразы «материал адресован», «текст говорит», «профиль бренда», «выбранный стиль», «ключевые темы» и подобные редакционные пояснения.",
           "Факты и преимущества вплетай в тему естественно. Позиционирование можно переформулировать; не копируй его отдельным рекламным абзацем.",
-          "Выполни keyword_contract: каждая required_phrases должна присутствовать в body хотя бы один раз в точной или грамматически корректной форме. Не выдавай ключи списком и не комментируй SEO‑настройки. Ориентируйся на целевой объём, отклонение до 15% допустимо.",
+          "Выполни keyword_contract: каждая required_phrases должна присутствовать в body хотя бы один раз в точной или грамматически корректной форме. Не выдавай ключи списком и не комментируй SEO‑настройки. Целевой объём указан в знаках с пробелами; отклонение до 15% допустимо.",
           "Не добивай текст вариациями одного ключа. Поисковые формулировки нужны для ясного соответствия интенту, а не для плотности: при конфликте с естественностью используй грамматически корректную форму и сохрани смысл.",
           "Материал должен добавлять собственную пользу: предметное объяснение, подтверждённые факты бренда, независимую полезную фактуру, практический вывод или решение задачи. Не пересказывай абстрактно то, что могло бы относиться к любой компании. Для длинной статьи раскрой минимум два содержательных нюанса или практических сценария помимо описания бренда.",
           "Для медицинской тематики избегай гарантий результата, диагнозов и персональных назначений.",
@@ -711,14 +699,14 @@ export async function POST(request: Request) {
     // exact, and hard-rejecting near-misses was discarding good articles
     // and forcing costly full retries. Coverage badges in the UI already
     // surface a length mismatch softly without blocking the result.
-    const minimumWords = Math.floor(input.length * 0.85);
-    const maximumWords = Math.ceil(input.length * 1.15);
+    const minimumCharacters = Math.floor(input.length * 0.85);
+    const maximumCharacters = Math.ceil(input.length * 1.15);
     let missingGeo = missingGeography(material, input);
     let subjectCheck = topicCoverage(material, input);
     let missingFocuses = missingEditorialFocuses(material, input);
     let missingKeyPhrases = missingKeywords(material, input);
 
-    if (countWords(material.body) < minimumWords || countWords(material.body) > maximumWords || hasMetaLeakage(material.body) || hasPublicationMarkup(material.body) || missingGeo.length || !subjectCheck.passes || missingFocuses.length || missingKeyPhrases.length) {
+    if (countCharacters(material.body) < minimumCharacters || countCharacters(material.body) > maximumCharacters || hasMetaLeakage(material.body) || hasPublicationMarkup(material.body) || missingGeo.length || !subjectCheck.passes || missingFocuses.length || missingKeyPhrases.length) {
       try {
         const correctionCall = await callAiModel<Record<string, unknown>>({
           operation: "revise_content",
@@ -730,7 +718,7 @@ export async function POST(request: Request) {
             "Ты — выпускающий редактор платформы КЛИО.",
             "Приведи материал к заданному объёму, сохранив тему, факты, ключевые фразы, структуру и голос бренда.",
             ...CORE_SYSTEM_RULES,
-            `Требуемый объём: ${input.length} слов. Допустимый диапазон: ${minimumWords}–${maximumWords} слов.`,
+            `Требуемый объём: ${input.length} знаков с пробелами. Допустимый диапазон: ${minimumCharacters}–${maximumCharacters} знаков с пробелами.`,
             "Не добавляй неподтверждённые факты и не повторяй абзацы ради объёма.",
             `Сохрани контракт формата «${formatPlan.title}»:`,
             ...formatPlan.aiRules,
@@ -782,7 +770,7 @@ export async function POST(request: Request) {
     // of a thought" and "a sentence boundary"). A purely mechanical trim
     // is only the fallback if that call itself fails — always leave the
     // client with *something* rather than an error.
-    if (countWords(material.body) > maximumWords) {
+    if (countCharacters(material.body) > maximumCharacters) {
       try {
         const condenseCall = await callAiModel<Record<string, unknown>>({
           operation: "condense_overflow",
@@ -792,13 +780,13 @@ export async function POST(request: Request) {
           schema: MATERIAL_SCHEMA,
           instructions: [
             "Ты сокращаешь уже готовую статью до целевого объёма, не переписывая её заново.",
-            `Целевой объём: ${input.length} слов, допустимо от ${minimumWords} до ${maximumWords}.`,
+            `Целевой объём: ${input.length} знаков с пробелами, допустимо от ${minimumCharacters} до ${maximumCharacters}.`,
             "Сокращай за счёт наименее важного: повторов, избыточных примеров, лишних деталей. Не обрывай мысль или аргумент на середине — если предложение продолжает мысль из предыдущего, сокращай их вместе или не трогай.",
             "Не добавляй новые факты, не меняй заголовок, тему, ключевые фразы и структуру подзаголовков без необходимости.",
             "Сохрани subtitle, meta_title, meta_description и editorial_comment по смыслу как есть (можно чуть скорректировать под новый объём).",
             "Верни только валидный JSON с полями title, subtitle, body, meta_title, meta_description, editorial_comment.",
           ].join("\n"),
-          input: JSON.stringify({ target_words: input.length, current_material: material }),
+          input: JSON.stringify({ target_characters_with_spaces: input.length, current_material: material }),
         });
         material = materialFromRecord(condenseCall.result);
         usedModel = condenseCall.model;

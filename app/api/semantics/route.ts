@@ -152,6 +152,7 @@ export async function POST(request: Request) {
         "Раздели фразы на кластеры по одному поисковому намерению. По умолчанию выбери для recommended ОДИН небрендовый кластер, который приводит новую аудиторию; брендовый кластер выбирай только если небрендовых фраз нет.",
         "Для одного будущего материала отметь recommended только 1 основной и 3–5 близких поддерживающих фраз из ОДНОГО кластера. Внутри кластера предпочитай более частотные и недублирующие фразы.",
         "Не смешивай в recommended коммерческие, информационные, навигационные и иные несовместимые намерения. Верни 8–30 фраз из списка.",
+        "recommendedLength — разумный объём будущего материала в знаках с пробелами: для подробной SEO-статьи обычно 5 000–12 000, не в словах.",
       ].join("\n"), input: JSON.stringify({ original_query: query, search_demand_geography: searchRegion.label, market: clean(seedPlan.result.market, 180), brand_name: brand.name || null, growth_seeds: seeds.slice(1), verified_candidates_last_30_days: candidates }, null, 2),
     });
     const seen = new Set<string>();
@@ -176,7 +177,7 @@ export async function POST(request: Request) {
       recommended: selectedIds.has(item.id),
     })).sort((a, b) => Number(b.recommended) - Number(a.recommended) || b.frequency - a.frequency);
     const usage = await recordResearch();
-    return Response.json({ result: { primaryQuery: query, intent: ai.result.intent, suggestedTopic: clean(ai.result.suggestedTopic, 240) || query, recommendedLength: Math.min(3000, Math.max(700, Number(ai.result.recommendedLength) || 1200)), keywords: finalKeywords, dataNote: `Фразы и частотность подтверждены актуальными поисковыми данными за последние 30 дней для географии: ${searchRegion.label}. В карте отдельно выделяются брендовый спрос и запросы новой аудитории; рекомендации собраны из одного наиболее сильного кластера.` }, mode: "ai", model: ai.model, sources: { searchDemand: "verified", geography: searchRegion.label, candidates: candidates.length, market: clean(seedPlan.result.market, 180) }, usage });
+    return Response.json({ result: { primaryQuery: query, intent: ai.result.intent, suggestedTopic: clean(ai.result.suggestedTopic, 240) || query, recommendedLength: Math.min(21000, Math.max(5000, Number(ai.result.recommendedLength) || 8400)), keywords: finalKeywords, dataNote: `Фразы и частотность подтверждены актуальными поисковыми данными за последние 30 дней для географии: ${searchRegion.label}. В карте отдельно выделяются брендовый спрос и запросы новой аудитории; рекомендации собраны из одного наиболее сильного кластера.` }, mode: "ai", model: ai.model, sources: { searchDemand: "verified", geography: searchRegion.label, candidates: candidates.length, market: clean(seedPlan.result.market, 180) }, usage });
   } catch (error) {
     if (error instanceof WorkspaceAccessError) return workspaceErrorResponse(error);
     return openAiErrorResponse(error, "Не удалось получить поисковые данные для семантики.");

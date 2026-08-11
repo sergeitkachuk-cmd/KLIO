@@ -379,7 +379,7 @@ const defaultSemanticResult: SemanticResult = {
     summary: "",
   },
   suggestedTopic: "",
-  recommendedLength: 1200,
+  recommendedLength: 8400,
   dataNote: "",
   keywords: [],
 };
@@ -651,45 +651,45 @@ const styles = Object.keys(TONE_PLANS);
 
 const lengthPresets: Record<Format, { value: number; label: string }[]> = {
   seo: [
-    { value: 500, label: "500 · заметка" },
-    { value: 800, label: "800 · краткая статья" },
-    { value: 1200, label: "1 200 · стандарт" },
-    { value: 1800, label: "1 800 · подробно" },
-    { value: 2500, label: "2 500 · лонгрид" },
-    { value: 4000, label: "4 000 · спецпроект" },
+    { value: 3500, label: "3 500 · заметка" },
+    { value: 5600, label: "5 600 · краткая статья" },
+    { value: 8400, label: "8 400 · стандарт" },
+    { value: 12600, label: "12 600 · подробно" },
+    { value: 17500, label: "17 500 · лонгрид" },
+    { value: 28000, label: "28 000 · спецпроект" },
   ],
   social: [
-    { value: 80, label: "80 · очень короткий" },
-    { value: 150, label: "150 · оптимальный" },
-    { value: 300, label: "300 · развёрнутый" },
-    { value: 500, label: "500 · экспертный" },
+    { value: 600, label: "600 · очень короткий" },
+    { value: 1050, label: "1 050 · оптимальный" },
+    { value: 2100, label: "2 100 · развёрнутый" },
+    { value: 3500, label: "3 500 · экспертный" },
   ],
   ads: [
-    { value: 50, label: "50 · короткий" },
-    { value: 100, label: "100 · стандарт" },
-    { value: 200, label: "200 · подробно" },
-    { value: 300, label: "300 · серия тезисов" },
+    { value: 350, label: "350 · короткий" },
+    { value: 700, label: "700 · стандарт" },
+    { value: 1400, label: "1 400 · подробно" },
+    { value: 2100, label: "2 100 · серия тезисов" },
   ],
   landing: [
-    { value: 300, label: "300 · один блок" },
-    { value: 500, label: "500 · короткая страница" },
-    { value: 800, label: "800 · стандарт" },
-    { value: 1200, label: "1 200 · подробно" },
-    { value: 1800, label: "1 800 · большая страница" },
+    { value: 2100, label: "2 100 · один блок" },
+    { value: 3500, label: "3 500 · короткая страница" },
+    { value: 5600, label: "5 600 · стандарт" },
+    { value: 8400, label: "8 400 · подробно" },
+    { value: 12600, label: "12 600 · большая страница" },
   ],
 };
 
 const defaultLengthByFormat: Record<Format, number> = {
-  seo: 1200,
-  social: 150,
-  ads: 100,
-  landing: 500,
+  seo: 8400,
+  social: 1050,
+  ads: 700,
+  landing: 3500,
 };
 
 // Контент-план works with its own, more editorial set of formats (SEO-
 // статья, кейс, FAQ...); the generator only knows the four production
 // formats above. Without this map, "В генератор" always sent every plan
-// item — including social posts — in as an SEO article at 1200 words,
+// item — including social posts — in as an SEO article at 8 400 characters,
 // which is unusable for a "Пост" item. Anything long-form-article-shaped
 // maps to seo; every format with a direct generator equivalent maps
 // straight to it.
@@ -980,7 +980,11 @@ function normalizeStoredSemanticResult(value: unknown): SemanticResult | null {
       summary: typeof source.intent?.summary === "string" ? source.intent.summary : "",
     },
     suggestedTopic: typeof source.suggestedTopic === "string" ? source.suggestedTopic : "",
-    recommendedLength: typeof source.recommendedLength === "number" ? source.recommendedLength : 1200,
+    // Older saved semantic cards stored the recommendation in words. Convert
+    // them once on read so they remain useful after the switch to characters.
+    recommendedLength: typeof source.recommendedLength === "number"
+      ? (source.recommendedLength < 3000 ? source.recommendedLength * 7 : source.recommendedLength)
+      : 8400,
     dataNote: typeof source.dataNote === "string" ? source.dataNote : "",
     keywords,
   };
@@ -1271,7 +1275,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [keywords, setKeywords] = useState(workspace ? "" : "санаторий для восстановления, лечение в Карелии, лечебные программы");
   const [tone, setTone] = useState("Экспертный");
   const [authorPosition, setAuthorPosition] = useState("brand");
-  const [length, setLength] = useState(1200);
+  const [length, setLength] = useState(8400);
   const [customLength, setCustomLength] = useState(false);
   const [accent, setAccent] = useState("");
   const [editorialBrief, setEditorialBrief] = useState<Record<string, unknown> | null>(null);
@@ -1347,7 +1351,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [subtitle, setSubtitle] = useState("");
   const [metaTitle, setMetaTitle] = useState(workspace ? "" : sample.seo.title.slice(0, 70));
   const [metaDescription, setMetaDescription] = useState(workspace ? "" : "Как выбрать санаторий для восстановления: медицинский профиль, лечебные факторы, программа и документы для поездки.");
-  const [editorNote, setEditorNote] = useState(workspace ? "Служебный комментарий появится после генерации и не попадёт в скопированный текст." : "Материал подготовлен в стиле «экспертный» с целевым объёмом 1 200 слов. Ключевые темы: санаторий для восстановления, лечение в Карелии, лечебные программы.");
+  const [editorNote, setEditorNote] = useState(workspace ? "Служебный комментарий появится после генерации и не попадёт в скопированный текст." : "Материал подготовлен в стиле «экспертный» с целевым объёмом 8 400 знаков с пробелами. Ключевые темы: санаторий для восстановления, лечение в Карелии, лечебные программы.");
   const [busy, setBusy] = useState(false);
   const [busyStep, setBusyStep] = useState(0);
   const [generationMode, setGenerationMode] = useState<GenerationMode>("example");
@@ -1414,6 +1418,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const brandPickerRef = useRef<HTMLDivElement>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
 
+  const characters = useMemo(() => body.trim().length, [body]);
   const words = useMemo(() => body.trim().split(/\s+/).filter(Boolean).length, [body]);
   const keyList = useMemo(() => keywords.split(",").map((item) => item.trim()).filter(Boolean), [keywords]);
   const hasQualityMaterial = generationMode === "ai" || (words >= 80 && !/^Результат появится после генерации/i.test(body.trim()));
@@ -1422,7 +1427,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     const keysFound = keyList.filter((key) => containsKeyword(fullText, key)).length;
     const coverage = keyList.length ? keysFound / keyList.length : 0;
     const primaryInTitle = keyList[0] ? containsKeyword(title, keyList[0]) : false;
-    const lengthProgress = Math.min(words / Math.max(length * 0.72, 1), 1);
+    const lengthProgress = Math.min(characters / Math.max(length * 0.72, 1), 1);
     const structureCount = body.split(/\n\s*\n/).filter(Boolean).length;
     const structure = Math.min(structureCount / 5, 1);
     // Keyword coverage and "primary keyword in title" only mean anything
@@ -1452,7 +1457,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     if (readabilityInfo.paragraphLength > 95) readabilityTips.push("Разбейте длинные абзацы на более короткие");
 
     return { seo, readability: readabilityInfo.score, keysFound, seoTips: seoTips.slice(0, 2), readabilityTips: readabilityTips.slice(0, 1) };
-  }, [body, keyList, length, title, words]);
+  }, [body, characters, keyList, length, title]);
   const foundationReady = Boolean(
     brand.name.trim()
     && brand.description.trim()
@@ -2428,7 +2433,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   function setManualLength(value: string) {
     const nextLength = Number(value);
     if (!Number.isFinite(nextLength)) return;
-    setLength(Math.min(4000, Math.max(30, Math.round(nextLength))));
+    setLength(Math.min(30000, Math.max(300, Math.round(nextLength))));
   }
 
   async function saveBrand() {
@@ -2684,7 +2689,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setGeneratorMode("advanced");
     setTopic(semanticResult.suggestedTopic || semanticQuery);
     setKeywords(selectedSemanticKeywords.map((item) => item.phrase).join(", "));
-    setLength(Math.min(4000, Math.max(500, semanticResult.recommendedLength || 1200)));
+    setLength(Math.min(30000, Math.max(5000, semanticResult.recommendedLength || 8400)));
     setCustomLength(false);
     setGeneratorUseSemantics(true);
     setGenerationMode("example");
@@ -2791,7 +2796,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
     const nextTopic = semanticResult.suggestedTopic || semanticQuery;
     const nextKeywords = selectedSemanticKeywords.map((item) => item.phrase).join(", ");
-    const nextLength = Math.min(4000, Math.max(500, semanticResult.recommendedLength || 1200));
+    const nextLength = Math.min(30000, Math.max(5000, semanticResult.recommendedLength || 8400));
     setFormat("seo");
     setTopic(nextTopic);
     setKeywords(nextKeywords);
@@ -3641,7 +3646,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       // без этого объём/SEO‑виджеты справа сравнивали бы результат с тем,
       // что осталось от предыдущей работы в «Эксперте», а не с тем, что
       // реально попросили в свободном поле.
-      if (payload.targetLength && payload.targetLength >= 30 && payload.targetLength <= 4000) {
+      if (payload.targetLength && payload.targetLength >= 300 && payload.targetLength <= 30000) {
         setLength(Math.round(payload.targetLength));
         setCustomLength(true);
       }
@@ -3797,8 +3802,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   if (workspace) {
     // ±15% matches the tolerance the generator itself already accepts as a
     // finished result server-side (see app/api/generate/route.ts) — the UI
-    // must never flag a word count the backend already considered fine.
-    const withinTarget = words >= Math.floor(length * 0.85) && words <= Math.ceil(length * 1.15);
+    // must never flag a character count the backend already considered fine.
+    const withinTarget = characters >= Math.floor(length * 0.85) && characters <= Math.ceil(length * 1.15);
     const targetChecked = generationMode !== "example";
 
     if (workspaceDataError && !activeBrandId) {
@@ -4128,7 +4133,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <article>
                   <span>Результат анализа · рекомендуемый материал</span>
                   <h4>{semanticResult.suggestedTopic}</h4>
-                  <div className="semantic-plan-meta"><b>SEO‑статья</b><small>{semanticResult.recommendedLength.toLocaleString("ru-RU")} слов · подробный ответ</small></div>
+                  <div className="semantic-plan-meta"><b>SEO‑статья</b><small>{semanticResult.recommendedLength.toLocaleString("ru-RU")} знаков с пробелами · подробный ответ</small></div>
                   <p className="semantic-result-source">Сформировано из запроса «{semanticResult.primaryQuery}». В генератор материал ещё не передан.</p>
                 </article>
                 <article className="semantic-selection-card">
@@ -4372,15 +4377,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <ModuleSelect label="Объём" value={customLength ? "custom" : String(length)} options={[...lengthPresets[format].map((item) => ({ value: String(item.value), label: item.label })), { value: "custom", label: "Свой объём…" }]} onChange={changeLength}/>
                 </div>
                 <p className={`tone-contract-note ${generatorAdvanced ? "" : "generator-advanced-hidden"}`}><i>Стиль: {tone}</i> меняет лексику и ритм, но не превращает выбранный формат в другой тип материала.</p>
-                {customLength && <label className={`field custom-length ${generatorAdvanced ? "" : "generator-advanced-hidden"}`}>Свой объём<div><input type="number" min="30" max="4000" step="10" value={length} onChange={(event) => setManualLength(event.target.value)} inputMode="numeric"/><span>слов</span></div><small>Можно указать от 30 до 4 000 слов</small></label>}
+                {customLength && <label className={`field custom-length ${generatorAdvanced ? "" : "generator-advanced-hidden"}`}>Свой объём<div><input type="number" min="300" max="30000" step="100" value={length} onChange={(event) => setManualLength(event.target.value)} inputMode="numeric"/><span>знаков</span></div><small>Укажите от 300 до 30 000 знаков с пробелами</small></label>}
                 {generationError && <p className="generation-error" role="alert">{generationError}</p>}
                 <button className={`button primary generate ${busy ? "is-busy" : ""}`} type="button" onClick={generate} disabled={!activeBrandId || busy || aiConnection !== "connected" || workspaceAccount.generationsRemaining <= 0}><Icon name="spark"/>{busy ? busySteps[busyStep] : !activeBrandId ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
                 {busy && <div className="generation-progress" aria-hidden="true"><i style={{ width: `${((busyStep + 1) / busySteps.length) * 100}%` }}/></div>}
                 </>}
               </aside>
               <article className="result-panel">
-                <div className="result-head"><div><span className={`status status-${generationMode}`}><i/>{generationMode === "ai" ? "Создано КЛИО" : generationMode === "demo" ? "Сохранённая версия" : aiConnection === "connected" ? "Ожидает генерацию" : "ИИ не подключён"}</span><small>{words.toLocaleString("ru-RU")} / {length.toLocaleString("ru-RU")} слов · {tone}</small></div><div className="result-head-actions"><button type="button" className="result-clear" onClick={clearGeneratedResult} disabled={!title && !body}><Icon name="erase"/> Очистить</button><button type="button" onClick={copyResult}><Icon name="copy"/> Копировать текст</button></div></div>
-                <div className={`length-control ${targetChecked ? (withinTarget ? "is-ok" : "is-warning") : "is-idle"}`}><span><i/>{targetChecked ? (withinTarget ? "Объём в цели" : "Объём отличается от заданного") : "Контроль включится после генерации"}</span><b>{targetChecked ? `${Math.round((words / Math.max(length, 1)) * 100)}%` : "—"}</b><u><i style={{ width: `${targetChecked ? Math.min(100, (words / Math.max(length, 1)) * 100) : 0}%` }}/></u><small>{targetChecked && !withinTarget ? "Это ориентир, а не жёсткое правило — при желании сократите или дополните текст ниже." : `Ориентир: от ${Math.floor(length * 0.85).toLocaleString("ru-RU")} до ${Math.ceil(length * 1.15).toLocaleString("ru-RU")} слов`}</small></div>
+                <div className="result-head"><div><span className={`status status-${generationMode}`}><i/>{generationMode === "ai" ? "Создано КЛИО" : generationMode === "demo" ? "Сохранённая версия" : aiConnection === "connected" ? "Ожидает генерацию" : "ИИ не подключён"}</span><small>{characters.toLocaleString("ru-RU")} / {length.toLocaleString("ru-RU")} знаков с пробелами · {tone}</small></div><div className="result-head-actions"><button type="button" className="result-clear" onClick={clearGeneratedResult} disabled={!title && !body}><Icon name="erase"/> Очистить</button><button type="button" onClick={copyResult}><Icon name="copy"/> Копировать текст</button></div></div>
+                <div className={`length-control ${targetChecked ? (withinTarget ? "is-ok" : "is-warning") : "is-idle"}`}><span><i/>{targetChecked ? (withinTarget ? "Объём в цели" : "Объём отличается от заданного") : "Контроль включится после генерации"}</span><b>{targetChecked ? `${Math.round((characters / Math.max(length, 1)) * 100)}%` : "—"}</b><u><i style={{ width: `${targetChecked ? Math.min(100, (characters / Math.max(length, 1)) * 100) : 0}%` }}/></u><small>{targetChecked && !withinTarget ? "Это ориентир, а не жёсткое правило — при желании сократите или дополните текст ниже." : `Ориентир: от ${Math.floor(length * 0.85).toLocaleString("ru-RU")} до ${Math.ceil(length * 1.15).toLocaleString("ru-RU")} знаков с пробелами`}</small></div>
                 <AutoTextarea className="result-title" rows={1} value={title} onChange={(event) => setTitle(event.target.value)} aria-label="Заголовок результата"/>
                 <AutoTextarea className="result-subtitle" rows={2} value={subtitle} onChange={(event) => setSubtitle(event.target.value)} placeholder="Здесь появится зацепка статьи" aria-label="Подзаголовок или зацепка статьи"/>
                 <AutoTextarea className="result-body" value={body} onChange={(event) => setBody(event.target.value)} aria-label="Текст результата"/>

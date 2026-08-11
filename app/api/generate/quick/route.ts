@@ -54,7 +54,7 @@ function normalizeBrief(parsed: Record<string, unknown>): QuickBrief {
   const tone = typeof parsed.tone === "string" && parsed.tone.trim() ? parsed.tone.trim().slice(0, 60) : "Понятный";
   const topic = typeof parsed.topic === "string" && parsed.topic.trim() ? parsed.topic.trim().slice(0, 300) : "";
   const rawLength = Number(parsed.target_length);
-  const targetLength = Number.isFinite(rawLength) && rawLength >= 30 && rawLength <= 4000 ? Math.round(rawLength) : 800;
+  const targetLength = Number.isFinite(rawLength) && rawLength >= 300 && rawLength <= 30000 ? Math.round(rawLength) : 5600;
   return { format, tone, topic, targetLength };
 }
 
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
           "Определи формат публикации: seo — SEO‑статья, social — пост для соцсетей, ads — рекламный текст, landing — текст для сайта. Если не назван явно, выбери самый подходящий по смыслу.",
           "Определи подходящую интонацию (например: Экспертный, Дружелюбный, Разговорный, Молодёжный, Понятный, Вовлекающий) одним словом или коротким сочетанием.",
           "Сформулируй краткую конкретную тему материала (topic) по смыслу задачи — не пересказывай задачу дословно, а выдели предмет.",
-          "Оцени разумный целевой объём в словах (target_length) под формат: SEO‑статья — 700–1200, пост для соцсетей — 80–200, реклама — 60–120, текст для сайта — 300–600. Если пользователь указал объём явно — используй его.",
+          "Оцени разумный целевой объём в знаках с пробелами (target_length) под формат: SEO‑статья — 5 000–8 500, пост для соцсетей — 600–1 400, реклама — 400–900, текст для сайта — 2 000–4 500. Если пользователь указал объём явно, воспринимай его как число знаков с пробелами.",
           "Верни только валидный JSON со всеми четырьмя полями.",
         ].join("\n"),
         input: `Задача пользователя: ${prompt}`,
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
         instructions: [
           "Ты — старший русскоязычный редактор и контент‑маркетолог платформы КЛИО.",
           "Пользователь описал задачу свободным текстом в одном окне — как в чате с ассистентом, без отдельных полей темы, формата и ключей.",
-          "Разбор задачи уже выполнен (см. inferred_brief): используй его формат, интонацию, тему и целевой объём как основу, но не копируй их в текст статьи и не упоминай сам факт разбора.",
+          "Разбор задачи уже выполнен (см. inferred_brief): используй его формат, интонацию, тему и целевой объём в знаках с пробелами как основу, но не копируй их в текст статьи и не упоминай сам факт разбора.",
           "Поле format в ответе должно совпадать с inferred_brief.format, поле tone — с inferred_brief.tone, если только сам текст задачи явно не требует иного.",
           "Если в задаче назван конкретный бренд, компания, продукт или сайт, выполни веб‑поиск, найди официальный сайт и реальные факты о нём. Не выдумывай функции, преимущества, характеристики или программу — пиши только на подтверждённых фактах. Если поиск не подтвердил, что это за компания или продукт, честно опирайся только на то, что подтвердилось, и отметь пробел в editorial_comment.",
           "Любой факт из веб‑поиска обязательно отметь в editorial_comment вместе со ссылкой на источник и пометкой «найдено в вебе, требует проверки».",
@@ -154,7 +154,7 @@ export async function POST(request: Request) {
 
     const format = typeof parsed.format === "string" && ALLOWED_FORMATS.has(parsed.format) ? parsed.format : brief.format;
     const tone = typeof parsed.tone === "string" && parsed.tone.trim() ? parsed.tone.trim().slice(0, 60) : brief.tone;
-    const targetLength = material.body.trim().split(/\s+/).filter(Boolean).length;
+    const targetLength = material.body.trim().length;
 
     const usage = await recordGeneration({
       brandId,
@@ -174,7 +174,7 @@ export async function POST(request: Request) {
     // The client's length/keyword coverage widgets are shared with the
     // Advanced generator and default to whatever was last set there. Quick
     // mode never asks for a target length or keywords, so it must hand
-    // back what it actually used (brief.targetLength — the objem nano
+    // back what it actually used (brief.targetLength — the length inferred
     // inferred from the free-text prompt, before generation) so the client
     // can sync its display instead of comparing this result against
     // leftover Advanced-tab state.
