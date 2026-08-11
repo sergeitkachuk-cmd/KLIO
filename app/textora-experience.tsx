@@ -4206,18 +4206,18 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>
 
           <section className={`workspace-module competitor-module ${competitorOpen ? "" : "tool-collapsed"}`} id="competitors">
-            <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Анализ конкурентов</h2></div><p>КЛИО сравнивает не позиции и не «кто лучше», а то, какие вопросы по запросу раскрыты на страницах прямых конкурентов. «Лидер отрасли» — заметный сайт в общей выдаче, «конкурент в выбранной географии» — сайт, релевантный вашей аудитории. Агрегаторы, СМИ и упоминания бренда исключаются.</p><button type="button" onClick={() => setCompetitorOpen((value) => !value)} aria-expanded={competitorOpen}>{competitorOpen ? "Свернуть" : "Открыть инструмент"}<i>{competitorOpen ? "−" : "+"}</i></button></div>
+            <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Анализ конкурентов</h2></div><p>Посмотрите, как сильные игроки отвечают на вопросы ваших будущих клиентов, и найдите полезные темы для своего сайта. КЛИО соберёт прямых конкурентов и подскажет, что стоит раскрыть в материале.</p><button type="button" onClick={() => setCompetitorOpen((value) => !value)} aria-expanded={competitorOpen}>{competitorOpen ? "Свернуть" : "Открыть инструмент"}<i>{competitorOpen ? "−" : "+"}</i></button></div>
 
             <div className="competitor-optional-shell">
               <button type="button" className="competitor-entry-card" onClick={() => setCompetitorOpen((value) => !value)} aria-expanded={competitorOpen}>
-                <span className="competitor-entry-copy"><span>Не входит в обязательный маршрут</span><strong>{competitorOpen ? "Анализ открыт" : "Нужна ли вам сравнительная матрица?"}</strong><small>{competitorOpen ? "Ниже можно задать запрос и сравнить страницы прямых конкурентов." : "Если задача — просто написать статью по теме, пропустите этот блок. Откройте его для конкурентного SEO‑исследования перед сложным или приоритетным материалом."}</small></span>
+                <span className="competitor-entry-copy"><span>Не входит в обязательный маршрут</span><strong>{competitorOpen ? "Анализ открыт" : "Хотите сделать материал сильнее?"}</strong><small>{competitorOpen ? "Ниже можно задать запрос и сравнить страницы прямых конкурентов." : "Посмотрите, какие вопросы уже раскрывают другие компании, чтобы добавить в материал действительно полезные темы и не упустить спрос."}</small></span>
                 <span className="competitor-entry-action"><b>{competitorOpen ? "Свернуть" : "Открыть анализ"}</b><i>{competitorOpen ? "−" : "+"}</i></span>
               </button>
               {competitorOpen && <div className="competitor-optional-body">
 
             <div className="competitor-setup-card">
               <div className="competitor-setup-head">
-                <div><span>Контур анализа</span><h3>Задайте предмет сравнения</h3><p>КЛИО сопоставляет полноту ответа по выбранной теме: что уже раскрывает ваш бренд и как ту же задачу закрывают конкретные страницы конкурентов.</p></div>
+                <div><span>Контур анализа</span><h3>Задайте предмет сравнения</h3><p>КЛИО не оценивает позиции сайтов, посещаемость или то, кто «лучше как компания». Он показывает, какие вопросы по запросу раскрыты на конкретных страницах. Метка «лидер отрасли» означает заметный сайт в общей выдаче, а «конкурент в выбранной географии» — релевантность вашей аудитории.</p></div>
                 <span className={`competitor-mode competitor-mode-${competitorMode}`}><i/>{competitorMode === "ai" ? "AI‑анализ" : competitorMode === "demo" ? "Структурный анализ" : "Демонстрация"}</span>
               </div>
 
