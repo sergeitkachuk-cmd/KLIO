@@ -111,7 +111,7 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // is too weak for at useful quality — verified this session: nano/mini-
   // tier models either time out on it or degrade to near-brand-only
   // phrases. Kept on Luna.
-  research_semantics: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 9_000, structuredOutput: true, retryable: true, useWebSearch: true },
+  research_semantics: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 9_000, structuredOutput: true, retryable: true, useWebSearch: false },
   discover_competitors: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 1_800, structuredOutput: false, retryable: true, useWebSearch: true },
   analyze_competitors: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 9_000, structuredOutput: true, retryable: true, useWebSearch: false },
   // The correction/patch pass (missing keyword, off-target length, etc.):

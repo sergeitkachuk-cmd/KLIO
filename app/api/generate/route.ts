@@ -152,6 +152,13 @@ function cleanSemanticContext(value: unknown) {
     },
     selectedKeywords,
   };
+  // A semantic map may contain several valid clusters, but a single article
+  // must never receive them as one brief. The UI enforces this too; keep this
+  // server-side guard for saved/old browser state and direct API callers.
+  const cluster = result.selectedKeywords[0]?.cluster;
+  if (cluster && result.selectedKeywords.some((keyword) => keyword.cluster && keyword.cluster !== cluster)) {
+    result.selectedKeywords = result.selectedKeywords.filter((keyword) => !keyword.cluster || keyword.cluster === cluster);
+  }
   return result.query || result.suggestedTopic || result.selectedKeywords.length ? result : null;
 }
 

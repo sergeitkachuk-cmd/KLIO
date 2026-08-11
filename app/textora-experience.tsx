@@ -56,6 +56,8 @@ type SemanticKeyword = {
   breadth: "Широкий" | "Средний" | "Узкий";
   recommended: boolean;
   note?: string;
+  frequency?: number;
+  source?: "Yandex Wordstat";
 };
 
 type SemanticResult = {
@@ -929,6 +931,8 @@ function normalizeStoredSemanticResult(value: unknown): SemanticResult | null {
       : item.demand === "Низкий" || item.demand === "Нишевый" ? "Узкий" : "Средний",
     recommended: Boolean(item.recommended),
     note: typeof item.note === "string" ? item.note : "",
+    frequency: typeof item.frequency === "number" && Number.isFinite(item.frequency) ? item.frequency : undefined,
+    source: item.source === "Yandex Wordstat" ? item.source : undefined,
   })).filter((item) => item.phrase.trim());
   if (!keywords.length) return null;
   return {
@@ -2594,8 +2598,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         persistSemantics(semanticResult, next, semanticMode);
         return next;
       }
-      if (current.length >= 8) {
-        showToast("Для одного материала рекомендуем не более 8 фраз");
+      if (current.length >= 6) {
+        showToast("Для одного материала используйте не более 6 близких фраз");
+        return current;
+      }
+      const nextKeyword = semanticResult.keywords.find((item) => item.id === id);
+      const selectedCluster = semanticResult.keywords.find((item) => current.includes(item.id))?.cluster;
+      if (nextKeyword && selectedCluster && nextKeyword.cluster !== selectedCluster) {
+        showToast(`Одна статья — один кластер. «${nextKeyword.cluster}» создайте отдельной темой.`);
         return current;
       }
       const next = [...current, id];
@@ -2605,11 +2615,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }
 
   function selectRecommendedSemantics() {
-    const next = semanticResult.keywords.filter((item) => item.recommended).map((item) => item.id).slice(0, 8);
+    const primary = semanticResult.keywords.find((item) => item.role === "Основной");
+    const next = semanticResult.keywords.filter((item) => item.recommended && item.cluster === primary?.cluster).map((item) => item.id).slice(0, 6);
     setSelectedSemanticIds(next);
     setContentPlanNeedsRefresh(true);
     persistSemantics(semanticResult, next, semanticMode);
-    showToast("КЛИО выбрала сбалансированный набор без переспама");
+    showToast("КЛИО выбрала один кластер: основной и близкие поддерживающие фразы");
   }
 
   function clearSemanticSelection() {
@@ -4065,8 +4076,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </article>
                 <article className="semantic-selection-card">
                   <span>Собрано для брифа</span>
-                  <div><b>{selectedSemanticKeywords.length}</b><small>из 8 фраз максимум</small></div>
-                  <p>{selectedClusters} {selectedClusters === 1 ? "смысловая группа" : selectedClusters > 1 && selectedClusters < 5 ? "смысловые группы" : "смысловых групп"} · основной запрос {selectedSemanticKeywords.some((item) => item.role === "Основной") ? "выбран" : "не выбран"}</p>
+                  <div><b>{selectedSemanticKeywords.length}</b><small>из 6 фраз максимум</small></div>
+                  <p>{selectedClusters === 1 ? "один смысловой кластер" : "выберите один смысловой кластер"} · основной запрос {selectedSemanticKeywords.some((item) => item.role === "Основной") ? "выбран" : "не выбран"}</p>
                 </article>
               </div>
 
@@ -4079,7 +4090,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                       return <button type="button" className={activeSemanticCluster === cluster ? "active" : ""} onClick={() => setActiveSemanticCluster(cluster)} key={cluster}><span>{cluster}</span><b>{count}</b></button>;
                     })}
                   </nav>
-                  <div className="semantic-cluster-tip"><i>✦</i><p><b>Рекомендация КЛИО</b>Для одной статьи обычно достаточно 5–8 фраз из нескольких близких групп.</p></div>
+                  <div className="semantic-cluster-tip"><i>✦</i><p><b>Рекомендация КЛИО</b>Одна статья — один кластер: 1 основной и 3–5 близких поддерживающих фраз.</p></div>
                 </aside>
 
                 <div className="semantic-keywords-panel">
@@ -4094,7 +4105,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   </div>
 
                   <div className="semantic-table" aria-label="Ключевые запросы">
-                    <div className="semantic-table-head"><span>Выбор</span><span>Фраза</span><span>Интент</span><span>Связь</span><span>Охват</span></div>
+                    <div className="semantic-table-head"><span>Выбор</span><span>Фраза</span><span>Интент</span><span>Связь</span><span>Частота</span></div>
                     {visibleSemanticKeywords.map((keyword) => {
                       const selected = selectedSemanticIds.includes(keyword.id);
                       const breadthClass = keyword.breadth === "Широкий" ? "high" : keyword.breadth === "Средний" ? "medium" : "niche";
@@ -4103,7 +4114,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                         <span><b>{keyword.phrase}</b>{keyword.note && <small>{keyword.note}</small>}<em>{keyword.role}{keyword.recommended ? " · рекомендует КЛИО" : ""}</em></span>
                         <span>{keyword.intent}</span>
                         <span>{keyword.relation}</span>
-                        <span><i className={`semantic-demand ${breadthClass}`}/>{keyword.breadth}<button type="button" className="semantic-keyword-copy" onClick={(event) => { event.stopPropagation(); copyPlainText(keyword.phrase, "Фраза"); }} aria-label={`Копировать фразу «${keyword.phrase}»`}><Icon name="copy"/></button></span>
+                        <span><i className={`semantic-demand ${breadthClass}`}/>{typeof keyword.frequency === "number" ? `${keyword.frequency.toLocaleString("ru-RU")} / 30 дн.` : "Нет данных"}<button type="button" className="semantic-keyword-copy" onClick={(event) => { event.stopPropagation(); copyPlainText(keyword.phrase, "Фраза"); }} aria-label={`Копировать фразу «${keyword.phrase}»`}><Icon name="copy"/></button></span>
                       </div>;
                     })}
                   </div>
