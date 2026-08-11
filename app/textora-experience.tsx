@@ -77,6 +77,7 @@ type CompetitorEntry = {
   label: string;
   url: string;
   origin?: "manual" | "ai";
+  note?: string;
 };
 
 type CompetitorCoverage = "strong" | "partial" | "missing" | "unknown";
@@ -2601,7 +2602,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           query: cleanQuery,
           region: semanticRegion,
           geography: selectedGeoScopes.map(({ key, label, detail }) => ({ key, label, detail })),
-          brand: useBrand ? effectiveBrand : null,
+          brand: effectiveBrand,
         }),
       });
       const payload = await safeJson(response) as {
@@ -2937,11 +2938,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query: cleanQuery,
-          // Only attach the brand profile when the visitor's query actually
-          // came from it (competitorFocusSource === "brand"). Falling back
-          // to the shared useBrand toggle here used to pull the brand into
-          // an intentionally independent, manually typed search.
-          brand: competitorFocusSource === "brand" && useBrand ? effectiveBrand : null,
+          // The active brand is always needed as an exclusion rule. It does
+          // not change a manually entered query, but prevents the search
+          // from returning the brand's own site or pages that only mention it.
+          brand: useBrand ? effectiveBrand : null,
           geography: selectedGeoScopes.map(({ label, detail }) => ({ label, detail })),
         }),
       });
@@ -4192,7 +4192,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <button className={`button primary large ${semanticArticleBusy ? "is-busy" : ""}`} type="button" onClick={generateFromSemantics} disabled={!activeBrandId || !selectedSemanticKeywords.length || semanticNeedsRefresh || semanticArticleBusy || aiConnection !== "connected" || workspaceAccount.generationsRemaining <= 0}><Icon name="spark"/>{semanticArticleBusy ? "Создаём статью…" : !activeBrandId ? "Загружаем кабинет" : aiConnection !== "connected" ? "ИИ не подключён" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : semanticNeedsRefresh ? "Сначала обновите семантику" : "Сгенерировать материал"}</button>
                 </div>
                 <div className="module-material-bar"><span><b>{moduleMaterialSources.semantics ? "Продолжаете сохранённую версию" : "Зафиксировать исследование"}</b><small>Сохранение и экспорт не расходуют лимиты.</small></span><div><button type="button" onClick={() => void saveModuleMaterial("semantics")} disabled={materialSavingType === "semantics"}>{materialSavingType === "semantics" ? "Сохраняем…" : moduleMaterialSources.semantics ? "Сохранить новую версию" : "Сохранить в материалы"}</button>{moduleMaterialSources.semantics && <button type="button" onClick={() => void saveModuleMaterial("semantics", "copy")} disabled={materialSavingType === "semantics"}>Сохранить копию</button>}</div></div>
-                <div className="semantic-optional-route"><span><i>+</i><b>Нужен более глубокий SEO‑разбор?</b><small>Только тогда откройте анализ конкурентов. Он найдёт смысловые пробелы и передаст выбранные выводы в дополнительный акцент, не создавая новую семантику.</small></span><button type="button" onClick={openCompetitorAnalysis}>Сравнить страницы конкурентов</button></div>
+                <div className="semantic-optional-route"><span><i>+</i><b>Нужен более глубокий SEO‑разбор?</b><small>Только тогда откройте анализ конкурентов. Он сравнит сайты прямых конкурентов и передаст выбранные выводы в дополнительный акцент, не создавая новую семантику.</small></span><button type="button" onClick={openCompetitorAnalysis}>Сравнить конкурентов</button></div>
               </div>
               </> : <div className="semantic-waiting-state">
                 <div className="semantic-waiting-mark"><span>02</span><i>→</i></div>
@@ -4203,11 +4203,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>
 
           <section className={`workspace-module competitor-module ${competitorOpen ? "" : "tool-collapsed"}`} id="competitors">
-            <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Анализ конкурентов</h2></div><p>Сравните конкретные страницы по теме или используйте модуль отдельно. Для обычной генерации этот этап не нужен.</p><button type="button" onClick={() => setCompetitorOpen((value) => !value)} aria-expanded={competitorOpen}>{competitorOpen ? "Свернуть" : "Открыть инструмент"}<i>{competitorOpen ? "−" : "+"}</i></button></div>
+            <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Анализ конкурентов</h2></div><p>Сравните сайты прямых конкурентов по одному запросу. КЛИО не берёт в матрицу ваш сайт, агрегаторы, СМИ и страницы с упоминаниями бренда.</p><button type="button" onClick={() => setCompetitorOpen((value) => !value)} aria-expanded={competitorOpen}>{competitorOpen ? "Свернуть" : "Открыть инструмент"}<i>{competitorOpen ? "−" : "+"}</i></button></div>
 
             <div className="competitor-optional-shell">
               <button type="button" className="competitor-entry-card" onClick={() => setCompetitorOpen((value) => !value)} aria-expanded={competitorOpen}>
-                <span className="competitor-entry-copy"><span>Не входит в обязательный маршрут</span><strong>{competitorOpen ? "Анализ открыт" : "Нужна ли вам сравнительная матрица?"}</strong><small>{competitorOpen ? "Ниже можно задать тему и сравнить открытые страницы." : "Если задача — просто написать статью по теме, пропустите этот блок. Откройте его для конкурентного SEO‑исследования перед сложным или приоритетным материалом."}</small></span>
+                <span className="competitor-entry-copy"><span>Не входит в обязательный маршрут</span><strong>{competitorOpen ? "Анализ открыт" : "Нужна ли вам сравнительная матрица?"}</strong><small>{competitorOpen ? "Ниже можно задать запрос и сравнить страницы прямых конкурентов." : "Если задача — просто написать статью по теме, пропустите этот блок. Откройте его для конкурентного SEO‑исследования перед сложным или приоритетным материалом."}</small></span>
                 <span className="competitor-entry-action"><b>{competitorOpen ? "Свернуть" : "Открыть анализ"}</b><i>{competitorOpen ? "−" : "+"}</i></span>
               </button>
               {competitorOpen && <div className="competitor-optional-body">
@@ -4232,18 +4232,18 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </div>
               </div>
 
-              <div className="competitor-source-list">
-                <div className="competitor-source-head"><div><span>Страницы конкурентов</span><small>Добавьте ссылки вручную или используйте автоматический веб‑поиск, когда AI‑доступ подключён</small></div><button type="button" className={`competitor-discover ${competitorDiscoveryBusy ? "is-busy" : ""}`} onClick={discoverCompetitors} disabled={competitorDiscoveryBusy || aiConnection !== "connected"}><Icon name="spark"/>{competitorDiscoveryBusy ? "Ищем в интернете…" : aiConnection === "connected" ? "Подобрать автоматически" : aiConnection === "checking" ? "Проверяем подключение…" : "Автопоиск не подключён"}</button></div>
+                <div className="competitor-source-list">
+                <div className="competitor-source-head"><div><span>Сайты прямых конкурентов</span><small>Добавьте сайты компаний с сопоставимой услугой или используйте автоматический подбор. Агрегаторы, СМИ и страницы с упоминаниями бренда не подходят.</small></div><button type="button" className={`competitor-discover ${competitorDiscoveryBusy ? "is-busy" : ""}`} onClick={discoverCompetitors} disabled={competitorDiscoveryBusy || aiConnection !== "connected"}><Icon name="spark"/>{competitorDiscoveryBusy ? "Ищем в интернете…" : aiConnection === "connected" ? "Подобрать автоматически" : aiConnection === "checking" ? "Проверяем подключение…" : "Автопоиск не подключён"}</button></div>
                 {aiConnection === "disconnected" && <p className="competitor-search-status"><i>i</i><span><b>Почему ссылки не подставляются автоматически</b><small>В текущей версии не подключён реальный AI‑доступ к веб‑поиску. Поэтому КЛИО не имитирует поиск и не придумывает адреса: пока используйте ручные ссылки.</small></span></p>}
                 {competitorDiscoveryNote && <p className="competitor-discovery-note"><Icon name="check"/>{competitorDiscoveryNote}</p>}
                 {competitors.map((competitor, index) => <div className="competitor-source-row" key={competitor.id}>
                   <i>{String(index + 1).padStart(2, "0")}</i>
                   <label><span>Название {competitor.origin === "ai" && <em>найдено ИИ</em>}</span><input value={competitor.label} onChange={(event) => updateCompetitorEntry(competitor.id, "label", event.target.value)} placeholder={`Конкурент ${index + 1}`} autoComplete="off"/></label>
-                  <label className="competitor-url-field"><span>Ссылка на материал</span><input type="url" value={competitor.url} onChange={(event) => updateCompetitorEntry(competitor.id, "url", event.target.value)} placeholder="https://site.ru/page" autoComplete="off"/>{competitor.origin === "ai" && /^https?:\/\//i.test(competitor.url) && <a href={competitor.url} target="_blank" rel="noreferrer">Открыть найденный источник <Icon name="arrow"/></a>}</label>
+                  <label className="competitor-url-field"><span>Ссылка на страницу компании</span><input type="url" value={competitor.url} onChange={(event) => updateCompetitorEntry(competitor.id, "url", event.target.value)} placeholder="https://site.ru/usluga" autoComplete="off"/>{competitor.origin === "ai" && /^https?:\/\//i.test(competitor.url) && <><a href={competitor.url} target="_blank" rel="noreferrer">Открыть найденную страницу <Icon name="arrow"/></a>{competitor.note && <small>{competitor.note}</small>}</>}</label>
                   <button type="button" className="competitor-remove" onClick={() => removeCompetitorEntry(competitor.id)} aria-label={`Удалить строку ${index + 1}`}>×</button>
                 </div>)}
                 <button type="button" className="competitor-add" onClick={addCompetitorEntry} disabled={competitors.length >= 5}>+ Добавить конкурента <span>{competitors.length}/5</span></button>
-                <div className={`competitor-requirement ${validCompetitorEntries >= 2 ? "is-ready" : "is-needed"}`}><i>{validCompetitorEntries >= 2 ? <Icon name="check"/> : "2+"}</i><span><b>{validCompetitorEntries >= 2 ? "Источников достаточно для анализа" : "Добавьте минимум две страницы конкурентов"}</b><small>{validCompetitorEntries >= 2 ? `${validCompetitorEntries} ссылок будут проверены при построении матрицы.` : aiConnection === "connected" ? "Можно вставить ссылки вручную или подобрать их автоматически." : "Сейчас доступны ручные ссылки; автопоиск появится после подключения AI‑доступа."}</small></span></div>
+                <div className={`competitor-requirement ${validCompetitorEntries >= 2 ? "is-ready" : "is-needed"}`}><i>{validCompetitorEntries >= 2 ? <Icon name="check"/> : "2+"}</i><span><b>{validCompetitorEntries >= 2 ? "Сайтов достаточно для анализа" : "Добавьте минимум два сайта прямых конкурентов"}</b><small>{validCompetitorEntries >= 2 ? `${validCompetitorEntries} ссылок будут проверены при построении матрицы.` : aiConnection === "connected" ? "Можно вставить ссылки вручную или подобрать их автоматически." : "Сейчас доступны ручные ссылки; автопоиск появится после подключения AI‑доступа."}</small></span></div>
               </div>
 
               <div className="competitor-setup-footer">

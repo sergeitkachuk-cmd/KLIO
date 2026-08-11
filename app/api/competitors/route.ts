@@ -57,6 +57,28 @@ function clean(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
 
+const NON_COMPETITOR_DOMAINS = [
+  "google.com", "yandex.ru", "bing.com", "wikipedia.org", "youtube.com", "vk.com", "t.me",
+  "tripadvisor.ru", "tripadvisor.com", "booking.com", "2gis.ru", "zoon.ru", "dzen.ru",
+  "kp.ru", "aif.ru", "ria.ru", "tass.ru", "interfax.ru", "rbc.ru", "otzovik.com", "irecommend.ru",
+  "puteveka.com", "putevka.com",
+];
+
+function domainOf(value: string) {
+  try {
+    return new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`).hostname.toLocaleLowerCase("en-US").replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
+function isAllowedCompetitorUrl(url: string, brandDomain: string) {
+  const domain = domainOf(url);
+  return Boolean(domain)
+    && domain !== brandDomain
+    && !NON_COMPETITOR_DOMAINS.some((blocked) => domain === blocked || domain.endsWith(`.${blocked}`));
+}
+
 function cleanBrand(value: unknown): BrandInput {
   const source = value && typeof value === "object" ? value as Record<string, unknown> : {};
   return {
@@ -147,11 +169,16 @@ export async function POST(request: Request) {
   try {
     const payload = await request.json() as CompetitorPayload;
     const query = clean(payload.query, 220);
-    const competitors = cleanCompetitors(payload.competitors);
+    const rawCompetitors = cleanCompetitors(payload.competitors);
     const semanticKeywords = cleanSemanticKeywords(payload.semanticKeywords);
     const brand = cleanBrand(payload.brand);
+    const brandDomain = domainOf(brand.website);
+    const competitors = rawCompetitors.filter((item) => isAllowedCompetitorUrl(item.url, brandDomain));
 
     if (!query) return Response.json({ error: "Укажите тему или основной запрос." }, { status: 400 });
+    if (competitors.length !== rawCompetitors.length) {
+      return Response.json({ error: "В сравнении нельзя использовать сайт бренда, агрегаторы, каталоги, СМИ, отзывы или социальные сети. Оставьте только прямые страницы компаний-конкурентов." }, { status: 400 });
+    }
     if (competitors.length < 2) return Response.json({ error: "Добавьте минимум две страницы конкурентов." }, { status: 400 });
     await assertSecondaryQuotaAvailable("research");
     const identity = await workspaceIdentity();
@@ -182,7 +209,8 @@ export async function POST(request: Request) {
     };
 
     const instructions = [
-      "Ты — senior SEO-стратег КЛИО. Проведи настоящий контентный анализ конкурентов по факту прочитанных страниц — не используй шаблонный список тем из другой отрасли.",
+      "Ты — senior SEO-стратег КЛИО. Проведи настоящий контентный анализ прямых конкурентов по факту прочитанных страниц — не используй шаблонный список тем из другой отрасли.",
+      "Сравниваются только самостоятельные компании с сопоставимым предложением. Не оценивай редакционные статьи, агрегаторы, отзывы или посредников как конкурентов; если источник недоступен, честно пометь его coverage как unknown и не достраивай сведения.",
       "Сначала определи 6–10 тем, которые реально важны именно для этой темы/категории/индустрии и её аудитории, основываясь на comparison_topic, semantic_context (если передан) и содержимом прочитанных страниц. Темы должны быть предметными, а не абстрактными («Критерии выбора» без конкретики запрещены).",
       "Для каждой темы классифицируй brand_coverage и coverage каждого конкурента строго по факту: strong — тема развёрнуто раскрыта в тексте; partial — упомянута кратко или косвенно; missing — текст прочитан, но темы нет; unknown — текст этого источника не был доступен (status не loaded/profile). Никогда не ставь unknown, если текст источника передан, и никогда не угадывай содержимое источника с status не loaded.",
       "rationale объясняет, почему тема важна именно для этого запроса и аудитории. opportunity — конкретное редакционное действие: что раскрыть, усилить или проверить, с опорой на реальный разрыв между источниками, а не общая фраза.",

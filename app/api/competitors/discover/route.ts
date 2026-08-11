@@ -1,5 +1,6 @@
 import { AiCallError, callAiModel } from "../../_lib/ai-router";
 import { workspaceIdentity } from "../../_lib/workspace-account";
+import { readWebsiteContext } from "../../_lib/website-context";
 
 type BrandInput = {
   name: string;
@@ -23,6 +24,10 @@ type DiscoverPayload = {
 type Citation = {
   title: string;
   url: string;
+};
+
+type CandidateSelection = {
+  candidates: { candidate_id: string; reason: string }[];
 };
 
 function clean(value: unknown, maxLength: number) {
@@ -148,6 +153,16 @@ const NON_COMPETITOR_DOMAINS = [
   "tripadvisor.ru",
   "tripadvisor.com",
   "booking.com",
+  "kp.ru",
+  "aif.ru",
+  "ria.ru",
+  "tass.ru",
+  "interfax.ru",
+  "rbc.ru",
+  "otzovik.com",
+  "irecommend.ru",
+  "puteveka.com",
+  "putevka.com",
   "2gis.ru",
   "zoon.ru",
   "dzen.ru",
@@ -157,6 +172,30 @@ function isDirectCandidate(url: string, brandDomain: string) {
   const domain = domainOf(url);
   if (!domain || (brandDomain && domain === brandDomain)) return false;
   return !NON_COMPETITOR_DOMAINS.some((blocked) => domain === blocked || domain.endsWith(`.${blocked}`));
+}
+
+function selectionSchema(candidateIds: string[]) {
+  return {
+    type: "object",
+    properties: {
+      candidates: {
+        type: "array",
+        minItems: 0,
+        maxItems: 5,
+        items: {
+          type: "object",
+          properties: {
+            candidate_id: { type: "string", enum: candidateIds },
+            reason: { type: "string" },
+          },
+          required: ["candidate_id", "reason"],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ["candidates"],
+    additionalProperties: false,
+  } as const;
 }
 
 export async function POST(request: Request) {
@@ -191,9 +230,9 @@ export async function POST(request: Request) {
         includeSources: true,
         instructions: [
           "Ты находишь прямых контентных конкурентов для сравнительной матрицы КЛИО.",
-          "Обязательно выполни веб‑поиск и найди 3–5 открытых страниц реальных компаний по той же теме, категории и поисковому интенту.",
+          "Обязательно выполни веб‑поиск по категории, услуге и поисковому интенту, а не только по названию бренда. Найди 5–10 открытых страниц реальных компаний по той же теме.",
           "Нужны именно страницы продуктов, услуг, программ или содержательные тематические страницы прямых конкурентов.",
-          "Не предлагай поисковую выдачу, агрегаторы, каталоги, карты, соцсети, энциклопедии, новостные публикации и сайт самого бренда.",
+          "Не предлагай сайт бренда, его зеркала, страницы с упоминанием бренда, поисковую выдачу, агрегаторы, каталоги, карты, соцсети, энциклопедии, отзывы, новости и редакционные публикации.",
           "Если география указана, используй её как территорию целевого спроса, а не как неподтверждённое местонахождение бренда.",
           "Для каждого кандидата напиши отдельный короткий пункт: название страницы и почему она релевантна. Каждый пункт обязан содержать кликабельную веб‑цитату.",
           "Не придумывай адреса и не перечисляй страницы, которые не были найдены веб‑поиском.",
@@ -211,28 +250,72 @@ export async function POST(request: Request) {
 
     const brandDomain = domainOf(brand.website);
     const seen = new Set<string>();
-    const candidates = citationsFromResponse(responseBody)
+    const pool = citationsFromResponse(responseBody)
       .filter((item) => isDirectCandidate(item.url, brandDomain))
       .filter((item) => {
-        const key = `${domainOf(item.url)}${new URL(item.url).pathname.replace(/\/$/, "")}`;
+        const key = domainOf(item.url);
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
       })
-      .slice(0, 5)
-      .map((item, index) => ({
-        id: `ai-${Date.now()}-${index + 1}`,
-        label: item.title || readableDomain(item.url),
-        url: item.url,
-        origin: "ai" as const,
-      }));
+      .slice(0, 12)
+      .map((item, index) => ({ id: `candidate-${index + 1}`, ...item }));
 
-    if (candidates.length < 2) {
+    if (pool.length < 2) {
       console.warn("Competitor discovery returned too few direct candidates", responseText(responseBody).slice(0, 800));
       return Response.json({ error: "ИИ нашёл менее двух подходящих прямых страниц. Уточните тему или добавьте ссылки вручную." }, { status: 422 });
     }
 
-    return Response.json({ candidates, mode: "ai", model });
+    const pageContexts = await Promise.all(pool.map((item) => readWebsiteContext(item.url)));
+    const readablePool = pool.map((item, index) => ({
+      id: item.id,
+      domain: readableDomain(item.url),
+      url: item.url,
+      status: pageContexts[index].status,
+      page_text: pageContexts[index].status === "loaded" ? pageContexts[index].text.slice(0, 5000) : "",
+    })).filter((item) => item.status === "loaded" && item.page_text);
+
+    if (readablePool.length < 2) {
+      return Response.json({ error: "Не удалось прочитать минимум две страницы компаний. Попробуйте ещё раз или добавьте прямые ссылки на сайты конкурентов." }, { status: 422 });
+    }
+
+    const selection = await callAiModel<CandidateSelection>({
+      operation: "analyze_competitors",
+      ownerEmail: identity.email,
+      schemaName: "klio_direct_competitor_selection",
+      schema: selectionSchema(readablePool.map((item) => item.id)),
+      instructions: [
+        "Ты проверяешь кандидатов для сравнительной матрицы КЛИО. Отбери только прямых конкурентов активного бренда.",
+        "Прямой конкурент — самостоятельная компания или объект размещения, который предлагает сопоставимую услугу той же аудитории и может конкурировать за тот же спрос.",
+        "Допускай только собственную содержательную страницу предложения, услуги, программы или тематическую страницу такой компании.",
+        "Строго исключай: сайт активного бренда и его зеркала; страницы, которые лишь упоминают бренд; агрегаторы, турагрегаторы, каталоги, карты, СМИ, новости, обзоры, отзывы, карточки бронирования и любые посреднические страницы.",
+        "Опирайся только на переданные URL и page_text. Не угадывай тип страницы. Если подходящих компаний меньше двух, не возвращай неподходящие варианты ради количества.",
+        "Для каждого выбранного кандидата дай короткую причину на основе его страницы. Не выбирай более одной страницы одного домена.",
+      ].join("\n"),
+      input: JSON.stringify({ comparison_topic: query, active_brand: brand.name ? { name: brand.name, website: brand.website } : null, candidates: readablePool }),
+    });
+
+    const poolById = new Map(pool.map((item) => [item.id, item]));
+    const selectedIds = new Set<string>();
+    const candidates = selection.result.candidates
+      .filter((item) => !selectedIds.has(item.candidate_id) && Boolean(poolById.get(item.candidate_id)))
+      .map((item) => {
+        selectedIds.add(item.candidate_id);
+        const candidate = poolById.get(item.candidate_id)!;
+        return {
+          id: `ai-${Date.now()}-${selectedIds.size}`,
+          label: readableDomain(candidate.url),
+          url: candidate.url,
+          origin: "ai" as const,
+          note: clean(item.reason, 260),
+        };
+      });
+
+    if (candidates.length < 2) {
+      return Response.json({ error: "По найденным страницам не удалось подтвердить минимум двух прямых конкурентов. Уточните категорию или добавьте сайты конкурентов вручную." }, { status: 422 });
+    }
+
+    return Response.json({ candidates, mode: "ai", model: selection.model || model });
   } catch (error) {
     console.error("Competitor discovery route failed", error);
     return Response.json({ error: "Не удалось выполнить поиск конкурентов. Попробуйте ещё раз или добавьте ссылки вручную." }, { status: 500 });
