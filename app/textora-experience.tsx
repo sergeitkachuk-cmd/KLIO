@@ -111,6 +111,7 @@ type CompetitorResult = {
 type ContentPlanItem = {
   id: string;
   title: string;
+  subtitle: string;
   cluster: string;
   format: "SEO‑статья" | "Экспертный разбор" | "FAQ" | "Сравнение" | "Кейс" | "Посадочная страница" | "Рекламный текст" | "Пост";
   intent: "Информационный" | "Коммерческий" | "Транзакционный" | "Смешанный" | "Навигационный";
@@ -161,6 +162,7 @@ type BrandProfile = {
 type GeneratedMaterial = {
   title: string;
   body: string;
+  subtitle: string;
   metaTitle: string;
   metaDescription: string;
   editorialComment: string;
@@ -239,6 +241,7 @@ type BrandWorkspaceSnapshot = {
     accent?: string;
     title?: string;
     body?: string;
+    subtitle?: string;
     metaTitle?: string;
     metaDescription?: string;
     editorNote?: string;
@@ -275,6 +278,7 @@ type GenerationArchiveItem = {
   topic: string;
   title: string;
   body: string;
+  subtitle: string;
   metaTitle: string;
   metaDescription: string;
   editorialComment: string;
@@ -987,6 +991,7 @@ function normalizeContentPlanItem(value: Partial<ContentPlanItem>, index: number
   return {
     id: typeof value.id === "string" && value.id ? value.id : `plan-${index + 1}`,
     title,
+    subtitle: typeof value.subtitle === "string" ? value.subtitle : "",
     cluster: typeof value.cluster === "string" && value.cluster ? value.cluster : "Основная тема",
     format: ["SEO‑статья", "Экспертный разбор", "FAQ", "Сравнение", "Кейс", "Посадочная страница", "Рекламный текст", "Пост"].includes(value.format || "")
       ? value.format as ContentPlanItem["format"]
@@ -1339,6 +1344,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [planReplacements, setPlanReplacements] = useState<ContentPlanReplacement[]>([]);
   const [title, setTitle] = useState(workspace ? "Здесь появится заголовок материала" : sample.seo.title);
   const [body, setBody] = useState(workspace ? "Результат появится после генерации. Начните с темы и ключевых слов — дополнительные инструменты можно открыть позже." : sample.seo.body);
+  const [subtitle, setSubtitle] = useState("");
   const [metaTitle, setMetaTitle] = useState(workspace ? "" : sample.seo.title.slice(0, 70));
   const [metaDescription, setMetaDescription] = useState(workspace ? "" : "Как выбрать санаторий для восстановления: медицинский профиль, лечебные факторы, программа и документы для поездки.");
   const [editorNote, setEditorNote] = useState(workspace ? "Служебный комментарий появится после генерации и не попадёт в скопированный текст." : "Материал подготовлен в стиле «экспертный» с целевым объёмом 1 200 слов. Ключевые темы: санаторий для восстановления, лечение в Карелии, лечебные программы.");
@@ -2130,6 +2136,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setAccent("");
     setTitle("Здесь появится заголовок материала");
     setBody("Результат появится после генерации. Шаблонные ответы отключены: до подключения ИИ КЛИО не создаёт тестовый текст.");
+    setSubtitle("");
     setMetaTitle("");
     setMetaDescription("");
     setEditorNote("Служебный комментарий появится после реальной AI‑генерации и не попадёт в скопированный текст.");
@@ -2282,6 +2289,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             id: archiveEditorItem.id,
             title: archiveEditorItem.title,
             body: archiveEditorItem.body,
+            subtitle: archiveEditorItem.subtitle,
             metaTitle: archiveEditorItem.metaTitle,
             metaDescription: archiveEditorItem.metaDescription,
             editorialComment: archiveEditorItem.editorialComment,
@@ -2757,6 +2765,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   function applyGeneratedMaterial(material: GeneratedMaterial, mode: "demo" | "ai", coverage: GenerationCoverage | null = null) {
     setTitle(material.title);
     setBody(material.body);
+    setSubtitle(material.subtitle);
     setMetaTitle(material.metaTitle);
     setMetaDescription(material.metaDescription);
     setEditorNote(material.editorialComment);
@@ -3510,6 +3519,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     });
     setGeneratorMode("advanced");
     setTopic(cleanTitle);
+    setSubtitle(item.subtitle);
     setKeywords(uniqueText([item.primaryKeyword, ...item.lsi]).join(", "));
     setLength(defaultLengthByFormat[targetFormat]);
     setCustomLength(false);
@@ -3654,6 +3664,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   function clearGenerationResultFields() {
     setTitle("");
     setBody("");
+    setSubtitle("");
     setMetaTitle("");
     setMetaDescription("");
     setEditorNote("");
@@ -4371,13 +4382,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <div className="result-head"><div><span className={`status status-${generationMode}`}><i/>{generationMode === "ai" ? "Создано КЛИО" : generationMode === "demo" ? "Сохранённая версия" : aiConnection === "connected" ? "Ожидает генерацию" : "ИИ не подключён"}</span><small>{words.toLocaleString("ru-RU")} / {length.toLocaleString("ru-RU")} слов · {tone}</small></div><div className="result-head-actions"><button type="button" className="result-clear" onClick={clearGeneratedResult} disabled={!title && !body}><Icon name="erase"/> Очистить</button><button type="button" onClick={copyResult}><Icon name="copy"/> Копировать текст</button></div></div>
                 <div className={`length-control ${targetChecked ? (withinTarget ? "is-ok" : "is-warning") : "is-idle"}`}><span><i/>{targetChecked ? (withinTarget ? "Объём в цели" : "Объём отличается от заданного") : "Контроль включится после генерации"}</span><b>{targetChecked ? `${Math.round((words / Math.max(length, 1)) * 100)}%` : "—"}</b><u><i style={{ width: `${targetChecked ? Math.min(100, (words / Math.max(length, 1)) * 100) : 0}%` }}/></u><small>{targetChecked && !withinTarget ? "Это ориентир, а не жёсткое правило — при желании сократите или дополните текст ниже." : `Ориентир: от ${Math.floor(length * 0.85).toLocaleString("ru-RU")} до ${Math.ceil(length * 1.15).toLocaleString("ru-RU")} слов`}</small></div>
                 <AutoTextarea className="result-title" rows={1} value={title} onChange={(event) => setTitle(event.target.value)} aria-label="Заголовок результата"/>
+                <AutoTextarea className="result-subtitle" rows={2} value={subtitle} onChange={(event) => setSubtitle(event.target.value)} placeholder="Здесь появится зацепка статьи" aria-label="Подзаголовок или зацепка статьи"/>
                 <AutoTextarea className="result-body" value={body} onChange={(event) => setBody(event.target.value)} aria-label="Текст результата"/>
                 {generationCoverage && <div className="generation-brief-check"><div><span>Контроль брифа</span><small>Проверено до выдачи материала</small></div><p className={generationCoverage.subjectApplied ? "is-ready" : "is-missing"}><i>{generationCoverage.subjectApplied ? "✓" : "!"}</i><span><b>Предмет темы</b><small>{generationCoverage.subjectApplied ? `раскрыт в ${generationCoverage.subjectSections} смысловых блоках` : "недостаточно раскрыт"}</small></span></p><p className={!generationCoverage.keywordMissing.length ? "is-ready" : "is-missing"}><i>{!generationCoverage.keywordMissing.length ? "✓" : "!"}</i><span><b>Ключевые фразы</b><small>{generationCoverage.keywordTotal ? `${generationCoverage.keywordApplied.length} из ${generationCoverage.keywordTotal} использованы в тексте` : "ключевые фразы не задавались"}</small></span></p><p className={!generationCoverage.editorialFocusMissing.length ? "is-ready" : "is-missing"}><i>{!generationCoverage.editorialFocusMissing.length ? "✓" : "!"}</i><span><b>Редакционные ориентиры</b><small>{generationCoverage.editorialFocusTotal ? `${generationCoverage.editorialFocusApplied.length} из ${generationCoverage.editorialFocusTotal} применены` : "дополнительные ориентиры не передавались"}</small></span></p><p className="is-ready"><i>✓</i><span><b>География спроса</b><small>{generationCoverage.geographyApplied.length ? generationCoverage.geographyApplied.join(", ") : "отдельная география не задана"}</small></span></p></div>}
                 <aside className="editor-note"><span>Комментарий к материалу</span><p>{editorNote}</p><small>Не входит в текст и не копируется</small></aside>
                 <div className="seo-passport">
                   <div className="seo-passport-head"><span>SEO‑паспорт</span><small>Служебные поля для публикации</small></div>
                   <label><span className="seo-field-label"><b>SEO‑заголовок</b><button type="button" onClick={() => copyPlainText(metaTitle, "SEO‑заголовок")}><Icon name="copy"/> Копировать</button></span><AutoTextarea rows={1} value={metaTitle} onChange={(event) => setMetaTitle(event.target.value)} aria-label="SEO‑заголовок"/><small>{metaTitle.length} знаков</small></label>
-                  <label><span className="seo-field-label"><b>Метаописание</b><button type="button" onClick={() => copyPlainText(metaDescription, "Метаописание")}><Icon name="copy"/> Копировать</button></span><AutoTextarea rows={2} value={metaDescription} onChange={(event) => setMetaDescription(event.target.value)} aria-label="Метаописание"/><small>{metaDescription.length} знаков</small></label>
+                  <label><span className="seo-field-label"><b>Описание страницы для поиска</b><button type="button" onClick={() => copyPlainText(metaDescription, "Описание страницы для поиска")}><Icon name="copy"/> Копировать</button></span><AutoTextarea rows={2} value={metaDescription} onChange={(event) => setMetaDescription(event.target.value)} aria-label="Описание страницы для поиска"/><small>{metaDescription.length} знаков</small></label>
                 </div>
                 <div ref={metricsRef} className={`quality-zone ${metricsVisible ? "is-visible" : ""}`} aria-live="polite" aria-atomic="true">
                   <div className="quality-head"><span>Идеи для полировки</span><small><i/> Необязательно — материал уже готов к публикации</small></div>
@@ -4449,7 +4461,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                       </div>
                       {expanded && <div className="content-plan-brief">
                         <div className="content-plan-strategy"><section><span>Редакционный ракурс</span><p>{item.angle}</p></section><section><span>Коммуникационная цель</span><p>{item.objective}</p></section><section><span>Следующий шаг</span><p>{item.cta || "Определяется редактором"}</p></section></div>
-                        <div className="content-plan-seo"><label><span className="seo-field-label"><b>SEO‑заголовок</b><button type="button" onClick={() => copyPlainText(item.metaTitle, "SEO‑заголовок")}><Icon name="copy"/> Копировать</button></span><p>{item.metaTitle}</p><small>{item.metaTitle.length} знаков</small></label><label><span className="seo-field-label"><b>Метаописание</b><button type="button" onClick={() => copyPlainText(item.metaDescription, "Метаописание")}><Icon name="copy"/> Копировать</button></span><p>{item.metaDescription}</p><small>{item.metaDescription.length} знаков</small></label></div>
+                        <div className="content-plan-seo"><label><span className="seo-field-label"><b>Зацепка статьи</b><button type="button" onClick={() => copyPlainText(item.subtitle, "Зацепка статьи")}><Icon name="copy"/> Копировать</button></span><p>{item.subtitle || "Будет создана при подготовке материала"}</p></label><label><span className="seo-field-label"><b>SEO‑заголовок</b><button type="button" onClick={() => copyPlainText(item.metaTitle, "SEO‑заголовок")}><Icon name="copy"/> Копировать</button></span><p>{item.metaTitle}</p><small>{item.metaTitle.length} знаков</small></label><label><span className="seo-field-label"><b>Описание страницы для поиска</b><button type="button" onClick={() => copyPlainText(item.metaDescription, "Описание страницы для поиска")}><Icon name="copy"/> Копировать</button></span><p>{item.metaDescription}</p><small>{item.metaDescription.length} знаков</small></label></div>
                         <div className="content-plan-brief-grid"><section><span>Поддерживающая семантика и сущности</span><div>{item.lsi.map((phrase) => <i key={phrase}>{phrase}</i>)}</div></section><section><span>Целевая аудитория</span><p>{item.audience}</p></section><section><span>Структура материала</span><ol>{item.structure.map((part, index) => <li key={part}><i>{index + 1}</i>{part}</li>)}</ol></section><section><span>Фактура для проверки</span><div>{item.evidenceNeeded.length ? item.evidenceNeeded.map((source) => <i key={source}>{source}</i>) : <p>Дополнительная фактура не запрошена.</p>}</div></section><section><span>На чём основана тема</span><div>{item.sources.map((source) => <i key={source}>{source}</i>)}</div></section></div>
                       </div>}
                     </article>;

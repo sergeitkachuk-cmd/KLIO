@@ -12,13 +12,14 @@ const QUICK_MATERIAL_SCHEMA = {
   properties: {
     title: { type: "string" },
     body: { type: "string" },
+    subtitle: { type: "string" },
     meta_title: { type: "string" },
     meta_description: { type: "string" },
     editorial_comment: { type: "string" },
     format: { type: "string", enum: ["seo", "social", "ads", "landing"] },
     tone: { type: "string" },
   },
-  required: ["title", "body", "meta_title", "meta_description", "editorial_comment", "format", "tone"],
+  required: ["title", "body", "subtitle", "meta_title", "meta_description", "editorial_comment", "format", "tone"],
   additionalProperties: false,
 } as const;
 
@@ -122,7 +123,7 @@ export async function POST(request: Request) {
           "Любой факт из веб‑поиска обязательно отметь в editorial_comment вместе со ссылкой на источник и пометкой «найдено в вебе, требует проверки».",
           "Материал должен быть готов к публикации сразу: конкретный, без воды, без пересказа задачи и без служебных пометок внутри текста.",
           "Для медицинской, юридической и финансовой тематики избегай гарантий результата, диагнозов и персональных рекомендаций.",
-          "Структура JSON: title, body, meta_title, meta_description, editorial_comment, format, tone. Все значения — строки.",
+          "Структура JSON: title, subtitle, body, meta_title, meta_description, editorial_comment, format, tone. subtitle — зацепка под заголовком, 1–2 предложения без повтора title. Все значения — строки.",
         ].join("\n"),
         input: JSON.stringify({
           user_prompt: prompt,
@@ -141,6 +142,7 @@ export async function POST(request: Request) {
     const material = {
       title: typeof parsed.title === "string" ? parsed.title : "",
       body: typeof parsed.body === "string" ? parsed.body : "",
+      subtitle: typeof parsed.subtitle === "string" ? parsed.subtitle : "",
       metaTitle: typeof parsed.meta_title === "string" ? parsed.meta_title : "",
       metaDescription: typeof parsed.meta_description === "string" ? parsed.meta_description : "",
       editorialComment: typeof parsed.editorial_comment === "string" ? parsed.editorial_comment : "",
@@ -159,6 +161,7 @@ export async function POST(request: Request) {
       topic: prompt.slice(0, 300),
       title: material.title,
       body: material.body,
+      subtitle: material.subtitle,
       metaTitle: material.metaTitle,
       metaDescription: material.metaDescription,
       editorialComment: material.editorialComment,

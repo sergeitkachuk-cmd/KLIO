@@ -69,6 +69,7 @@ function cleanGenerationUpdate(value: unknown) {
     id: clean(source.id, 100),
     title: clean(source.title, 500),
     body: clean(source.body, 60_000),
+    subtitle: clean(source.subtitle, 600),
     metaTitle: clean(source.metaTitle, 500),
     metaDescription: clean(source.metaDescription, 1200),
     editorialComment: clean(source.editorialComment, 2400),
@@ -198,6 +199,7 @@ export async function POST(request: Request) {
       const [saved] = await db.update(generations).set({
         title: generation.title,
         body: generation.body,
+        subtitle: generation.subtitle,
         metaTitle: generation.metaTitle,
         metaDescription: generation.metaDescription,
         editorialComment: generation.editorialComment,
@@ -225,6 +227,7 @@ export async function POST(request: Request) {
         topic: source.topic,
         title: generation.title,
         body: generation.body,
+        subtitle: generation.subtitle,
         metaTitle: generation.metaTitle,
         metaDescription: generation.metaDescription,
         editorialComment: generation.editorialComment,

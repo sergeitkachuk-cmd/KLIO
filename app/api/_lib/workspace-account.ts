@@ -170,6 +170,7 @@ export type ArchiveMaterial = {
   topic: string;
   title: string;
   body: string;
+  subtitle: string;
   metaTitle: string;
   metaDescription: string;
   editorialComment: string;
@@ -213,6 +214,7 @@ export async function recordGeneration(material: ArchiveMaterial) {
     topic: material.topic,
     title: material.title,
     body: material.body,
+    subtitle: material.subtitle,
     metaTitle: material.metaTitle,
     metaDescription: material.metaDescription,
     editorialComment: material.editorialComment,

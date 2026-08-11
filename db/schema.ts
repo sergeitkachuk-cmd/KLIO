@@ -61,6 +61,7 @@ export const generations = pgTable("generations", {
   topic: text("topic").notNull(),
   title: text("title").notNull(),
   body: text("body").notNull(),
+  subtitle: text("subtitle").notNull().default(""),
   metaTitle: text("meta_title").notNull().default(""),
   metaDescription: text("meta_description").notNull().default(""),
   editorialComment: text("editorial_comment").notNull().default(""),

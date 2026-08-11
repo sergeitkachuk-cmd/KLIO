@@ -64,6 +64,7 @@ type GeneratePayload = {
 type GeneratedMaterial = {
   title: string;
   body: string;
+  subtitle: string;
   metaTitle: string;
   metaDescription: string;
   editorialComment: string;
@@ -74,11 +75,12 @@ const MATERIAL_SCHEMA = {
   properties: {
     title: { type: "string" },
     body: { type: "string" },
+    subtitle: { type: "string" },
     meta_title: { type: "string" },
     meta_description: { type: "string" },
     editorial_comment: { type: "string" },
   },
-  required: ["title", "body", "meta_title", "meta_description", "editorial_comment"],
+  required: ["title", "body", "subtitle", "meta_title", "meta_description", "editorial_comment"],
   additionalProperties: false,
 } as const;
 
@@ -542,6 +544,7 @@ function materialFromRecord(parsed: Record<string, unknown>): GeneratedMaterial 
   return {
     title,
     body,
+    subtitle: cleanText(parsed.subtitle, 600),
     metaTitle: cleanText(parsed.meta_title, 500) || title.slice(0, 70),
     metaDescription: cleanText(parsed.meta_description, 1000),
     editorialComment: cleanText(parsed.editorial_comment, 1600),
@@ -685,7 +688,7 @@ export async function POST(request: Request) {
           "Не добивай текст вариациями одного ключа. Поисковые формулировки нужны для ясного соответствия интенту, а не для плотности: при конфликте с естественностью используй грамматически корректную форму и сохрани смысл.",
           "Материал должен добавлять собственную пользу: предметное объяснение, подтверждённые факты бренда, практический вывод или решение задачи. Не пересказывай абстрактно то, что могло бы относиться к любой компании.",
           "Для медицинской тематики избегай гарантий результата, диагнозов и персональных назначений.",
-          "Структура JSON: title, body, meta_title, meta_description, editorial_comment. Все значения — строки.",
+          "Структура JSON: title, subtitle, body, meta_title, meta_description, editorial_comment. subtitle — отдельная зацепка под H1, 1–2 предложения, раскрывает пользу и не повторяет заголовок. Все значения — строки.",
           "body должен быть цельным русским текстом с абзацами и уместными подзаголовками без служебных комментариев.",
           "editorial_comment кратко объясняет использованный ракурс, соблюдение голоса бренда и возможные места для фактчекинга; он не является частью статьи.",
           ...FINAL_QA_RULES,
@@ -747,7 +750,7 @@ export async function POST(request: Request) {
             missingGeo.length
               ? `Материал не применил выбранную географию: ${missingGeo.join(", ")}. Естественно упомяни эти территории как контекст аудитории, маршрута, спроса или выбора, не называя их местонахождением бренда без подтверждения.`
               : "Сохрани уже применённую географию спроса и не подменяй её местонахождением бренда.",
-            "Верни только валидный JSON с полями title, body, meta_title, meta_description, editorial_comment.",
+            "Верни только валидный JSON с полями title, subtitle, body, meta_title, meta_description, editorial_comment. subtitle — самостоятельная зацепка под H1, не дубль заголовка.",
             ...FINAL_QA_RULES,
           ].join("\n"),
           input: JSON.stringify({ brief: JSON.parse(userBrief), current_material: material }),
@@ -789,8 +792,8 @@ export async function POST(request: Request) {
             `Целевой объём: ${input.length} слов, допустимо от ${minimumWords} до ${maximumWords}.`,
             "Сокращай за счёт наименее важного: повторов, избыточных примеров, лишних деталей. Не обрывай мысль или аргумент на середине — если предложение продолжает мысль из предыдущего, сокращай их вместе или не трогай.",
             "Не добавляй новые факты, не меняй заголовок, тему, ключевые фразы и структуру подзаголовков без необходимости.",
-            "Сохрани meta_title, meta_description и editorial_comment по смыслу как есть (можно чуть скорректировать под новый объём).",
-            "Верни только валидный JSON с полями title, body, meta_title, meta_description, editorial_comment.",
+            "Сохрани subtitle, meta_title, meta_description и editorial_comment по смыслу как есть (можно чуть скорректировать под новый объём).",
+            "Верни только валидный JSON с полями title, subtitle, body, meta_title, meta_description, editorial_comment.",
           ].join("\n"),
           input: JSON.stringify({ target_words: input.length, current_material: material }),
         });
@@ -813,6 +816,7 @@ export async function POST(request: Request) {
       ...material,
       title: sanitizePublicationText(material.title),
       body: sanitizePublicationText(material.body),
+      subtitle: sanitizePublicationText(material.subtitle),
       metaTitle: sanitizePublicationText(material.metaTitle),
       metaDescription: sanitizePublicationText(material.metaDescription),
     };
@@ -846,6 +850,7 @@ export async function POST(request: Request) {
       topic: input.topic,
       title: material.title,
       body: material.body,
+      subtitle: material.subtitle,
       metaTitle: material.metaTitle,
       metaDescription: material.metaDescription,
       editorialComment: material.editorialComment,

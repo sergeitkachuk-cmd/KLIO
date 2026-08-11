@@ -52,6 +52,7 @@ type ContentPlanGoal = "mixed" | "seo" | "social" | "landing" | "ads";
 type PlanItem = {
   id: string;
   title: string;
+  subtitle: string;
   cluster: string;
   format: "SEO‑статья" | "Экспертный разбор" | "FAQ" | "Сравнение" | "Кейс" | "Посадочная страница" | "Рекламный текст" | "Пост";
   intent: "Информационный" | "Коммерческий" | "Транзакционный" | "Смешанный" | "Навигационный";
@@ -162,6 +163,7 @@ const itemSchema = {
   properties: {
     id: { type: "string" },
     title: { type: "string" },
+    subtitle: { type: "string" },
     cluster: { type: "string" },
     format: { type: "string", enum: ["SEO‑статья", "Экспертный разбор", "FAQ", "Сравнение", "Кейс", "Посадочная страница", "Рекламный текст", "Пост"] },
     intent: { type: "string", enum: ["Информационный", "Коммерческий", "Транзакционный", "Смешанный", "Навигационный"] },
@@ -179,7 +181,7 @@ const itemSchema = {
     evidenceNeeded: { type: "array", items: { type: "string" } },
     sources: { type: "array", items: { type: "string" } },
   },
-  required: ["id", "title", "cluster", "format", "intent", "stage", "priority", "angle", "objective", "primaryKeyword", "lsi", "audience", "metaTitle", "metaDescription", "structure", "cta", "evidenceNeeded", "sources"],
+  required: ["id", "title", "subtitle", "cluster", "format", "intent", "stage", "priority", "angle", "objective", "primaryKeyword", "lsi", "audience", "metaTitle", "metaDescription", "structure", "cta", "evidenceNeeded", "sources"],
   additionalProperties: false,
 } as const;
 
@@ -227,6 +229,7 @@ function validatePlan(plan: AiPlan, input: ReturnType<typeof normalizePayload>) 
     ...item,
     id: `plan-${index + 1}`,
     title: cleanPlanTitle(clean(item.title, 220)),
+    subtitle: clean(item.subtitle, 360),
     cluster: clean(item.cluster, 100),
     angle: clean(item.angle, 500),
     objective: clean(item.objective, 500),
@@ -288,7 +291,7 @@ export async function POST(request: Request) {
       input.existingTitles.length ? `Это уже созданные темы и материалы бренда. Не повторяй их, не делай близкие перефразировки и не возвращай ту же задачу с переставленными словами: ${input.existingTitles.map((title) => `«${title}»`).join("; ")}` : "Если ранее созданные темы не переданы, всё равно не повторяй идеи внутри текущего плана.",
       "Каждая строка должна иметь собственный ракурс, коммуникационную цель, целевую аудиторию, основной запрос, 2–8 поддерживающих формулировок и предметную структуру из 3–8 разделов.",
       "Поле lsi означает поддерживающие формулировки, сущности и вопросы. Не называй их LSI‑факторами и не имитируй частотность.",
-      "Title и Description должны точно соответствовать теме. Не обещай позиции, результат лечения, доход, сроки, цены и иные факты, которых нет в источниках.",
+      "Title, subtitle и Description должны точно соответствовать теме. subtitle — зацепка под H1: 1–2 предложения с пользой читателю, не повторяет title. Не обещай позиции, результат лечения, доход, сроки, цены и иные факты, которых нет в источниках.",
       "В evidenceNeeded перечисли, какие факты, документы, цифры, кейсы или экспертные комментарии нужны редактору. В sources укажи только реально переданные слои: Тема, Семантика, География, Матрица, Профиль бренда.",
       "Для каждой строки сначала сформируй скрытый editorialBrief: вопрос читателя, интент, сегмент аудитории, ракурс, ключевое сообщение, формат, тон, авторскую позицию, структуру, ключевые пункты, ключи, известные факты, неизвестные данные, возражения, CTA и ограничения. Во внешний JSON выводи только поля текущей схемы; не раскрывай editorialBrief в title или описании.",
       "Используй веб-поиск, чтобы опираться на реальные формулировки запросов и подтемы этой ниши, а не только на входной запрос и его парафразы.",
@@ -320,7 +323,7 @@ export async function POST(request: Request) {
         brand_profile: input.brand.name ? input.brand : null,
         existing_titles_to_exclude: input.existingTitles,
         editorial_brief_contract: {
-          topic: "title", intent: "intent", objective: "objective", audience: "audience", angle: "angle", format: "format",
+          topic: "title", subtitle: "subtitle", intent: "intent", objective: "objective", audience: "audience", angle: "angle", format: "format",
           structure: "structure", keywords: ["primaryKeyword", "lsi"], evidenceNeeded: "evidenceNeeded", sources: "sources",
           knownFacts: input.brand.name ? [input.brand.description, input.brand.positioning, input.brand.advantages, input.brand.products, input.brand.services, input.brand.proof].filter(Boolean) : [],
           restrictions: [input.brand.restrictions, input.brand.prohibited].filter(Boolean),

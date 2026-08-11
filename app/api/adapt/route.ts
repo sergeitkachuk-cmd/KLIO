@@ -31,6 +31,7 @@ type AdaptPayload = {
 type AdaptedMaterial = {
   title: string;
   body: string;
+  subtitle: string;
   metaTitle: string;
   metaDescription: string;
   editorialComment: string;
@@ -42,12 +43,13 @@ const ADAPTED_MATERIAL_SCHEMA = {
   properties: {
     title: { type: "string" },
     body: { type: "string" },
+    subtitle: { type: "string" },
     meta_title: { type: "string" },
     meta_description: { type: "string" },
     editorial_comment: { type: "string" },
     changes: { type: "array", minItems: 3, maxItems: 6, items: { type: "string" } },
   },
-  required: ["title", "body", "meta_title", "meta_description", "editorial_comment", "changes"],
+  required: ["title", "body", "subtitle", "meta_title", "meta_description", "editorial_comment", "changes"],
   additionalProperties: false,
 } as const;
 
@@ -124,6 +126,7 @@ function materialFromRecord(parsed: Record<string, unknown>): AdaptedMaterial | 
   return {
     title,
     body,
+    subtitle: clean(parsed.subtitle, 600),
     metaTitle: clean(parsed.meta_title, 500) || title.slice(0, 70),
     metaDescription: clean(parsed.meta_description, 1000),
     editorialComment: clean(parsed.editorial_comment, 1600),
@@ -219,7 +222,7 @@ export async function POST(request: Request) {
           `Применяй только выбранный сценарий «${plan.title}»; не смешивай его с другими форматами:`,
           ...plan.aiRules,
           ...FINAL_QA_RULES,
-          "Структура JSON: title, body, meta_title, meta_description, editorial_comment, changes. changes — массив из 3–6 коротких строк.",
+          "Структура JSON: title, subtitle, body, meta_title, meta_description, editorial_comment, changes. subtitle — самостоятельная зацепка под H1, не повторяет title. changes — массив из 3–6 коротких строк.",
         ].join("\n"),
         input: JSON.stringify(adaptationBrief),
       });
@@ -241,7 +244,7 @@ export async function POST(request: Request) {
           schema: ADAPTED_MATERIAL_SCHEMA,
           instructions: [
             "Ты — выпускающий редактор КЛИО. Пересобери материал: текущая версия не прошла проверку формата или слишком похожа на исходник.",
-            "Верни только валидный JSON с полями title, body, meta_title, meta_description, editorial_comment, changes.",
+            "Верни только валидный JSON с полями title, subtitle, body, meta_title, meta_description, editorial_comment, changes.",
             "Сохрани все факты и позицию автора, не добавляй новые сведения и не пересказывай служебные настройки.",
             ...CORE_SYSTEM_RULES,
             `Строго выполни сценарий «${plan.title}»:`,
