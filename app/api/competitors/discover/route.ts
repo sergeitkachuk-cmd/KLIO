@@ -28,7 +28,7 @@ type Citation = {
 };
 
 type CandidateSelection = {
-  candidates: { candidate_id: string; segment: "industry_leader" | "market_competitor"; reason: string }[];
+  candidates: { candidate_id: string; segment: "industry_leader" | "regional_competitor" | "market_competitor"; reason: string }[];
 };
 
 function clean(value: unknown, maxLength: number) {
@@ -243,7 +243,7 @@ function selectionSchema(candidateIds: string[]) {
           type: "object",
           properties: {
             candidate_id: { type: "string", enum: candidateIds },
-            segment: { type: "string", enum: ["industry_leader", "market_competitor"] },
+            segment: { type: "string", enum: ["industry_leader", "regional_competitor", "market_competitor"] },
             reason: { type: "string" },
           },
           required: ["candidate_id", "segment", "reason"],
@@ -351,8 +351,9 @@ export async function POST(request: Request) {
         "Строго исключай: сайт активного бренда и его зеркала; страницы, которые лишь упоминают бренд; агрегаторы, турагрегаторы, каталоги, карты, СМИ, новости, обзоры, отзывы, карточки бронирования и любые посреднические страницы.",
         "Опирайся только на переданные URL и page_text. Не угадывай тип страницы. Если подходящих компаний меньше двух, не возвращай неподходящие варианты ради количества.",
         "segment=industry_leader ставь сильному участнику отрасли, заметному в верхней части поисковой выдачи или явно значимому для темы. segment=market_competitor ставь компании, которые ближе всего конкурируют за выбранную аудиторию и запрос. Для каждого кандидата дай короткую причину на основе его страницы. Не выбирай более одной страницы одного домена.",
+        "Segment contract: use industry_leader only for a strong company visible in the general search results for this demand. If a target geography is supplied and the page clearly serves that geography, use regional_competitor. Use market_competitor for another direct competitor. These are discovery labels, not a quality score and not a measured SEO position. Do not label an organisation regional only because its postal address happens to be there.",
       ].join("\n"),
-      input: JSON.stringify({ comparison_topic: query, active_brand: brand.name ? { name: brand.name, website: brand.website } : null, candidates: readablePool }),
+      input: JSON.stringify({ comparison_topic: query, active_brand: brand.name ? { name: brand.name, website: brand.website } : null, target_geography: geography, candidates: readablePool }),
     });
 
     const poolById = new Map(pool.map((item) => [item.id, item]));

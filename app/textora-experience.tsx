@@ -77,7 +77,7 @@ type CompetitorEntry = {
   label: string;
   url: string;
   origin?: "manual" | "ai";
-  segment?: "industry_leader" | "market_competitor";
+  segment?: "industry_leader" | "regional_competitor" | "market_competitor";
   note?: string;
 };
 
@@ -4224,6 +4224,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <div><i>02</i><span><b>Ваш бренд</b><small>покрытие тем в профиле и на указанном сайте</small></span></div>
                 <div><i>03</i><span><b>Конкуренты</b><small>покрытие тех же тем на выбранных страницах</small></span></div>
               </div>
+              <p className="competitor-purpose-note"><i>i</i><span><b>Что сравнивает этот инструмент</b> — не позиции сайтов, не посещаемость и не «кто лучше как компания». Матрица показывает только, какие вопросы по запросу раскрыты на конкретных страницах. Метка «лидер отрасли» означает заметный сайт в общей поисковой выдаче, а «региональный конкурент» — релевантность выбранной географии.</span></p>
 
               <div className="competitor-query-row">
                 <label><span>Тема, основной запрос или категория бренда <em>{competitorFocusSource === "semantics" ? "из семантики" : competitorFocusSource === "brand" ? "из профиля бренда" : "ручной ввод"}</em></span><input value={competitorQuery} onChange={(event) => { const next = event.target.value; setCompetitorQuery(next); setCompetitorFocusSource("manual"); setCompetitorNeedsRefresh(true); persistCompetitorWorkspace({ query: next, focusSource: "manual", needsRefresh: true }); }} placeholder="Например: санаторий для восстановления" autoComplete="off"/></label>
@@ -4239,7 +4240,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 {competitorDiscoveryNote && <p className="competitor-discovery-note"><Icon name="check"/>{competitorDiscoveryNote}</p>}
                 {competitors.map((competitor, index) => <div className="competitor-source-row" key={competitor.id}>
                   <i>{String(index + 1).padStart(2, "0")}</i>
-                  <label><span>Название {competitor.origin === "ai" && <em>{competitor.segment === "industry_leader" ? "лидер отрасли" : "конкурент за аудиторию"}</em>}</span><input value={competitor.label} onChange={(event) => updateCompetitorEntry(competitor.id, "label", event.target.value)} placeholder={`Конкурент ${index + 1}`} autoComplete="off"/></label>
+                  <label><span>Название {competitor.origin === "ai" && <em>{competitor.segment === "industry_leader" ? "лидер отрасли" : competitor.segment === "regional_competitor" ? "конкурент в выбранной географии" : "конкурент за аудиторию"}</em>}</span><input value={competitor.label} onChange={(event) => updateCompetitorEntry(competitor.id, "label", event.target.value)} placeholder={`Конкурент ${index + 1}`} autoComplete="off"/></label>
                   <label className="competitor-url-field"><span>Ссылка на страницу компании</span><input type="url" value={competitor.url} onChange={(event) => updateCompetitorEntry(competitor.id, "url", event.target.value)} placeholder="https://site.ru/usluga" autoComplete="off"/>{competitor.origin === "ai" && /^https?:\/\//i.test(competitor.url) && <><a href={competitor.url} target="_blank" rel="noreferrer">Открыть найденную страницу <Icon name="arrow"/></a>{competitor.note && <small>{competitor.note}</small>}</>}</label>
                   <button type="button" className="competitor-remove" onClick={() => removeCompetitorEntry(competitor.id)} aria-label={`Удалить строку ${index + 1}`}>×</button>
                 </div>)}
@@ -4267,7 +4268,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
             <div className="competitor-matrix-card">
               <div className="competitor-matrix-head">
-                <div><span>Сравнительная матрица</span><h3>Какие темы раскрывают страницы</h3><p>Ячейка показывает наличие смыслового блока, а не качество компании или услуги.</p></div>
+                <div><span>Сравнительная матрица</span><h3>Какие темы раскрывают страницы</h3><p>Ячейка показывает наличие смыслового блока. Это не оценка качества компании, не проверка посещаемости и не сравнение SEO-позиций.</p></div>
                 <div className="competitor-legend"><span><i className="coverage-strong"><CoverageIcon coverage="strong"/></i>Раскрыто</span><span><i className="coverage-partial"><CoverageIcon coverage="partial"/></i>Частично</span><span><i className="coverage-missing"><CoverageIcon coverage="missing"/></i>Не найдено</span><span><i className="coverage-unknown"><CoverageIcon coverage="unknown"/></i>Не проверено</span></div>
               </div>
               <div className="competitor-table-scroll">
