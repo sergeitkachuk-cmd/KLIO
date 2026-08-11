@@ -734,10 +734,10 @@ const sample: Record<Format, { title: string; body: string }> = {
 
 const modules = [
   ["01", "Профиль компании", "Загрузите PDF, описание бизнеса, скриншоты сайта и примеры текстов. КЛИО определит аудиторию, УТП, услуги и тон коммуникации — все материалы будут звучать как ваш бренд."],
-  ["02", "Ключи и поисковый интент", "Введите основной запрос, выберите географию и получите связанные фразы по смысловым группам. КЛИО отделит полезную семантику от формулировок, которые ведут к переспаму."],
+  ["02", "Темы, которые ищут люди", "Введите тему и географию. КЛИО найдёт реальные запросы, подскажет самые перспективные направления для статей и не даст смешать разные темы в одном тексте."],
   ["03", "Анализ конкурентов · по желанию", "Необязательный углублённый режим для SEO‑задач: добавьте 2–5 прямых страниц, найдите смысловые пробелы и при необходимости передайте выбранные выводы в дополнительный акцент материала."],
   ["04", "Готовая статья по ключам", "Выберите ключевые слова, объём и стиль. Сервис подготовит цельный материал с SEO‑заголовком, метаописанием, подзаголовками и естественным распределением семантики."],
-  ["05", "Контент‑план", "Получите план на 10, 15 или 25 материалов: SEO‑заголовок, метаописание, основной запрос, поддерживающая семантика, аудитория, цель и структура. Меняйте статусы, передавайте темы в генератор и экспортируйте CSV."],
+  ["05", "План статей", "Получите понятную очередь тем для сайта. КЛИО сама разделит их по задачам читателей: выберите нужную тему — и отправьте её в генератор статьи."],
   ["06", "Редакторы КЛИО", "Двенадцать фирменных сценариев: от вычитки и ясности до SEO‑пересборки, поста, рекламы и первого делового контакта."],
 ];
 
@@ -3247,7 +3247,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setContentPlanNeedsRefresh(true);
     setContentPlanError("");
     persistContentPlan({ query: nextQuery, needsRefresh: true });
-    showToast("Карта кластеров передана в контент‑план: серии материалов будут собираться по ней");
+    showToast("КЛИО передала найденные направления в план статей");
   }
 
   function openSemanticContentPlan() {
@@ -3988,18 +3988,18 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </div>
 
           <section className={`workspace-module semantics-module ${semanticOpen ? "" : "tool-collapsed"}`} id="semantics">
-            <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Семантика и поисковый интент</h2></div><p>Соберите ключи отдельно или передайте выбранные фразы в генератор. Для быстрого материала этот этап можно пропустить.</p><button type="button" onClick={() => setSemanticOpen((value) => !value)} aria-expanded={semanticOpen}>{semanticOpen ? "Свернуть" : "Открыть инструмент"}<i>{semanticOpen ? "−" : "+"}</i></button></div>
+            <div className="workspace-module-heading tool-heading"><div><span>Шаг 2 · по желанию</span><h2>Темы, которые ищут люди</h2></div><p>Укажите, чем интересуются ваши будущие клиенты. КЛИО найдёт реальные запросы и предложит: создать одну статью или получить план тем для сайта.</p><button type="button" onClick={() => setSemanticOpen((value) => !value)} aria-expanded={semanticOpen}>{semanticOpen ? "Свернуть" : "Найти темы"}<i>{semanticOpen ? "−" : "+"}</i></button></div>
             <div className="semantic-shell">
               <div className="semantic-search-card">
                 <div className="semantic-search-head">
-                  <div><span>Шаг 1 · исходные данные</span><h3>Что ищет ваш читатель?</h3><p>Сначала задайте тему и географию. Результаты появятся только после запуска анализа — до этого момента ничего не передаётся в генератор.</p></div>
+                  <div><span>Шаг 1</span><h3>О чём могут искать ваши будущие клиенты?</h3><p>Напишите тему и выберите географию. КЛИО покажет реальные варианты запросов и сама разделит их на понятные группы.</p></div>
                   <span className={`semantic-mode semantic-mode-${aiConnection === "connected" ? "ai" : "idle"}`}><i/>{aiConnection === "connected" ? "ИИ подключён" : aiConnection === "disconnected" ? "ИИ не подключён · генерация отключена" : "Проверяем AI‑подключение"}</span>
                 </div>
                 <div className="semantic-primary-query">
                   <label>
-                    <span className="semantic-primary-label"><i>Главное поле</i><b>Основной запрос или тема</b></span>
+                    <span className="semantic-primary-label"><i>Начните здесь</i><b>Тема, услуга или вопрос клиента</b></span>
                     <input value={semanticQuery} onChange={(event) => updateSemanticQuery(event.target.value)} placeholder="Например: санаторий для лечения остеохондроза" autoComplete="off" />
-                    <small>Это единственный источник темы для текущего анализа. Генератор не может заменить или дополнить запрос скрыто.</small>
+                    <small>Например, услуга, проблема клиента или направление бизнеса. Этого достаточно — специальные SEO-знания не нужны.</small>
                   </label>
                 </div>
 
@@ -4132,11 +4132,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </div>
 
               <div className="semantic-actionbar">
-                <div className="semantic-actionbar-copy"><span>Следующий шаг</span><b>{selectedSemanticKeywords.length ? `${selectedSemanticKeywords.length} фраз готовы для одной статьи` : "Выберите фразы одного кластера"}</b><small>Для одного материала выберите один кластер. Для серии статей передайте всю карту кластеров в контент‑план.</small></div>
+                <div className="semantic-actionbar-copy"><span>Что сделать дальше</span><b>{selectedSemanticKeywords.length ? `${selectedSemanticKeywords.length} близких запросов выбраны для одной статьи` : "Выберите одну группу близких запросов"}</b><small>Одна статья отвечает на один вопрос читателя. Для раздела со статьями нажмите «Получить план статей» — КЛИО сама разложит все найденные темы по отдельным публикациям.</small></div>
                 <label className="semantic-brand-route"><input type="checkbox" checked={useBrand} onChange={(event) => { setUseBrand(event.target.checked); setSemanticNeedsRefresh(true); setContentPlanNeedsRefresh(true); persistSemantics(semanticResult, selectedSemanticIds, semanticMode, semanticQuery, semanticRegion, semanticGeo, true); }}/><i/><span><b>Учесть профиль бренда</b><small>{useBrand ? "Модуль 01, включая открытые данные сайта, усилит факты и голос" : "Выключено — статья создаётся только по модулю 02"}</small></span></label>
                 <div className="semantic-action-buttons">
-                  <button className="button ghost" type="button" onClick={openSemanticContentPlan} disabled={semanticNeedsRefresh}>Собрать серию статей</button>
-                  <button className="button ghost" type="button" onClick={sendSemanticsToGenerator} disabled={!selectedSemanticKeywords.length || semanticNeedsRefresh}>Открыть подробный бриф</button>
+                  <button className="button ghost" type="button" onClick={openSemanticContentPlan} disabled={semanticNeedsRefresh}>Получить план статей</button>
+                  <button className="button ghost" type="button" onClick={sendSemanticsToGenerator} disabled={!selectedSemanticKeywords.length || semanticNeedsRefresh}>Настроить статью</button>
                   <button className={`button primary large ${semanticArticleBusy ? "is-busy" : ""}`} type="button" onClick={generateFromSemantics} disabled={!activeBrandId || !selectedSemanticKeywords.length || semanticNeedsRefresh || semanticArticleBusy || aiConnection !== "connected" || workspaceAccount.generationsRemaining <= 0}><Icon name="spark"/>{semanticArticleBusy ? "Создаём статью…" : !activeBrandId ? "Загружаем кабинет" : aiConnection !== "connected" ? "ИИ не подключён" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : semanticNeedsRefresh ? "Сначала обновите семантику" : "Сгенерировать материал"}</button>
                 </div>
                 <div className="module-material-bar"><span><b>{moduleMaterialSources.semantics ? "Продолжаете сохранённую версию" : "Зафиксировать исследование"}</b><small>Сохранение и экспорт не расходуют лимиты.</small></span><div><button type="button" onClick={() => void saveModuleMaterial("semantics")} disabled={materialSavingType === "semantics"}>{materialSavingType === "semantics" ? "Сохраняем…" : moduleMaterialSources.semantics ? "Сохранить новую версию" : "Сохранить в материалы"}</button>{moduleMaterialSources.semantics && <button type="button" onClick={() => void saveModuleMaterial("semantics", "copy")} disabled={materialSavingType === "semantics"}>Сохранить копию</button>}</div></div>
@@ -4357,19 +4357,19 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>
 
           <section className={`workspace-module content-plan-module ${contentPlanOpen ? "" : "tool-collapsed"}`} id="content-plan">
-            <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Контент‑план</h2></div><p>Создайте очередь публикаций и экспортируйте её отдельно либо отправляйте выбранные строки в генератор.</p><button type="button" onClick={() => setContentPlanOpen((value) => !value)} aria-expanded={contentPlanOpen}>{contentPlanOpen ? "Свернуть" : "Открыть инструмент"}<i>{contentPlanOpen ? "−" : "+"}</i></button></div>
+            <div className="workspace-module-heading tool-heading"><div><span>Шаг 3 · для серии статей</span><h2>План статей</h2></div><p>КЛИО подготовит очередь тем для сайта. Откройте любую тему, проверьте краткий план и одним нажатием отправьте её в генератор.</p><button type="button" onClick={() => setContentPlanOpen((value) => !value)} aria-expanded={contentPlanOpen}>{contentPlanOpen ? "Свернуть" : "Открыть план"}<i>{contentPlanOpen ? "−" : "+"}</i></button></div>
             <div className="content-plan-shell">
               <article className="content-plan-setup">
                 <div className="content-plan-setup-head">
-                  <div><span>Основа плана</span><h3>От карты спроса к серии публикаций</h3><p>Семантика передаёт всю карту кластеров: одна строка плана — один кластер и отдельная задача читателя. Для одного материала этот этап не нужен.</p></div>
+                  <div><span>Основа плана</span><h3>КЛИО разложит темы по отдельным статьям</h3><p>Если вы пришли из раздела с запросами, КЛИО возьмёт все найденные направления. Каждая будущая статья будет отвечать на один понятный вопрос читателя — без смешения тем.</p></div>
                   <span className={`status status-${contentPlanMode === "ai" ? "ai" : "example"}`}><i/>{contentPlanMode === "ai" ? "AI‑план" : aiConnection === "connected" ? "Ожидает тему" : "ИИ не подключён"}</span>
                 </div>
 
                 <div className="content-plan-query-row">
-                  <label><span>Тема или фокус <small>необязательно</small></span><input value={contentPlanQuery} onChange={(event) => { const next = event.target.value; setContentPlanQuery(next); setContentPlanNeedsRefresh(true); setContentPlanError(""); persistContentPlan({ query: next, needsRefresh: true }); }} placeholder="Оставьте пустым для разнообразного плана по профилю бренда" autoComplete="off"/><small>Кнопка «Из семантики» передаёт всю карту спроса, а не 3–6 фраз одной статьи. Без темы КЛИО соберёт общий план по профилю бренда.</small></label>
+                  <label><span>Тема или фокус <small>необязательно</small></span><input value={contentPlanQuery} onChange={(event) => { const next = event.target.value; setContentPlanQuery(next); setContentPlanNeedsRefresh(true); setContentPlanError(""); persistContentPlan({ query: next, needsRefresh: true }); }} placeholder="Оставьте пустым для общего плана по вашему бизнесу" autoComplete="off"/><small>Нажмите «Из найденных тем», чтобы КЛИО использовала всю карту запросов. Вам не нужно выбирать ключевые фразы для каждой будущей статьи.</small></label>
                   <div className="content-plan-basis-actions">
                     <button type="button" className={brandPlanBasisSelected ? "is-active" : ""} aria-pressed={brandPlanBasisSelected} onClick={useBrandForPlan} disabled={!useBrand || !foundationReady}><Icon name="arrow"/> По профилю бренда{brandPlanBasisSelected && <b>Выбрано</b>}</button>
-                    <button type="button" className={semanticPlanBasisSelected ? "is-active" : ""} aria-pressed={semanticPlanBasisSelected} onClick={useCurrentSemanticsForPlan} disabled={!semanticAnalysisReady}><Icon name="arrow"/> Из семантики{semanticPlanBasisSelected && <b>Выбрано</b>}</button>
+                    <button type="button" className={semanticPlanBasisSelected ? "is-active" : ""} aria-pressed={semanticPlanBasisSelected} onClick={useCurrentSemanticsForPlan} disabled={!semanticAnalysisReady}><Icon name="arrow"/> Из найденных тем{semanticPlanBasisSelected && <b>Выбрано</b>}</button>
                   </div>
                 </div>
 
