@@ -3119,14 +3119,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     });
   }
 
-  function selectRecommendedCompetitorTopics() {
-    const next = competitorResult.topics.filter((item) => item.recommended).map((item) => item.id).slice(0, 6);
-    setSelectedCompetitorTopicIds(next);
-    setContentPlanNeedsRefresh(true);
-    persistCompetitorWorkspace({ selectedIds: next });
-    showToast(`КЛИО выбрал ${next.length} тем для будущей статьи`);
-  }
-
   function sendCompetitorInsightsToGenerator() {
     if (competitorNeedsRefresh) {
       if (validCompetitorEntries < 2) {
@@ -3138,11 +3130,19 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       }
       return;
     }
-    if (!selectedCompetitorTopics.length) {
-      showToast("Выберите хотя бы один вывод для будущего материала");
+    const automaticTopics = competitorResult.topics.filter((item) => item.recommended).slice(0, 6);
+    const topicsForArticle = selectedCompetitorTopics.length ? selectedCompetitorTopics : automaticTopics;
+    if (!topicsForArticle.length) {
+      showToast("Не удалось подобрать темы для статьи — отметьте подходящие строки в таблице");
       return;
     }
-    const insightLines = selectedCompetitorTopics.map((item) => `• ${item.title}: ${item.opportunity}`);
+    if (!selectedCompetitorTopics.length) {
+      const nextIds = automaticTopics.map((item) => item.id);
+      setSelectedCompetitorTopicIds(nextIds);
+      setContentPlanNeedsRefresh(true);
+      persistCompetitorWorkspace({ selectedIds: nextIds });
+    }
+    const insightLines = topicsForArticle.map((item) => `• ${item.title}: ${item.opportunity}`);
     const nextAccent = [
       "Использовать выводы матрицы как редакционные ориентиры; не копировать структуру и формулировки конкурентов.",
       ...insightLines,
@@ -3155,7 +3155,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setGenerationError("");
     setGenerationMode("example");
     window.setTimeout(() => document.getElementById("generator")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-    showToast(`Тема и ${selectedCompetitorTopics.length} выводов переданы в генератор`);
+    showToast(`Тема и ${topicsForArticle.length} разделов переданы в генератор`);
   }
 
   function downloadWorkspaceFile(filename: string, content: string, type: string) {
@@ -4351,7 +4351,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   })}</tbody>
                 </table>
               </div>
-              <div className="competitor-matrix-footer"><p>{competitorResult.dataNote}</p><button type="button" onClick={selectRecommendedCompetitorTopics}>{competitorResult.topics.filter((item) => item.recommended).length ? `Выбрать ${competitorResult.topics.filter((item) => item.recommended).length} тем для статьи` : "Выбрать темы для статьи"}</button></div>
+              <div className="competitor-matrix-footer"><p>{competitorResult.dataNote}</p></div>
             </div>
 
             <div className="competitor-insights-grid">
@@ -4372,8 +4372,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </div>
 
             <div className={`competitor-actionbar ${competitorNeedsRefresh ? "needs-refresh" : ""}`}>
-              <div><span>Следующий шаг</span><b>{selectedCompetitorTopics.length ? `Выбрано тем для статьи: ${selectedCompetitorTopics.length}` : "Выберите темы для будущей статьи"}</b><small>{selectedCompetitorTopics.length ? "КЛИО передаст тему и выбранные разделы в генератор. Там вы сможете дополнить бриф и создать статью." : "Отметьте темы в таблице или нажмите «Выбрать темы для статьи» выше."}</small></div>
-              <div className="competitor-action-buttons"><button type="button" className="module-save-button" onClick={() => void saveModuleMaterial("competitors")} disabled={materialSavingType === "competitors" || competitorNeedsRefresh}>{materialSavingType === "competitors" ? "Сохраняем…" : moduleMaterialSources.competitors ? "Сохранить анализ" : "Сохранить анализ в материалы"}</button>{moduleMaterialSources.competitors && <button type="button" className="module-copy-button" onClick={() => void saveModuleMaterial("competitors", "copy")} disabled={materialSavingType === "competitors"}>Копия</button>}<button className={`button primary large ${!selectedCompetitorTopics.length || competitorNeedsRefresh ? "is-blocked" : ""}`} type="button" onClick={sendCompetitorInsightsToGenerator} aria-disabled={!selectedCompetitorTopics.length || competitorNeedsRefresh}>Открыть в генераторе <Icon name="arrow"/></button></div>
+              <div><span>Следующий шаг</span><b>{selectedCompetitorTopics.length ? `Выбрано тем для статьи: ${selectedCompetitorTopics.length}` : "КЛИО сам выберет подходящие темы"}</b><small>{selectedCompetitorTopics.length ? "КЛИО передаст тему и выбранные разделы в генератор. Там вы сможете дополнить бриф и создать статью." : "Если хотите изменить подборку, отметьте нужные темы в таблице. Иначе КЛИО выберет свои рекомендации автоматически."}</small></div>
+              <div className="competitor-action-buttons"><button type="button" className="module-save-button" onClick={() => void saveModuleMaterial("competitors")} disabled={materialSavingType === "competitors" || competitorNeedsRefresh}>{materialSavingType === "competitors" ? "Сохраняем…" : moduleMaterialSources.competitors ? "Сохранить анализ" : "Сохранить анализ в материалы"}</button>{moduleMaterialSources.competitors && <button type="button" className="module-copy-button" onClick={() => void saveModuleMaterial("competitors", "copy")} disabled={materialSavingType === "competitors"}>Копия</button>}<button className={`button primary large ${competitorNeedsRefresh ? "is-blocked" : ""}`} type="button" onClick={sendCompetitorInsightsToGenerator} aria-disabled={competitorNeedsRefresh}>Открыть в генераторе <Icon name="arrow"/></button></div>
             </div>
               </div>}
             </div>
