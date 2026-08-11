@@ -102,7 +102,9 @@ type CompetitorTopic = {
   priority: "Высокий" | "Средний" | "Дополнительный";
   rationale: string;
   brandCoverage: CompetitorCoverage;
+  brandEvidence?: string;
   coverage: Record<string, CompetitorCoverage>;
+  coverageEvidence?: Record<string, string>;
   opportunity: string;
   recommended: boolean;
 };
@@ -4344,8 +4346,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     const brandMeta = competitorCoverageMeta[item.brandCoverage];
                     return <tr className={selected ? "is-selected" : ""} key={item.id}>
                       <th><button type="button" onClick={() => toggleCompetitorTopic(item.id)} aria-pressed={selected}><i>{selected ? "✓" : ""}</i><span><b>{item.title}</b><small>{item.cluster} · приоритет {item.priority.toLocaleLowerCase("ru-RU")}</small><em>{item.rationale}</em></span></button></th>
-                      <td className="brand-column"><span className={`coverage coverage-${item.brandCoverage}`} title={brandMeta.label} aria-label={brandMeta.label}><i><CoverageIcon coverage={item.brandCoverage}/></i></span></td>
-                      {competitorResult.competitors.map((source) => { const coverage = item.coverage[source.id] ?? "unknown"; const meta = competitorCoverageMeta[coverage]; return <td key={source.id}><span className={`coverage coverage-${coverage}`} title={meta.label} aria-label={meta.label}><i><CoverageIcon coverage={coverage}/></i></span></td>; })}
+                      <td className="brand-column"><span className={`coverage coverage-${item.brandCoverage}`} title={item.brandEvidence ? `${brandMeta.label}: ${item.brandEvidence}` : brandMeta.label} aria-label={brandMeta.label}><i><CoverageIcon coverage={item.brandCoverage}/></i></span></td>
+                      {competitorResult.competitors.map((source) => { const coverage = item.coverage[source.id] ?? "unknown"; const meta = competitorCoverageMeta[coverage]; const evidence = item.coverageEvidence?.[source.id]; return <td key={source.id}><span className={`coverage coverage-${coverage}`} title={evidence ? `${meta.label}: ${evidence}` : meta.label} aria-label={meta.label}><i><CoverageIcon coverage={coverage}/></i></span></td>; })}
                     </tr>;
                   })}</tbody>
                 </table>

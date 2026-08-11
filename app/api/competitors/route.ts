@@ -43,7 +43,8 @@ type AiTopic = {
   priority: "Высокий" | "Средний" | "Дополнительный";
   rationale: string;
   brand_coverage: CompetitorCoverage;
-  competitor_coverage: { competitor_id: string; coverage: CompetitorCoverage }[];
+  brand_evidence: string;
+  competitor_coverage: { competitor_id: string; coverage: CompetitorCoverage; evidence: string }[];
   opportunity: string;
   recommended: boolean;
 };
@@ -121,6 +122,19 @@ function sourceStatus(context: WebsiteContext): CompetitorSource["status"] {
   return "unavailable";
 }
 
+function hasEvidence(text: string, evidence: string) {
+  const sourceTokens = new Set(text.toLocaleLowerCase("ru-RU").match(/[\p{L}\p{N}]{4,}/gu) ?? []);
+  const evidenceTokens = [...new Set(evidence.toLocaleLowerCase("ru-RU").match(/[\p{L}\p{N}]{4,}/gu) ?? [])];
+  return evidenceTokens.filter((token) => sourceTokens.has(token)).length >= 2;
+}
+
+function verifiedCoverage(coverage: CompetitorCoverage | undefined, evidence: string, text: string, available: boolean): CompetitorCoverage {
+  if (!available || text.length < 900) return "unknown";
+  if (coverage === "strong" || coverage === "partial") return hasEvidence(text, evidence) ? coverage : "unknown";
+  if (coverage === "missing") return "missing";
+  return "unknown";
+}
+
 function analysisSchema(competitorIds: string[]) {
   return {
     type: "object",
@@ -128,8 +142,8 @@ function analysisSchema(competitorIds: string[]) {
       suggestedTitle: { type: "string" },
       topics: {
         type: "array",
-        minItems: 6,
-        maxItems: 10,
+        minItems: 3,
+        maxItems: 8,
         items: {
           type: "object",
           properties: {
@@ -138,6 +152,7 @@ function analysisSchema(competitorIds: string[]) {
             priority: { type: "string", enum: ["Высокий", "Средний", "Дополнительный"] },
             rationale: { type: "string" },
             brand_coverage: { type: "string", enum: ["strong", "partial", "missing", "unknown"] },
+            brand_evidence: { type: "string" },
             competitor_coverage: {
               type: "array",
               minItems: competitorIds.length,
@@ -147,15 +162,16 @@ function analysisSchema(competitorIds: string[]) {
                 properties: {
                   competitor_id: { type: "string", enum: competitorIds },
                   coverage: { type: "string", enum: ["strong", "partial", "missing", "unknown"] },
+                  evidence: { type: "string" },
                 },
-                required: ["competitor_id", "coverage"],
+                required: ["competitor_id", "coverage", "evidence"],
                 additionalProperties: false,
               },
             },
             opportunity: { type: "string" },
             recommended: { type: "boolean" },
           },
-          required: ["title", "cluster", "priority", "rationale", "brand_coverage", "competitor_coverage", "opportunity", "recommended"],
+          required: ["title", "cluster", "priority", "rationale", "brand_coverage", "brand_evidence", "competitor_coverage", "opportunity", "recommended"],
           additionalProperties: false,
         },
       },
@@ -193,7 +209,7 @@ export async function POST(request: Request) {
       url: competitorWebsites[index].resolvedUrl || item.url,
       status: sourceStatus(competitorWebsites[index]),
     }));
-    const brandText = [brand.description, brand.positioning, brand.audience, brand.advantages, brandWebsite.text].filter(Boolean).join("\n").slice(0, 6000);
+    const brandText = [brand.description, brand.positioning, brand.audience, brand.advantages, brandWebsite.text].filter(Boolean).join("\n").slice(0, 10_000);
     const brandStatus: WebsiteContext["status"] | "profile" = brandText ? "profile" : brandWebsite.status;
 
     const requestContext = {
@@ -204,7 +220,7 @@ export async function POST(request: Request) {
         id: source.id,
         label: source.label,
         status: source.status,
-        text: competitorWebsites[index].status === "loaded" ? competitorWebsites[index].text.slice(0, 6000) : null,
+        text: competitorWebsites[index].status === "loaded" ? competitorWebsites[index].text.slice(0, 10_000) : null,
       })),
     };
 
@@ -218,6 +234,7 @@ export async function POST(request: Request) {
       "Не давай медицинских, юридических или финансовых гарантий и не оценивай качество продуктов — только полноту раскрытия темы в тексте.",
       "suggestedTitle — конкретный заголовок будущего материала по comparison_topic, без общих формулировок вроде «Как выбрать X» если тема не про выбор.",
       "Верни только структурированный результат по JSON-схеме.",
+      "Use only 3-8 topics that are supported by the supplied page texts. For strong or partial coverage, evidence must be a short exact fragment from that same source text. If the source text is too short or you cannot quote evidence, use unknown, never missing. missing is allowed only after a sufficiently detailed source text was supplied and the topic is genuinely absent.",
     ].join("\n");
 
     const { result: aiResult, model } = await callAiModel<AiAnalysis>({
@@ -237,17 +254,24 @@ export async function POST(request: Request) {
       const coverage = Object.fromEntries(
         sources.map((source) => {
           const match = topic.competitor_coverage.find((item) => item.competitor_id === source.id);
-          return [source.id, source.status === "loaded" ? (match?.coverage ?? "unknown") : "unknown"];
+          const sourceIndex = sources.findIndex((item) => item.id === source.id);
+          return [source.id, verifiedCoverage(match?.coverage, match?.evidence ?? "", competitorWebsites[sourceIndex]?.text ?? "", source.status === "loaded")];
         }),
       ) as Record<string, CompetitorCoverage>;
+      const coverageEvidence = Object.fromEntries(sources.map((source) => {
+        const match = topic.competitor_coverage.find((item) => item.competitor_id === source.id);
+        return [source.id, clean(match?.evidence, 280)];
+      }));
       return {
         id: `topic-${index + 1}`,
         title: clean(topic.title, 200) || `Тема ${index + 1}`,
         cluster: clean(topic.cluster, 100) || "Основная тема",
         priority: topic.priority,
         rationale: clean(topic.rationale, 500),
-        brandCoverage: brand.name ? topic.brand_coverage : "unknown" as CompetitorCoverage,
+        brandCoverage: brand.name ? verifiedCoverage(topic.brand_coverage, topic.brand_evidence, brandText, Boolean(brandText)) : "unknown" as CompetitorCoverage,
+        brandEvidence: clean(topic.brand_evidence, 280),
         coverage,
+        coverageEvidence,
         opportunity: clean(topic.opportunity, 500),
         recommended: Boolean(topic.recommended),
       };
