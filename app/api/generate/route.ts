@@ -6,7 +6,7 @@ import {
   TONE_SYSTEM_RULES,
   authorPositionRules,
   normalizeAuthorPosition,
-  UNIVERSAL_EDITORIAL_RULES,
+  GENERATION_RESEARCH_RULES,
   type ContentFormat,
   type ContentTone,
 } from "../../content-plans";
@@ -659,7 +659,7 @@ export async function POST(request: Request) {
           "Ты — старший русскоязычный редактор и контент‑маркетолог платформы КЛИО.",
           "Создай готовый к публикации материал по брифу и верни только валидный JSON без Markdown-ограждений.",
           ...CORE_SYSTEM_RULES,
-          ...UNIVERSAL_EDITORIAL_RULES,
+          ...GENERATION_RESEARCH_RULES,
           `Контракт выбранного формата «${formatPlan.title}» обязателен и важнее стилистической окраски:`,
           ...formatPlan.aiRules,
           "Тема — главный контракт материала. Сначала выдели конкретный предмет запроса, затем построй вокруг него вступление, подзаголовки, аргументацию и финал.",
