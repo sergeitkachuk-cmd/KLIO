@@ -1,4 +1,4 @@
-export type PlanId = "start" | "pro" | "agency";
+export type PlanId = "trial" | "start" | "pro" | "agency";
 
 export type PlanRule = {
   id: PlanId;
@@ -8,9 +8,25 @@ export type PlanRule = {
   editorActionLimit: number;
   brandLimit: number;
   seatLimit: 1;
+  // Human-readable quota window for "limit exceeded" messages — plain
+  // plans reset monthly; the trial's window is fixed and short instead.
+  periodLabel: string;
 };
 
+// New signups start here (see ensureAccount in api/_lib/workspace-account.ts)
+// and get TRIAL_DURATION_MS (48h, defined there) of work before every
+// AI-costing action is blocked outright — see assertTrialActive.
 export const PLAN_RULES: Record<PlanId, PlanRule> = {
+  trial: {
+    id: "trial",
+    name: "Пробный",
+    generationLimit: 5,
+    researchLimit: 3,
+    editorActionLimit: 5,
+    brandLimit: 1,
+    seatLimit: 1,
+    periodLabel: "за пробный период",
+  },
   start: {
     id: "start",
     name: "Старт",
@@ -19,6 +35,7 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
     editorActionLimit: 100,
     brandLimit: 1,
     seatLimit: 1,
+    periodLabel: "в месяц",
   },
   pro: {
     id: "pro",
@@ -28,6 +45,7 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
     editorActionLimit: 500,
     brandLimit: 5,
     seatLimit: 1,
+    periodLabel: "в месяц",
   },
   agency: {
     id: "agency",
@@ -37,11 +55,12 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
     editorActionLimit: 2000,
     brandLimit: 10,
     seatLimit: 1,
+    periodLabel: "в месяц",
   },
 };
 
 export function isPlanId(value: unknown): value is PlanId {
-  return value === "start" || value === "pro" || value === "agency";
+  return value === "trial" || value === "start" || value === "pro" || value === "agency";
 }
 
 export function planRule(value: unknown): PlanRule {

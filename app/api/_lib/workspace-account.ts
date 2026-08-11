@@ -45,7 +45,7 @@ export async function ensureAccount(user: ChatGPTUser) {
     [account] = await db.insert(accounts).values({
       email: user.email,
       displayName: user.displayName,
-      planId: "start",
+      planId: "trial",
       generationMonth: currentMonth,
       generationsUsed: 0,
       researchUsed: 0,
@@ -97,11 +97,29 @@ async function currentBrandCount(email: string) {
   return Number(count);
 }
 
+// New accounts start on the "trial" plan (see ensureAccount) with a fixed
+// 48h window rather than a monthly reset — once it elapses, every
+// AI-costing action is blocked outright (see assertTrialActive) regardless
+// of how much of the trial's own generationLimit/researchLimit/
+// editorActionLimit was actually used.
+const TRIAL_DURATION_MS = 48 * 60 * 60 * 1000;
+
+function assertTrialActive(account: typeof accounts.$inferSelect) {
+  if (account.planId !== "trial") return;
+  const startedAt = new Date(account.createdAt).getTime();
+  if (Number.isNaN(startedAt) || Date.now() - startedAt <= TRIAL_DURATION_MS) return;
+  throw new WorkspaceAccessError(
+    "Пробный период КЛИО закончился. Напишите нам, чтобы продолжить работу.",
+    402,
+  );
+}
+
 async function consumeSecondaryQuota(kind: "research" | "editor") {
   if (!await workspaceDatabaseAvailable()) return null;
   const user = await workspaceIdentity();
   const db = await getWorkspaceDb();
   const current = await ensureAccount(user);
+  assertTrialActive(current);
   const rule = planRule(current.planId);
 
   const [updated] = kind === "research"
@@ -123,7 +141,7 @@ async function consumeSecondaryQuota(kind: "research" | "editor") {
   if (!updated) {
     const label = kind === "research" ? "исследований" : "редакторских действий";
     const limit = kind === "research" ? rule.researchLimit : rule.editorActionLimit;
-    throw new WorkspaceAccessError(`Лимит тарифа «${rule.name}» исчерпан: ${limit} ${label} в месяц.`, 429);
+    throw new WorkspaceAccessError(`Лимит тарифа «${rule.name}» исчерпан: ${limit} ${label} ${rule.periodLabel}.`, 429);
   }
 
   return { account: accountSummary(updated, await currentBrandCount(user.email)) };
@@ -137,9 +155,10 @@ export async function assertGenerationQuotaAvailable() {
   if (!await workspaceDatabaseAvailable()) return;
   const user = await workspaceIdentity();
   const current = await ensureAccount(user);
+  assertTrialActive(current);
   const rule = planRule(current.planId);
   if (current.generationsUsed >= rule.generationLimit) {
-    throw new WorkspaceAccessError(`Лимит тарифа «${rule.name}» исчерпан: ${rule.generationLimit} материалов в месяц.`, 429);
+    throw new WorkspaceAccessError(`Лимит тарифа «${rule.name}» исчерпан: ${rule.generationLimit} материалов ${rule.periodLabel}.`, 429);
   }
 }
 
@@ -147,12 +166,13 @@ export async function assertSecondaryQuotaAvailable(kind: "research" | "editor")
   if (!await workspaceDatabaseAvailable()) return;
   const user = await workspaceIdentity();
   const current = await ensureAccount(user);
+  assertTrialActive(current);
   const rule = planRule(current.planId);
   const used = kind === "research" ? current.researchUsed : current.editorActionsUsed;
   const limit = kind === "research" ? rule.researchLimit : rule.editorActionLimit;
   if (used >= limit) {
     const label = kind === "research" ? "исследований" : "редакторских действий";
-    throw new WorkspaceAccessError(`Лимит тарифа «${rule.name}» исчерпан: ${limit} ${label} в месяц.`, 429);
+    throw new WorkspaceAccessError(`Лимит тарифа «${rule.name}» исчерпан: ${limit} ${label} ${rule.periodLabel}.`, 429);
   }
 }
 
@@ -184,6 +204,7 @@ export async function recordGeneration(material: ArchiveMaterial) {
   const user = await workspaceIdentity();
   const db = await getWorkspaceDb();
   const current = await ensureAccount(user);
+  assertTrialActive(current);
   const rule = planRule(current.planId);
   const [updated] = await db.update(accounts).set({
     generationsUsed: sql`${accounts.generationsUsed} + 1`,
@@ -194,7 +215,7 @@ export async function recordGeneration(material: ArchiveMaterial) {
   )).returning();
 
   if (!updated) {
-    throw new WorkspaceAccessError(`Лимит тарифа «${rule.name}» исчерпан: ${rule.generationLimit} материалов в месяц.`, 429);
+    throw new WorkspaceAccessError(`Лимит тарифа «${rule.name}» исчерпан: ${rule.generationLimit} материалов ${rule.periodLabel}.`, 429);
   }
 
   let brandId: string | null = null;
