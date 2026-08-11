@@ -1317,6 +1317,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [competitorQuery, setCompetitorQuery] = useState("");
   const [competitorFocusSource, setCompetitorFocusSource] = useState<CompetitorFocusSource>("manual");
   const [competitorMarketScope, setCompetitorMarketScope] = useState<CompetitorMarketScope>("national");
+  const [competitorMarketRegion, setCompetitorMarketRegion] = useState("");
   const [competitors, setCompetitors] = useState<CompetitorEntry[]>(defaultCompetitors);
   const [competitorComment, setCompetitorComment] = useState("");
   const [competitorResult, setCompetitorResult] = useState<CompetitorResult>(workspace ? emptyCompetitorResult : defaultCompetitorResult);
@@ -1912,6 +1913,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         query?: string;
         focusSource?: CompetitorFocusSource;
         marketScope?: CompetitorMarketScope;
+        marketRegion?: string;
         competitors?: CompetitorEntry[];
         comment?: string;
         result?: CompetitorResult;
@@ -1923,6 +1925,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         if (parsed.query) setCompetitorQuery(parsed.query);
         if (parsed.focusSource === "manual" || parsed.focusSource === "semantics" || parsed.focusSource === "brand") setCompetitorFocusSource(parsed.focusSource);
         if (parsed.marketScope === "national" || parsed.marketScope === "demand" || parsed.marketScope === "brand") setCompetitorMarketScope(parsed.marketScope);
+        if (typeof parsed.marketRegion === "string") setCompetitorMarketRegion(parsed.marketRegion);
         if (Array.isArray(parsed.competitors) && parsed.competitors.length) setCompetitors(parsed.competitors.slice(0, 5));
         if (typeof parsed.comment === "string") setCompetitorComment(parsed.comment);
         if (parsed.result?.topics?.length && parsed.result?.competitors?.length) setCompetitorResult(parsed.result);
@@ -2844,6 +2847,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     query?: string;
     focusSource?: CompetitorFocusSource;
     marketScope?: CompetitorMarketScope;
+    marketRegion?: string;
     entries?: CompetitorEntry[];
     comment?: string;
     result?: CompetitorResult;
@@ -2855,6 +2859,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       query: options.query ?? competitorQuery,
       focusSource: options.focusSource ?? competitorFocusSource,
       marketScope: options.marketScope ?? competitorMarketScope,
+      marketRegion: options.marketRegion ?? competitorMarketRegion,
       competitors: options.entries ?? competitors,
       comment: options.comment ?? competitorComment,
       result: options.result ?? competitorResult,
@@ -2933,6 +2938,19 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     window.setTimeout(() => document.getElementById("competitors")?.scrollIntoView({ behavior: "smooth", block: "start" }), 40);
   }
 
+  function chooseCompetitorMarketScope(scope: CompetitorMarketScope) {
+    const suggested = scope === "demand"
+      ? selectedGeoScopes.map((item) => item.label).join(", ")
+      : scope === "brand"
+        ? effectiveBrand.geography.trim()
+        : "";
+    const nextRegion = competitorMarketRegion.trim() || suggested;
+    setCompetitorMarketScope(scope);
+    setCompetitorMarketRegion(nextRegion);
+    setCompetitorNeedsRefresh(true);
+    persistCompetitorWorkspace({ marketScope: scope, marketRegion: nextRegion, needsRefresh: true });
+  }
+
   function resetCompetitorSearch() {
     const next = defaultCompetitors.map((item) => ({ ...item, id: `${item.id}-${Date.now()}`, origin: "manual" as const }));
     setCompetitors(next);
@@ -2970,11 +2988,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           // not change a manually entered query, but prevents the search
           // from returning the brand's own site or pages that only mention it.
           brand: effectiveBrand,
-          geography: competitorMarketScope === "demand"
-            ? selectedGeoScopes.map(({ label, detail }) => ({ label, detail }))
-            : competitorMarketScope === "brand" && effectiveBrand.geography.trim()
-              ? [{ label: effectiveBrand.geography.trim().slice(0, 140), detail: "Территория работы бренда" }]
-              : [],
+          geography: competitorMarketScope === "national"
+            ? []
+            : (competitorMarketRegion.trim()
+                ? competitorMarketRegion.split(/[,;\n]/).map((label) => ({ label: label.trim(), detail: competitorMarketScope === "demand" ? "География спроса" : "Территория работы бренда" })).filter((item) => item.label)
+                : competitorMarketScope === "demand"
+                  ? selectedGeoScopes.map(({ label, detail }) => ({ label, detail }))
+                  : effectiveBrand.geography.trim()
+                    ? [{ label: effectiveBrand.geography.trim().slice(0, 140), detail: "Территория работы бренда" }]
+                    : []),
         }),
       });
       const payload = await safeJson(response) as {
@@ -4265,11 +4287,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <div className="competitor-market-scope">
                 <span>Где искать конкурентов</span>
                 <div>
-                  <button type="button" className={competitorMarketScope === "national" ? "is-active" : ""} onClick={() => { setCompetitorMarketScope("national"); setCompetitorNeedsRefresh(true); persistCompetitorWorkspace({ marketScope: "national", needsRefresh: true }); }}>Вся Россия и онлайн</button>
-                  <button type="button" className={competitorMarketScope === "demand" ? "is-active" : ""} onClick={() => { setCompetitorMarketScope("demand"); setCompetitorNeedsRefresh(true); persistCompetitorWorkspace({ marketScope: "demand", needsRefresh: true }); }} disabled={!selectedGeoScopes.length}>По географии спроса</button>
-                  <button type="button" className={competitorMarketScope === "brand" ? "is-active" : ""} onClick={() => { setCompetitorMarketScope("brand"); setCompetitorNeedsRefresh(true); persistCompetitorWorkspace({ marketScope: "brand", needsRefresh: true }); }} disabled={!effectiveBrand.geography.trim()}>По территории работы бренда</button>
+                  <button type="button" className={competitorMarketScope === "national" ? "is-active" : ""} onClick={() => chooseCompetitorMarketScope("national")}>Вся Россия и онлайн</button>
+                  <button type="button" className={competitorMarketScope === "demand" ? "is-active" : ""} onClick={() => chooseCompetitorMarketScope("demand")}>По географии спроса</button>
+                  <button type="button" className={competitorMarketScope === "brand" ? "is-active" : ""} onClick={() => chooseCompetitorMarketScope("brand")}>По территории работы бренда</button>
                 </div>
-                <small>{competitorMarketScope === "national" ? "Подходит для онлайн-сервисов и брендов, которые работают по всей России." : competitorMarketScope === "demand" ? "Ищем тех, кто конкурирует за спрос в выбранных регионах." : "Используем поле «География бренда» как рынок конкуренции, а не как обязательный адрес компании."}</small>
+                {competitorMarketScope !== "national" && <label className="competitor-market-region"><span>{competitorMarketScope === "demand" ? "Где ищут ваши клиенты" : "Где вы работаете"}</span><input value={competitorMarketRegion} onChange={(event) => { const next = event.target.value; setCompetitorMarketRegion(next); setCompetitorNeedsRefresh(true); persistCompetitorWorkspace({ marketRegion: next, needsRefresh: true }); }} placeholder={competitorMarketScope === "demand" ? "Например: Карелия, Санкт‑Петербург" : "Например: Россия или Москва и область"} autoComplete="off"/></label>}
+                <small>{competitorMarketScope === "national" ? "Подходит для онлайн-сервисов и брендов, которые работают по всей России." : "Можно указать регион самостоятельно. Данные из семантики и профиля только подставляются для удобства."}</small>
               </div>
 
               {competitorSerp.length > 0 && <div className="competitor-serp-card">
