@@ -18008,23 +18008,47 @@ footer nav a {
 }
 
 [data-theme="light"] .workspace-history-list .material-article {
-  border-color: rgba(124, 58, 237, 0.32);
-  background: linear-gradient(135deg, #f4f0ff, #fff 72%);
+  border-color: rgba(124, 58, 237, 0.42);
+  background: linear-gradient(115deg, #eee7ff 0%, #e4d8ff 62%, #c9b0ff 100%);
 }
 
 [data-theme="light"] .workspace-history-list .material-content_plan {
-  border-color: rgba(13, 148, 136, 0.32);
-  background: linear-gradient(135deg, #e7faf6, #fff 72%);
+  border-color: rgba(13, 148, 136, 0.42);
+  background: linear-gradient(115deg, #dcf7f0 0%, #c5eee4 62%, #80d7c5 100%);
 }
 
 [data-theme="light"] .workspace-history-list .material-semantics {
-  border-color: rgba(202, 138, 4, 0.34);
-  background: linear-gradient(135deg, #fff9df, #fff 72%);
+  border-color: rgba(202, 138, 4, 0.44);
+  background: linear-gradient(115deg, #fff5c7 0%, #ffeca0 62%, #efc657 100%);
 }
 
 [data-theme="light"] .workspace-history-list .material-competitors {
-  border-color: rgba(37, 99, 235, 0.32);
-  background: linear-gradient(135deg, #eaf2ff, #fff 72%);
+  border-color: rgba(37, 99, 235, 0.42);
+  background: linear-gradient(115deg, #e2edff 0%, #cadeff 62%, #8bb8ff 100%);
+}
+
+[data-theme="light"] .workspace-history-list .material-article > div span {
+  border-color: rgba(124, 58, 237, 0.35);
+  color: #5b34a8;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+[data-theme="light"] .workspace-history-list .material-content_plan > div span {
+  border-color: rgba(13, 148, 136, 0.36);
+  color: #087b6e;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+[data-theme="light"] .workspace-history-list .material-semantics > div span {
+  border-color: rgba(202, 138, 4, 0.4);
+  color: #865800;
+  background: rgba(255, 255, 255, 0.48);
+}
+
+[data-theme="light"] .workspace-history-list .material-competitors > div span {
+  border-color: rgba(37, 99, 235, 0.36);
+  color: #2158aa;
+  background: rgba(255, 255, 255, 0.46);
 }
 
 [data-theme="light"] .workspace-history-list footer {
@@ -18046,28 +18070,35 @@ footer nav a {
    Disabled states keep the same hierarchy without looking inactive by bug. */
 [data-theme="light"] .content-plan-query-row > button,
 [data-theme="light"] .content-plan-basis-actions > button {
-  border-color: rgba(36, 82, 184, 0.72);
-  color: #fff;
-  background: linear-gradient(120deg, #2452b8, #3568d4);
-  box-shadow: 0 8px 20px rgba(36, 82, 184, 0.18), inset 0 1px rgba(255, 255, 255, 0.22);
+  border-color: rgba(53, 104, 212, 0.28);
+  color: #31578f;
+  background: linear-gradient(120deg, rgba(224, 235, 255, 0.92), rgba(246, 249, 255, 0.88));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.84), 0 5px 15px rgba(53, 104, 212, 0.07);
 }
 
 [data-theme="light"] .content-plan-basis-actions > button + button {
-  border-color: rgba(36, 82, 184, 0.32);
-  color: #2452b8;
-  background: rgba(53, 104, 212, 0.1);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.65);
+  border-color: rgba(71, 128, 181, 0.28);
+  color: #3e6b91;
+  background: linear-gradient(120deg, rgba(224, 242, 255, 0.9), rgba(247, 251, 255, 0.88));
+}
+
+[data-theme="light"] .content-plan-basis-actions > button.is-active {
+  border-color: rgba(53, 104, 212, 0.58);
+  color: #173f82;
+  background: linear-gradient(120deg, #cadcff, #e8f0ff 58%, #c7e9ed);
+  box-shadow: 0 8px 20px rgba(53, 104, 212, 0.14), inset 0 1px rgba(255, 255, 255, 0.8);
 }
 
 [data-theme="light"] .content-plan-query-row > button:hover:not(:disabled),
 [data-theme="light"] .content-plan-basis-actions > button:hover:not(:disabled) {
-  border-color: #163f98;
-  background: linear-gradient(120deg, #163f98, #2452b8);
+  border-color: rgba(53, 104, 212, 0.55);
+  color: #173f82;
+  background: linear-gradient(120deg, #d7e5ff, #edf4ff 62%, #d6f1f0);
 }
 
 [data-theme="light"] .content-plan-basis-actions > button + button:hover:not(:disabled) {
-  color: #163f98;
-  background: rgba(53, 104, 212, 0.18);
+  color: #28537c;
+  background: linear-gradient(120deg, #d9eeff, #eef8ff 62%, #d9f1f0);
 }
 
 /* Individual plan actions: the brief is a secondary action, while moving an
