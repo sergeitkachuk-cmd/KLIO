@@ -381,7 +381,24 @@ export async function POST(request: Request) {
       return Response.json({ error: "По найденным страницам не удалось подтвердить минимум двух прямых конкурентов. Уточните категорию или добавьте сайты конкурентов вручную." }, { status: 422 });
     }
 
-    return Response.json({ candidates, mode: "ai", model: selection.model || model });
+    const selectedDomains = new Set(candidates.map((item) => domainOf(item.url)));
+    const serp = yandexResults.slice(0, 10).map((item, index) => {
+      const domain = domainOf(item.url);
+      return {
+        rank: item.searchRank ?? index + 1,
+        title: clean(item.title, 180) || readableDomain(item.url),
+        url: item.url,
+        kind: brandDomain && domain === brandDomain
+          ? "brand"
+          : selectedDomains.has(domain)
+            ? "competitor"
+            : isDirectCandidate(item.url, brandDomain)
+              ? "candidate"
+              : "other",
+      };
+    });
+
+    return Response.json({ candidates, serp, mode: "ai", model: selection.model || model });
   } catch (error) {
     console.error("Competitor discovery route failed", error);
     return Response.json({ error: "Не удалось выполнить поиск конкурентов. Попробуйте ещё раз или добавьте ссылки вручную." }, { status: 500 });

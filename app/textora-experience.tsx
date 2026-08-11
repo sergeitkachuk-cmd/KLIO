@@ -82,6 +82,13 @@ type CompetitorEntry = {
   note?: string;
 };
 
+type CompetitorSerpItem = {
+  rank: number;
+  title: string;
+  url: string;
+  kind: "brand" | "competitor" | "candidate" | "other";
+};
+
 type CompetitorCoverage = "strong" | "partial" | "missing" | "unknown";
 
 type CompetitorSource = CompetitorEntry & {
@@ -1317,6 +1324,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [competitorBusy, setCompetitorBusy] = useState(false);
   const [competitorDiscoveryBusy, setCompetitorDiscoveryBusy] = useState(false);
   const [competitorDiscoveryNote, setCompetitorDiscoveryNote] = useState("");
+  const [competitorSerp, setCompetitorSerp] = useState<CompetitorSerpItem[]>([]);
   const [competitorError, setCompetitorError] = useState("");
   const [competitorNeedsRefresh, setCompetitorNeedsRefresh] = useState(false);
   const [competitorOpen, setCompetitorOpen] = useState(false);
@@ -2929,6 +2937,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     const next = defaultCompetitors.map((item) => ({ ...item, id: `${item.id}-${Date.now()}`, origin: "manual" as const }));
     setCompetitors(next);
     setCompetitorDiscoveryNote("");
+    setCompetitorSerp([]);
     setCompetitorError("");
     setCompetitorResult(emptyCompetitorResult);
     setCompetitorMode("example");
@@ -2971,6 +2980,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       const payload = await safeJson(response) as {
         error?: string;
         candidates?: CompetitorEntry[];
+        serp?: CompetitorSerpItem[];
       };
       if (!response.ok || !payload.candidates?.length) throw new Error(payload.error || "ИИ не нашёл подходящие страницы.");
 
@@ -2992,6 +3002,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       while (next.length < 2) next.push({ id: `competitor-${Date.now()}-${next.length}`, label: `Конкурент ${next.length + 1}`, url: "", origin: "manual" });
 
       setCompetitors(next);
+      setCompetitorSerp(Array.isArray(payload.serp) ? payload.serp : []);
       setCompetitorNeedsRefresh(true);
       setCompetitorDiscoveryNote(payload.candidates.length < 5
         ? `КЛИО добавил ${payload.candidates.length} проверенных прямых конкурента. Сомнительные сайты, агрегаторы и публикации о бренде исключены — при необходимости добавьте ещё компании вручную.`
@@ -4260,6 +4271,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </div>
                 <small>{competitorMarketScope === "national" ? "Подходит для онлайн-сервисов и брендов, которые работают по всей России." : competitorMarketScope === "demand" ? "Ищем тех, кто конкурирует за спрос в выбранных регионах." : "Используем поле «География бренда» как рынок конкуренции, а не как обязательный адрес компании."}</small>
               </div>
+
+              {competitorSerp.length > 0 && <div className="competitor-serp-card">
+                <div><span>Топ‑10 по текущему запросу</span><small>Снимок поисковой выдачи: это позиции сайтов, а не оценка качества компаний.</small></div>
+                <ol>{competitorSerp.map((item) => <li key={`${item.rank}-${item.url}`}><b>{item.rank}</b><a href={item.url} target="_blank" rel="noreferrer">{item.title}</a><em className={`is-${item.kind}`}>{item.kind === "brand" ? "ваш сайт" : item.kind === "competitor" ? "в анализе" : item.kind === "candidate" ? "кандидат" : "не в анализе"}</em></li>)}</ol>
+                {!competitorSerp.some((item) => item.kind === "brand") && <p>Ваш сайт не найден в первых 10 результатах по этому запросу.</p>}
+              </div>}
 
                 <div className="competitor-source-list">
                 <div className="competitor-source-head"><div><span>Сайты прямых конкурентов</span><small>Добавьте сайты компаний с сопоставимой услугой или используйте автоматический подбор. Агрегаторы, СМИ и страницы с упоминаниями бренда не подходят.</small></div><div className="competitor-source-actions"><button type="button" className="competitor-reset" onClick={resetCompetitorSearch} disabled={competitorDiscoveryBusy}>Очистить список</button><button type="button" className={`competitor-discover ${competitorDiscoveryBusy ? "is-busy" : ""}`} onClick={discoverCompetitors} disabled={competitorDiscoveryBusy || aiConnection !== "connected"}><Icon name="spark"/>{competitorDiscoveryBusy ? "Ищем в интернете…" : aiConnection === "connected" ? "Подобрать автоматически" : aiConnection === "checking" ? "Проверяем подключение…" : "Автопоиск не подключён"}</button></div></div>

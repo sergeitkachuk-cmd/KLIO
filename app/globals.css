@@ -6721,6 +6721,27 @@ footer nav a {
   line-height: 1.45;
 }
 
+.competitor-serp-card {
+  margin: 0 30px 24px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.competitor-serp-card > div { display: grid; gap: 3px; }
+.competitor-serp-card > div > span { color: #fff; font-size: 13px; font-weight: 740; }
+.competitor-serp-card > div > small, .competitor-serp-card > p { color: rgba(255, 255, 255, 0.56); font-size: 11px; line-height: 1.45; }
+.competitor-serp-card > ol { display: grid; gap: 2px; margin: 13px 0 0; padding: 0; list-style: none; }
+.competitor-serp-card li { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 8px 0; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+.competitor-serp-card li > b { color: var(--acid); font-size: 12px; text-align: center; }
+.competitor-serp-card li > a { overflow: hidden; color: rgba(255, 255, 255, 0.86); font-size: 12px; font-weight: 620; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+.competitor-serp-card li > a:hover { color: #fff; text-decoration: underline; }
+.competitor-serp-card li > em { padding: 4px 7px; border-radius: 999px; color: rgba(255, 255, 255, 0.65); background: rgba(255, 255, 255, 0.08); font-size: 9px; font-style: normal; white-space: nowrap; }
+.competitor-serp-card li > em.is-brand { color: #dfff74; background: rgba(194, 255, 64, 0.12); }
+.competitor-serp-card li > em.is-competitor { color: #d7c5ff; background: rgba(124, 58, 237, 0.22); }
+.competitor-serp-card > p { margin: 12px 0 0; }
+
 .competitor-query-sources > button b {
   font-size: 13px;
 }
@@ -17767,6 +17788,14 @@ footer nav a {
 }
 
 [data-theme="light"] .competitor-market-scope small { color: rgba(13, 27, 49, 0.58); }
+
+[data-theme="light"] .competitor-serp-card { border-color: rgba(13, 27, 49, 0.14); background: rgba(255, 255, 255, 0.58); }
+[data-theme="light"] .competitor-serp-card > div > span { color: #0d1b31; }
+[data-theme="light"] .competitor-serp-card > div > small, [data-theme="light"] .competitor-serp-card > p { color: rgba(13, 27, 49, 0.58); }
+[data-theme="light"] .competitor-serp-card li { border-top-color: rgba(13, 27, 49, 0.1); }
+[data-theme="light"] .competitor-serp-card li > a { color: rgba(13, 27, 49, 0.84); }
+[data-theme="light"] .competitor-serp-card li > a:hover { color: #0d1b31; }
+[data-theme="light"] .competitor-serp-card li > em { color: rgba(13, 27, 49, 0.62); background: rgba(13, 27, 49, 0.07); }
 
 [data-theme="light"] .competitor-comparison-guide > div + div {
   border-left-color: rgba(15, 23, 42, 0.12);
