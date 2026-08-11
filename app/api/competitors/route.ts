@@ -230,7 +230,7 @@ export async function POST(request: Request) {
       "Сначала определи 6–10 тем, которые реально важны именно для этой темы/категории/индустрии и её аудитории, основываясь на comparison_topic, semantic_context (если передан) и содержимом прочитанных страниц. Темы должны быть предметными, а не абстрактными («Критерии выбора» без конкретики запрещены).",
       "Для каждой темы классифицируй brand_coverage и coverage каждого конкурента строго по факту: strong — тема развёрнуто раскрыта в тексте; partial — упомянута кратко или косвенно; missing — текст прочитан, но темы нет; unknown — текст этого источника не был доступен (status не loaded/profile). Никогда не ставь unknown, если текст источника передан, и никогда не угадывай содержимое источника с status не loaded.",
       "rationale объясняет, почему тема важна именно для этого запроса и аудитории. opportunity — конкретное редакционное действие: что раскрыть, усилить или проверить, с опорой на реальный разрыв между источниками, а не общая фраза.",
-      "recommended = true только для тем, которые реально стоит включить в материал по этой теме — не отмечай все темы как рекомендованные.",
+      "recommended = true только для реальной возможности создать НОВЫЙ материал: тема у бренда должна быть missing или partial, а на доступной странице хотя бы одного прямого конкурента — strong или partial. Если тема у бренда уже strong, не рекомендуй отдельную статью по ней: это риск дубля и каннибализации. В таком случае можно предложить улучшение текущей страницы, но не новую статью.",
       "Не давай медицинских, юридических или финансовых гарантий и не оценивай качество продуктов — только полноту раскрытия темы в тексте.",
       "suggestedTitle — конкретный заголовок будущего материала по comparison_topic, без общих формулировок вроде «Как выбрать X» если тема не про выбор.",
       "Верни только структурированный результат по JSON-схеме.",
@@ -262,18 +262,25 @@ export async function POST(request: Request) {
         const match = topic.competitor_coverage.find((item) => item.competitor_id === source.id);
         return [source.id, clean(match?.evidence, 280)];
       }));
+      const brandCoverage = brand.name
+        ? verifiedCoverage(topic.brand_coverage, topic.brand_evidence, brandText, Boolean(brandText))
+        : "unknown" as CompetitorCoverage;
+      const hasCompetitorCoverage = Object.values(coverage).some((value) => value === "strong" || value === "partial");
+      const isArticleOpportunity = (brandCoverage === "missing" || brandCoverage === "partial") && hasCompetitorCoverage;
       return {
         id: `topic-${index + 1}`,
         title: clean(topic.title, 200) || `Тема ${index + 1}`,
         cluster: clean(topic.cluster, 100) || "Основная тема",
         priority: topic.priority,
         rationale: clean(topic.rationale, 500),
-        brandCoverage: brand.name ? verifiedCoverage(topic.brand_coverage, topic.brand_evidence, brandText, Boolean(brandText)) : "unknown" as CompetitorCoverage,
+        brandCoverage,
         brandEvidence: clean(topic.brand_evidence, 280),
         coverage,
         coverageEvidence,
         opportunity: clean(topic.opportunity, 500),
-        recommended: Boolean(topic.recommended),
+        // A model label is never sufficient on its own: a new article makes
+        // sense only where the active brand actually has a verified gap.
+        recommended: Boolean(topic.recommended) && isArticleOpportunity,
       };
     });
 
@@ -284,10 +291,7 @@ export async function POST(request: Request) {
         return covered >= Math.ceil(loadedSources.length / 2);
       }).slice(0, 5).map((topic) => topic.title)
       : [];
-    const gaps = topics.filter((topic) => topic.recommended && (
-      topic.brandCoverage === "missing"
-      || loadedSources.filter((source) => topic.coverage[source.id] === "strong").length <= 1
-    )).slice(0, 5).map((topic) => topic.title);
+    const gaps = topics.filter((topic) => topic.recommended).slice(0, 5).map((topic) => topic.title);
     const suggestedStructure = topics
       .filter((topic) => topic.recommended)
       .sort((left, right) => (left.priority === "Высокий" ? -1 : 0) - (right.priority === "Высокий" ? -1 : 0))
