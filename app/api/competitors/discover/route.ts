@@ -24,10 +24,11 @@ type DiscoverPayload = {
 type Citation = {
   title: string;
   url: string;
+  searchRank?: number;
 };
 
 type CandidateSelection = {
-  candidates: { candidate_id: string; reason: string }[];
+  candidates: { candidate_id: string; segment: "industry_leader" | "market_competitor"; reason: string }[];
 };
 
 function clean(value: unknown, maxLength: number) {
@@ -78,6 +79,62 @@ function domainOf(value: string) {
 
 function readableDomain(value: string) {
   return domainOf(value) || "Найденная страница";
+}
+
+function decodeXml(value: string) {
+  return value
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/&amp;/g, "&").replace(/&quot;/g, "\"").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+}
+
+async function yandexSearch(query: string): Promise<Citation[]> {
+  const apiKey = process.env.YANDEX_SEARCH_API_KEY?.trim();
+  const folderId = process.env.YANDEX_FOLDER_ID?.trim();
+  if (!apiKey || !folderId || !query) return [];
+
+  try {
+    const response = await fetch("https://searchapi.api.cloud.yandex.net/v2/web/search", {
+      method: "POST",
+      headers: { Authorization: `Api-Key ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        folderId,
+        responseFormat: "FORMAT_XML",
+        query: { searchType: "SEARCH_TYPE_RU", queryText: query, familyMode: "FAMILY_MODE_STRICT" },
+        groupingSpec: { groupMode: "GROUP_MODE_FLAT", groupsOnPage: 20, docsInGroup: 1 },
+      }),
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!response.ok) {
+      console.warn("Yandex Search API competitor lookup failed", response.status);
+      return [];
+    }
+    const payload = await response.json() as { rawData?: unknown };
+    if (typeof payload.rawData !== "string") return [];
+    const xml = Buffer.from(payload.rawData, "base64").toString("utf8");
+    const result: Citation[] = [];
+    for (const [index, block] of [...xml.matchAll(/<doc[\s\S]*?<\/doc>/gi)].entries()) {
+      const url = normalizeUrl(decodeXml(block[0].match(/<url>([\s\S]*?)<\/url>/i)?.[1] || ""));
+      if (!url) continue;
+      const title = decodeXml(block[0].match(/<title>([\s\S]*?)<\/title>/i)?.[1] || "")
+        .replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+      result.push({ url, title: title || readableDomain(url), searchRank: index + 1 });
+    }
+    return result;
+  } catch (error) {
+    console.warn("Yandex Search API competitor lookup failed", error instanceof Error ? error.message : error);
+    return [];
+  }
+}
+
+function marketQuery(query: string, brand: BrandInput) {
+  const brandName = brand.name.toLocaleLowerCase("ru-RU");
+  const requested = query.toLocaleLowerCase("ru-RU");
+  // A brand-name-only request returns pages that mention that brand. Use the
+  // profile's category/positioning as the market query in that one case.
+  if (brandName && requested.includes(brandName) && (brand.positioning || brand.description)) {
+    return (brand.positioning || brand.description).replace(/\s+/g, " ").slice(0, 220);
+  }
+  return query;
 }
 
 function responseText(response: unknown) {
@@ -186,9 +243,10 @@ function selectionSchema(candidateIds: string[]) {
           type: "object",
           properties: {
             candidate_id: { type: "string", enum: candidateIds },
+            segment: { type: "string", enum: ["industry_leader", "market_competitor"] },
             reason: { type: "string" },
           },
-          required: ["candidate_id", "reason"],
+          required: ["candidate_id", "segment", "reason"],
           additionalProperties: false,
         },
       },
@@ -249,8 +307,9 @@ export async function POST(request: Request) {
     }
 
     const brandDomain = domainOf(brand.website);
+    const yandexResults = await yandexSearch(marketQuery(query, brand));
     const seen = new Set<string>();
-    const pool = citationsFromResponse(responseBody)
+    const pool = [...yandexResults, ...citationsFromResponse(responseBody)]
       .filter((item) => isDirectCandidate(item.url, brandDomain))
       .filter((item) => {
         const key = domainOf(item.url);
@@ -271,6 +330,7 @@ export async function POST(request: Request) {
       id: item.id,
       domain: readableDomain(item.url),
       url: item.url,
+      search_rank: item.searchRank ?? null,
       status: pageContexts[index].status,
       page_text: pageContexts[index].status === "loaded" ? pageContexts[index].text.slice(0, 5000) : "",
     })).filter((item) => item.status === "loaded" && item.page_text);
@@ -290,7 +350,7 @@ export async function POST(request: Request) {
         "Допускай только собственную содержательную страницу предложения, услуги, программы или тематическую страницу такой компании.",
         "Строго исключай: сайт активного бренда и его зеркала; страницы, которые лишь упоминают бренд; агрегаторы, турагрегаторы, каталоги, карты, СМИ, новости, обзоры, отзывы, карточки бронирования и любые посреднические страницы.",
         "Опирайся только на переданные URL и page_text. Не угадывай тип страницы. Если подходящих компаний меньше двух, не возвращай неподходящие варианты ради количества.",
-        "Для каждого выбранного кандидата дай короткую причину на основе его страницы. Не выбирай более одной страницы одного домена.",
+        "segment=industry_leader ставь сильному участнику отрасли, заметному в верхней части поисковой выдачи или явно значимому для темы. segment=market_competitor ставь компании, которые ближе всего конкурируют за выбранную аудиторию и запрос. Для каждого кандидата дай короткую причину на основе его страницы. Не выбирай более одной страницы одного домена.",
       ].join("\n"),
       input: JSON.stringify({ comparison_topic: query, active_brand: brand.name ? { name: brand.name, website: brand.website } : null, candidates: readablePool }),
     });
@@ -307,6 +367,7 @@ export async function POST(request: Request) {
           label: readableDomain(candidate.url),
           url: candidate.url,
           origin: "ai" as const,
+          segment: item.segment,
           note: clean(item.reason, 260),
         };
       });

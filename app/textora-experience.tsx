@@ -77,6 +77,7 @@ type CompetitorEntry = {
   label: string;
   url: string;
   origin?: "manual" | "ai";
+  segment?: "industry_leader" | "market_competitor";
   note?: string;
 };
 
@@ -4238,7 +4239,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 {competitorDiscoveryNote && <p className="competitor-discovery-note"><Icon name="check"/>{competitorDiscoveryNote}</p>}
                 {competitors.map((competitor, index) => <div className="competitor-source-row" key={competitor.id}>
                   <i>{String(index + 1).padStart(2, "0")}</i>
-                  <label><span>Название {competitor.origin === "ai" && <em>найдено ИИ</em>}</span><input value={competitor.label} onChange={(event) => updateCompetitorEntry(competitor.id, "label", event.target.value)} placeholder={`Конкурент ${index + 1}`} autoComplete="off"/></label>
+                  <label><span>Название {competitor.origin === "ai" && <em>{competitor.segment === "industry_leader" ? "лидер отрасли" : "конкурент за аудиторию"}</em>}</span><input value={competitor.label} onChange={(event) => updateCompetitorEntry(competitor.id, "label", event.target.value)} placeholder={`Конкурент ${index + 1}`} autoComplete="off"/></label>
                   <label className="competitor-url-field"><span>Ссылка на страницу компании</span><input type="url" value={competitor.url} onChange={(event) => updateCompetitorEntry(competitor.id, "url", event.target.value)} placeholder="https://site.ru/usluga" autoComplete="off"/>{competitor.origin === "ai" && /^https?:\/\//i.test(competitor.url) && <><a href={competitor.url} target="_blank" rel="noreferrer">Открыть найденную страницу <Icon name="arrow"/></a>{competitor.note && <small>{competitor.note}</small>}</>}</label>
                   <button type="button" className="competitor-remove" onClick={() => removeCompetitorEntry(competitor.id)} aria-label={`Удалить строку ${index + 1}`}>×</button>
                 </div>)}
