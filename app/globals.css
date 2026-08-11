@@ -6567,36 +6567,6 @@ footer nav a {
   line-height: 1.35;
 }
 
-.competitor-purpose-note {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  margin: -4px 30px 22px;
-  padding: 12px 14px;
-  border: 1px solid rgba(124, 58, 237, 0.26);
-  border-radius: 12px;
-  color: rgba(255, 255, 255, 0.7);
-  background: rgba(15, 23, 42, 0.34);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.competitor-purpose-note i {
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  color: #fff;
-  background: var(--cobalt);
-  font-size: 10px;
-  font-style: normal;
-  font-weight: 720;
-}
-
-.competitor-purpose-note b { color: #fff; }
-
 .competitor-query-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(310px, 0.42fr);
@@ -17702,14 +17672,6 @@ footer nav a {
   border-color: rgba(53, 104, 212, 0.26);
   background: rgba(53, 104, 212, 0.1);
 }
-
-[data-theme="light"] .competitor-purpose-note {
-  border-color: rgba(53, 104, 212, 0.22);
-  color: rgba(13, 27, 49, 0.7);
-  background: rgba(255, 255, 255, 0.62);
-}
-
-[data-theme="light"] .competitor-purpose-note b { color: #0d1b31; }
 
 [data-theme="light"] .competitor-comparison-guide > div + div {
   border-left-color: rgba(15, 23, 42, 0.12);

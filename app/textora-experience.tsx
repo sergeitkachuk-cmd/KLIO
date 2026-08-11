@@ -4206,7 +4206,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>
 
           <section className={`workspace-module competitor-module ${competitorOpen ? "" : "tool-collapsed"}`} id="competitors">
-            <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Анализ конкурентов</h2></div><p>Сравните сайты прямых конкурентов по одному запросу. КЛИО не берёт в матрицу ваш сайт, агрегаторы, СМИ и страницы с упоминаниями бренда.</p><button type="button" onClick={() => setCompetitorOpen((value) => !value)} aria-expanded={competitorOpen}>{competitorOpen ? "Свернуть" : "Открыть инструмент"}<i>{competitorOpen ? "−" : "+"}</i></button></div>
+            <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Анализ конкурентов</h2></div><p>КЛИО сравнивает не позиции и не «кто лучше», а то, какие вопросы по запросу раскрыты на страницах прямых конкурентов. «Лидер отрасли» — заметный сайт в общей выдаче, «конкурент в выбранной географии» — сайт, релевантный вашей аудитории. Агрегаторы, СМИ и упоминания бренда исключаются.</p><button type="button" onClick={() => setCompetitorOpen((value) => !value)} aria-expanded={competitorOpen}>{competitorOpen ? "Свернуть" : "Открыть инструмент"}<i>{competitorOpen ? "−" : "+"}</i></button></div>
 
             <div className="competitor-optional-shell">
               <button type="button" className="competitor-entry-card" onClick={() => setCompetitorOpen((value) => !value)} aria-expanded={competitorOpen}>
@@ -4220,13 +4220,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <div><span>Контур анализа</span><h3>Задайте предмет сравнения</h3><p>КЛИО сопоставляет полноту ответа по выбранной теме: что уже раскрывает ваш бренд и как ту же задачу закрывают конкретные страницы конкурентов.</p></div>
                 <span className={`competitor-mode competitor-mode-${competitorMode}`}><i/>{competitorMode === "ai" ? "AI‑анализ" : competitorMode === "demo" ? "Структурный анализ" : "Демонстрация"}</span>
               </div>
-
-              <div className="competitor-comparison-guide">
-                <div><i>01</i><span><b>Строки матрицы</b><small>темы, которые ожидает читатель по вашему запросу</small></span></div>
-                <div><i>02</i><span><b>Ваш бренд</b><small>покрытие тем в профиле и на указанном сайте</small></span></div>
-                <div><i>03</i><span><b>Конкуренты</b><small>покрытие тех же тем на выбранных страницах</small></span></div>
-              </div>
-              <p className="competitor-purpose-note"><i>i</i><span><b>Что сравнивает этот инструмент</b> — не позиции сайтов, не посещаемость и не «кто лучше как компания». Матрица показывает только, какие вопросы по запросу раскрыты на конкретных страницах. Метка «лидер отрасли» означает заметный сайт в общей поисковой выдаче, а «региональный конкурент» — релевантность выбранной географии.</span></p>
 
               <div className="competitor-query-row">
                 <label><span>Тема, основной запрос или категория бренда <em>{competitorFocusSource === "semantics" ? "из семантики" : competitorFocusSource === "brand" ? "из профиля бренда" : "ручной ввод"}</em></span><input value={competitorQuery} onChange={(event) => { const next = event.target.value; setCompetitorQuery(next); setCompetitorFocusSource("manual"); setCompetitorNeedsRefresh(true); persistCompetitorWorkspace({ query: next, focusSource: "manual", needsRefresh: true }); }} placeholder="Например: санаторий для восстановления" autoComplete="off"/></label>
