@@ -358,34 +358,26 @@ select:focus-visible {
 
 .brand {
   display: grid;
-  grid-template-columns: 31px auto;
+  grid-template-columns: auto;
   grid-template-rows: auto auto;
-  align-items: center;
-  column-gap: 10px;
+  align-items: start;
   width: max-content;
 }
 
-.brand i {
-  grid-row: 1 / 3;
-  display: grid;
-  place-items: center;
-  width: 31px;
-  height: 31px;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-  font-size: 19px;
-  font-style: normal;
-  font-weight: 460;
+.brand b {
+  font-size: 25px;
+  font-weight: 900;
+  line-height: 0.84;
+  letter-spacing: -0.075em;
 }
 
-.brand b {
-  font-size: 21px;
-  font-weight: 520;
-  line-height: 0.9;
-  letter-spacing: 0.18em;
+.brand b span {
+  margin-left: 1px;
+  color: #b7a7ff;
 }
 
 .brand small {
+  margin-top: 5px;
   font-size: 9px;
   font-weight: 620;
   line-height: 1;
@@ -10011,18 +10003,8 @@ footer nav a {
     display: none;
   }
 
-  .brand {
-    grid-template-rows: 1fr;
-  }
-
-  .brand i {
-    grid-row: 1;
-    width: 29px;
-    height: 29px;
-  }
-
   .brand b {
-    font-size: 18px;
+    font-size: 22px;
   }
 
   .site-header .button.primary {
