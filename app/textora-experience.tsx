@@ -4404,8 +4404,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <div className="content-plan-query-row">
                   <label><span>Тема или фокус <small>необязательно</small></span><input value={contentPlanQuery} onChange={(event) => { const next = event.target.value; setContentPlanQuery(next); setContentPlanNeedsRefresh(true); setContentPlanError(""); persistContentPlan({ query: next, needsRefresh: true }); }} placeholder="Оставьте пустым для общего плана по вашему бизнесу" autoComplete="off"/><small>Нажмите «Из найденных тем», чтобы КЛИО использовала всю карту запросов. Вам не нужно выбирать ключевые фразы для каждой будущей статьи.</small></label>
                   <div className="content-plan-basis-actions">
-                    <button type="button" className={brandPlanBasisSelected ? "is-active" : ""} aria-pressed={brandPlanBasisSelected} onClick={useBrandForPlan} disabled={!useBrand || !foundationReady}><Icon name="arrow"/> По профилю бренда{brandPlanBasisSelected && <b>Выбрано</b>}</button>
-                    <button type="button" className={semanticPlanBasisSelected ? "is-active" : ""} aria-pressed={semanticPlanBasisSelected} onClick={useCurrentSemanticsForPlan} disabled={!semanticAnalysisReady}><Icon name="arrow"/> Из найденных тем{semanticPlanBasisSelected && <b>Выбрано</b>}</button>
+                    <button type="button" className={brandPlanBasisSelected ? "is-active" : ""} aria-pressed={brandPlanBasisSelected} onClick={useBrandForPlan} disabled={!useBrand || !foundationReady}><Icon name="arrow"/> По профилю бренда{brandPlanBasisSelected && <b aria-label="Выбрано">✓</b>}</button>
+                    <button type="button" className={semanticPlanBasisSelected ? "is-active" : ""} aria-pressed={semanticPlanBasisSelected} onClick={useCurrentSemanticsForPlan} disabled={!semanticAnalysisReady}><Icon name="arrow"/> Из найденных тем{semanticPlanBasisSelected && <b aria-label="Выбрано">✓</b>}</button>
                   </div>
                 </div>
 

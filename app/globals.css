@@ -7905,17 +7905,31 @@ footer nav a {
 }
 
 .content-plan-basis-actions > button > b {
-  display: inline-flex;
+  display: grid;
+  width: 23px;
+  height: 23px;
+  place-items: center;
   align-items: center;
-  min-height: 22px;
   margin-left: 2px;
-  padding: 0 7px;
+  padding: 0;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.18);
   color: inherit;
   font-size: 10px;
   font-weight: 760;
   letter-spacing: 0.02em;
+}
+
+.content-plan-basis-actions > button.is-active {
+  border-color: rgba(216, 255, 101, 0.76);
+  color: #e5ff9c;
+  background: linear-gradient(120deg, rgba(216, 255, 101, 0.22), rgba(98, 69, 202, 0.34));
+  box-shadow: 0 8px 22px rgba(216, 255, 101, 0.1), inset 0 1px rgba(255, 255, 255, 0.16);
+}
+
+.content-plan-basis-actions > button.is-active > b {
+  color: #182114;
+  background: var(--acid);
 }
 
 .content-plan-basis-actions > button:disabled {
@@ -18159,15 +18173,15 @@ footer nav a {
 }
 
 [data-theme="light"] .content-plan-basis-actions > button.is-active {
-  border-color: rgba(53, 104, 212, 0.58);
-  color: #173f82;
-  background: linear-gradient(120deg, #cadcff, #e8f0ff 58%, #c7e9ed);
-  box-shadow: 0 8px 20px rgba(53, 104, 212, 0.14), inset 0 1px rgba(255, 255, 255, 0.8);
+  border-color: #2452b8;
+  color: #123b87;
+  background: linear-gradient(120deg, #b8d1ff, #e5efff 58%, #c2f0e8);
+  box-shadow: 0 8px 20px rgba(53, 104, 212, 0.18), inset 0 1px rgba(255, 255, 255, 0.86);
 }
 
 [data-theme="light"] .content-plan-basis-actions > button.is-active > b {
-  background: rgba(23, 63, 130, 0.12);
-  color: #173f82;
+  color: #fff;
+  background: #2452b8;
 }
 
 [data-theme="light"] .content-plan-query-row > button:hover:not(:disabled),
