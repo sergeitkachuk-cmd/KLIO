@@ -308,8 +308,31 @@ const META_LEAKAGE_PATTERNS = [
   /^условия и следующий шаг$/im,
 ];
 
+const PUBLICATION_MARKUP_PATTERNS = [
+  /\[[^\]]*\]\([^)]*\)/,
+  /(?:https?:\/\/|www\.)[^\s<>)\]]+/i,
+  /^\s{0,3}#{1,6}\s+/m,
+  /<\/?[a-z][^>]*>/i,
+];
+
 function hasMetaLeakage(value: string) {
   return META_LEAKAGE_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+function hasPublicationMarkup(value: string) {
+  return PUBLICATION_MARKUP_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+function sanitizePublicationText(value: string) {
+  return value
+    .replace(/\[[^\]]*\]\([^)]*\)/g, "")
+    .replace(/(?:https?:\/\/|www\.)[^\s<>)\]]+/gi, "")
+    .replace(/<\/?[a-z][^>]*>/gi, "")
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+    .replace(/\(\s*\)/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 const GEO_GENERIC_WORDS = new Set([
@@ -682,7 +705,7 @@ export async function POST(request: Request) {
     let missingFocuses = missingEditorialFocuses(material, input);
     let missingKeyPhrases = missingKeywords(material, input);
 
-    if (countWords(material.body) < minimumWords || countWords(material.body) > maximumWords || hasMetaLeakage(material.body) || missingGeo.length || !subjectCheck.passes || missingFocuses.length || missingKeyPhrases.length) {
+    if (countWords(material.body) < minimumWords || countWords(material.body) > maximumWords || hasMetaLeakage(material.body) || hasPublicationMarkup(material.body) || missingGeo.length || !subjectCheck.passes || missingFocuses.length || missingKeyPhrases.length) {
       try {
         const correctionCall = await callAiModel<Record<string, unknown>>({
           operation: "revise_content",
@@ -704,6 +727,7 @@ export async function POST(request: Request) {
             `Сохрани авторскую позицию: ${input.authorPosition}.`,
             ...authorPositionRules(input.authorPosition),
             "Удали весь метатекст о брифе, профиле бренда, аудитории, стиле, ключевых словах и правилах формата. Читатель должен видеть только готовую публикацию по теме.",
+            "В body, title, meta_title и meta_description не должно быть URL, доменов, Markdown-ссылок, сносок, HTML и символов # для заголовков. Если нужно сохранить источник для команды, перенеси его только в editorial_comment.",
             !subjectCheck.passes
               ? `Основной текст подменил или недостаточно раскрыл предмет «${input.topic}». Перестрой композицию так, чтобы конкретный предмет запроса содержательно присутствовал минимум в ${subjectCheck.requiredSections} разделах, а не только в заголовке.`
               : `Сохрани предмет «${input.topic}» как основу всей композиции.`,
@@ -774,6 +798,17 @@ export async function POST(request: Request) {
       missingFocuses = missingEditorialFocuses(material, input);
       missingKeyPhrases = missingKeywords(material, input);
     }
+
+    // Public copy must remain publication-ready even when a model correction
+    // misses a formatting instruction. Editorial comments keep source notes;
+    // published fields never expose URLs or Markdown syntax.
+    material = {
+      ...material,
+      title: sanitizePublicationText(material.title),
+      body: sanitizePublicationText(material.body),
+      metaTitle: sanitizePublicationText(material.metaTitle),
+      metaDescription: sanitizePublicationText(material.metaDescription),
+    };
 
     // Word count, geography, editorial-focus and keyword coverage are all
     // soft targets: the correction pass above already tried once to fix
