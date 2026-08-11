@@ -741,6 +741,41 @@ const modules = [
   ["06", "Редакторы КЛИО", "Двенадцать фирменных сценариев: от вычитки и ясности до SEO‑пересборки, поста, рекламы и первого делового контакта."],
 ];
 
+const landingUseCases = [
+  {
+    number: "01", label: "Для сайта", title: "Запустить раздел статей, который приводит новых посетителей",
+    text: "Не нужно придумывать десятки тем вручную. КЛИО находит, что люди ищут по вашей теме, и превращает это в понятную очередь публикаций.",
+    result: "План статей, где каждая тема отвечает на отдельный вопрос потенциального клиента.",
+    preview: ["Темы, которые ищут люди", "восстановление в санатории", "программы оздоровления", "отдых с лечением"],
+    steps: [["Опишите услугу или тему", "Например: «санаторий для восстановления» или «ремонт квартир под ключ»."], ["Нажмите «Найти темы»", "КЛИО покажет реальные запросы и выделит направления для новой аудитории."], ["Получите план статей", "Сервис сам разложит найденные темы по отдельным будущим публикациям."], ["Выберите тему и создайте статью", "В генератор попадут только запросы, нужные именно для неё."]],
+    href: "/workspace#semantics", cta: "Собрать план статей",
+  },
+  {
+    number: "02", label: "Для поиска", title: "Привлекать людей, которые ещё не знают ваш бренд",
+    text: "КЛИО помогает увидеть не только запросы с названием компании, но и более широкие темы, по которым вас могут найти будущие клиенты.",
+    result: "Приоритетные темы для новой аудитории — от первого интереса до выбора решения.",
+    preview: ["Новая аудитория", "как выбрать санаторий", "санаторий для восстановления", "отдых и оздоровление"],
+    steps: [["Укажите тему и рынок", "Выберите всю Россию, регион или город, где хотите находить клиентов."], ["Посмотрите направления", "КЛИО отделит запросы про бренд от тем для роста новой аудитории."], ["Возьмите подходящую тему", "Сервис подскажет главный запрос и близкие формулировки."], ["Опубликуйте полезный ответ", "Статья будет отвечать на вопрос читателя, а не повторять ключевые слова."]],
+    href: "/workspace#semantics", cta: "Найти темы для роста",
+  },
+  {
+    number: "03", label: "Без рутины", title: "Регулярно выпускать статьи без редактора в штате",
+    text: "Контент‑план — это не отчёт. Это очередь публикаций: откройте следующую тему, получите черновик и доведите его до своего голоса.",
+    result: "Готовая тема, структура, запросы и подсказки по фактам вместо чистого листа.",
+    preview: ["План статей", "Как выбрать программу", "Что взять с собой", "Восстановление после нагрузки"],
+    steps: [["Соберите план", "Начните с найденных запросов или с общего плана по профилю компании."], ["Отметьте следующую тему", "У каждой темы есть цель, аудитория и короткий план."], ["Нажмите «В генератор»", "КЛИО заполнит тему, структуру и подходящие запросы автоматически."], ["Проверьте и сохраните", "Добавьте факты компании и сохраните готовый материал."]],
+    href: "/workspace#content-plan", cta: "Открыть план статей",
+  },
+  {
+    number: "04", label: "Для готового текста", title: "Превратить черновик в понятный материал для сайта",
+    text: "Есть текст от сотрудника, подрядчика или ИИ? Не начинайте заново: загрузите его в КЛИО и выберите нужный результат.",
+    result: "Более ясный текст, адаптированный для сайта, поиска или социальных сетей.",
+    preview: ["Редактор КЛИО", "Сделать понятнее", "Подготовить для поиска", "Адаптировать для сайта"],
+    steps: [["Вставьте текст", "Подойдёт черновик, старая статья или описание услуги."], ["Выберите изменение", "Например: сделать понятнее, сократить или подготовить для поиска."], ["Получите новую версию", "КЛИО сохранит смысл и предложит переработанный материал."], ["Сравните и используйте", "Добавьте свои факты и отправьте текст на сайт."]],
+    href: "/workspace#adaptation", cta: "Открыть редактор",
+  },
+];
+
 const audiences = [
   {
     number: "01",
@@ -4507,7 +4542,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
     <header className="site-header">
       <a className="wordmark" href="#top" aria-label="КЛИО — на главную"><Brand/></a>
-      <nav><a href="#audience">Для кого</a><a href="#modules">Как работает</a><Link href="/examples">Примеры задач</Link><a href="#plan">Контент‑план</a><a href="#pricing">Тарифы</a><a href="#faq">FAQ</a></nav>
+      <nav><a href="#audience">Для кого</a><a href="#modules">Как работает</a><a href="#cases">Примеры задач</a><a href="#plan">Контент‑план</a><a href="#pricing">Тарифы</a><a href="#faq">FAQ</a></nav>
       <div>
         <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"} title={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"}><Icon name={theme === "dark" ? "sun" : "moon"}/></button>
         <Link className="button ghost" href="/login">Войти</Link><Link className="button primary" href="/signup">Попробовать</Link>
@@ -4572,6 +4607,18 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       <div className="module-grid">{modules.map(([number, moduleTitle, text]) => { const active = ["01", "02", "03", "04", "05", "06"].includes(number); return <article className={active ? "module-active" : ""} key={number}><span>{number}</span>{active && <b className="module-state">Работает в MVP</b>}<div className="module-icon">{number === "01" ? "Aa" : number === "02" ? "↗" : number === "03" ? "▦" : number === "04" ? "✦" : number === "05" ? "25" : "✓"}</div><h3>{moduleTitle}</h3><p>{text}</p><button type="button" onClick={() => openModule(number)}>Протестировать ↗</button></article>; })}</div>
     </section>
 
+    <section className="use-cases section" id="cases">
+      <div className="section-heading use-cases-heading"><div><p className="kicker">КЛИО / Примеры задач</p><h2>Выберите задачу.<br/><em>КЛИО подскажет путь.</em></h2></div><p>Не обязательно разбираться в SEO и контент‑планах. Начните с результата, который нужен бизнесу — остальное КЛИО разложит по шагам.</p><div className="use-cases-controls"><button type="button" aria-label="Предыдущий пример" onClick={() => document.getElementById("use-cases-track")?.scrollBy({ left: -document.getElementById("use-cases-track")!.clientWidth, behavior: "smooth" })}>←</button><button type="button" aria-label="Следующий пример" onClick={() => document.getElementById("use-cases-track")?.scrollBy({ left: document.getElementById("use-cases-track")!.clientWidth, behavior: "smooth" })}>→</button></div></div>
+      <div className="use-cases-track" id="use-cases-track" aria-label="Примеры использования КЛИО">
+        {landingUseCases.map((item) => <article className="use-case-slide" key={item.number}>
+          <div className="use-case-copy"><span>{item.number} / {item.label}</span><h3>{item.title}</h3><p>{item.text}</p><div><b>Что получится</b><p>{item.result}</p></div></div>
+          <div className="use-case-preview" aria-label={`Пример: ${item.preview[0]}`}><header><i/><i/><i/><b>КЛИО</b></header><section><small>{item.preview[0]}</small>{item.preview.slice(1).map((row, index) => <p key={row}><b>{String(index + 1).padStart(2, "0")}</b>{row}<i>↗</i></p>)}</section></div>
+          <div className="use-case-steps"><span>Как это сделать</span><h4>Четыре простых шага</h4><ol>{item.steps.map(([title, description], index) => <li key={title}><b>{index + 1}</b><div><strong>{title}</strong><p>{description}</p></div></li>)}</ol><Link className="button primary" href={item.href}>{item.cta} <Icon name="arrow"/></Link></div>
+        </article>)}
+      </div>
+      <p className="use-cases-hint">Листайте примеры влево или вправо <span>↔</span></p>
+    </section>
+
     <section className="plan-section" id="plan"><div className="plan-inner"><div className="plan-copy"><p className="kicker">Глава 03 / Контент‑план</p><h2>25 тем, которые<br/>работают на спрос.</h2><p>КЛИО объединяет поисковый интент, выбранную семантику и пробелы в контенте конкурентов. На выходе — готовая дорожная карта публикаций, а не список случайных идей.</p><ul><li><Icon name="check"/> SEO‑заголовок и метаописание</li><li><Icon name="check"/> Основной запрос и поддерживающая семантика</li><li><Icon name="check"/> Цель, аудитория, фактура и структура</li><li><Icon name="check"/> Статусы, передача в генератор и CSV</li></ul><button className="button light" type="button" onClick={() => openModule("05")}>Собрать контент‑план <Icon name="arrow"/></button></div><div className="plan-table"><div className="table-head"><b>Контент‑план / Август</b><span>Интент и приоритет</span></div>{[["01","Санаторное лечение в Карелии","Высокий","В работе"],["02","Как выбрать программу восстановления","Высокий","Готово"],["03","Минеральная вода: польза и показания","Средний","Запланировано"],["04","Лечебные грязи в санатории","Средний","Запланировано"],["05","Что взять с собой в санаторий","Доп.","Запланировано"]].map((row) => <div className="table-row" key={row[0]}><span>{row[0]}</span><b>{row[1]}</b><small>{row[2]}</small><i className={row[3] === "Готово" ? "done" : ""}>{row[3]}</i></div>)}</div></div></section>
 
     <section className="pricing section" id="pricing">
@@ -4591,7 +4638,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         <div className="magazine-scene" aria-hidden="true"><div className="magazine-spread"><div className="magazine-page magazine-left"><span>КЛИО / 01</span><b>Слова,<br/>которые<br/><em>видят.</em></b><i>Цифровая редакция для бизнеса</i></div><div className="magazine-fold"/><div className="magazine-page magazine-right"><span>Материал номера</span><div className="magazine-photo"><u/><small>Спрос → смысл → публикация</small></div><p>Контент, собранный на основе данных и голоса вашего бренда.</p><strong>КЛИО</strong></div></div></div>
       </div>
     </section>
-    <footer><a className="wordmark" href="#top"><Brand/></a><p>Контент‑платформа для бизнеса, экспертов и агентств.</p><nav><a href="#modules">Возможности</a><Link href="/examples">Примеры задач</Link><a href="#plan">Контент‑план</a><a href="#pricing">Тарифы</a></nav><small>© 2026 КЛИО</small></footer>
+    <footer><a className="wordmark" href="#top"><Brand/></a><p>Контент‑платформа для бизнеса, экспертов и агентств.</p><nav><a href="#modules">Возможности</a><a href="#cases">Примеры задач</a><a href="#plan">Контент‑план</a><a href="#pricing">Тарифы</a></nav><small>© 2026 КЛИО</small></footer>
     {toast && <div className="toast" role="status"><Icon name="check"/><span>{toast}</span></div>}
   </main>;
 }
