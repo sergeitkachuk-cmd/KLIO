@@ -3247,7 +3247,18 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setContentPlanNeedsRefresh(true);
     setContentPlanError("");
     persistContentPlan({ query: nextQuery, needsRefresh: true });
-    showToast("Тема и выбранная семантика готовы для контент‑плана");
+    showToast("Карта кластеров передана в контент‑план: серии материалов будут собираться по ней");
+  }
+
+  function openSemanticContentPlan() {
+    if (!semanticAnalysisReady) {
+      showToast("Сначала соберите актуальную семантику");
+      return;
+    }
+    useCurrentSemanticsForPlan();
+    setContentPlanGoal("seo");
+    setContentPlanOpen(true);
+    window.setTimeout(() => document.getElementById("content-plan")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   }
 
   function useBrandForPlan() {
@@ -3295,12 +3306,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           query: requestedQuery,
           goal: contentPlanGoal,
           count: contentPlanCount,
-          semantics: semanticAnalysisReady ? selectedSemanticKeywords.map((item) => ({
+          semantics: semanticAnalysisReady ? semanticResult.keywords.map((item) => ({
             phrase: item.phrase,
             cluster: item.cluster,
             intent: item.intent,
             breadth: item.breadth,
             relation: item.relation,
+            frequency: item.frequency || 0,
           })) : [],
           geography: selectedGeoScopes.map(({ label, detail }) => ({ label, detail })),
           competitorInsights: !competitorNeedsRefresh ? selectedCompetitorTopics.map((item) => `${item.title}: ${item.opportunity}`) : [],
@@ -4120,9 +4132,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </div>
 
               <div className="semantic-actionbar">
-                <div className="semantic-actionbar-copy"><span>Основной следующий шаг</span><b>{selectedSemanticKeywords.length ? `${selectedSemanticKeywords.length} фраз готовы к использованию` : "Выберите ключевые фразы"}</b><small>Для обычной статьи этого достаточно: создайте текст сразу или откройте бриф для ручной настройки.</small></div>
+                <div className="semantic-actionbar-copy"><span>Следующий шаг</span><b>{selectedSemanticKeywords.length ? `${selectedSemanticKeywords.length} фраз готовы для одной статьи` : "Выберите фразы одного кластера"}</b><small>Для одного материала выберите один кластер. Для серии статей передайте всю карту кластеров в контент‑план.</small></div>
                 <label className="semantic-brand-route"><input type="checkbox" checked={useBrand} onChange={(event) => { setUseBrand(event.target.checked); setSemanticNeedsRefresh(true); setContentPlanNeedsRefresh(true); persistSemantics(semanticResult, selectedSemanticIds, semanticMode, semanticQuery, semanticRegion, semanticGeo, true); }}/><i/><span><b>Учесть профиль бренда</b><small>{useBrand ? "Модуль 01, включая открытые данные сайта, усилит факты и голос" : "Выключено — статья создаётся только по модулю 02"}</small></span></label>
                 <div className="semantic-action-buttons">
+                  <button className="button ghost" type="button" onClick={openSemanticContentPlan} disabled={semanticNeedsRefresh}>Собрать серию статей</button>
                   <button className="button ghost" type="button" onClick={sendSemanticsToGenerator} disabled={!selectedSemanticKeywords.length || semanticNeedsRefresh}>Открыть подробный бриф</button>
                   <button className={`button primary large ${semanticArticleBusy ? "is-busy" : ""}`} type="button" onClick={generateFromSemantics} disabled={!activeBrandId || !selectedSemanticKeywords.length || semanticNeedsRefresh || semanticArticleBusy || aiConnection !== "connected" || workspaceAccount.generationsRemaining <= 0}><Icon name="spark"/>{semanticArticleBusy ? "Создаём статью…" : !activeBrandId ? "Загружаем кабинет" : aiConnection !== "connected" ? "ИИ не подключён" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : semanticNeedsRefresh ? "Сначала обновите семантику" : "Сгенерировать материал"}</button>
                 </div>
@@ -4348,12 +4361,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <div className="content-plan-shell">
               <article className="content-plan-setup">
                 <div className="content-plan-setup-head">
-                  <div><span>Основа плана</span><h3>От профиля бренда к серии публикаций</h3><p>Соберите общий план по бренду или сузьте его темой и семантикой. Для одного материала этот этап не нужен.</p></div>
+                  <div><span>Основа плана</span><h3>От карты спроса к серии публикаций</h3><p>Семантика передаёт всю карту кластеров: одна строка плана — один кластер и отдельная задача читателя. Для одного материала этот этап не нужен.</p></div>
                   <span className={`status status-${contentPlanMode === "ai" ? "ai" : "example"}`}><i/>{contentPlanMode === "ai" ? "AI‑план" : aiConnection === "connected" ? "Ожидает тему" : "ИИ не подключён"}</span>
                 </div>
 
                 <div className="content-plan-query-row">
-                  <label><span>Тема или фокус <small>необязательно</small></span><input value={contentPlanQuery} onChange={(event) => { const next = event.target.value; setContentPlanQuery(next); setContentPlanNeedsRefresh(true); setContentPlanError(""); persistContentPlan({ query: next, needsRefresh: true }); }} placeholder="Оставьте пустым для разнообразного плана по профилю бренда" autoComplete="off"/><small>Без темы КЛИО сама соберёт общий план по предложениям, аудитории и экспертизе бренда. Тема нужна только чтобы сузить фокус.</small></label>
+                  <label><span>Тема или фокус <small>необязательно</small></span><input value={contentPlanQuery} onChange={(event) => { const next = event.target.value; setContentPlanQuery(next); setContentPlanNeedsRefresh(true); setContentPlanError(""); persistContentPlan({ query: next, needsRefresh: true }); }} placeholder="Оставьте пустым для разнообразного плана по профилю бренда" autoComplete="off"/><small>Кнопка «Из семантики» передаёт всю карту спроса, а не 3–6 фраз одной статьи. Без темы КЛИО соберёт общий план по профилю бренда.</small></label>
                   <div className="content-plan-basis-actions">
                     <button type="button" className={brandPlanBasisSelected ? "is-active" : ""} aria-pressed={brandPlanBasisSelected} onClick={useBrandForPlan} disabled={!useBrand || !foundationReady}><Icon name="arrow"/> По профилю бренда{brandPlanBasisSelected && <b>Выбрано</b>}</button>
                     <button type="button" className={semanticPlanBasisSelected ? "is-active" : ""} aria-pressed={semanticPlanBasisSelected} onClick={useCurrentSemanticsForPlan} disabled={!semanticAnalysisReady}><Icon name="arrow"/> Из семантики{semanticPlanBasisSelected && <b>Выбрано</b>}</button>
