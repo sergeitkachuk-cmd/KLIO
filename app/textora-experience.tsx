@@ -3144,7 +3144,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     const nextAccent = [
       "Использовать выводы матрицы как редакционные ориентиры; не копировать структуру и формулировки конкурентов.",
       ...insightLines,
-      competitorComment.trim() ? `Комментарий пользователя: ${competitorComment.trim()}` : "",
     ].filter(Boolean).join("\n");
     setFormat("seo");
     setGeneratorMode("advanced");
@@ -4315,8 +4314,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <div className={`competitor-requirement ${validCompetitorEntries >= 2 ? "is-ready" : "is-needed"}`}><i>{validCompetitorEntries >= 2 ? <Icon name="check"/> : "2+"}</i><span><b>{validCompetitorEntries >= 2 ? "Сайтов достаточно для анализа" : "Добавьте минимум два сайта прямых конкурентов"}</b><small>{validCompetitorEntries >= 2 ? `${validCompetitorEntries} ссылок будут проверены при построении матрицы.` : aiConnection === "connected" ? "Можно вставить ссылки вручную или подобрать их автоматически." : "Сейчас доступны ручные ссылки; автопоиск появится после подключения AI‑доступа."}</small></span></div>
               </div>
 
-              <div className="competitor-setup-footer">
-                <label><span>Редакционный акцент</span><AutoTextarea rows={2} value={competitorComment} onChange={(event) => { const next = event.target.value; setCompetitorComment(next); persistCompetitorWorkspace({ comment: next }); }} placeholder="Что особенно важно учесть в будущем материале?"/></label>
+              <div className="competitor-setup-footer competitor-setup-footer-simple">
                 <div className={`competitor-analysis-action ${competitorNeedsRefresh ? "needs-refresh" : ""}`}>
                   <span>{competitorNeedsRefresh ? "Данные изменены — обновите матрицу" : competitorMode === "example" ? "Можно запустить свой анализ" : "Матрица соответствует текущим настройкам"}</span>
                   <button className={`button primary large ${competitorBusy ? "is-busy" : ""}`} type="button" onClick={analyzeCompetitors} disabled={competitorBusy || workspaceAccount.researchRemaining <= 0}><Icon name="spark"/>{competitorBusy ? "Читаем страницы…" : workspaceAccount.researchRemaining <= 0 ? "Лимит исследований исчерпан" : competitorMode === "example" ? "Построить матрицу" : "Обновить матрицу"}</button>

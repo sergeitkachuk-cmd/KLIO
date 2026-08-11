@@ -7076,6 +7076,8 @@ footer nav a {
   padding: 24px 30px 18px;
 }
 
+.competitor-setup-footer-simple { grid-template-columns: minmax(0, 1fr); }
+
 .competitor-setup-footer > label {
   display: grid;
   gap: 7px;
