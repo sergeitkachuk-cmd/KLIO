@@ -742,7 +742,7 @@ const modules = [
   ["03", "Анализ конкурентов · по желанию", "Необязательный углублённый режим для SEO‑задач: добавьте 2–5 прямых страниц, найдите смысловые пробелы и при необходимости передайте выбранные выводы в дополнительный акцент материала."],
   ["04", "Готовая статья по ключам", "Выберите ключевые слова, объём и стиль. Сервис подготовит цельный материал с SEO‑заголовком, метаописанием, подзаголовками и естественным распределением семантики."],
   ["05", "План статей", "Получите понятную очередь тем для сайта. КЛИО сама разделит их по задачам читателей: выберите нужную тему — и отправьте её в генератор статьи."],
-  ["06", "Редакторы КЛИО", "Двенадцать фирменных сценариев: от вычитки и ясности до SEO‑пересборки, поста, рекламы и первого делового контакта."],
+  ["06", "Редакторы КЛИО", "14 редакторских режимов: от вычитки и ясности до SEO‑пересборки, адаптации под голос бренда, смены интонации и первого делового контакта."],
 ];
 
 const landingUseCases = [
@@ -3850,7 +3850,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <a href="#brand-profile" onClick={() => setBrandOpen(true)}><i>+</i><span><b>Профиль бренда</b><small>по желанию</small></span></a>
             <a href="#generator"><i>01</i><span><b>Генерировать материал</b><small>быстрый старт</small></span></a>
             <a href="#content-plan" onClick={() => setContentPlanOpen(true)}><i>+</i><span><b>Контент‑план</b><small>самостоятельный инструмент</small></span></a>
-            <a href="#adaptation" onClick={() => setAdaptationOpen(true)}><i>+</i><span><b>Редакторы КЛИО</b><small>12 режимов для готового текста</small></span></a>
+            <a href="#adaptation" onClick={() => setAdaptationOpen(true)}><i>+</i><span><b>Редакторы КЛИО</b><small>14 режимов для готового текста</small></span></a>
             <a href="#semantics" onClick={() => setSemanticOpen(true)}><i>+</i><span><b>Семантика</b><small>самостоятельно или в бриф</small></span></a>
             <a href="#competitors" onClick={() => setCompetitorOpen(true)}><i>+</i><span><b>Конкуренты</b><small>По желанию</small></span></a>
           </nav>
@@ -4501,7 +4501,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>
 
           <section className={`workspace-module adaptation-module ${adaptationOpen ? "" : "tool-collapsed"}`} id="adaptation">
-            <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Редакторы КЛИО</h2></div><p>Двенадцать собственных режимов: вычитка, ясность, пересборка, сильное начало, SEO, соцсети, реклама и первое деловое письмо.</p><button type="button" onClick={() => setAdaptationOpen((value) => !value)} aria-expanded={adaptationOpen}>{adaptationOpen ? "Свернуть" : "Открыть инструмент"}<i>{adaptationOpen ? "−" : "+"}</i></button></div>
+            <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Редакторы КЛИО</h2></div><p>14 режимов для готового текста: вычитка, ясность, пересборка, SEO, соцсети, реклама, адаптация под голос бренда и смена интонации.</p><button type="button" onClick={() => setAdaptationOpen((value) => !value)} aria-expanded={adaptationOpen}>{adaptationOpen ? "Свернуть" : "Открыть инструмент"}<i>{adaptationOpen ? "−" : "+"}</i></button></div>
             <div className="adaptation-shell">
               <article className="adaptation-input-card">
                 <div className="adaptation-card-head"><div><span>Исходник заказчика</span><h3>Вставьте готовый текст</h3></div><b>{adaptationSourceWords.toLocaleString("ru-RU")} слов</b></div>
