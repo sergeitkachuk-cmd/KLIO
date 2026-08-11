@@ -366,12 +366,13 @@ export async function POST(request: Request) {
       .map((item) => {
         selectedIds.add(item.candidate_id);
         const candidate = poolById.get(item.candidate_id)!;
+        const confirmedLeader = typeof candidate.searchRank === "number" && candidate.searchRank <= 5;
         return {
           id: `ai-${Date.now()}-${selectedIds.size}`,
           label: clean(item.name, 120) || clean(candidate.title, 120) || readableDomain(candidate.url),
           url: candidate.url,
           origin: "ai" as const,
-          segment: item.segment,
+          segment: confirmedLeader ? "industry_leader" as const : item.segment,
           note: clean(item.reason, 260),
         };
       });

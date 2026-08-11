@@ -25,6 +25,7 @@ type SemanticMode = "idle" | "demo" | "ai";
 type AiConnection = "checking" | "connected" | "disconnected";
 type CompetitorMode = "example" | "demo" | "ai";
 type CompetitorFocusSource = "manual" | "semantics" | "brand";
+type CompetitorMarketScope = "national" | "demand" | "brand";
 type ContentPlanMode = "idle" | "demo" | "ai";
 type ContentPlanStatus = "Запланировано" | "В работе" | "Готово";
 const CONTENT_PLAN_STATUS_OPTIONS = [
@@ -1308,6 +1309,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   );
   const [competitorQuery, setCompetitorQuery] = useState("");
   const [competitorFocusSource, setCompetitorFocusSource] = useState<CompetitorFocusSource>("manual");
+  const [competitorMarketScope, setCompetitorMarketScope] = useState<CompetitorMarketScope>("national");
   const [competitors, setCompetitors] = useState<CompetitorEntry[]>(defaultCompetitors);
   const [competitorComment, setCompetitorComment] = useState("");
   const [competitorResult, setCompetitorResult] = useState<CompetitorResult>(workspace ? emptyCompetitorResult : defaultCompetitorResult);
@@ -1901,6 +1903,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       const parsed = JSON.parse(saved) as {
         query?: string;
         focusSource?: CompetitorFocusSource;
+        marketScope?: CompetitorMarketScope;
         competitors?: CompetitorEntry[];
         comment?: string;
         result?: CompetitorResult;
@@ -1911,6 +1914,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       frame = window.requestAnimationFrame(() => {
         if (parsed.query) setCompetitorQuery(parsed.query);
         if (parsed.focusSource === "manual" || parsed.focusSource === "semantics" || parsed.focusSource === "brand") setCompetitorFocusSource(parsed.focusSource);
+        if (parsed.marketScope === "national" || parsed.marketScope === "demand" || parsed.marketScope === "brand") setCompetitorMarketScope(parsed.marketScope);
         if (Array.isArray(parsed.competitors) && parsed.competitors.length) setCompetitors(parsed.competitors.slice(0, 5));
         if (typeof parsed.comment === "string") setCompetitorComment(parsed.comment);
         if (parsed.result?.topics?.length && parsed.result?.competitors?.length) setCompetitorResult(parsed.result);
@@ -2831,6 +2835,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   function persistCompetitorWorkspace(options: {
     query?: string;
     focusSource?: CompetitorFocusSource;
+    marketScope?: CompetitorMarketScope;
     entries?: CompetitorEntry[];
     comment?: string;
     result?: CompetitorResult;
@@ -2841,6 +2846,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     window.localStorage.setItem("clio-competitors-v1", JSON.stringify({
       query: options.query ?? competitorQuery,
       focusSource: options.focusSource ?? competitorFocusSource,
+      marketScope: options.marketScope ?? competitorMarketScope,
       competitors: options.entries ?? competitors,
       comment: options.comment ?? competitorComment,
       result: options.result ?? competitorResult,
@@ -2942,8 +2948,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           // The active brand is always needed as an exclusion rule. It does
           // not change a manually entered query, but prevents the search
           // from returning the brand's own site or pages that only mention it.
-          brand: useBrand ? effectiveBrand : null,
-          geography: selectedGeoScopes.map(({ label, detail }) => ({ label, detail })),
+          brand: effectiveBrand,
+          geography: competitorMarketScope === "demand"
+            ? selectedGeoScopes.map(({ label, detail }) => ({ label, detail }))
+            : competitorMarketScope === "brand" && effectiveBrand.geography.trim()
+              ? [{ label: effectiveBrand.geography.trim().slice(0, 140), detail: "Территория работы бренда" }]
+              : [],
         }),
       });
       const payload = await safeJson(response) as {
@@ -4227,6 +4237,16 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <button type="button" className={competitorFocusSource === "semantics" ? "is-active" : ""} onClick={useCurrentSemanticsForCompetitors}><i>02</i><span><b>Из семантики</b><small>{semanticAnalysisReady ? semanticResult.primaryQuery : "сначала выполните анализ"}</small></span></button>
                   <button type="button" className={competitorFocusSource === "brand" ? "is-active" : ""} onClick={useBrandForCompetitors}><i>01</i><span><b>Из бренда</b><small>{effectiveBrand.name}</small></span></button>
                 </div>
+              </div>
+
+              <div className="competitor-market-scope">
+                <span>Где искать конкурентов</span>
+                <div>
+                  <button type="button" className={competitorMarketScope === "national" ? "is-active" : ""} onClick={() => { setCompetitorMarketScope("national"); setCompetitorNeedsRefresh(true); persistCompetitorWorkspace({ marketScope: "national", needsRefresh: true }); }}>Вся Россия и онлайн</button>
+                  <button type="button" className={competitorMarketScope === "demand" ? "is-active" : ""} onClick={() => { setCompetitorMarketScope("demand"); setCompetitorNeedsRefresh(true); persistCompetitorWorkspace({ marketScope: "demand", needsRefresh: true }); }} disabled={!selectedGeoScopes.length}>По географии спроса</button>
+                  <button type="button" className={competitorMarketScope === "brand" ? "is-active" : ""} onClick={() => { setCompetitorMarketScope("brand"); setCompetitorNeedsRefresh(true); persistCompetitorWorkspace({ marketScope: "brand", needsRefresh: true }); }} disabled={!effectiveBrand.geography.trim()}>По территории работы бренда</button>
+                </div>
+                <small>{competitorMarketScope === "national" ? "Подходит для онлайн-сервисов и брендов, которые работают по всей России." : competitorMarketScope === "demand" ? "Ищем тех, кто конкурирует за спрос в выбранных регионах." : "Используем поле «География бренда» как рынок конкуренции, а не как обязательный адрес компании."}</small>
               </div>
 
                 <div className="competitor-source-list">
