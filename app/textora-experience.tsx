@@ -4346,8 +4346,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <div className="content-plan-query-row">
                   <label><span>Тема или фокус <small>необязательно</small></span><input value={contentPlanQuery} onChange={(event) => { const next = event.target.value; setContentPlanQuery(next); setContentPlanNeedsRefresh(true); setContentPlanError(""); persistContentPlan({ query: next, needsRefresh: true }); }} placeholder="Оставьте пустым для разнообразного плана по профилю бренда" autoComplete="off"/><small>Без темы КЛИО сама соберёт общий план по предложениям, аудитории и экспертизе бренда. Тема нужна только чтобы сузить фокус.</small></label>
                   <div className="content-plan-basis-actions">
-                    <button type="button" className={brandPlanBasisSelected ? "is-active" : ""} aria-pressed={brandPlanBasisSelected} onClick={useBrandForPlan} disabled={!useBrand || !foundationReady}><Icon name="arrow"/> По профилю бренда</button>
-                    <button type="button" className={semanticPlanBasisSelected ? "is-active" : ""} aria-pressed={semanticPlanBasisSelected} onClick={useCurrentSemanticsForPlan} disabled={!semanticAnalysisReady}><Icon name="arrow"/> Из семантики</button>
+                    <button type="button" className={brandPlanBasisSelected ? "is-active" : ""} aria-pressed={brandPlanBasisSelected} onClick={useBrandForPlan} disabled={!useBrand || !foundationReady}><Icon name="arrow"/> По профилю бренда{brandPlanBasisSelected && <b>Выбрано</b>}</button>
+                    <button type="button" className={semanticPlanBasisSelected ? "is-active" : ""} aria-pressed={semanticPlanBasisSelected} onClick={useCurrentSemanticsForPlan} disabled={!semanticAnalysisReady}><Icon name="arrow"/> Из семантики{semanticPlanBasisSelected && <b>Выбрано</b>}</button>
                   </div>
                 </div>
 

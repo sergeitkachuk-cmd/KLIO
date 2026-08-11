@@ -7870,6 +7870,20 @@ footer nav a {
   gap: 10px;
 }
 
+.content-plan-basis-actions > button > b {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  margin-left: 2px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  color: inherit;
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: 0.02em;
+}
+
 .content-plan-basis-actions > button:disabled {
   cursor: default;
   opacity: 0.46;
@@ -18089,6 +18103,11 @@ footer nav a {
   color: #173f82;
   background: linear-gradient(120deg, #cadcff, #e8f0ff 58%, #c7e9ed);
   box-shadow: 0 8px 20px rgba(53, 104, 212, 0.14), inset 0 1px rgba(255, 255, 255, 0.8);
+}
+
+[data-theme="light"] .content-plan-basis-actions > button.is-active > b {
+  background: rgba(23, 63, 130, 0.12);
+  color: #173f82;
 }
 
 [data-theme="light"] .content-plan-query-row > button:hover:not(:disabled),
