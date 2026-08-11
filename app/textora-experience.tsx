@@ -4088,7 +4088,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                       return <button type="button" className={activeSemanticCluster === cluster ? "active" : ""} onClick={() => setActiveSemanticCluster(cluster)} key={cluster}><span>{cluster}</span><b>{count}</b></button>;
                     })}
                   </nav>
-                  <div className="semantic-cluster-tip"><i>✦</i><p><b>Рекомендация КЛИО</b>Одна статья — один кластер: 1 основной и 3–5 близких поддерживающих фраз.</p></div>
+                  <div className="semantic-cluster-tip"><i>✦</i><p><b>Рекомендация КЛИО</b>Сначала разделите брендовый спрос и новую аудиторию. Одна статья — один кластер: 1 самый сильный запрос и 3–5 близких поддерживающих.</p></div>
                 </aside>
 
                 <div className="semantic-keywords-panel">
