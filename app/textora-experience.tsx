@@ -57,7 +57,6 @@ type SemanticKeyword = {
   recommended: boolean;
   note?: string;
   frequency?: number;
-  source?: "Yandex Wordstat";
 };
 
 type SemanticResult = {
@@ -932,7 +931,6 @@ function normalizeStoredSemanticResult(value: unknown): SemanticResult | null {
     recommended: Boolean(item.recommended),
     note: typeof item.note === "string" ? item.note : "",
     frequency: typeof item.frequency === "number" && Number.isFinite(item.frequency) ? item.frequency : undefined,
-    source: item.source === "Yandex Wordstat" ? item.source : undefined,
   })).filter((item) => item.phrase.trim());
   if (!keywords.length) return null;
   return {

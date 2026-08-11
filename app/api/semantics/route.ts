@@ -7,7 +7,7 @@ type Role = "Основной" | "Поддерживающий" | "Вопрос"
 type Relation = "Ядро" | "Синоним" | "Проблема" | "Решение" | "Смежный" | "Вопрос" | "Бренд" | "Гео";
 type Breadth = "Широкий" | "Средний" | "Узкий";
 
-type SemanticKeyword = { id: string; phrase: string; cluster: string; intent: Intent; role: Role; relation: Relation; breadth: Breadth; recommended: boolean; note: string; frequency: number; source: "Yandex Wordstat" };
+type SemanticKeyword = { id: string; phrase: string; cluster: string; intent: Intent; role: Role; relation: Relation; breadth: Breadth; recommended: boolean; note: string; frequency: number };
 type SemanticResult = { primaryQuery: string; intent: { label: string; stage: string; summary: string }; suggestedTopic: string; recommendedLength: number; keywords: SemanticKeyword[]; dataNote: string };
 type SemanticPayload = { query?: unknown; geography?: unknown; region?: unknown };
 type WordstatItem = { phrase?: unknown; count?: unknown };
@@ -47,9 +47,9 @@ async function wordstat(query: string) {
     } catch { /* A non-JSON error is still useful in the server log only. */ }
     const explanation = providerMessage ? ` Ответ Yandex: ${providerMessage}` : "";
     if (response.status === 401 || response.status === 403) {
-      throw new AiResponseError(`Yandex Wordstat отклонил доступ.${explanation} Проверьте API-ключ, настоящий folderId, роль search-api.webSearch.user и активный платёжный аккаунт каталога.`, 502);
+      throw new AiResponseError(`Источник поисковых данных временно недоступен.${explanation} Повторите попытку позже.`, 502);
     }
-    throw new AiResponseError(`Yandex Wordstat временно не ответил.${explanation} Повторите попытку позже.`, 502);
+    throw new AiResponseError(`Источник поисковых данных временно не ответил.${explanation} Повторите попытку позже.`, 502);
   }
   const body = await response.json() as { results?: WordstatItem[]; associations?: WordstatItem[] };
   const source = [...(body.results ?? []), ...(body.associations ?? [])];
@@ -58,7 +58,7 @@ async function wordstat(query: string) {
     .filter((item) => item.phrase && Number.isFinite(item.frequency) && item.frequency > 0)
     .filter((item) => { const key = normalize(item.phrase); if (seen.has(key)) return false; seen.add(key); return true; })
     .sort((a, b) => b.frequency - a.frequency).slice(0, 80);
-  if (items.length < 8) throw new AiResponseError("Wordstat вернул слишком мало реальных запросов по этой формулировке. Уточните тему или измените основной запрос.", 422);
+  if (items.length < 8) throw new AiResponseError("Источник поисковых данных вернул слишком мало реальных запросов по этой формулировке. Уточните тему или измените основной запрос.", 422);
   return items;
 }
 
@@ -85,9 +85,9 @@ export async function POST(request: Request) {
     const keywords = ai.result.keywords.map((item, index) => {
       const phrase = clean(item.phrase, 180); const key = normalize(phrase); const frequency = counts.get(key);
       if (!frequency || seen.has(key)) return null; seen.add(key);
-      return { ...item, id: `semantic-${index + 1}`, phrase, cluster: clean(item.cluster, 100) || "Основная тема", note: clean(item.note, 300), frequency, source: "Yandex Wordstat" as const };
+      return { ...item, id: `semantic-${index + 1}`, phrase, cluster: clean(item.cluster, 100) || "Основная тема", note: clean(item.note, 300), frequency };
     }).filter((item): item is SemanticKeyword => Boolean(item));
-    if (keywords.length < 8) throw new AiResponseError("AI не смог корректно классифицировать данные Wordstat. Повторите анализ.", 502);
+    if (keywords.length < 8) throw new AiResponseError("AI не смог корректно классифицировать поисковые данные. Повторите анализ.", 502);
     const primaryIndex = keywords.findIndex((item) => item.role === "Основной");
     const primary = primaryIndex >= 0 ? primaryIndex : 0;
     const primaryCluster = keywords[primary].cluster;
@@ -99,9 +99,9 @@ export async function POST(request: Request) {
       return { ...item, recommended: shouldRecommend };
     });
     const usage = await recordResearch();
-    return Response.json({ result: { primaryQuery: query, intent: ai.result.intent, suggestedTopic: clean(ai.result.suggestedTopic, 240) || query, recommendedLength: Math.min(3000, Math.max(700, Number(ai.result.recommendedLength) || 1200)), keywords: finalKeywords, dataNote: "Фразы и частотность получены из Yandex Wordstat: число запросов за последние 30 дней. AI только сгруппировал реальные фразы по интенту; частотность не сгенерирована." }, mode: "ai", model: ai.model, sources: { wordstat: "Yandex Search API", candidates: candidates.length }, usage });
+    return Response.json({ result: { primaryQuery: query, intent: ai.result.intent, suggestedTopic: clean(ai.result.suggestedTopic, 240) || query, recommendedLength: Math.min(3000, Math.max(700, Number(ai.result.recommendedLength) || 1200)), keywords: finalKeywords, dataNote: "Фразы и частотность подтверждены актуальными поисковыми данными за последние 30 дней. AI только сгруппировал реальные фразы по интенту; частотность не сгенерирована." }, mode: "ai", model: ai.model, sources: { searchDemand: "verified", candidates: candidates.length }, usage });
   } catch (error) {
     if (error instanceof WorkspaceAccessError) return workspaceErrorResponse(error);
-    return openAiErrorResponse(error, "Не удалось получить семантику из Yandex Wordstat.");
+    return openAiErrorResponse(error, "Не удалось получить поисковые данные для семантики.");
   }
 }
