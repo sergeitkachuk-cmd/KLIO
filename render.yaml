@@ -25,12 +25,12 @@ services:
       # AI spend). Leave unset and nobody can open it.
       - key: ADMIN_EMAILS
         sync: false
-      - key: RESEND_API_KEY
+      - key: UNISENDER_GO_API_KEY
         sync: false
-      - key: RESEND_FROM_EMAIL
-        value: "KLIO <onboarding@resend.dev>"
+      - key: UNISENDER_FROM_EMAIL
+        sync: false
       - key: APP_BASE_URL
-        value: https://klio-g1eg.onrender.com
+        value: https://цифроваяредакция.рф
 
 databases:
   - name: klio-db
