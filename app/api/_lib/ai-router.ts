@@ -231,10 +231,14 @@ async function requestOnce(params: {
   } catch {
     // Unlike OpenAI's strict json_schema mode, DeepSeek's JSON output isn't
     // schema-enforced (per their docs — only response_format: json_object,
-    // no strict mode) — logging the raw text is the only way to see why a
-    // given response didn't parse (markdown fence some other shape didn't
-    // strip, truncation from max_output_tokens, leading prose, etc.).
+    // no strict mode) — logging the raw text alone wasn't enough to explain
+    // a case where outputText() extracted reasoning/tool-planning narration
+    // instead of the final answer, so log the full response body too: that
+    // shows whether DeepSeek's output[] shape (item "type"s, a separate
+    // reasoning block, an unfinished tool call, a "status" other than
+    // "completed", etc.) actually differs from what outputText() assumes.
     console.error(`${provider} returned unparseable structured output`, text.slice(0, 1500));
+    console.error(`${provider} full response body`, JSON.stringify(body).slice(0, 4000));
     const error = new AiCallError("AI-редакция вернула неполный структурированный ответ.", 502);
     (error as { invalidOutput?: boolean }).invalidOutput = true;
     throw error;
