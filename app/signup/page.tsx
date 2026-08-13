@@ -13,6 +13,7 @@ export default function SignupPage() {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [sentTo, setSentTo] = useState("");
@@ -37,6 +38,10 @@ export default function SignupPage() {
     setError("");
     if (password.length < 8) {
       setError("Пароль должен быть не короче 8 символов.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Пароли не совпадают. Проверьте и введите ещё раз.");
       return;
     }
     setBusy(true);
@@ -103,6 +108,7 @@ export default function SignupPage() {
           <label className="field">Имя<input required autoComplete="name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} /></label>
           <label className="field">Email<input type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
           <label className="field">Пароль<input type="password" required minLength={8} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} /><small>Не короче 8 символов</small></label>
+          <label className="field">Повторите пароль<input type="password" required minLength={8} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} /></label>
           {error && <p className="auth-error">{error}</p>}
           <button className="button primary large" type="submit" disabled={busy}>{busy ? "Создаём…" : "Создать кабинет"}</button>
         </form>
