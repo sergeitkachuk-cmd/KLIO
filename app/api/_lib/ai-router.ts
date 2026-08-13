@@ -227,12 +227,31 @@ async function requestOnce(params: {
 
   if (!params.structuredOutput) return { raw: text, usage, body };
   try {
-    return { parsed: JSON.parse(text), usage, body };
+    return { parsed: JSON.parse(extractJsonPayload(text)), usage, body };
   } catch {
+    // Unlike OpenAI's strict json_schema mode, DeepSeek's JSON output isn't
+    // schema-enforced (per their docs — only response_format: json_object,
+    // no strict mode) — logging the raw text is the only way to see why a
+    // given response didn't parse (markdown fence some other shape didn't
+    // strip, truncation from max_output_tokens, leading prose, etc.).
+    console.error(`${provider} returned unparseable structured output`, text.slice(0, 1500));
     const error = new AiCallError("AI-редакция вернула неполный структурированный ответ.", 502);
     (error as { invalidOutput?: boolean }).invalidOutput = true;
     throw error;
   }
+}
+
+// Strips a ```json ... ``` (or bare ``` ... ```) fence some models wrap
+// structured output in even when told not to, plus any leading/trailing
+// prose outside the outermost {...} — before falling back to the raw text
+// as-is. Harmless no-op for already-clean JSON (OpenAI's case today).
+function extractJsonPayload(text: string): string {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  const candidate = (fenced ? fenced[1] : text).trim();
+  const start = candidate.indexOf("{");
+  const end = candidate.lastIndexOf("}");
+  if (start === -1 || end === -1 || end < start) return candidate;
+  return candidate.slice(start, end + 1);
 }
 
 // The router entry point every AI-calling route should go through. Looks
