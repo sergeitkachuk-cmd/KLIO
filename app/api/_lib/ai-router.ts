@@ -238,7 +238,19 @@ async function requestOnce(params: {
     // reasoning block, an unfinished tool call, a "status" other than
     // "completed", etc.) actually differs from what outputText() assumes.
     console.error(`${provider} returned unparseable structured output`, text.slice(0, 1500));
-    console.error(`${provider} full response body`, JSON.stringify(body).slice(0, 4000));
+    // Logging the whole body wasted the budget re-echoing our own
+    // instructions/input back — the response always includes those. Log
+    // only the parts that actually explain what happened: status/
+    // incomplete_details/error (truncation vs. genuine completion) and the
+    // output[] array itself (tool-call items vs. message items, in what
+    // order — that's what outputText() needs to walk correctly).
+    const diagnostic = body && typeof body === "object" ? body as Record<string, unknown> : {};
+    console.error(`${provider} response diagnostic`, JSON.stringify({
+      status: diagnostic.status,
+      incomplete_details: diagnostic.incomplete_details,
+      error: diagnostic.error,
+      output: diagnostic.output,
+    }).slice(0, 6000));
     const error = new AiCallError("AI-редакция вернула неполный структурированный ответ.", 502);
     (error as { invalidOutput?: boolean }).invalidOutput = true;
     throw error;
