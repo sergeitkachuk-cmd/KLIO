@@ -4701,6 +4701,28 @@ footer nav a {
   background: rgba(255, 255, 255, 0.055);
 }
 
+/* Each link carries the same --module-accent its module's own heading
+   uses (see .semantics-module etc.), so the active state below lights
+   up in that module's colour instead of one generic highlight. */
+.workspace-sidebar nav a[href="#start"] { --module-accent: #d8ff65; }
+.workspace-sidebar nav a[href="#brand-profile"] { --module-accent: #7450bd; }
+.workspace-sidebar nav a[href="#generator"] { --module-accent: #6539c7; }
+.workspace-sidebar nav a[href="#semantics"] { --module-accent: #376fa8; }
+.workspace-sidebar nav a[href="#competitors"] { --module-accent: #7a5b91; }
+.workspace-sidebar nav a[href="#content-plan"] { --module-accent: #3f7e70; }
+.workspace-sidebar nav a[href="#adaptation"] { --module-accent: #9b536d; }
+
+.workspace-sidebar nav a.active {
+  border-color: color-mix(in srgb, var(--module-accent, #7450bd) 55%, transparent);
+  color: #fff;
+  background: linear-gradient(120deg, color-mix(in srgb, var(--module-accent, #7450bd) 38%, transparent), color-mix(in srgb, var(--module-accent, #7450bd) 14%, transparent));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.16), 0 10px 26px color-mix(in srgb, var(--module-accent, #7450bd) 22%, transparent);
+}
+
+.workspace-sidebar nav a.active i {
+  color: #fff;
+}
+
 .workspace-sidebar nav i {
   color: rgba(216, 255, 101, 0.72);
   font-size: 12px;
@@ -12864,11 +12886,6 @@ footer nav a {
     scroll-snap-align: start;
   }
 
-  .workspace-sidebar nav a[href="#generator"] {
-    border-color: rgba(216, 255, 101, 0.34);
-    background: linear-gradient(135deg, rgba(216, 255, 101, 0.11), rgba(124, 58, 237, 0.14));
-  }
-
   .workspace-sidebar nav span {
     display: block;
     min-width: 0;
@@ -15368,6 +15385,24 @@ footer nav a {
   border-color: rgba(53, 104, 212, 0.4);
   color: #0d1b31;
   background: linear-gradient(120deg, rgba(53, 104, 212, 0.18), rgba(220, 229, 243, 0.7));
+}
+
+/* Same per-module accent as the dark theme's active state, just tinted
+   toward white instead of the dark sidebar so it stays legible on a
+   light background. "Начните здесь" keeps the acid-green var but swaps
+   it for the same cool blue used elsewhere on light - straight lime
+   read as muddy here, same reasoning as the marker colour above. */
+[data-theme="light"] .workspace-sidebar nav a[href="#start"] { --module-accent: #2452b8; }
+
+[data-theme="light"] .workspace-sidebar nav a.active {
+  border-color: color-mix(in srgb, var(--module-accent, #2452b8) 55%, transparent);
+  color: #0d1b31;
+  background: linear-gradient(120deg, color-mix(in srgb, var(--module-accent, #2452b8) 30%, white), color-mix(in srgb, var(--module-accent, #2452b8) 12%, white));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .workspace-sidebar nav a.active i {
+  color: color-mix(in srgb, var(--module-accent, #2452b8) 75%, black);
 }
 
 /* Was #6b8f1f (dark olive) trying to keep the dark theme's acid-green

@@ -1299,7 +1299,22 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [editorialBrief, setEditorialBrief] = useState<Record<string, unknown> | null>(null);
   const [brand, setBrand] = useState<BrandProfile>(defaultBrand);
   const [useBrand, setUseBrand] = useState(true);
-  const [brandOpen, setBrandOpen] = useState(false);
+  // Which single workspace module is on screen — "start" is the overview
+  // shown when the page first loads (see the workspace-quickstart block).
+  // Only one of these is ever visible at once; opening another module
+  // implicitly closes whichever was open, so the page never becomes a
+  // long stacked feed of expanded sections. openModule/toggleModule below
+  // are what every open/close call site in this file now goes through.
+  const [activeModule, setActiveModule] = useState<
+    "start" | "brand" | "generator" | "semantics" | "competitors" | "content-plan" | "adaptation" | "history"
+  >("start");
+  const brandOpen = activeModule === "brand";
+  function openModule(id: typeof activeModule) {
+    setActiveModule(id);
+  }
+  function toggleModule(id: typeof activeModule) {
+    setActiveModule((current) => (current === id ? "start" : id));
+  }
   const [brandSaved, setBrandSaved] = useState(false);
   const [brandTab, setBrandTab] = useState<BrandTab>("foundation");
   const [profileMode, setProfileMode] = useState<ProfileMode>("quick");
@@ -1336,10 +1351,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [competitorSerp, setCompetitorSerp] = useState<CompetitorSerpItem[]>([]);
   const [competitorError, setCompetitorError] = useState("");
   const [competitorNeedsRefresh, setCompetitorNeedsRefresh] = useState(false);
-  const [competitorOpen, setCompetitorOpen] = useState(false);
-  const [semanticOpen, setSemanticOpen] = useState(false);
-  const [contentPlanOpen, setContentPlanOpen] = useState(false);
-  const [adaptationOpen, setAdaptationOpen] = useState(false);
+  const competitorOpen = activeModule === "competitors";
+  const semanticOpen = activeModule === "semantics";
+  const contentPlanOpen = activeModule === "content-plan";
+  const adaptationOpen = activeModule === "adaptation";
   const [generatorAdvanced, setGeneratorAdvanced] = useState(true);
   const [generatorMode, setGeneratorMode] = useState<"quick" | "advanced">("quick");
   const [quickPrompt, setQuickPrompt] = useState("");
@@ -1416,7 +1431,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [workspaceReady, setWorkspaceReady] = useState(!workspace);
   const [workspaceSaving, setWorkspaceSaving] = useState(false);
   const [workspaceDataError, setWorkspaceDataError] = useState("");
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const historyOpen = activeModule === "history";
   const [materialsFilter, setMaterialsFilter] = useState<MaterialsFilter>("all");
   const [materialsDateRange, setMaterialsDateRange] = useState<MaterialsDateRange>("all");
   const [moduleMaterialSources, setModuleMaterialSources] = useState<Partial<Record<SavedMaterialType, string>>>({});
@@ -1895,12 +1910,16 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }, [workspace]);
 
   useEffect(() => {
+    // Calls setActiveModule directly (not the openModule helper) so this
+    // effect has no reason to depend on anything but the stable setter -
+    // it only needs to run once, on mount, and again on each hashchange.
     const openFromHash = () => {
-      if (window.location.hash === "#brand-profile") setBrandOpen(true);
-      if (window.location.hash === "#semantics") setSemanticOpen(true);
-      if (window.location.hash === "#competitors") setCompetitorOpen(true);
-      if (window.location.hash === "#content-plan") setContentPlanOpen(true);
-      if (window.location.hash === "#adaptation") setAdaptationOpen(true);
+      if (window.location.hash === "#brand-profile") setActiveModule("brand");
+      if (window.location.hash === "#generator") setActiveModule("generator");
+      if (window.location.hash === "#semantics") setActiveModule("semantics");
+      if (window.location.hash === "#competitors") setActiveModule("competitors");
+      if (window.location.hash === "#content-plan") setActiveModule("content-plan");
+      if (window.location.hash === "#adaptation") setActiveModule("adaptation");
     };
     openFromHash();
     window.addEventListener("hashchange", openFromHash);
@@ -2768,7 +2787,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setCustomLength(false);
     setGeneratorUseSemantics(true);
     setGenerationMode("example");
-    window.setTimeout(() => document.getElementById("generator")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    openModule("generator");
     showToast(`${selectedSemanticKeywords.length} фраз и тема переданы в генератор`);
   }
 
@@ -2892,7 +2911,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         useCompetitors: generatorUseCompetitors,
       });
       applyGeneratedMaterial(response.material, response.mode, response.coverage);
-      window.setTimeout(() => document.getElementById("generator")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+      openModule("generator");
       showToast(useBrand && generatorUseBrand ? "Статья создана по семантике и профилю бренда" : "Статья создана только по семантике — модуль 01 пропущен");
     } catch (error) {
       setSemanticError(error instanceof Error ? error.message : "Не удалось создать статью по семантике.");
@@ -2965,7 +2984,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   function useCurrentSemanticsForCompetitors() {
     if (!semanticAnalysisReady) {
       showToast("Сначала соберите актуальную семантику в разделе «Семантика»");
-      document.getElementById("semantics")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      openModule("semantics");
       return;
     }
     const nextQuery = semanticResult.primaryQuery || semanticQuery;
@@ -2992,8 +3011,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }
 
   function openCompetitorAnalysis() {
-    setCompetitorOpen(true);
-    window.setTimeout(() => document.getElementById("competitors")?.scrollIntoView({ behavior: "smooth", block: "start" }), 40);
+    openModule("competitors");
   }
 
   function chooseCompetitorMarketScope(scope: CompetitorMarketScope) {
@@ -3212,7 +3230,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setGeneratorUseCompetitors(true);
     setGenerationError("");
     setGenerationMode("example");
-    window.setTimeout(() => document.getElementById("generator")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    openModule("generator");
     showToast(`Тема и ${topicsForArticle.length} разделов переданы в генератор`);
   }
 
@@ -3283,7 +3301,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
   function openSavedMaterial(item: SavedWorkspaceMaterial) {
     if (item.brandId !== activeBrandId) return;
-    setHistoryOpen(false);
     setModuleMaterialSources((current) => ({ ...current, [item.type]: item.id }));
 
     if (item.type === "semantics") {
@@ -3296,8 +3313,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setSelectedSemanticIds(Array.isArray(payload?.selectedIds) ? payload!.selectedIds! : storedResult.keywords.filter((keyword) => keyword.recommended).map((keyword) => keyword.id));
       setSemanticMode("ai");
       setSemanticNeedsRefresh(Boolean(payload?.needsRefresh));
-      setSemanticOpen(true);
-      window.setTimeout(() => document.getElementById("semantics")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+      openModule("semantics");
     } else if (item.type === "competitors") {
       const payload = item.payload as BrandWorkspaceSnapshot["competitors"];
       if (!payload?.result?.topics?.length) return showToast("Сохранённый анализ повреждён или устарел");
@@ -3309,8 +3325,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setSelectedCompetitorTopicIds(Array.isArray(payload.selectedIds) ? payload.selectedIds : []);
       setCompetitorMode(payload.mode === "ai" ? "ai" : "demo");
       setCompetitorNeedsRefresh(Boolean(payload.needsRefresh));
-      setCompetitorOpen(true);
-      window.setTimeout(() => document.getElementById("competitors")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+      openModule("competitors");
     } else {
       const payload = item.payload as BrandWorkspaceSnapshot["contentPlan"];
       const storedResult = normalizeStoredContentPlanResult(payload?.result);
@@ -3322,8 +3337,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setContentPlanNeedsRefresh(Boolean(payload?.needsRefresh));
       setSelectedPlanItemIds([]);
       setPlanReplacements([]);
-      setContentPlanOpen(true);
-      window.setTimeout(() => document.getElementById("content-plan")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+      openModule("content-plan");
     }
     showToast(`Открыта версия ${item.versionNumber} в модуле КЛИО`);
   }
@@ -3424,8 +3438,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     }
     useCurrentSemanticsForPlan();
     setContentPlanGoal("seo");
-    setContentPlanOpen(true);
-    window.setTimeout(() => document.getElementById("content-plan")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    openModule("content-plan");
   }
 
   function useBrandForPlan() {
@@ -3661,7 +3674,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setGenerationMode("example");
     setGenerationCoverage(null);
     updateContentPlanStatus(item.id, "В работе");
-    window.setTimeout(() => document.getElementById("generator")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    openModule("generator");
     showToast("Тема, ключи и структура переданы в генератор");
   }
 
@@ -3882,7 +3895,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     window.location.assign("/workspace");
   }
 
-  function openModule(number: string) {
+  function openLandingModule(number: string) {
     if (number === "01") {
       window.location.assign("/workspace#brand-profile");
       return;
@@ -3910,17 +3923,19 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     showToast("Откройте рабочее пространство для тестирования модуля");
   }
 
-  // The "Материалы" header button just toggled historyOpen with no visual
-  // feedback beyond that — from anywhere scrolled away from the top of the
-  // page, the section that appears reads as "the button did nothing".
-  // Bring it into view whenever it opens.
+  // Switching the active module swaps content in place, but if the visitor
+  // was scrolled down into whatever was showing before, the newly-visible
+  // module can appear below the fold — reads as "the click did nothing".
+  // Bring it into view on every switch (skipped for "start": that's the
+  // overview shown at the top of the page already).
   useEffect(() => {
-    if (!historyOpen) return;
+    if (activeModule === "start") return;
+    const targetId = activeModule === "brand" ? "brand-profile" : activeModule;
     const frame = window.requestAnimationFrame(() => {
-      document.getElementById("history")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [historyOpen]);
+  }, [activeModule]);
 
   if (workspace) {
     // ±15% matches the tolerance the generator itself already accepts as a
@@ -3939,7 +3954,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         <div className="workspace-header-actions">
           <Link href="/">На главную</Link>
           <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"} title={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"}><Icon name={theme === "dark" ? "sun" : "moon"}/></button>
-          <button className="workspace-history-button" type="button" onClick={() => setHistoryOpen((value) => !value)}><span>Материалы</span><b>{activeMaterialCount}</b></button>
+          <button className="workspace-history-button" type="button" onClick={() => toggleModule("history")}><span>Материалы</span><b>{activeMaterialCount}</b></button>
           <div className={`account-menu ${accountMenuOpen ? "is-open" : ""}`} ref={accountMenuRef}>
             <button type="button" className="workspace-account" onClick={() => setAccountMenuOpen((value) => !value)} aria-haspopup="menu" aria-expanded={accountMenuOpen}>
               <i>{nameInitials(workspaceUserName)}</i><b>{workspaceUserName}</b><small>{workspaceAccount.planName} · 1 пользователь</small><em>⌄</em>
@@ -3975,12 +3990,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             {brandCreatorOpen && <div className="brand-create-form"><input value={newBrandName} onChange={(event) => setNewBrandName(event.target.value)} placeholder="Название бренда" autoFocus autoComplete="off"/><button type="button" onClick={() => void createWorkspaceBrand()}>Создать</button></div>}
           </div>
           <nav aria-label="Рабочие модули">
-            <a href="#brand-profile" onClick={() => setBrandOpen(true)}><i>+</i><span><b>Профиль бренда</b><small>по желанию</small></span></a>
-            <a href="#generator"><i>01</i><span><b>Генерировать материал</b><small>быстрый старт</small></span></a>
-            <a href="#content-plan" onClick={() => setContentPlanOpen(true)}><i>+</i><span><b>Контент‑план</b><small>самостоятельный инструмент</small></span></a>
-            <a href="#adaptation" onClick={() => setAdaptationOpen(true)}><i>+</i><span><b>Редакторы КЛИО</b><small>14 режимов для готового текста</small></span></a>
-            <a href="#semantics" onClick={() => setSemanticOpen(true)}><i>+</i><span><b>Семантика</b><small>самостоятельно или в бриф</small></span></a>
-            <a href="#competitors" onClick={() => setCompetitorOpen(true)}><i>+</i><span><b>Конкуренты</b><small>По желанию</small></span></a>
+            <a href="#start" className={activeModule === "start" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("start"); }}><i>·</i><span><b>Начните здесь</b><small>обзор и подсказки</small></span></a>
+            <a href="#brand-profile" className={activeModule === "brand" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("brand"); }}><i>+</i><span><b>Профиль бренда</b><small>по желанию</small></span></a>
+            <a href="#generator" className={activeModule === "generator" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("generator"); }}><i>01</i><span><b>Генерировать материал</b><small>быстрый старт</small></span></a>
+            <a href="#content-plan" className={activeModule === "content-plan" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("content-plan"); }}><i>+</i><span><b>Контент‑план</b><small>самостоятельный инструмент</small></span></a>
+            <a href="#adaptation" className={activeModule === "adaptation" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("adaptation"); }}><i>+</i><span><b>Редакторы КЛИО</b><small>14 режимов для готового текста</small></span></a>
+            <a href="#semantics" className={activeModule === "semantics" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("semantics"); }}><i>+</i><span><b>Семантика</b><small>самостоятельно или в бриф</small></span></a>
+            <a href="#competitors" className={activeModule === "competitors" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("competitors"); }}><i>+</i><span><b>Конкуренты</b><small>По желанию</small></span></a>
           </nav>
           <div className="workspace-stage workspace-quota-stage"><span>Ваш тариф</span><b>{workspaceAccount.planName}</b><div className="workspace-quota-list"><p><span>Материалы</span><em>{workspaceAccount.generationsRemaining} / {workspaceAccount.generationLimit}</em><i><u style={{ width: `${generationProgress}%` }}/></i></p><p><span>Исследования</span><em>{workspaceAccount.researchRemaining} / {workspaceAccount.researchLimit}</em><i><u style={{ width: `${researchProgress}%` }}/></i></p><p><span>AI‑редактура</span><em>{workspaceAccount.editorActionsRemaining} / {workspaceAccount.editorActionLimit}</em><i><u style={{ width: `${editorProgress}%` }}/></i></p></div></div>
         </aside>
@@ -3993,7 +4009,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
 
           {historyOpen && <section className="workspace-history" id="history">
-            <div className="workspace-history-head"><div><span>Кабинет бренда · {activeWorkspaceBrand?.name || brand.name}</span><h2>Материалы</h2><p>Здесь хранятся только статьи, планы и исследования текущего бренда. Сохранённый результат можно открыть в своём модуле и продолжить работу.</p></div><button type="button" onClick={() => setHistoryOpen(false)} aria-label="Закрыть материалы"><span>Закрыть</span><i aria-hidden="true">×</i></button></div>
+            <div className="workspace-history-head"><div><span>Кабинет бренда · {activeWorkspaceBrand?.name || brand.name}</span><h2>Материалы</h2><p>Здесь хранятся только статьи, планы и исследования текущего бренда. Сохранённый результат можно открыть в своём модуле и продолжить работу.</p></div><button type="button" onClick={() => openModule("start")} aria-label="Закрыть материалы"><span>Закрыть</span><i aria-hidden="true">×</i></button></div>
             {activeMaterialCount > 0 && <div className="workspace-history-toolbar">
               <div className="workspace-history-filters" role="group" aria-label="Фильтр материалов по типу">
                 {materialsFilterOptions.map((option) => <button type="button" className={materialsFilter === option.id ? "active" : ""} aria-pressed={materialsFilter === option.id} onClick={() => setMaterialsFilter(option.id)} key={option.id}><span>{option.label}</span><b>{option.count}</b></button>)}
@@ -4057,8 +4073,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </section>
           </div>}
 
-          <div className="workspace-quickstart">
-          <div className="mvp-flow" aria-label="Простой и расширенный режимы работы">
+          <div className="workspace-quickstart" style={{ display: activeModule === "start" || activeModule === "brand" ? undefined : "none" }}>
+          {activeModule === "start" && <div className="mvp-flow" aria-label="Простой и расширенный режимы работы">
             <div className="mvp-flow-main">
               <span>Начните без лишних этапов</span>
               <div className="mvp-flow-steps">
@@ -4072,14 +4088,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <div className="mvp-flow-optional"><i>↗</i><span><b>Инструменты автономны</b><small>результат можно не передавать в генератор</small></span></div>
               <div className="mvp-flow-alternative"><i>Аа</i><span><b>Есть готовый текст?</b><small>откройте редакторы КЛИО</small></span></div>
             </div>
-          </div>
+          </div>}
 
-          <section className={`brand-profile ${brandOpen ? "is-open" : ""}`} id="brand-profile">
+          <section className={`brand-profile ${brandOpen ? "is-open" : ""}`} id="brand-profile" style={{ display: activeModule === "brand" ? undefined : "none" }}>
             <div className="brand-profile-head">
               <div><span>Модуль 01</span><h3>Профиль бренда</h3><p>КЛИО использует эти данные как редакционную память — факты и интонация переходят в каждый новый материал.</p></div>
               <div className="brand-profile-actions">
                 <label className="brand-switch"><input type="checkbox" checked={useBrand} onChange={(event) => { setUseBrand(event.target.checked); setSemanticNeedsRefresh(true); setContentPlanNeedsRefresh(true); }}/><span/><b>{useBrand ? "Профиль активен" : "Профиль отключён"}</b></label>
-                <button type="button" className="profile-toggle" onClick={() => setBrandOpen((value) => !value)} aria-expanded={brandOpen}>{brandOpen ? "Свернуть" : "Открыть профиль"} <i>{brandOpen ? "−" : "+"}</i></button>
+                <button type="button" className="profile-toggle" onClick={() => toggleModule("brand")} aria-expanded={brandOpen}>{brandOpen ? "Свернуть" : "Открыть профиль"} <i>{brandOpen ? "−" : "+"}</i></button>
               </div>
             </div>
             {brandOpen && <div className="brand-profile-body">
@@ -4162,8 +4178,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>
           </div>
 
-          <section className={`workspace-module semantics-module ${semanticOpen ? "" : "tool-collapsed"}`} id="semantics">
-            <div className="workspace-module-heading tool-heading"><div><span>Шаг 2 · по желанию</span><h2>Поисковые запросы</h2></div><p>Укажите, чем интересуются ваши будущие клиенты. КЛИО найдёт реальные запросы и предложит: создать одну статью или получить план тем для сайта.</p><button type="button" onClick={() => setSemanticOpen((value) => !value)} aria-expanded={semanticOpen}>{semanticOpen ? "Свернуть" : "Найти запросы"}<i>{semanticOpen ? "−" : "+"}</i></button></div>
+          <section className={`workspace-module semantics-module ${semanticOpen ? "" : "tool-collapsed"}`} id="semantics" style={{ display: activeModule === "semantics" ? undefined : "none" }}>
+            <div className="workspace-module-heading tool-heading"><div><span>Шаг 2 · по желанию</span><h2>Поисковые запросы</h2></div><p>Укажите, чем интересуются ваши будущие клиенты. КЛИО найдёт реальные запросы и предложит: создать одну статью или получить план тем для сайта.</p><button type="button" onClick={() => toggleModule("semantics")} aria-expanded={semanticOpen}>{semanticOpen ? "Свернуть" : "Найти запросы"}<i>{semanticOpen ? "−" : "+"}</i></button></div>
             <div className="semantic-shell">
               <div className="semantic-search-card">
                 <div className="semantic-search-head">
@@ -4325,11 +4341,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </div>
           </section>
 
-          <section className={`workspace-module competitor-module ${competitorOpen ? "" : "tool-collapsed"}`} id="competitors">
-            <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Анализ конкурентов</h2></div><p>Посмотрите, как сильные игроки отвечают на вопросы ваших будущих клиентов, и найдите полезные темы для своего сайта. КЛИО соберёт прямых конкурентов и подскажет, что стоит раскрыть в материале.</p><button type="button" onClick={() => setCompetitorOpen((value) => !value)} aria-expanded={competitorOpen}>{competitorOpen ? "Свернуть" : "Открыть инструмент"}<i>{competitorOpen ? "−" : "+"}</i></button></div>
+          <section className={`workspace-module competitor-module ${competitorOpen ? "" : "tool-collapsed"}`} id="competitors" style={{ display: activeModule === "competitors" ? undefined : "none" }}>
+            <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Анализ конкурентов</h2></div><p>Посмотрите, как сильные игроки отвечают на вопросы ваших будущих клиентов, и найдите полезные темы для своего сайта. КЛИО соберёт прямых конкурентов и подскажет, что стоит раскрыть в материале.</p><button type="button" onClick={() => toggleModule("competitors")} aria-expanded={competitorOpen}>{competitorOpen ? "Свернуть" : "Открыть инструмент"}<i>{competitorOpen ? "−" : "+"}</i></button></div>
 
             <div className="competitor-optional-shell">
-              <button type="button" className="competitor-entry-card" onClick={() => setCompetitorOpen((value) => !value)} aria-expanded={competitorOpen}>
+              <button type="button" className="competitor-entry-card" onClick={() => toggleModule("competitors")} aria-expanded={competitorOpen}>
                 <span className="competitor-entry-copy"><span>Не входит в обязательный маршрут</span><strong>{competitorOpen ? "Анализ открыт" : "Хотите сделать материал сильнее?"}</strong><small>{competitorOpen ? "Ниже можно задать запрос и сравнить страницы прямых конкурентов." : "Посмотрите, какие вопросы уже раскрывают другие компании, чтобы добавить в материал действительно полезные темы и не упустить спрос."}</small></span>
                 <span className="competitor-entry-action"><b>{competitorOpen ? "Свернуть" : "Открыть анализ"}</b><i>{competitorOpen ? "−" : "+"}</i></span>
               </button>
@@ -4436,13 +4452,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
             <div className={`competitor-actionbar ${competitorNeedsRefresh ? "needs-refresh" : ""}`}>
               <div><span>Следующий шаг</span><b>{competitorArticleOpportunities.length ? (selectedCompetitorArticleTopics.length ? `Выбрано тем для статьи: ${selectedCompetitorArticleTopics.length}` : "КЛИО сам выберет подходящие темы") : "Новая статья по этой теме не нужна"}</b><small>{competitorArticleOpportunities.length ? (selectedCompetitorArticleTopics.length ? "КЛИО передаст тему и выбранные разделы в генератор. Там вы сможете дополнить бриф и создать статью." : "Если хотите изменить подборку, отметьте нужные темы в таблице. Иначе КЛИО выберет свои рекомендации автоматически.") : "Текущая страница бренда уже раскрывает найденные темы. Новая статья повторит её и может конкурировать с ней в поиске — выберите другой поисковый кластер."}</small></div>
-              <div className="competitor-action-buttons"><button type="button" className="module-save-button" onClick={() => void saveModuleMaterial("competitors")} disabled={materialSavingType === "competitors" || competitorNeedsRefresh}>{materialSavingType === "competitors" ? "Сохраняем…" : moduleMaterialSources.competitors ? "Сохранить анализ" : "Сохранить анализ в материалы"}</button>{moduleMaterialSources.competitors && <button type="button" className="module-copy-button" onClick={() => void saveModuleMaterial("competitors", "copy")} disabled={materialSavingType === "competitors"}>Копия</button>}{competitorArticleOpportunities.length ? <button className={`button primary large ${competitorNeedsRefresh ? "is-blocked" : ""}`} type="button" onClick={sendCompetitorInsightsToGenerator} aria-disabled={competitorNeedsRefresh}>Открыть в генераторе <Icon name="arrow"/></button> : <button className="button primary large" type="button" onClick={() => { setSemanticOpen(true); window.setTimeout(() => document.getElementById("semantics")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50); }}>Выбрать другой запрос <Icon name="arrow"/></button>}</div>
+              <div className="competitor-action-buttons"><button type="button" className="module-save-button" onClick={() => void saveModuleMaterial("competitors")} disabled={materialSavingType === "competitors" || competitorNeedsRefresh}>{materialSavingType === "competitors" ? "Сохраняем…" : moduleMaterialSources.competitors ? "Сохранить анализ" : "Сохранить анализ в материалы"}</button>{moduleMaterialSources.competitors && <button type="button" className="module-copy-button" onClick={() => void saveModuleMaterial("competitors", "copy")} disabled={materialSavingType === "competitors"}>Копия</button>}{competitorArticleOpportunities.length ? <button className={`button primary large ${competitorNeedsRefresh ? "is-blocked" : ""}`} type="button" onClick={sendCompetitorInsightsToGenerator} aria-disabled={competitorNeedsRefresh}>Открыть в генераторе <Icon name="arrow"/></button> : <button className="button primary large" type="button" onClick={() => openModule("semantics")}>Выбрать другой запрос <Icon name="arrow"/></button>}</div>
             </div>
               </div>}
             </div>
           </section>
 
-          <section className="workspace-module generator-module" id="generator">
+          <section className="workspace-module generator-module" id="generator" style={{ display: activeModule === "generator" ? undefined : "none" }}>
             <div className="workspace-module-heading"><div><span>Главный экран</span><h2>Генератор материалов</h2></div><p>Укажите формат, тему, ключевые слова и то, что важно раскрыть. Остальные инструменты подключаются только по необходимости.</p></div>
             <div className="studio">
               <aside className="brief-panel">
@@ -4539,8 +4555,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </div>
           </section>
 
-          <section className={`workspace-module content-plan-module ${contentPlanOpen ? "" : "tool-collapsed"}`} id="content-plan">
-            <div className="workspace-module-heading tool-heading"><div><span>Шаг 3 · для серии статей</span><h2>План статей</h2></div><p>КЛИО подготовит очередь тем для сайта. Откройте любую тему, проверьте краткий план и одним нажатием отправьте её в генератор.</p><button type="button" onClick={() => setContentPlanOpen((value) => !value)} aria-expanded={contentPlanOpen}>{contentPlanOpen ? "Свернуть" : "Открыть план"}<i>{contentPlanOpen ? "−" : "+"}</i></button></div>
+          <section className={`workspace-module content-plan-module ${contentPlanOpen ? "" : "tool-collapsed"}`} id="content-plan" style={{ display: activeModule === "content-plan" ? undefined : "none" }}>
+            <div className="workspace-module-heading tool-heading"><div><span>Шаг 3 · для серии статей</span><h2>План статей</h2></div><p>КЛИО подготовит очередь тем для сайта. Откройте любую тему, проверьте краткий план и одним нажатием отправьте её в генератор.</p><button type="button" onClick={() => toggleModule("content-plan")} aria-expanded={contentPlanOpen}>{contentPlanOpen ? "Свернуть" : "Открыть план"}<i>{contentPlanOpen ? "−" : "+"}</i></button></div>
             <div className="content-plan-shell">
               <article className="content-plan-setup">
                 <div className="content-plan-setup-head">
@@ -4635,8 +4651,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </div>
           </section>
 
-          <section className={`workspace-module adaptation-module ${adaptationOpen ? "" : "tool-collapsed"}`} id="adaptation">
-            <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Редакторы КЛИО</h2></div><p>14 режимов для готового текста: вычитка, ясность, пересборка, SEO, соцсети, реклама, адаптация под голос бренда и смена интонации.</p><button type="button" onClick={() => setAdaptationOpen((value) => !value)} aria-expanded={adaptationOpen}>{adaptationOpen ? "Свернуть" : "Открыть инструмент"}<i>{adaptationOpen ? "−" : "+"}</i></button></div>
+          <section className={`workspace-module adaptation-module ${adaptationOpen ? "" : "tool-collapsed"}`} id="adaptation" style={{ display: activeModule === "adaptation" ? undefined : "none" }}>
+            <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Редакторы КЛИО</h2></div><p>14 режимов для готового текста: вычитка, ясность, пересборка, SEO, соцсети, реклама, адаптация под голос бренда и смена интонации.</p><button type="button" onClick={() => toggleModule("adaptation")} aria-expanded={adaptationOpen}>{adaptationOpen ? "Свернуть" : "Открыть инструмент"}<i>{adaptationOpen ? "−" : "+"}</i></button></div>
             <div className="adaptation-shell">
               <article className="adaptation-input-card">
                 <div className="adaptation-card-head"><div><span>Исходник заказчика</span><h3>Вставьте готовый текст</h3></div><b>{adaptationSourceWords.toLocaleString("ru-RU")} слов</b></div>
@@ -4752,7 +4768,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
     <section className="modules section" id="modules">
       <div className="section-heading"><div><p className="kicker">Глава 02 / Полный цикл</p><h2>Не просто генерация.<br/><em>Система контента.</em></h2></div><p>Каждый модуль связан с остальными: данные компании и поисковой выдачи переходят в статьи, контент‑план и материалы для разных площадок.</p></div>
-      <div className="module-grid">{modules.map(([number, moduleTitle, text]) => { const active = ["01", "02", "03", "04", "05", "06"].includes(number); return <article className={active ? "module-active" : ""} key={number}><span>{number}</span>{active && <b className="module-state">Работает в MVP</b>}<div className="module-icon">{number === "01" ? "Aa" : number === "02" ? "↗" : number === "03" ? "▦" : number === "04" ? "✦" : number === "05" ? "25" : "✓"}</div><h3>{moduleTitle}</h3><p>{text}</p><button type="button" onClick={() => openModule(number)}>Протестировать ↗</button></article>; })}</div>
+      <div className="module-grid">{modules.map(([number, moduleTitle, text]) => { const active = ["01", "02", "03", "04", "05", "06"].includes(number); return <article className={active ? "module-active" : ""} key={number}><span>{number}</span>{active && <b className="module-state">Работает в MVP</b>}<div className="module-icon">{number === "01" ? "Aa" : number === "02" ? "↗" : number === "03" ? "▦" : number === "04" ? "✦" : number === "05" ? "25" : "✓"}</div><h3>{moduleTitle}</h3><p>{text}</p><button type="button" onClick={() => openLandingModule(number)}>Протестировать ↗</button></article>; })}</div>
     </section>
 
     <section className="use-cases section" id="cases">
@@ -4767,7 +4783,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       <p className="use-cases-hint">Листайте примеры влево или вправо <span>↔</span></p>
     </section>
 
-    <section className="plan-section" id="plan"><div className="plan-inner"><div className="plan-copy"><p className="kicker">Глава 03 / Контент‑план</p><h2>25 тем, которые<br/>работают на спрос.</h2><p>КЛИО объединяет поисковый интент, выбранную семантику и пробелы в контенте конкурентов. На выходе — готовая дорожная карта публикаций, а не список случайных идей.</p><ul><li><Icon name="check"/> SEO‑заголовок и метаописание</li><li><Icon name="check"/> Основной запрос и поддерживающая семантика</li><li><Icon name="check"/> Цель, аудитория, фактура и структура</li><li><Icon name="check"/> Статусы, передача в генератор и CSV</li></ul><button className="button light" type="button" onClick={() => openModule("05")}>Собрать контент‑план <Icon name="arrow"/></button></div><div className="plan-table"><div className="table-head"><b>Контент‑план / Август</b><span>Интент и приоритет</span></div>{[["01","Санаторное лечение в Карелии","Высокий","В работе"],["02","Как выбрать программу восстановления","Высокий","Готово"],["03","Минеральная вода: польза и показания","Средний","Запланировано"],["04","Лечебные грязи в санатории","Средний","Запланировано"],["05","Что взять с собой в санаторий","Доп.","Запланировано"]].map((row) => <div className="table-row" key={row[0]}><span>{row[0]}</span><b>{row[1]}</b><small>{row[2]}</small><i className={row[3] === "Готово" ? "done" : ""}>{row[3]}</i></div>)}</div></div></section>
+    <section className="plan-section" id="plan"><div className="plan-inner"><div className="plan-copy"><p className="kicker">Глава 03 / Контент‑план</p><h2>25 тем, которые<br/>работают на спрос.</h2><p>КЛИО объединяет поисковый интент, выбранную семантику и пробелы в контенте конкурентов. На выходе — готовая дорожная карта публикаций, а не список случайных идей.</p><ul><li><Icon name="check"/> SEO‑заголовок и метаописание</li><li><Icon name="check"/> Основной запрос и поддерживающая семантика</li><li><Icon name="check"/> Цель, аудитория, фактура и структура</li><li><Icon name="check"/> Статусы, передача в генератор и CSV</li></ul><button className="button light" type="button" onClick={() => openLandingModule("05")}>Собрать контент‑план <Icon name="arrow"/></button></div><div className="plan-table"><div className="table-head"><b>Контент‑план / Август</b><span>Интент и приоритет</span></div>{[["01","Санаторное лечение в Карелии","Высокий","В работе"],["02","Как выбрать программу восстановления","Высокий","Готово"],["03","Минеральная вода: польза и показания","Средний","Запланировано"],["04","Лечебные грязи в санатории","Средний","Запланировано"],["05","Что взять с собой в санаторий","Доп.","Запланировано"]].map((row) => <div className="table-row" key={row[0]}><span>{row[0]}</span><b>{row[1]}</b><small>{row[2]}</small><i className={row[3] === "Готово" ? "done" : ""}>{row[3]}</i></div>)}</div></div></section>
 
     <section className="pricing section" id="pricing">
       <div className="section-heading pricing-heading"><div><p className="kicker">Глава 04 / Тарифы</p><h2>Выберите объём<br/><em>редакционной работы.</em></h2></div><div className="billing-toggle" role="group" aria-label="Период оплаты"><button type="button" className={!annual ? "active" : ""} onClick={() => setAnnual(false)}>Ежемесячно</button><button type="button" className={annual ? "active" : ""} onClick={() => setAnnual(true)}>За год <span>−20%</span></button></div></div>
