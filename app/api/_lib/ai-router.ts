@@ -78,16 +78,23 @@ function outputText(response: unknown): { text: string; refused: boolean } {
     return { text: source.output_text.trim(), refused: false };
   }
   const output = Array.isArray(source.output) ? source.output : [];
+  // Only "message" items hold the model's actual answer — everything else
+  // in this array (reasoning, web_search_call, function_call...) is the
+  // model's own intermediate work, walked through in order before the
+  // final message. DeepSeek's reasoning items populate a real, non-empty
+  // content[].text (reasoning_text) — unlike OpenAI's, which leaves this
+  // empty — so without filtering by item type, the loop below would grab
+  // that reasoning narration instead of waiting for the final answer.
   for (const item of output) {
     if (!item || typeof item !== "object") continue;
-    const content = Array.isArray((item as Record<string, unknown>).content)
-      ? (item as Record<string, unknown>).content as unknown[]
-      : [];
+    const record = item as Record<string, unknown>;
+    if (record.type !== "message") continue;
+    const content = Array.isArray(record.content) ? record.content : [];
     for (const part of content) {
       if (!part || typeof part !== "object") continue;
-      const record = part as Record<string, unknown>;
-      if (record.type === "refusal") return { text: "", refused: true };
-      if (typeof record.text === "string" && record.text.trim()) return { text: record.text.trim(), refused: false };
+      const partRecord = part as Record<string, unknown>;
+      if (partRecord.type === "refusal") return { text: "", refused: true };
+      if (typeof partRecord.text === "string" && partRecord.text.trim()) return { text: partRecord.text.trim(), refused: false };
     }
   }
   return { text: "", refused: false };
