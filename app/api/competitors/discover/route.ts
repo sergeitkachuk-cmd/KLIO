@@ -1,4 +1,5 @@
 import { AiCallError, callAiModel } from "../../_lib/ai-router";
+import { aiConfigured } from "../../_lib/ai-config";
 import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../../_lib/workspace-account";
 import { readWebsiteContext } from "../../_lib/website-context";
 
@@ -288,7 +289,7 @@ export async function POST(request: Request) {
     // research route so this endpoint can't be looped for unbounded spend.
     await assertSecondaryQuotaAvailable("research");
 
-    if (!process.env.OPENAI_API_KEY?.trim()) {
+    if (!aiConfigured()) {
       return Response.json({ error: "Автоподбор требует подключённого AI‑доступа. Пока добавьте ссылки вручную." }, { status: 503 });
     }
 

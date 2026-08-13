@@ -2,6 +2,7 @@ import { readWebsiteContext, websiteSourceLabel } from "../../_lib/website-conte
 import { CORE_SYSTEM_RULES } from "../../../content-plans";
 import { AiNotConfiguredError, AiResponseError, openAiErrorResponse } from "../../_lib/openai-response";
 import { callAiModel } from "../../_lib/ai-router";
+import { aiConfigured } from "../../_lib/ai-config";
 import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../../_lib/workspace-account";
 
 type BrandAnalysisPayload = {
@@ -87,7 +88,7 @@ export async function POST(request: Request) {
     if (!input.website) return Response.json({ error: "Укажите сайт бренда, чтобы КЛИО могла его прочитать." }, { status: 400 });
 
     await assertSecondaryQuotaAvailable("research");
-    if (!process.env.OPENAI_API_KEY?.trim()) throw new AiNotConfiguredError();
+    if (!aiConfigured()) throw new AiNotConfiguredError();
     const [identity, website] = await Promise.all([workspaceIdentity(), readWebsiteContext(input.website)]);
     if (website.status === "blocked") {
       return Response.json({ error: "Этот адрес сайта отклонён проверкой безопасности. Проверьте ссылку и попробуйте снова." }, { status: 400 });

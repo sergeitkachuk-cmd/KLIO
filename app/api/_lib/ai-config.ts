@@ -1,10 +1,31 @@
 // Single source of truth for KLIO's AI routing: which model handles which
 // operation, at what reasoning effort, with what output budget. Nothing
 // outside this file should hardcode a model id, a reasoning effort level,
-// or an OpenAI price — see ai-router.ts for the call site that reads this
-// config, and every app/api/*/route.ts for the operations that use it.
+// or a price — see ai-router.ts for the call site that reads this config,
+// and every app/api/*/route.ts for the operations that use it.
 
-export const AI_MODELS = {
+export type AiProvider = "openai" | "deepseek";
+
+// One env var switches every operation at once — see ai-router.ts's
+// requestOnce for the actual per-provider HTTP call. Defaults to openai so
+// an unset/misspelled value never silently changes behavior in production.
+export function activeProvider(): AiProvider {
+  return process.env.AI_PROVIDER?.trim().toLowerCase() === "deepseek" ? "deepseek" : "openai";
+}
+
+export const PROVIDER_API_KEY_ENV: Record<AiProvider, string> = {
+  openai: "OPENAI_API_KEY",
+  deepseek: "DEEPSEEK_API_KEY",
+};
+
+// Single check for "/api/ai-status" and anywhere else that only needs a
+// yes/no — ai-router.ts reads PROVIDER_API_KEY_ENV directly since it also
+// needs the env var's name for its error message.
+export function aiConfigured(): boolean {
+  return Boolean(process.env[PROVIDER_API_KEY_ENV[activeProvider()]]?.trim());
+}
+
+const OPENAI_MODELS = {
   // Full-tier model: everything the visitor directly reads or publishes —
   // articles, posts, ads, landing copy, content plans, editor rewrites,
   // competitor analysis, semantic research.
@@ -15,32 +36,71 @@ export const AI_MODELS = {
   UTILITY: "gpt-5.4-nano",
 } as const;
 
-export type AiModelId = (typeof AI_MODELS)[keyof typeof AI_MODELS];
+const DEEPSEEK_MODELS = {
+  CONTENT: "deepseek-v4-pro",
+  UTILITY: "deepseek-v4-flash",
+} as const;
+
+// Resolved once per process start from AI_PROVIDER. Every OPERATION_CONFIG
+// entry below is written against AI_MODELS.CONTENT/UTILITY, never a literal
+// model id, so switching provider is one env var and a redeploy — not a
+// code change, and the OpenAI path stays intact as a fallback if DeepSeek
+// turns out to have problems.
+export const AI_MODELS = activeProvider() === "deepseek" ? DEEPSEEK_MODELS : OPENAI_MODELS;
+
+export type AiModelId =
+  | (typeof OPENAI_MODELS)[keyof typeof OPENAI_MODELS]
+  | (typeof DEEPSEEK_MODELS)[keyof typeof DEEPSEEK_MODELS];
 
 // If UTILITY is unavailable, a *retryable* short task may run on CONTENT
-// once nano's own retries are exhausted (recorded as a fallback in
-// ai_usage). CONTENT has no fallback: a full article is never silently
-// downgraded to the utility model.
+// once its own retries are exhausted (recorded as a fallback in ai_usage).
+// CONTENT has no fallback: a full article is never silently downgraded to
+// the utility model. Fallback never crosses providers — different API key,
+// different endpoint.
 export const FALLBACKS: Record<AiModelId, AiModelId | null> = {
-  [AI_MODELS.UTILITY]: AI_MODELS.CONTENT,
-  [AI_MODELS.CONTENT]: null,
+  "gpt-5.4-nano": "gpt-5.6-luna",
+  "gpt-5.6-luna": null,
+  "deepseek-v4-flash": "deepseek-v4-pro",
+  "deepseek-v4-pro": null,
 };
 
-export const MODEL_PRICING: Record<AiModelId, {
+type ModelPricing = {
   inputPerMillion: number;
   cachedInputPerMillion: number;
   outputPerMillion: number;
-}> = {
+  // DeepSeek only: peak-hour rates apply 01:00-04:00 and 06:00-10:00 UTC
+  // (roughly double off-peak) — see isDeepSeekPeakHour below. Absent for
+  // OpenAI models, which don't vary by time of day.
+  peak?: { inputPerMillion: number; cachedInputPerMillion: number; outputPerMillion: number };
+};
+
+export const MODEL_PRICING: Record<AiModelId, ModelPricing> = {
   "gpt-5.6-luna": { inputPerMillion: 1, cachedInputPerMillion: 0.1, outputPerMillion: 6 },
   "gpt-5.4-nano": { inputPerMillion: 0.2, cachedInputPerMillion: 0.02, outputPerMillion: 1.25 },
+  // Rates effective 2026-08-16 16:00 UTC (DeepSeek's move to peak/off-peak
+  // billing) — see https://api-docs.deepseek.com/quick_start/pricing.
+  "deepseek-v4-pro": {
+    inputPerMillion: 0.66, cachedInputPerMillion: 0.022, outputPerMillion: 1.98,
+    peak: { inputPerMillion: 1.32, cachedInputPerMillion: 0.044, outputPerMillion: 3.96 },
+  },
+  "deepseek-v4-flash": {
+    inputPerMillion: 0.22, cachedInputPerMillion: 0.007, outputPerMillion: 0.66,
+    peak: { inputPerMillion: 0.44, cachedInputPerMillion: 0.014, outputPerMillion: 1.32 },
+  },
 };
+
+function isDeepSeekPeakHour(date: Date): boolean {
+  const hour = date.getUTCHours();
+  return (hour >= 1 && hour < 4) || (hour >= 6 && hour < 10);
+}
 
 export function estimateCostUsd(model: AiModelId, usage: {
   inputTokens: number;
   cachedInputTokens: number;
   outputTokens: number;
-}): number {
-  const pricing = MODEL_PRICING[model];
+}, at: Date = new Date()): number {
+  const base = MODEL_PRICING[model];
+  const pricing = base.peak && isDeepSeekPeakHour(at) ? base.peak : base;
   const uncachedInput = Math.max(0, usage.inputTokens - usage.cachedInputTokens);
   return (
     (uncachedInput / 1_000_000) * pricing.inputPerMillion

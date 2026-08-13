@@ -1,14 +1,27 @@
 import { getDb } from "../../../db";
 import { aiUsage } from "../../../db/schema";
 import {
+  activeProvider,
   AI_MODELS,
   FALLBACKS,
   OPERATION_CONFIG,
+  PROVIDER_API_KEY_ENV,
   estimateCostUsd,
   type AiModelId,
   type AiOperation,
   type ReasoningEffort,
 } from "./ai-config";
+
+// Both providers speak (as far as their docs claim — verify against a real
+// key before fully trusting it) the same Responses API shape: model/input/
+// instructions/tools/reasoning/text, output_text or output[].content[].text
+// in the response, usage.input_tokens/output_tokens. That's why requestOnce
+// only branches on endpoint + api key below instead of needing a second
+// parser.
+const PROVIDER_ENDPOINTS: Record<ReturnType<typeof activeProvider>, string> = {
+  openai: "https://api.openai.com/v1/responses",
+  deepseek: "https://api.deepseek.com/v1/responses",
+};
 
 export class AiCallError extends Error {
   status: number;
@@ -156,14 +169,15 @@ async function requestOnce(params: {
   toolChoice?: "required";
   includeSources?: boolean;
 }) {
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  const provider = activeProvider();
+  const apiKey = process.env[PROVIDER_API_KEY_ENV[provider]]?.trim();
   if (!apiKey) {
-    const error = new AiCallError("ИИ пока не подключён. Добавьте OPENAI_API_KEY на сервере.", 503);
+    const error = new AiCallError(`ИИ пока не подключён. Добавьте ${PROVIDER_API_KEY_ENV[provider]} на сервере.`, 503);
     (error as { configError?: boolean }).configError = true;
     throw error;
   }
 
-  const response = await fetch("https://api.openai.com/v1/responses", {
+  const response = await fetch(PROVIDER_ENDPOINTS[provider], {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -183,18 +197,18 @@ async function requestOnce(params: {
   });
 
   if (response.status === 401 || response.status === 403) {
-    throw new AiCallError("Ошибка авторизации в OpenAI API.", response.status);
+    throw new AiCallError("Ошибка авторизации в AI API.", response.status);
   }
   if (response.status === 429) {
     const detail = await response.text();
-    const error = new AiCallError("Превышен лимит запросов к OpenAI.", 429);
+    const error = new AiCallError("Превышен лимит запросов к ИИ.", 429);
     (error as { transient?: boolean }).transient = true;
-    console.error("OpenAI rate limited", detail.slice(0, 500));
+    console.error(`${provider} rate limited`, detail.slice(0, 500));
     throw error;
   }
   if (!response.ok) {
     const detail = await response.text();
-    console.error("OpenAI request failed", response.status, detail.slice(0, 1200));
+    console.error(`${provider} request failed`, response.status, detail.slice(0, 1200));
     const transient = response.status >= 500;
     const error = new AiCallError("AI-редакция временно не ответила.", response.status);
     (error as { transient?: boolean }).transient = transient;

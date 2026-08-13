@@ -13,6 +13,7 @@ import {
 import { readWebsiteContext } from "../_lib/website-context";
 import { assertGenerationQuotaAvailable, recordGeneration, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 import { AiCallError, callAiModel } from "../_lib/ai-router";
+import { aiConfigured } from "../_lib/ai-config";
 import type { AiOperation } from "../_lib/ai-config";
 
 type Format = ContentFormat;
@@ -550,8 +551,7 @@ export async function POST(request: Request) {
 
     await assertGenerationQuotaAvailable();
 
-    const apiKey = process.env.OPENAI_API_KEY?.trim();
-    if (!apiKey) {
+    if (!aiConfigured()) {
       return Response.json({
         error: "ИИ пока не подключён. Демонстрационные ответы отключены, чтобы КЛИО не подменяла вашу тему шаблонным текстом.",
         code: "AI_NOT_CONFIGURED",

@@ -1,5 +1,6 @@
 import { assertGenerationQuotaAvailable, recordGeneration, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../../_lib/workspace-account";
 import { AiCallError, callAiModel } from "../../_lib/ai-router";
+import { aiConfigured } from "../../_lib/ai-config";
 
 type QuickPayload = { prompt?: unknown; brandId?: unknown };
 
@@ -68,8 +69,7 @@ export async function POST(request: Request) {
 
     await assertGenerationQuotaAvailable();
 
-    const apiKey = process.env.OPENAI_API_KEY?.trim();
-    if (!apiKey) {
+    if (!aiConfigured()) {
       return Response.json({
         error: "ИИ пока не подключён. Демонстрационные ответы отключены, чтобы КЛИО не подменяла вашу задачу шаблонным текстом.",
         code: "AI_NOT_CONFIGURED",

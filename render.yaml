@@ -17,6 +17,13 @@ services:
           property: connectionString
       - key: OPENAI_API_KEY
         sync: false
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      # "openai" or "deepseek" — switches every AI operation at once (see
+      # app/api/_lib/ai-config.ts). Leave unset/anything else and it stays
+      # on OpenAI — the DeepSeek integration is additive, not a replacement.
+      - key: AI_PROVIDER
+        value: openai
       - key: YANDEX_SEARCH_API_KEY
         sync: false
       - key: YANDEX_FOLDER_ID

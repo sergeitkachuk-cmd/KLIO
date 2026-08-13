@@ -13,7 +13,7 @@ import {
 import { readWebsiteContext } from "../_lib/website-context";
 import { assertSecondaryQuotaAvailable, recordEditorialAction, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 import { AiCallError, callAiModel } from "../_lib/ai-router";
-import { adaptationReasoningEffort } from "../_lib/ai-config";
+import { adaptationReasoningEffort, aiConfigured } from "../_lib/ai-config";
 
 type AdaptationGoal = AdaptationPlan;
 
@@ -164,8 +164,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Добавьте исходный текст объёмом не менее 30 слов." }, { status: 400 });
     }
 
-    const apiKey = process.env.OPENAI_API_KEY?.trim();
-    if (!apiKey) return Response.json({
+    if (!aiConfigured()) return Response.json({
       error: "ИИ пока не подключён. Демонстрационная адаптация отключена, чтобы КЛИО не подменяла исходный текст шаблонной версией.",
       code: "AI_NOT_CONFIGURED",
     }, { status: 503 });

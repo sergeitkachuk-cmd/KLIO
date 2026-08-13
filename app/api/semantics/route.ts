@@ -1,5 +1,6 @@
 import { AiNotConfiguredError, AiResponseError, openAiErrorResponse } from "../_lib/openai-response";
 import { callAiModel } from "../_lib/ai-router";
+import { aiConfigured } from "../_lib/ai-config";
 import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 
 type Intent = "Информационный" | "Коммерческий" | "Транзакционный" | "Смешанный" | "Навигационный";
@@ -116,7 +117,7 @@ export async function POST(request: Request) {
     const query = clean(payload.query, 240);
     if (!query) return Response.json({ error: "Введите основной запрос или тему." }, { status: 400 });
     await assertSecondaryQuotaAvailable("research");
-    if (!process.env.OPENAI_API_KEY?.trim()) throw new AiNotConfiguredError();
+    if (!aiConfigured()) throw new AiNotConfiguredError();
     const identity = await workspaceIdentity();
     const brand = cleanBrand(payload.brand);
     const geography = cleanGeography(payload.geography);
