@@ -370,6 +370,20 @@ const TOPIC_GENERIC_WORDS = new Set([
   "выбрать", "выбор", "лучший", "лучшие", "статья", "материал", "обзор",
   "санаторий", "санатория", "санаторный", "санаторное", "курорт", "курорта",
   "лечение", "лечения", "лечить", "лечебный", "лечебная", "программа", "программы",
+  // The Quick-generator tab copies its freeform single-box prompt straight
+  // into Advanced's "Тема материала" field (see setTopic in
+  // textora-experience.tsx) — that text is phrased as an instruction
+  // ("Напиши пост о том, что..."), not a topic noun phrase. Without this,
+  // semanticTokens()'s first-5-tokens cut picked up the instruction's own
+  // verbs/nouns ("напиши", "пост", "соцсеть") ahead of the actual subject
+  // later in the sentence, so topicCoverage() checked the body for the
+  // wrong words and rejected genuinely on-topic material.
+  "напиши", "напишите", "написать", "создай", "создайте", "создать",
+  "сделай", "сделайте", "сделать", "подготовь", "подготовьте", "подготовить",
+  "составь", "составьте", "составить", "придумай", "придумайте", "придумать",
+  "оформи", "оформите", "оформить", "расскажи", "расскажите", "рассказать",
+  "опиши", "опишите", "описать", "пост", "посты", "соцсеть", "соцсети",
+  "публикация", "публикации", "объявление", "объявления", "текст", "тексты",
 ]);
 
 function semanticTokens(value: string) {
