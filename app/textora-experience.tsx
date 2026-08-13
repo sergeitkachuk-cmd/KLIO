@@ -4457,7 +4457,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <ol>{activeFormatPlan.steps.map((step) => <li key={step}>{step}</li>)}</ol>
                   <p><i>Итог</i>{activeFormatPlan.result}</p>
                 </div>
-                <label className="field">Тема материала<input value={topic} onChange={(event) => { setTopic(event.target.value); setGenerationCoverage(null); }} autoComplete="off" /></label>
+                <label className="field">Тема материала<AutoTextarea rows={2} value={topic} onChange={(event) => { setTopic(event.target.value); setGenerationCoverage(null); }} /></label>
                 <div className="field"><ModuleSelect label="Авторская позиция" value={authorPosition} options={[
                   { value: "brand", label: "От лица бренда" }, { value: "expert", label: "Эксперт" }, { value: "journalist", label: "Журналист" }, { value: "customer", label: "Клиент" }, { value: "neutral", label: "Нейтральная" },
                 ]} onChange={setAuthorPosition}/><small>Позиция задаёт местоимения и дистанцию: тон меняет подачу, но не заменяет голос автора.</small></div>
