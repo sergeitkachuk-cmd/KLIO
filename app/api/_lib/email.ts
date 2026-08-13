@@ -32,6 +32,13 @@ async function sendTransactionalEmail(params: { to: string; subject: string; htm
   const fromEmail = process.env.UNISENDER_FROM_EMAIL?.trim();
   if (!fromEmail) throw new Error("UNISENDER_FROM_EMAIL не настроен.");
 
+  // Set once noreply.<domain> shows "Настроен" with a real Backend ID under
+  // Unisender Go's "Домены ссылок" — passing it explicitly avoids the
+  // account falling back to whichever backend domain it picks by default
+  // (the account also has an unrelated "unieml.ru" entry sitting in
+  // "Запрещен" status, which we never want selected).
+  const backendId = process.env.UNISENDER_BACKEND_ID?.trim();
+
   const response = await fetch(UNISENDER_GO_API_URL, {
     method: "POST",
     headers: {
@@ -53,6 +60,7 @@ async function sendTransactionalEmail(params: { to: string; subject: string; htm
         // defaults on with no tracking domain set up).
         track_links: 0,
         track_read: 0,
+        ...(backendId ? { custom_backend_id: Number(backendId) } : {}),
       },
     }),
   });

@@ -29,6 +29,8 @@ services:
         sync: false
       - key: UNISENDER_FROM_EMAIL
         sync: false
+      - key: UNISENDER_BACKEND_ID
+        sync: false
       - key: APP_BASE_URL
         value: https://цифроваяредакция.рф
 
