@@ -11,6 +11,10 @@ type BrandAnalysisPayload = {
   positioning?: unknown;
   audience?: unknown;
   advantages?: unknown;
+  products?: unknown;
+  services?: unknown;
+  proof?: unknown;
+  geography?: unknown;
 };
 
 type BrandAnalysisResult = {
@@ -19,6 +23,10 @@ type BrandAnalysisResult = {
   positioning: string;
   audience: string;
   advantages: string;
+  products: string;
+  services: string;
+  proof: string;
+  geography: string;
 };
 
 function clean(value: unknown, maxLength: number) {
@@ -33,6 +41,10 @@ function normalizePayload(raw: BrandAnalysisPayload) {
     positioning: clean(raw.positioning, 1400),
     audience: clean(raw.audience, 1200),
     advantages: clean(raw.advantages, 2000),
+    products: clean(raw.products, 1400),
+    services: clean(raw.services, 1400),
+    proof: clean(raw.proof, 1400),
+    geography: clean(raw.geography, 800),
   };
 }
 
@@ -45,8 +57,12 @@ function analysisSchema() {
       positioning: { type: "string" },
       audience: { type: "string" },
       advantages: { type: "string" },
+      products: { type: "string" },
+      services: { type: "string" },
+      proof: { type: "string" },
+      geography: { type: "string" },
     },
-    required: ["name", "description", "positioning", "audience", "advantages"],
+    required: ["name", "description", "positioning", "audience", "advantages", "products", "services", "proof", "geography"],
     additionalProperties: false,
   } as const;
 }
@@ -58,6 +74,10 @@ function normalizeResult(result: BrandAnalysisResult, fallbackName: string) {
     positioning: clean(result.positioning, 700),
     audience: clean(result.audience, 700),
     advantages: clean(result.advantages, 1000),
+    products: clean(result.products, 700),
+    services: clean(result.services, 700),
+    proof: clean(result.proof, 700),
+    geography: clean(result.geography, 400),
   };
 }
 
@@ -84,6 +104,10 @@ export async function POST(request: Request) {
       "positioning — редакционный ориентир: какое место бренд занимает в сознании аудитории. Не рекламный слоган и не список фич, а сжатая формулировка позиционирования в 1–2 предложениях. Если это лишь вывод из материалов, обозначай его осторожно без превосходства.",
       "audience — кто читатель: с какой задачей и на каком уровне понимания темы приходит к этому бренду. 1–3 предложения, без демографических догадок, которых нет на сайте.",
       "advantages — только подтверждённые особенности и факты со страницы, на которые можно опираться в тексте; каждый факт с новой строки, без нумерации и без слов вроде «лучший» или «номер один», если это не прямая цитата с сайта.",
+      "products — конкретные продукты, тарифы или программы бренда по факту сайта; без общих слов вроде «широкий ассортимент», если нет конкретики.",
+      "services — что компания реально делает для аудитории: перечень услуг по факту сайта, без домыслов о том, чего на сайте нет.",
+      "proof — только реально подтверждённые основания доверия: документы, лицензии, сертификаты, конкретные условия программ, исследования, цифры с самого сайта. Если ничего подобного на сайте нет — верни пустую строку, не придумывай и не обобщай в духе «команда профессионалов».",
+      "geography — рынок и территория работы бренда (не путать с географией поискового спроса): город, регион, страна или формат (полностью онлайн). Если на сайте не указано — верни пустую строку.",
       "Уже заполненные поля профиля — это черновик пользователя, а не факт: используй их как подсказку о фокусе, но приоритет всегда у того, что подтверждено сайтом или поиском; явно устаревшее или неточное — исправляй.",
       "Если по теме почти ничего не удалось найти, честно пиши только то немногое, что подтверждено, короче — не заполняй пробелы предположениями.",
       "Пиши по-русски, нейтральным деловым тоном, без маркетинговых клише.",
@@ -106,6 +130,10 @@ export async function POST(request: Request) {
           positioning: input.positioning || null,
           audience: input.audience || null,
           advantages: input.advantages || null,
+          products: input.products || null,
+          services: input.services || null,
+          proof: input.proof || null,
+          geography: input.geography || null,
         },
       }, null, 2),
     });

@@ -2284,6 +2284,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       positioning: "",
       audience: "",
       advantages: "",
+      products: "",
+      services: "",
+      proof: "",
+      geography: "",
+      vocabulary: "",
+      cta: "",
+      voice: "",
+      restrictions: "",
+      prohibited: "",
       signature: `С заботой о вас, ${name}.`,
     };
     setBrandSwitchBusy(true);
@@ -2539,12 +2548,16 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           positioning: brand.positioning,
           audience: brand.audience,
           advantages: brand.advantages,
+          products: brand.products,
+          services: brand.services,
+          proof: brand.proof,
+          geography: brand.geography,
         }),
       });
       const payload = await safeJson(response) as {
         error?: string;
         mode?: "ai";
-        result?: { name: string; description: string; positioning: string; audience: string; advantages: string };
+        result?: { name: string; description: string; positioning: string; audience: string; advantages: string; products: string; services: string; proof: string; geography: string };
         sources?: { website?: string };
         usage?: { account?: WorkspaceAccount } | null;
       };
@@ -2560,6 +2573,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         positioning: result.positioning,
         audience: result.audience,
         advantages: result.advantages,
+        products: result.products,
+        services: result.services,
+        proof: result.proof,
+        geography: result.geography,
       }));
       setBrandSaved(false);
       setSemanticNeedsRefresh(true);
