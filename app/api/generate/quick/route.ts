@@ -2,7 +2,46 @@ import { assertGenerationQuotaAvailable, recordGeneration, workspaceIdentity, Wo
 import { AiCallError, callAiModel } from "../../_lib/ai-router";
 import { aiConfigured } from "../../_lib/ai-config";
 
-type QuickPayload = { prompt?: unknown; brandId?: unknown };
+type QuickPayload = { prompt?: unknown; brandId?: unknown; brand?: unknown };
+
+type QuickBrandInput = {
+  name: string;
+  website: string;
+  description: string;
+  positioning: string;
+  audience: string;
+  advantages: string;
+  voice: string;
+  restrictions: string;
+  signature: string;
+  prohibited: string;
+};
+
+function cleanQuickField(value: unknown, maxLength: number) {
+  return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+}
+
+// Quick mode previously never received the brand profile at all, even with
+// "Использовать бренд" switched on in the workspace — every generation
+// came out generic, with no way for a visitor to tell why. Same anti-
+// fabrication discipline as the Advanced generator: only pass through what
+// the user actually confirmed in their profile, nothing inferred.
+function cleanQuickBrand(value: unknown): QuickBrandInput | null {
+  const source = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const brand: QuickBrandInput = {
+    name: cleanQuickField(source.name, 160),
+    website: cleanQuickField(source.website, 220),
+    description: cleanQuickField(source.description, 1800),
+    positioning: cleanQuickField(source.positioning, 1400),
+    audience: cleanQuickField(source.audience, 1200),
+    advantages: cleanQuickField(source.advantages, 2000),
+    voice: cleanQuickField(source.voice, 2000),
+    restrictions: cleanQuickField(source.restrictions, 2000),
+    signature: cleanQuickField(source.signature, 1200),
+    prohibited: cleanQuickField(source.prohibited, 2000),
+  };
+  return brand.name ? brand : null;
+}
 
 const ALLOWED_FORMATS = new Set(["seo", "social", "ads", "landing"]);
 
@@ -78,6 +117,10 @@ export async function POST(request: Request) {
 
     const identity = await workspaceIdentity();
     const brandId = typeof payload.brandId === "string" ? payload.brandId : undefined;
+    // Only present when the workspace's "Использовать бренд" toggle is on
+    // (the client omits `brand` entirely otherwise) — Quick mode stays just
+    // as usable for one-off topics unrelated to any brand.
+    const brand = cleanQuickBrand(payload.brand);
 
     let brief: QuickBrief;
     try {
@@ -119,6 +162,11 @@ export async function POST(request: Request) {
           "Пользователь описал задачу свободным текстом в одном окне — как в чате с ассистентом, без отдельных полей темы, формата и ключей.",
           "Разбор задачи уже выполнен (см. inferred_brief): используй его формат, интонацию, тему и целевой объём в знаках с пробелами как основу, но не копируй их в текст статьи и не упоминай сам факт разбора.",
           "Поле format в ответе должно совпадать с inferred_brief.format, поле tone — с inferred_brief.tone, если только сам текст задачи явно не требует иного.",
+          ...(brand ? [
+            "В brand_profile передан профиль бренда пользователя (кнопка «Использовать бренд» включена) — учитывай его только там, где задача реально про этот бренд. Если задача про другую компанию или тему, не связанную с брендом, profile не подставляй насильно — пиши по задаче.",
+            "Когда brand_profile уместен: пиши от лица бренда («мы», «наш/наша/наше»), а не как внешний наблюдатель — запрещены формулы «на сайте компании», «данный бренд предлагает». Используй только то, что подтверждено в description/positioning/audience/advantages — ничего сверх этого не выдумывай. Поля voice/restrictions/prohibited, если заполнены, соблюдай как редакционный стиль и стоп-лист. Если задача требует фактов, которых нет в brand_profile, добавляй только проверяемую отраслевую фактуру отдельно от свойств бренда — не приписывай её бренду.",
+            "Поле signature в brand_profile, если заполнено, уместно использовать в конце материала — не обязательно каждый раз, только там, где это естественно по формату.",
+          ] : []),
           "Если в задаче назван конкретный бренд, компания, продукт или сайт, выполни веб‑поиск, найди официальный сайт и реальные факты о нём. Не выдумывай функции, преимущества, характеристики или программу — пиши только на подтверждённых фактах. Если поиск не подтвердил, что это за компания или продукт, честно опирайся только на то, что подтвердилось, и отметь пробел в editorial_comment.",
           "Любой факт из веб‑поиска обязательно отметь в editorial_comment вместе со ссылкой на источник и пометкой «найдено в вебе, требует проверки».",
           "Не ограничивайся сайтом бренда. Для экспертного, информационного или маркетингового материала выполни веб‑поиск и по самой теме: добавь проверяемые объяснения, нюансы, критерии выбора, безопасные советы или примеры сценариев, которые делают текст полезным читателю. Общую отраслевую фактуру не выдавай за свойства бренда. Для медицинских, правовых и финансовых тем используй только авторитетные источники, не давай персональных назначений и не обещай результат.",
@@ -130,6 +178,7 @@ export async function POST(request: Request) {
         input: JSON.stringify({
           user_prompt: prompt,
           inferred_brief: { format: brief.format, tone: brief.tone, topic: brief.topic, target_length: brief.targetLength },
+          brand_profile: brand,
         }),
       });
       parsed = materialCall.result;
