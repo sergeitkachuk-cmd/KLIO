@@ -4361,7 +4361,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <div className="semantic-primary-query">
                   <label>
                     <span className="semantic-primary-label"><i>Начните здесь</i><b>Тема, услуга или вопрос клиента</b></span>
-                    <input value={semanticQuery} onChange={(event) => updateSemanticQuery(event.target.value)} placeholder="Например: санаторий для лечения остеохондроза" autoComplete="off" />
+                    <AutoTextarea rows={1} value={semanticQuery} onChange={(event) => updateSemanticQuery(event.target.value)} placeholder="Например: санаторий для лечения остеохондроза" autoComplete="off" />
                     <small>Например, услуга, проблема клиента или направление бизнеса. Этого достаточно — специальные SEO-знания не нужны.</small>
                   </label>
                 </div>
@@ -4588,6 +4588,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <div><span>Сравнительная матрица</span><h3>Какие темы раскрывают страницы</h3><p>Ячейка показывает наличие смыслового блока. Это не оценка качества компании, не проверка посещаемости и не сравнение SEO-позиций.</p></div>
                 <div className="competitor-legend"><span><i className="coverage-strong"><CoverageIcon coverage="strong"/></i>Раскрыто</span><span><i className="coverage-partial"><CoverageIcon coverage="partial"/></i>Частично</span><span><i className="coverage-missing"><CoverageIcon coverage="missing"/></i>Не найдено</span><span><i className="coverage-unknown"><CoverageIcon coverage="unknown"/></i>Не проверено</span></div>
               </div>
+              <p className="competitor-table-hint">Таблица шире экрана — листайте вправо, чтобы сравнить с конкурентами <span>→</span></p>
               <div className="competitor-table-scroll">
                 <table className="competitor-table">
                   <thead><tr><th>Тема и задача</th><th className="brand-column"><span>Ваш бренд</span><small>{useBrand ? effectiveBrand.name : "Профиль отключён"}</small></th>{competitorResult.competitors.map((source) => <th key={source.id}><span>{source.label}</span><small className={`source-${source.status}`}>{source.status === "loaded" ? "страница прочитана" : source.status === "example" ? "пример" : source.status === "blocked" ? "адрес отклонён" : "страница недоступна"}</small>{/^https?:\/\//i.test(source.url) ? <a href={source.url} target="_blank" rel="noreferrer">{compactUrl(source.url)} <Icon name="arrow"/></a> : <em>{compactUrl(source.url)}</em>}</th>)}</tr></thead>

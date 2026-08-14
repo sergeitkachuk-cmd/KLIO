@@ -5259,28 +5259,42 @@ footer nav a {
   font-weight: 720;
 }
 
-.semantic-primary-query input {
+/* Was a single-line <input> - long topics just ran off its edge instead
+   of wrapping, same complaint already fixed once for the generator's
+   own topic field (see .field AutoTextarea). Now an AutoTextarea, so
+   height is a min-height it grows past (a fixed height would fight the
+   component's own resize-to-fit-content logic), and it needs real
+   vertical padding of its own — an <input> centers single-line text
+   vertically regardless of padding, a <textarea> does not. */
+.semantic-primary-query input,
+.semantic-primary-query textarea {
+  display: block;
   width: 100%;
-  height: 66px;
+  min-height: 66px;
   min-width: 0;
-  padding: 0 20px;
+  padding: 21px 20px;
   border: 2px solid rgba(255, 255, 255, 0.28);
   border-radius: 15px;
   outline: none;
+  resize: none;
   color: var(--ink);
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.06));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.12);
+  font-family: inherit;
   font-size: 19px;
   font-weight: 570;
+  line-height: 1.3;
   letter-spacing: -0.015em;
 }
 
-.semantic-primary-query input::placeholder {
+.semantic-primary-query input::placeholder,
+.semantic-primary-query textarea::placeholder {
   color: rgba(255, 255, 255, 0.42);
   font-weight: 450;
 }
 
-.semantic-primary-query input:focus {
+.semantic-primary-query input:focus,
+.semantic-primary-query textarea:focus {
   border-color: var(--acid);
   box-shadow: 0 0 0 4px rgba(216, 255, 101, 0.14);
 }
@@ -7604,6 +7618,31 @@ footer nav a {
   height: 18px;
 }
 
+/* Only the "Тема и задача" column (and its checkable topic cards) was
+   visible on a phone, with "Ваш бренд" and every competitor column
+   scrolled off to the right and no cue that swiping would reveal them
+   (site owner: "непонятно, что надо листать вправо"). Hidden above the
+   table's own 1080px min-width, where it usually fits without scrolling
+   and the hint would just be noise. */
+.competitor-table-hint {
+  display: none;
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.competitor-table-hint span {
+  margin-left: 4px;
+  color: var(--acid);
+  font-size: 15px;
+}
+
+@media (max-width: 1100px) {
+  .competitor-table-hint {
+    display: block;
+  }
+}
+
 .competitor-table-scroll {
   overflow-x: auto;
 }
@@ -9922,8 +9961,9 @@ footer nav a {
     flex-direction: column;
   }
 
-  .semantic-primary-query input {
-    height: 60px;
+  .semantic-primary-query input,
+  .semantic-primary-query textarea {
+    min-height: 60px;
     padding-inline: 15px;
     font-size: 17px;
   }
@@ -11048,10 +11088,39 @@ footer nav a {
 @media (max-width: 600px) {
   .generation-brief-check,
   .content-plan-source-strip,
-  .content-plan-summary,
   .content-plan-seo,
   .content-plan-brief-grid {
     grid-template-columns: 1fr;
+  }
+
+  /* Stayed a single column here (each stat its own full-width row) while
+     every other collapsed-to-1fr grid on this list just has one thing
+     per row anyway - four of these stacked, each with the same 20px/33px
+     desktop padding and number size, ran close to a full phone screen
+     tall (site owner screenshot: 4 near-full-height cards for "Темы 10 /
+     Кластеры 7 / В работе 2 / Готово 0"). Two columns plus tighter
+     padding/type keeps all four in about a third of that. */
+  .content-plan-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .content-plan-summary article {
+    padding: 14px 16px;
+  }
+
+  .content-plan-summary article > span {
+    font-size: 10px;
+  }
+
+  .content-plan-summary article > b {
+    margin: 5px 0 1px;
+    font-size: 24px;
+  }
+
+  .content-plan-summary article > small {
+    font-size: 10px;
+    line-height: 1.3;
   }
 
   .content-plan-setup-head,
@@ -11072,14 +11141,62 @@ footer nav a {
     font-size: 11px;
   }
 
+  /* Checkbox+index used to force .content-plan-item-copy (tags row +
+     title + "Основной запрос") onto its own line below them, since the
+     whole copy block was one flex child that either fit alongside them
+     or wrapped as a single unit. display: contents promotes its own
+     children to be flex items of .content-plan-item-main directly, so
+     each piece can be placed independently: the tags row joins
+     checkbox+index on the first line (site owner: "поднять на уровень
+     плашек"), and the title + "Основной запрос" each get their own
+     full-width row below instead of being indented under where the
+     tags row used to start. */
+  .content-plan-item-copy {
+    display: contents;
+  }
+
+  .content-plan-item-main > .content-plan-select {
+    order: 1;
+  }
+
+  .content-plan-index {
+    order: 2;
+  }
+
+  .content-plan-item-copy > div {
+    order: 3;
+    /* flex-basis: 0, not auto — auto reports this row's *unwrapped*
+       (max-content) width to .content-plan-item-main's own line-
+       breaking decision, which is wider than the line has room for
+       next to checkbox+index even though the row can wrap its own
+       pills internally (flex-wrap: wrap on the row itself, above) -
+       so the whole row wrapped to its own line instead of sharing one
+       with them. Basis 0 makes its hypothetical size minimal, so it
+       fits on line one and flex-grow fills whatever room is left. */
+    flex: 1 1 0;
+  }
+
   .content-plan-item-copy h3 {
+    order: 4;
+    flex-basis: 100%;
+    margin-top: 4px;
     font-size: 19px;
   }
 
   .content-plan-item-copy > p {
+    order: 5;
+    flex-basis: 100%;
     align-items: flex-start;
     flex-direction: column;
     gap: 3px;
+  }
+
+  .content-plan-item-main > .content-plan-status {
+    order: 6;
+  }
+
+  .content-plan-item-main > .content-plan-item-actions {
+    order: 7;
   }
 
   .content-plan-brief {
@@ -14074,9 +14191,15 @@ footer nav a {
     width: 100%;
   }
 
-  .content-plan-toolbar-actions > button:last-child {
-    grid-column: 1 / -1;
-  }
+  /* Used to force the last button (almost always "Скачать план (CSV)" —
+     "Копия" only exists once the plan's already been saved once) onto
+     its own full-width row. In the common two-button case that left
+     "Сохранить в материалы" alone on row one with an empty second
+     column next to it — exactly the dead space circled in the site
+     owner's screenshot — instead of the two sitting side by side like
+     asked. Removed: with a plain 2-column grid, two buttons pair up
+     naturally, and a third (when "Копия" is showing) just wraps to a
+     new row starting at column one, no forced stretch either way. */
 
   .content-plan-replacement {
     padding: 15px;
@@ -17804,17 +17927,20 @@ footer nav a {
   color: #0d1b31;
 }
 
-[data-theme="light"] .semantic-primary-query input {
+[data-theme="light"] .semantic-primary-query input,
+[data-theme="light"] .semantic-primary-query textarea {
   border-color: rgba(15, 23, 42, 0.18);
   background: rgba(255, 255, 255, 0.8);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.6);
 }
 
-[data-theme="light"] .semantic-primary-query input::placeholder {
+[data-theme="light"] .semantic-primary-query input::placeholder,
+[data-theme="light"] .semantic-primary-query textarea::placeholder {
   color: rgba(13, 27, 49, 0.35);
 }
 
-[data-theme="light"] .semantic-primary-query input:focus {
+[data-theme="light"] .semantic-primary-query input:focus,
+[data-theme="light"] .semantic-primary-query textarea:focus {
   border-color: #2452b8;
   box-shadow: 0 0 0 4px rgba(53, 104, 212, 0.16);
 }
