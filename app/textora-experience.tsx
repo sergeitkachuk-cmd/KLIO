@@ -4018,16 +4018,19 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     showToast("Откройте рабочее пространство для тестирования модуля");
   }
 
-  // Switching the active module swaps content in place, but if the visitor
-  // was scrolled down into whatever was showing before, the newly-visible
-  // module can appear below the fold — reads as "the click did nothing".
-  // Bring it into view on every switch (skipped for "start": that's the
-  // overview shown at the top of the page already).
+  // Left over from when modules were a long accordion page: scrolling the
+  // clicked module's own top edge to the viewport top made sense when it
+  // could be buried under other open modules. Now exactly one module is
+  // ever rendered (the rest are display:none), so that same scrollIntoView
+  // pushed workspace-heading — which is not part of any module, always
+  // rendered, and sits right above it — off the top of the screen instead
+  // (site owner: title and brand pill cropped off after switching tabs).
+  // Scrolling to the page top keeps the heading and the new module both
+  // in view together, which is what "switching tabs" should look like.
   useEffect(() => {
     if (activeModule === "start") return;
-    const targetId = activeModule === "brand" ? "brand-profile" : activeModule;
     const frame = window.requestAnimationFrame(() => {
-      document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     });
     return () => window.cancelAnimationFrame(frame);
   }, [activeModule]);

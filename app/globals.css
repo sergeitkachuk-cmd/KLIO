@@ -399,17 +399,30 @@ select:focus-visible {
    screen readers still get "КЛИО." etc. — only the glyph itself is
    hidden via color:transparent, the circle is a background box drawn
    next to it). Sized in em off whatever heading it sits in, so it scales
-   itself consistently from tiny UI labels up to the hero's giant h1. */
+   itself consistently from tiny UI labels up to the hero's giant h1.
+   !important throughout: this dot now lands inside a dozen different
+   headings, several of which already carry their own "any span/em in
+   here" kicker-label rule (e.g. .workspace-module-heading span,
+   .brand-profile-head span) at (0,1,1) specificity — one tick above this
+   class alone. Without !important those ambient rules quietly won: the
+   "." rendered in the kicker's own color instead of being hidden (looked
+   like two dots/a colon), and its box sized itself off an 11px kicker
+   font-size instead of the real heading size (read as tiny, or in the
+   h1's case, positioned itself oddly enough to look like it had "floated
+   away"). This is a self-contained brand mark meant to look identical
+   regardless of what else is styling text around it, so overriding
+   unconditionally here is the actual intent, not a papered-over hack. */
 .brand b span,
 .klio-mark-dot {
-  display: inline-block;
-  width: 0.22em;
-  height: 0.22em;
-  margin-left: 0.14em;
-  border-radius: 50%;
-  background: #b7a7ff;
-  color: transparent;
-  vertical-align: 0.03em;
+  display: inline-block !important;
+  width: 0.22em !important;
+  height: 0.22em !important;
+  margin-left: 0.14em !important;
+  border-radius: 50% !important;
+  background: #b7a7ff !important;
+  color: transparent !important;
+  vertical-align: middle !important;
+  font-size: inherit !important;
 }
 
 /* Plain link reading inline inside a sentence, wherever a hint needs to
@@ -15405,7 +15418,10 @@ footer nav a {
    that needs overriding here, not color. */
 [data-theme="light"] .brand b span,
 [data-theme="light"] .klio-mark-dot {
-  background: #6d28d9;
+  /* !important to win over the base rule's own !important background —
+     non-important can never beat an !important declaration regardless
+     of specificity, so this override needs the same weight. */
+  background: #6d28d9 !important;
 }
 
 [data-theme="light"] .theme-toggle {
