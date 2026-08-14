@@ -14356,7 +14356,7 @@ footer nav a {
   gap: 10px;
   padding: 22px 22px 20px;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-left: 3px solid var(--module-accent, #7450bd);
+  border-left: 4px solid var(--module-accent, #7450bd);
   border-radius: 4px 20px 4px 4px;
   color: inherit;
   text-align: left;
@@ -14428,6 +14428,17 @@ footer nav a {
 .workspace-start-card-competitors { --module-accent: #7a5b91; --module-tint: rgba(122, 91, 145, 0.07); }
 .workspace-start-card-content-plan { --module-accent: #3f7e70; --module-tint: rgba(54, 129, 109, 0.07); }
 .workspace-start-card-adaptation { --module-accent: #9b536d; --module-tint: rgba(155, 83, 109, 0.065); }
+
+/* Semantics/content-plan's own module-accent (#376fa8, #3f7e70) is darker
+   than the other four - fine for the solid left border, but as the CTA
+   text+arrow color on a dark card it read as a visibly smaller/fainter
+   arrow than the other cards (low contrast, not actually a different
+   size). Brightened here to the same values already used for these two
+   in the stats bar (.stat-semantics/.stat-content-plan); reasserted back
+   to the plain accent in light theme below, where the original darker
+   color is the one with good contrast (on a white card, not navy). */
+.workspace-start-card-semantics span { color: #6fa8dc; }
+.workspace-start-card-content-plan span { color: #55c2a3; }
 
 @media (max-width: 960px) {
   .workspace-start-hero {
@@ -16219,6 +16230,14 @@ footer nav a {
 
 [data-theme="light"] .workspace-start-card p {
   color: rgba(13, 27, 49, 0.64);
+}
+
+[data-theme="light"] .workspace-start-card-semantics span {
+  color: #376fa8;
+}
+
+[data-theme="light"] .workspace-start-card-content-plan span {
+  color: #3f7e70;
 }
 
 
