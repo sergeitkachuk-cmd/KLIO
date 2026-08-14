@@ -4758,7 +4758,7 @@ footer nav a {
 /* Each link carries the same --module-accent its module's own heading
    uses (see .semantics-module etc.), so the active state below lights
    up in that module's colour instead of one generic highlight. */
-.workspace-sidebar nav a[href="#start"] { --module-accent: #d8ff65; }
+.workspace-sidebar nav a[href="#start"] { --module-accent: #4c2e8f; }
 .workspace-sidebar nav a[href="#brand-profile"] { --module-accent: #7450bd; }
 .workspace-sidebar nav a[href="#generator"] { --module-accent: #6539c7; }
 .workspace-sidebar nav a[href="#semantics"] { --module-accent: #376fa8; }
@@ -15401,6 +15401,16 @@ footer nav a {
   box-shadow: 0 20px 60px rgba(20, 40, 80, 0.1), inset 0 1px rgba(255, 255, 255, 0.7);
 }
 
+/* The logo dot (.brand b span) and every KlioMark()/headline instance of
+   it (.klio-mark-dot) share one flat lavender - fine on the dark header/
+   dark hero this was designed against, washed out on the pale panels
+   light theme flips those same spots to (same header right above this
+   rule is one of them). Darker, still clearly purple, on light. */
+[data-theme="light"] .brand b span,
+[data-theme="light"] .klio-mark-dot {
+  color: #6d28d9;
+}
+
 [data-theme="light"] .theme-toggle {
   border-color: rgba(15, 23, 42, 0.16);
   color: #0d1b31;
@@ -15594,10 +15604,11 @@ footer nav a {
 
 /* Same per-module accent as the dark theme's active state, just tinted
    toward white instead of the dark sidebar so it stays legible on a
-   light background. "Начните здесь" keeps the acid-green var but swaps
-   it for the same cool blue used elsewhere on light - straight lime
-   read as muddy here, same reasoning as the marker colour above. */
-[data-theme="light"] .workspace-sidebar nav a[href="#start"] { --module-accent: #2452b8; }
+   light background. "Начните здесь" was acid-green, then swapped to blue
+   for the same on-light contrast reasoning as the marker colour above -
+   now dark violet to match the dark-theme pick (site owner: yellow read
+   badly there), same hex works fine on light too. */
+[data-theme="light"] .workspace-sidebar nav a[href="#start"] { --module-accent: #4c2e8f; }
 
 [data-theme="light"] .workspace-sidebar nav a.active {
   border-color: color-mix(in srgb, var(--module-accent, #2452b8) 55%, transparent);

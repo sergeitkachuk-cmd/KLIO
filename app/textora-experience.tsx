@@ -782,12 +782,16 @@ const WORKSPACE_MODULE_GUIDE: Array<{
   text: string;
   cta: string;
 }> = [
-  { id: "generator", step: "01", title: "Генератор материала", text: "Опишите тему и ключевые слова — КЛИО соберёт цельный текст с SEO‑заголовком, метаописанием и подзаголовками. Работает и без заполненного профиля бренда.", cta: "Написать материал" },
+  // Same order as the sidebar nav (brand -> generator -> content-plan ->
+  // adaptation -> semantics -> competitors), not the old
+  // required-first/optional-after grouping - the sidebar is what people
+  // actually navigate by, so the cards should read the same way.
   { id: "brand", step: "+", title: "Профиль бренда", text: "Опишите компанию один раз — аудиторию, УТП, тон голоса. Дальше КЛИО сама подставляет это в каждую генерацию, пока профиль включён вверху страницы.", cta: "Заполнить профиль" },
-  { id: "semantics", step: "+", title: "Семантика", text: "Введите тему и географию — КЛИО найдёт реальные запросы и разложит их по смыслу, чтобы не смешивать разные темы в одной статье.", cta: "Найти запросы" },
-  { id: "competitors", step: "+", title: "Анализ конкурентов", text: "Добавьте 2–5 страниц конкурентов — КЛИО найдёт смысловые пробелы и подскажет, чем будущая статья будет отличаться от того, что уже есть в выдаче.", cta: "Изучить конкурентов" },
+  { id: "generator", step: "01", title: "Генератор материала", text: "Опишите тему и ключевые слова — КЛИО соберёт цельный текст с SEO‑заголовком, метаописанием и подзаголовками. Работает и без заполненного профиля бренда.", cta: "Написать материал" },
   { id: "content-plan", step: "+", title: "Контент‑план", text: "Получите очередь тем по теме и профилю бренда — точнее, если сначала подключить семантику и анализ конкурентов. Откройте тему и сразу отправьте её в генератор.", cta: "Собрать план" },
   { id: "adaptation", step: "+", title: "Редакторы КЛИО", text: "14 режимов для готового текста: вычитка, смена тона, адаптация под площадку, SEO‑пересборка и другое — свой материал или сохранённый в архиве.", cta: "Открыть редакторы" },
+  { id: "semantics", step: "+", title: "Семантика", text: "Введите тему и географию — КЛИО найдёт реальные запросы и разложит их по смыслу, чтобы не смешивать разные темы в одной статье.", cta: "Найти запросы" },
+  { id: "competitors", step: "+", title: "Анализ конкурентов", text: "Добавьте 2–5 страниц конкурентов — КЛИО найдёт смысловые пробелы и подскажет, чем будущая статья будет отличаться от того, что уже есть в выдаче.", cta: "Изучить конкурентов" },
 ];
 
 // Rotates on the "Начните здесь" tab (see tipIndex below) — short,
@@ -4104,7 +4108,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           <nav aria-label="Рабочие модули">
             <a href="#start" className={activeModule === "start" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("start"); }}><i>·</i><span><b>Начните здесь</b><small>обзор и подсказки</small></span></a>
             <a href="#brand-profile" className={activeModule === "brand" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("brand"); }}><i>+</i><span><b>Профиль бренда</b><small>по желанию</small></span></a>
-            <a href="#generator" className={activeModule === "generator" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("generator"); }}><i>01</i><span><b>Генерировать материал</b><small>быстрый старт</small></span></a>
+            <a href="#generator" className={activeModule === "generator" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("generator"); }}><i>+</i><span><b>Генерировать материал</b><small>быстрый старт</small></span></a>
             <a href="#content-plan" className={activeModule === "content-plan" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("content-plan"); }}><i>+</i><span><b>Контент‑план</b><small>самостоятельный инструмент</small></span></a>
             <a href="#adaptation" className={activeModule === "adaptation" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("adaptation"); }}><i>+</i><span><b>Редакторы КЛИО</b><small>14 режимов для готового текста</small></span></a>
             <a href="#semantics" className={activeModule === "semantics" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("semantics"); }}><i>+</i><span><b>Семантика</b><small>самостоятельно или в бриф</small></span></a>
@@ -4115,7 +4119,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
         <section className="workspace-content">
           <div className="workspace-heading">
-            <div><p>Рабочее пространство / выпуск 01</p><h1>Редакционная система</h1><span>Ваше рабочее пространство с инструментами КЛИО — от первого черновика до готовой публикации.</span></div>
+            <div><p>Рабочее пространство / выпуск 01</p><h1>Редакционная система<span className="klio-mark-dot">.</span></h1><span>Ваше рабочее пространство с инструментами КЛИО — от первого черновика до готовой публикации.</span></div>
             <div className="workspace-heading-status">
               {/* Профиль бренда переехал на отдельную вкладку и больше не
                   виден по умолчанию на других модулях — этот индикатор
@@ -4253,7 +4257,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
           <section className={`brand-profile ${brandOpen ? "is-open" : ""}`} id="brand-profile" style={{ display: activeModule === "brand" ? undefined : "none" }}>
             <div className="brand-profile-head">
-              <div><span>По желанию</span><h3>Профиль бренда</h3><p>КЛИО использует эти данные как редакционную память — факты и интонация переходят в каждый новый материал.</p></div>
+              <div><span>По желанию</span><h3>Профиль бренда<span className="klio-mark-dot">.</span></h3><p>КЛИО использует эти данные как редакционную память — факты и интонация переходят в каждый новый материал.</p></div>
               <div className="brand-profile-actions">
                 <label className="brand-switch"><input type="checkbox" checked={useBrand} onChange={(event) => { setUseBrand(event.target.checked); setSemanticNeedsRefresh(true); setContentPlanNeedsRefresh(true); }}/><span/><b>{useBrand ? "Профиль активен" : "Профиль отключён"}</b></label>
                 <button type="button" className="profile-toggle" onClick={() => toggleModule("brand")} aria-expanded={brandOpen}>{brandOpen ? "Свернуть" : "Открыть профиль"} <i>{brandOpen ? "−" : "+"}</i></button>
@@ -4339,7 +4343,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>
 
           <section className={`workspace-module semantics-module ${semanticOpen ? "" : "tool-collapsed"}`} id="semantics" style={{ display: activeModule === "semantics" ? undefined : "none" }}>
-            <div className="workspace-module-heading tool-heading"><div><span>Шаг 2 · по желанию</span><h2>Поисковые запросы</h2></div><p>Укажите, чем интересуются ваши будущие клиенты. КЛИО найдёт реальные запросы и предложит: создать одну статью или получить план тем для сайта.</p><button type="button" onClick={() => toggleModule("semantics")} aria-expanded={semanticOpen}>{semanticOpen ? "Свернуть" : "Найти запросы"}<i>{semanticOpen ? "−" : "+"}</i></button></div>
+            <div className="workspace-module-heading tool-heading"><div><span>Шаг 2 · по желанию</span><h2>Поисковые запросы<span className="klio-mark-dot">.</span></h2></div><p>Укажите, чем интересуются ваши будущие клиенты. КЛИО найдёт реальные запросы и предложит: создать одну статью или получить план тем для сайта.</p><button type="button" onClick={() => toggleModule("semantics")} aria-expanded={semanticOpen}>{semanticOpen ? "Свернуть" : "Найти запросы"}<i>{semanticOpen ? "−" : "+"}</i></button></div>
             <div className="semantic-shell">
               <div className="semantic-search-card">
                 <div className="semantic-search-head">
@@ -4502,7 +4506,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>
 
           <section className={`workspace-module competitor-module ${competitorOpen ? "" : "tool-collapsed"}`} id="competitors" style={{ display: activeModule === "competitors" ? undefined : "none" }}>
-            <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Анализ конкурентов</h2></div><p>Посмотрите, как сильные игроки отвечают на вопросы ваших будущих клиентов, и найдите полезные темы для своего сайта. КЛИО соберёт прямых конкурентов и подскажет, что стоит раскрыть в материале.</p><button type="button" onClick={() => toggleModule("competitors")} aria-expanded={competitorOpen}>{competitorOpen ? "Свернуть" : "Открыть инструмент"}<i>{competitorOpen ? "−" : "+"}</i></button></div>
+            <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Анализ конкурентов<span className="klio-mark-dot">.</span></h2></div><p>Посмотрите, как сильные игроки отвечают на вопросы ваших будущих клиентов, и найдите полезные темы для своего сайта. КЛИО соберёт прямых конкурентов и подскажет, что стоит раскрыть в материале.</p><button type="button" onClick={() => toggleModule("competitors")} aria-expanded={competitorOpen}>{competitorOpen ? "Свернуть" : "Открыть инструмент"}<i>{competitorOpen ? "−" : "+"}</i></button></div>
 
             <div className="competitor-optional-shell">
               <button type="button" className="competitor-entry-card" onClick={() => toggleModule("competitors")} aria-expanded={competitorOpen}>
@@ -4619,7 +4623,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>
 
           <section className="workspace-module generator-module" id="generator" style={{ display: activeModule === "generator" ? undefined : "none" }}>
-            <div className="workspace-module-heading"><div><span>Главный экран</span><h2>Генератор материалов</h2></div><p>Укажите формат, тему, ключевые слова и то, что важно раскрыть. Остальные инструменты подключаются только по необходимости.</p></div>
+            <div className="workspace-module-heading"><div><span>Главный экран</span><h2>Генератор материалов<span className="klio-mark-dot">.</span></h2></div><p>Укажите формат, тему, ключевые слова и то, что важно раскрыть. Остальные инструменты подключаются только по необходимости.</p></div>
             <div className="studio">
               <aside className="brief-panel">
                 <div className="brief-step"><div className="brief-step-label"><span>Шаг 01</span><b>Бриф материала</b></div><button type="button" className="brief-reset" onClick={resetGeneratorBrief}>Начать заново</button></div>
@@ -4716,7 +4720,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>
 
           <section className={`workspace-module content-plan-module ${contentPlanOpen ? "" : "tool-collapsed"}`} id="content-plan" style={{ display: activeModule === "content-plan" ? undefined : "none" }}>
-            <div className="workspace-module-heading tool-heading"><div><span>Шаг 3 · для серии статей</span><h2>План статей</h2></div><p>КЛИО подготовит очередь тем для сайта. Откройте любую тему, проверьте краткий план и одним нажатием отправьте её в генератор.</p><button type="button" onClick={() => toggleModule("content-plan")} aria-expanded={contentPlanOpen}>{contentPlanOpen ? "Свернуть" : "Открыть план"}<i>{contentPlanOpen ? "−" : "+"}</i></button></div>
+            <div className="workspace-module-heading tool-heading"><div><span>Шаг 3 · для серии статей</span><h2>План статей<span className="klio-mark-dot">.</span></h2></div><p>КЛИО подготовит очередь тем для сайта. Откройте любую тему, проверьте краткий план и одним нажатием отправьте её в генератор.</p><button type="button" onClick={() => toggleModule("content-plan")} aria-expanded={contentPlanOpen}>{contentPlanOpen ? "Свернуть" : "Открыть план"}<i>{contentPlanOpen ? "−" : "+"}</i></button></div>
             <div className="content-plan-shell">
               <article className="content-plan-setup">
                 <div className="content-plan-setup-head">
@@ -4816,7 +4820,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>
 
           <section className={`workspace-module adaptation-module ${adaptationOpen ? "" : "tool-collapsed"}`} id="adaptation" style={{ display: activeModule === "adaptation" ? undefined : "none" }}>
-            <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Редакторы КЛИО</h2></div><p>14 режимов для готового текста: вычитка, ясность, пересборка, SEO, соцсети, реклама, адаптация под голос бренда и смена интонации.</p><button type="button" onClick={() => toggleModule("adaptation")} aria-expanded={adaptationOpen}>{adaptationOpen ? "Свернуть" : "Открыть инструмент"}<i>{adaptationOpen ? "−" : "+"}</i></button></div>
+            <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Редакторы КЛИО<span className="klio-mark-dot">.</span></h2></div><p>14 режимов для готового текста: вычитка, ясность, пересборка, SEO, соцсети, реклама, адаптация под голос бренда и смена интонации.</p><button type="button" onClick={() => toggleModule("adaptation")} aria-expanded={adaptationOpen}>{adaptationOpen ? "Свернуть" : "Открыть инструмент"}<i>{adaptationOpen ? "−" : "+"}</i></button></div>
             <div className="adaptation-shell">
               <article className="adaptation-input-card">
                 <div className="adaptation-card-head"><div><span>Исходник заказчика</span><h3>Вставьте готовый текст</h3></div><b>{adaptationSourceWords.toLocaleString("ru-RU")} слов</b></div>
