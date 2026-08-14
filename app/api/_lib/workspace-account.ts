@@ -50,8 +50,14 @@ export async function ensureAccount(user: ChatGPTUser) {
       generationsUsed: 0,
       researchUsed: 0,
       editorActionsUsed: 0,
+      lifetimeGenerationsUsed: 0,
+      lifetimeResearchUsed: 0,
+      lifetimeEditorActionsUsed: 0,
     }).returning();
   } else if (account.generationMonth !== currentMonth) {
+    // Only the three period counters reset here — lifetimeGenerationsUsed/
+    // lifetimeResearchUsed/lifetimeEditorActionsUsed are deliberately
+    // absent from this set() so the monthly rollover never touches them.
     [account] = await db.update(accounts).set({
       displayName: user.displayName,
       generationMonth: currentMonth,
@@ -72,6 +78,7 @@ export async function ensureAccount(user: ChatGPTUser) {
 
 export function accountSummary(account: typeof accounts.$inferSelect, brandCount = 0) {
   const rule = planRule(account.planId);
+  const createdAtMs = new Date(account.createdAt).getTime();
   return {
     planId: rule.id,
     planName: rule.name,
@@ -84,6 +91,14 @@ export function accountSummary(account: typeof accounts.$inferSelect, brandCount
     editorActionsUsed: account.editorActionsUsed,
     editorActionLimit: rule.editorActionLimit,
     editorActionsRemaining: Math.max(0, rule.editorActionLimit - account.editorActionsUsed),
+    // Lifetime totals for the "Ваша статистика" bar — never reset by the
+    // monthly rollover in ensureAccount(), unlike the period counters
+    // above (which still drive the plan quota widgets on /account and
+    // the sidebar).
+    lifetimeGenerationsUsed: account.lifetimeGenerationsUsed,
+    lifetimeResearchUsed: account.lifetimeResearchUsed,
+    lifetimeEditorActionsUsed: account.lifetimeEditorActionsUsed,
+    daysWithKlio: Number.isNaN(createdAtMs) ? 0 : Math.max(0, Math.floor((Date.now() - createdAtMs) / 86400000)),
     brandCount,
     brandLimit: rule.brandLimit,
     seatLimit: rule.seatLimit,
@@ -125,6 +140,7 @@ async function consumeSecondaryQuota(kind: "research" | "editor") {
   const [updated] = kind === "research"
     ? await db.update(accounts).set({
       researchUsed: sql`${accounts.researchUsed} + 1`,
+      lifetimeResearchUsed: sql`${accounts.lifetimeResearchUsed} + 1`,
       updatedAt: sql`CURRENT_TIMESTAMP`,
     }).where(and(
       eq(accounts.email, user.email),
@@ -132,6 +148,7 @@ async function consumeSecondaryQuota(kind: "research" | "editor") {
     )).returning()
     : await db.update(accounts).set({
       editorActionsUsed: sql`${accounts.editorActionsUsed} + 1`,
+      lifetimeEditorActionsUsed: sql`${accounts.lifetimeEditorActionsUsed} + 1`,
       updatedAt: sql`CURRENT_TIMESTAMP`,
     }).where(and(
       eq(accounts.email, user.email),
@@ -208,6 +225,7 @@ export async function recordGeneration(material: ArchiveMaterial) {
   const rule = planRule(current.planId);
   const [updated] = await db.update(accounts).set({
     generationsUsed: sql`${accounts.generationsUsed} + 1`,
+    lifetimeGenerationsUsed: sql`${accounts.lifetimeGenerationsUsed} + 1`,
     updatedAt: sql`CURRENT_TIMESTAMP`,
   }).where(and(
     eq(accounts.email, user.email),

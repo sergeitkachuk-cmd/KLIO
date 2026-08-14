@@ -215,6 +215,14 @@ type WorkspaceAccount = {
   editorActionsUsed: number;
   editorActionLimit: number;
   editorActionsRemaining: number;
+  // Lifetime totals, never reset by the monthly/trial period rollover —
+  // only used for the "Ваша статистика" bar. generationsUsed etc. above
+  // stay period-scoped and keep driving the quota widgets (sidebar,
+  // /account) exactly as before.
+  lifetimeGenerationsUsed: number;
+  lifetimeResearchUsed: number;
+  lifetimeEditorActionsUsed: number;
+  daysWithKlio: number;
   brandCount: number;
   brandLimit: number;
   seatLimit: 1;
@@ -1497,6 +1505,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     editorActionsUsed: 0,
     editorActionLimit: PLAN_RULES.start.editorActionLimit,
     editorActionsRemaining: PLAN_RULES.start.editorActionLimit,
+    lifetimeGenerationsUsed: 0,
+    lifetimeResearchUsed: 0,
+    lifetimeEditorActionsUsed: 0,
+    daysWithKlio: 0,
     brandCount: 0,
     brandLimit: PLAN_RULES.start.brandLimit,
     seatLimit: 1,
@@ -4197,9 +4209,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <div className="workspace-start-stats-bar">
               <span>Ваша статистика</span>
               <div className="workspace-start-stats-bar-items">
-                <div className="stat-generator"><b>{workspaceAccount.generationsUsed}</b><small>материалов {workspaceAccount.period}</small></div>
-                <div className="stat-semantics"><b>{workspaceAccount.researchUsed}</b><small>исследований {workspaceAccount.period}</small></div>
-                <div className="stat-adaptation"><b>{workspaceAccount.editorActionsUsed}</b><small>правок в редакторах {workspaceAccount.period}</small></div>
+                {/* Lifetime totals, not the current-period used-count —
+                    those still drive the quota widgets in the sidebar and
+                    on /account, which is where "лимиты по тарифу" belongs;
+                    this bar is just "how much have you done with КЛИО". */}
+                <div className="stat-days"><b>{workspaceAccount.daysWithKlio}</b><small>дней с КЛИО</small></div>
+                <div className="stat-generator"><b>{workspaceAccount.lifetimeGenerationsUsed}</b><small>материалов создано</small></div>
+                <div className="stat-semantics"><b>{workspaceAccount.lifetimeResearchUsed}</b><small>исследований проведено</small></div>
+                <div className="stat-adaptation"><b>{workspaceAccount.lifetimeEditorActionsUsed}</b><small>правок в редакторах</small></div>
                 <div className="stat-content-plan"><b>{activeMaterialCount}</b><small>материалов сохранено у бренда</small></div>
               </div>
               <p className="workspace-start-stats-bar-comment"><i>КЛИО:</i> {klioComment}</p>

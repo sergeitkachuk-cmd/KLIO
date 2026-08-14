@@ -14193,6 +14193,7 @@ footer nav a {
   font-size: 12px;
 }
 
+.stat-days b { color: var(--acid); }
 .stat-generator b { color: var(--violet); }
 .stat-semantics b { color: #6fa8dc; }
 .stat-adaptation b { color: #e08fac; }
@@ -16140,6 +16141,7 @@ footer nav a {
   color: rgba(13, 27, 49, 0.6);
 }
 
+[data-theme="light"] .stat-days b { color: #2452b8; }
 [data-theme="light"] .stat-generator b { color: #6539c7; }
 [data-theme="light"] .stat-semantics b { color: #376fa8; }
 [data-theme="light"] .stat-adaptation b { color: #9b536d; }

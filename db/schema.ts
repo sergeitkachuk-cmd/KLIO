@@ -15,6 +15,13 @@ export const accounts = pgTable("accounts", {
   generationsUsed: integer("generations_used").notNull().default(0),
   researchUsed: integer("research_used").notNull().default(0),
   editorActionsUsed: integer("editor_actions_used").notNull().default(0),
+  // Mirror the three counters above but never reset on the monthly
+  // rollover in ensureAccount() — the "Ваша статистика" bar on the
+  // workspace overview reads these for a lifetime total instead of the
+  // current-period used-count the sidebar/plan quota widgets already show.
+  lifetimeGenerationsUsed: integer("lifetime_generations_used").notNull().default(0),
+  lifetimeResearchUsed: integer("lifetime_research_used").notNull().default(0),
+  lifetimeEditorActionsUsed: integer("lifetime_editor_actions_used").notNull().default(0),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
