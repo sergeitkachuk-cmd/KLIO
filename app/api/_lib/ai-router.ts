@@ -227,6 +227,22 @@ async function requestOnce(params: {
   const { text, refused } = outputText(body);
   if (refused) throw new AiCallError("AI-редакция не смогла выполнить этот запрос. Измените формулировку.", 422);
   if (!text) {
+    // This branch had no diagnostics at all until a real "AI-редакция
+    // вернула пустой ответ" on DeepSeek (confirmed provider — see
+    // AI_PROVIDER) couldn't be explained from logs: was output[] genuinely
+    // empty, stuck on an unfinished tool call, cut off by the token
+    // budget, or something else entirely (a provider-side error the
+    // status-code checks above didn't catch)? Same diagnostic shape as
+    // the unparseable-JSON branch below, minus `text` itself since
+    // there's none to log here.
+    console.error(`${provider} returned no text output for a text-expecting response`);
+    const diagnostic = body && typeof body === "object" ? body as Record<string, unknown> : {};
+    console.error(`${provider} response diagnostic`, JSON.stringify({
+      status: diagnostic.status,
+      incomplete_details: diagnostic.incomplete_details,
+      error: diagnostic.error,
+      output: diagnostic.output,
+    }).slice(0, 6000));
     const error = new AiCallError("AI-редакция вернула пустой ответ.", 502);
     (error as { transient?: boolean }).transient = true;
     throw error;
