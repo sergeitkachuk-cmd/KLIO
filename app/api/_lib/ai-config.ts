@@ -178,7 +178,29 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // failure (empty response, brand-profile-only "explore broadly" prompt
   // path) keeps happening at 18k too, the real fix is probably capping or
   // restructuring the web-search step itself, not this number.
-  generate_content_plan: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 18_000, structuredOutput: true, retryable: true, useWebSearch: true },
+  //
+  // ...it kept happening at 18k, and shrinking existingTitles (see
+  // content-plan/route.ts) didn't fix it either. The actual pattern,
+  // confirmed from the new output-item-summary + diagnostic logs on a
+  // still-stuck request: one single web_search_call (fast, 5 queries),
+  // then a *second* reasoning item that draft-rejects-redrafts its own
+  // topic list two or three times in a row inside one reasoning turn
+  // ("Let me list 15 truly distinct... Hmm many overlap. Need fresh
+  // distinct. Let me brainstorm brand-new angles...") before the budget
+  // runs out mid-thought. This is DeepSeek's own reasoning process
+  // spiraling on the novelty-checking part of the prompt, not a token-
+  // budget or exclusion-list-size problem - three retries of the exact
+  // same prompt just paid for that spiral three times (~15 minutes
+  // reported for what should be a 10-15 row plan). Dropped reasoningEffort
+  // to "none": every other operation with search-and-write-freely prompts
+  // (generate_social_post, generate_ad_copy) already runs at "none", and
+  // validatePlan()'s own duplicate/weak-plan check still catches a bad
+  // result and forces a normal, fast retry - cheaper insurance than
+  // trusting extended reasoning not to spiral. Genuine trade-off (less
+  // deliberate novelty-seeking against the existing-titles list) - revisit
+  // if plan quality/duplication visibly gets worse, but a plan that
+  // reliably finishes beats one that reasons forever and returns nothing.
+  generate_content_plan: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 18_000, structuredOutput: true, retryable: true, useWebSearch: true },
   // Up to 5 selected topics x 3 full alternatives each, each a complete
   // plan row (structure, lsi, evidence, sources...) — genuinely needs a
   // ceiling close to a fresh content plan's, not the generic "small
