@@ -763,6 +763,44 @@ const modules = [
   ["06", "Редакторы КЛИО", "14 редакторских режимов: от вычитки и ясности до SEO‑пересборки, адаптации под голос бренда, смены интонации и первого делового контакта."],
 ];
 
+// Teaser cards for the workspace's "Начните здесь" tab — same six modules
+// as the sidebar nav, described in plain language. Cards only describe and
+// link to a module (openModule); they never render the module itself, per
+// explicit feedback that this tab must stay a guide, not another module.
+const WORKSPACE_MODULE_GUIDE: Array<{
+  id: "generator" | "brand" | "semantics" | "competitors" | "content-plan" | "adaptation";
+  step: string;
+  title: string;
+  text: string;
+  cta: string;
+}> = [
+  { id: "generator", step: "01", title: "Генератор материала", text: "Опишите тему и ключевые слова — КЛИО соберёт цельный текст с SEO‑заголовком, метаописанием и подзаголовками. Работает и без заполненного профиля бренда.", cta: "Написать материал" },
+  { id: "brand", step: "+", title: "Профиль бренда", text: "Опишите компанию один раз — аудиторию, УТП, тон голоса. Дальше КЛИО сама подставляет это в каждую генерацию, пока профиль включён вверху страницы.", cta: "Заполнить профиль" },
+  { id: "semantics", step: "+", title: "Семантика", text: "Введите тему и географию — КЛИО найдёт реальные запросы и разложит их по смыслу, чтобы не смешивать разные темы в одной статье.", cta: "Найти запросы" },
+  { id: "competitors", step: "+", title: "Анализ конкурентов", text: "Добавьте 2–5 страниц конкурентов — КЛИО найдёт смысловые пробелы и подскажет, чем будущая статья будет отличаться от того, что уже есть в выдаче.", cta: "Изучить конкурентов" },
+  { id: "content-plan", step: "+", title: "Контент‑план", text: "Получите очередь тем на основе спроса и пробелов у конкурентов — откройте следующую тему и сразу отправьте её в генератор.", cta: "Собрать план" },
+  { id: "adaptation", step: "+", title: "Редакторы КЛИО", text: "14 режимов для готового текста: вычитка, смена тона, адаптация под площадку, SEO‑пересборка и другое — свой материал или сохранённый в архиве.", cta: "Открыть редакторы" },
+];
+
+// Rotates on the "Начните здесь" tab (see tipIndex below) — short,
+// practical notes on copywriting/SMM, in KLIO's own voice. Not tied to any
+// account data, just a changing point of interest on an otherwise static
+// overview tab.
+const KLIO_TIPS = [
+  "Заголовок решает, откроют ли текст. Формулируйте его как ответ на конкретный вопрос читателя, а не как красивую метафору.",
+  "Первый абзац — это не разгон, а обещание. Скажите в нём, что человек получит, если дочитает до конца.",
+  "В соцсетях короткое предложение работает лучше длинного — особенно первое, до кнопки «Ещё».",
+  "Конкретные цифры и факты убеждают сильнее, чем «лучший» и «уникальный». Замените эпитет на пример.",
+  "Один текст — одна мысль. Если тема расползается на две-три, значит, это уже два-три материала.",
+  "Призыв к действию должен говорить, что делать дальше, а не просто «узнать больше».",
+  "Пишите так, будто отвечаете одному конкретному клиенту, а не всей аудитории сразу — так текст звучит честнее.",
+  "Экспертность видна не в терминах, а в деталях: один конкретный кейс убеждает больше, чем общее утверждение.",
+  "Прочитайте текст вслух перед публикацией — если фраза не звучит в разговоре, она вряд ли сработает в посте.",
+  "Хороший SEO‑текст сначала отвечает на вопрос человека и только потом — на алгоритм поиска.",
+  "Не обещайте в заголовке то, чего нет в тексте — это самая частая причина, по которой читатель уходит на середине.",
+  "Разбивайте длинные абзацы: в ленте и в поиске побеждает текст, который легко просматривается за пару секунд.",
+];
+
 const landingUseCases = [
   {
     number: "01", label: "Для сайта", title: "Запустить раздел статей, который приводит новых посетителей",
@@ -1300,7 +1338,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [brand, setBrand] = useState<BrandProfile>(defaultBrand);
   const [useBrand, setUseBrand] = useState(true);
   // Which single workspace module is on screen — "start" is the overview
-  // shown when the page first loads (see the workspace-quickstart block).
+  // shown when the page first loads (see the workspace-start block).
   // Only one of these is ever visible at once; opening another module
   // implicitly closes whichever was open, so the page never becomes a
   // long stacked feed of expanded sections. openModule/toggleModule below
@@ -1315,6 +1353,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   function toggleModule(id: typeof activeModule) {
     setActiveModule((current) => (current === id ? "start" : id));
   }
+  // Starts on a tip picked by the day (so it reads as "updated" on return
+  // visits without needing a backend), then just cycles forward on click.
+  const [tipIndex, setTipIndex] = useState(() => Math.floor(Date.now() / 86400000) % KLIO_TIPS.length);
   const [brandSaved, setBrandSaved] = useState(false);
   const [brandTab, setBrandTab] = useState<BrandTab>("foundation");
   const [profileMode, setProfileMode] = useState<ProfileMode>("quick");
@@ -3944,6 +3985,23 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     const withinTarget = characters >= Math.floor(length * 0.85) && characters <= Math.ceil(length * 1.15);
     const targetChecked = generationMode !== "example";
 
+    // One-line, rule-based (not AI-generated) note for the "Начните здесь"
+    // stats block — reads the same account numbers already shown in the
+    // sidebar quota widget, just narrated instead of listed.
+    const klioComment = !workspaceReady
+      ? "Гружу данные кабинета — через мгновение будет видно, на чём вы остановились."
+      : workspaceAccount.generationsUsed === 0 && workspaceAccount.researchUsed === 0 && workspaceAccount.editorActionsUsed === 0
+      ? "Пока нет ни одной генерации — начните с темы и ключевых слов в генераторе, дальше подскажу по ходу."
+      : workspaceAccount.generationsRemaining === 0
+      ? "Лимит материалов на этом тарифе исчерпан — на странице тарифов можно перейти на план с бо́льшими лимитами."
+      : useBrand && brandScore < 50
+      ? `Профиль бренда заполнен на ${brandScore}% — доберите ключевые поля, и тексты точнее зазвучат в вашем голосе.`
+      : workspaceAccount.generationsRemaining <= 2
+      ? `Материалов до конца периода: ${workspaceAccount.generationsRemaining} из ${workspaceAccount.generationLimit} — успейте использовать оставшиеся.`
+      : activeMaterialCount === 0
+      ? "Генерации есть, а в архиве этого бренда пока пусто — сохраняйте удачные материалы кнопкой «Сохранить», чтобы не потерять."
+      : "Всё идёт ровно — так держать.";
+
     if (workspaceDataError && !activeBrandId) {
       return <main className="workspace-shell workspace-loading is-error"><Brand/><div><h1>Кабинет временно недоступен</h1><p>{workspaceDataError}</p><button className="button primary" type="button" onClick={() => window.location.reload()}>Повторить</button></div></main>;
     }
@@ -4004,7 +4062,27 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         <section className="workspace-content">
           <div className="workspace-heading">
             <div><p>Рабочее пространство / выпуск 01</p><h1>Редакционная система</h1><span>Здесь находятся инструменты КЛИО. Маркетинговые разделы остались на публичной странице.</span></div>
-            <div className={`workspace-status ${workspaceDataError ? "has-error" : workspaceReady && !workspaceSaving ? "is-saved" : ""}`}><i/><span><b>{workspaceDataError ? "Ошибка сохранения" : !workspaceReady ? "Загружаем кабинет" : workspaceSaving ? "Сохраняем изменения" : "Все изменения сохранены"}</b><small>{workspaceDataError || (!workspaceReady ? "Генератор уже доступен — данные брендов появятся через мгновение" : `${activeWorkspaceBrand?.name || brand.name} · защищённое хранилище кабинета`)}</small></span></div>
+            <div className="workspace-heading-status">
+              {/* Профиль бренда переехал на отдельную вкладку и больше не
+                  виден по умолчанию на других модулях — этот индикатор
+                  держит на виду единственное, что реально важно знать из
+                  любого места кабинета: используется ли сейчас бренд-голос
+                  и на скольких брифах он реально заполнен. */}
+              <div className={`workspace-brand-pill ${useBrand ? "is-on" : "is-off"}`}>
+                <button type="button" className="workspace-brand-pill-info" onClick={() => openModule("brand")}>
+                  <i>{(activeWorkspaceBrand?.name || brand.name || "К").trim().charAt(0).toLocaleUpperCase("ru-RU")}</i>
+                  <span>
+                    <b>{activeWorkspaceBrand?.name || brand.name || "Бренд не выбран"}</b>
+                    <small>{useBrand ? (generatorBrandReady ? `Профиль активен · заполнен на ${brandScore}%` : "Профиль включён · заполните карточку") : "Профиль отключён в этой сессии"}</small>
+                  </span>
+                </button>
+                <label className="brand-switch workspace-brand-pill-switch" title={useBrand ? "Отключить профиль бренда" : "Включить профиль бренда"}>
+                  <input type="checkbox" checked={useBrand} onChange={(event) => { setUseBrand(event.target.checked); setSemanticNeedsRefresh(true); setContentPlanNeedsRefresh(true); }}/>
+                  <span/>
+                </label>
+              </div>
+              <div className={`workspace-status ${workspaceDataError ? "has-error" : workspaceReady && !workspaceSaving ? "is-saved" : ""}`}><i/><span><b>{workspaceDataError ? "Ошибка сохранения" : !workspaceReady ? "Загружаем кабинет" : workspaceSaving ? "Сохраняем изменения" : "Все изменения сохранены"}</b><small>{workspaceDataError || (!workspaceReady ? "Генератор уже доступен — данные брендов появятся через мгновение" : `${activeWorkspaceBrand?.name || brand.name} · защищённое хранилище кабинета`)}</small></span></div>
+            </div>
           </div>
 
 
@@ -4073,26 +4151,52 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </section>
           </div>}
 
-          <div className="workspace-quickstart" style={{ display: activeModule === "start" || activeModule === "brand" ? undefined : "none" }}>
-          {activeModule === "start" && <div className="mvp-flow" aria-label="Простой и расширенный режимы работы">
-            <div className="mvp-flow-main">
-              <span>Начните без лишних этапов</span>
-              <div className="mvp-flow-steps">
-                <div className="mvp-flow-step"><i>01</i><span><b>Тема и ключи</b><small>этого достаточно для старта</small></span></div>
-                <i className="mvp-flow-arrow" aria-hidden="true">→</i>
-                <div className="mvp-flow-step"><i>02</i><span><b>Готовый материал</b><small>сразу в генераторе</small></span></div>
+          {activeModule === "start" && <section className="workspace-start" id="start" aria-label="Обзор кабинета">
+            <div className="workspace-start-hero">
+              <div className="workspace-start-hero-copy">
+                <span className="workspace-start-kicker">КЛИО · обзор кабинета</span>
+                <h2>Привет! Я КЛИО — ваш редакционный ассистент.</h2>
+                <p>Опишите тему и ключевые слова — я соберу цельный материал за пару минут. Остальные инструменты ниже нужны, только если важна глубина: голос бренда, поисковый спрос, конкуренты или план на месяц вперёд.</p>
+                <button className="button primary large" type="button" onClick={() => openModule("generator")}>Написать первый материал <Icon name="arrow"/></button>
+              </div>
+              <div className="workspace-start-hero-steps">
+                <button type="button" className="workspace-start-step" onClick={() => openModule("generator")}><i>01</i><span><b>Тема и ключи</b><small>этого достаточно для старта</small></span></button>
+                <i className="workspace-start-step-arrow" aria-hidden="true">→</i>
+                <button type="button" className="workspace-start-step" onClick={() => openModule("generator")}><i>02</i><span><b>Готовый материал</b><small>сразу в генераторе, с SEO‑заголовком и метаописанием</small></span></button>
               </div>
             </div>
-            <div className="mvp-flow-extra">
-              <div className="mvp-flow-plan"><i>+</i><span><b>Нужна глубина?</b><small>откройте любой инструмент ниже</small></span></div>
-              <div className="mvp-flow-optional"><i>↗</i><span><b>Инструменты автономны</b><small>результат можно не передавать в генератор</small></span></div>
-              <div className="mvp-flow-alternative"><i>Аа</i><span><b>Есть готовый текст?</b><small>откройте редакторы КЛИО</small></span></div>
+
+            <div className="workspace-start-grid">
+              {WORKSPACE_MODULE_GUIDE.map((item) => <button type="button" className={`workspace-start-card workspace-start-card-${item.id}`} key={item.id} onClick={() => openModule(item.id)}>
+                <i>{item.step}</i>
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
+                <span>{item.cta} <Icon name="arrow"/></span>
+              </button>)}
             </div>
-          </div>}
+
+            <div className="workspace-start-insights">
+              <div className="workspace-start-tip">
+                <span>Совет от КЛИО</span>
+                <p>{KLIO_TIPS[tipIndex]}</p>
+                <button type="button" onClick={() => setTipIndex((current) => (current + 1) % KLIO_TIPS.length)}>Следующий совет <Icon name="arrow"/></button>
+              </div>
+              <div className="workspace-start-stats">
+                <span>Ваша статистика</span>
+                <div className="workspace-start-stats-grid">
+                  <div><b>{workspaceAccount.generationsUsed}</b><small>материалов {workspaceAccount.period}</small></div>
+                  <div><b>{workspaceAccount.researchUsed}</b><small>исследований {workspaceAccount.period}</small></div>
+                  <div><b>{workspaceAccount.editorActionsUsed}</b><small>правок в редакторах {workspaceAccount.period}</small></div>
+                  <div><b>{activeMaterialCount}</b><small>материалов сохранено у бренда</small></div>
+                </div>
+                <p className="workspace-start-stats-comment"><i>КЛИО:</i> {klioComment}</p>
+              </div>
+            </div>
+          </section>}
 
           <section className={`brand-profile ${brandOpen ? "is-open" : ""}`} id="brand-profile" style={{ display: activeModule === "brand" ? undefined : "none" }}>
             <div className="brand-profile-head">
-              <div><span>Модуль 01</span><h3>Профиль бренда</h3><p>КЛИО использует эти данные как редакционную память — факты и интонация переходят в каждый новый материал.</p></div>
+              <div><span>По желанию</span><h3>Профиль бренда</h3><p>КЛИО использует эти данные как редакционную память — факты и интонация переходят в каждый новый материал.</p></div>
               <div className="brand-profile-actions">
                 <label className="brand-switch"><input type="checkbox" checked={useBrand} onChange={(event) => { setUseBrand(event.target.checked); setSemanticNeedsRefresh(true); setContentPlanNeedsRefresh(true); }}/><span/><b>{useBrand ? "Профиль активен" : "Профиль отключён"}</b></label>
                 <button type="button" className="profile-toggle" onClick={() => toggleModule("brand")} aria-expanded={brandOpen}>{brandOpen ? "Свернуть" : "Открыть профиль"} <i>{brandOpen ? "−" : "+"}</i></button>
@@ -4176,7 +4280,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <div className="brand-profile-footer"><p><i className={brandSaved ? "saved" : ""}/>{brandSaved ? "Профиль и данные бренда сохранены в кабинете" : "Есть несохранённые изменения"}</p><div><button type="button" onClick={restoreBrand}>Восстановить базовый профиль</button><button className="button primary" type="button" onClick={() => void saveBrand()}>Сохранить профиль</button></div></div>
             </div>}
           </section>
-          </div>
 
           <section className={`workspace-module semantics-module ${semanticOpen ? "" : "tool-collapsed"}`} id="semantics" style={{ display: activeModule === "semantics" ? undefined : "none" }}>
             <div className="workspace-module-heading tool-heading"><div><span>Шаг 2 · по желанию</span><h2>Поисковые запросы</h2></div><p>Укажите, чем интересуются ваши будущие клиенты. КЛИО найдёт реальные запросы и предложит: создать одну статью или получить план тем для сайта.</p><button type="button" onClick={() => toggleModule("semantics")} aria-expanded={semanticOpen}>{semanticOpen ? "Свернуть" : "Найти запросы"}<i>{semanticOpen ? "−" : "+"}</i></button></div>

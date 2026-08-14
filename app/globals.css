@@ -1206,27 +1206,6 @@ select:focus-visible {
 }
 
 
-.mvp-flow .mvp-flow-alternative {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(216, 255, 101, 0.08));
-}
-
-.mvp-flow .mvp-flow-optional {
-  border-left-style: dashed;
-  background: rgba(124, 58, 237, 0.035);
-}
-
-.mvp-flow .mvp-flow-optional i {
-  color: var(--cobalt);
-}
-
-.mvp-flow .mvp-flow-plan {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.055), rgba(216, 255, 101, 0.09));
-}
-
-.mvp-flow .mvp-flow-plan i {
-  color: var(--cobalt);
-}
-
 .brand-profile-head > div:first-child {
   min-width: 0;
 }
@@ -4907,6 +4886,105 @@ footer nav a {
 .workspace-status small {
   color: rgba(255, 255, 255, 0.6);
   font-size: 11px;
+}
+
+/* Profile moved to its own tab and stopped being visible from every other
+   module - this pill is the replacement: a permanent, click-to-open
+   reminder of whether the brand voice is currently on, stacked above the
+   save-status chip it used to sit next to as one long inline strip. */
+.workspace-heading-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.workspace-brand-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px 9px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 16px 16px 4px 16px;
+  color: #fff;
+  background: radial-gradient(circle at 12% 0%, rgba(124, 58, 237, 0.34), transparent 40%), linear-gradient(135deg, #1a1330, #241a3e 60%, #17112a 100%);
+  box-shadow: 0 14px 36px rgba(20, 12, 40, 0.22), inset 0 1px rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(20px);
+}
+
+.workspace-brand-pill.is-off {
+  opacity: 0.76;
+}
+
+.workspace-brand-pill-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.workspace-brand-pill-info > i {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  font-style: normal;
+  color: #17131f;
+  background: var(--acid);
+}
+
+.workspace-brand-pill.is-off .workspace-brand-pill-info > i {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.workspace-brand-pill-info span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.workspace-brand-pill-info b {
+  max-width: 168px;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 680;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.workspace-brand-pill-info small {
+  max-width: 210px;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.workspace-brand-pill-switch {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.workspace-brand-pill-switch > span {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.workspace-brand-pill-switch input:checked + span {
+  border-color: rgba(216, 255, 101, 0.5);
+  background: var(--cobalt);
 }
 
 .workspace-module-heading {
@@ -9489,14 +9567,6 @@ footer nav a {
     border-bottom: 1px solid var(--line);
   }
 
-  .mvp-flow {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .mvp-flow > span {
-    grid-column: 1 / -1;
-  }
-
   .semantic-clusters {
     border-right: 0;
     border-bottom: 1px solid var(--line);
@@ -9628,10 +9698,6 @@ footer nav a {
 
   .workspace-heading > div:first-child > span {
     font-size: 15px;
-  }
-
-  .workspace-content .mvp-flow {
-    margin-bottom: 16px;
   }
 
   .workspace-module {
@@ -10172,15 +10238,6 @@ footer nav a {
     border-bottom: 1px solid rgba(255, 255, 255, 0.18);
   }
 
-  .mvp-flow {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .mvp-flow > span {
-    grid-column: 1 / -1;
-    border-bottom: 1px solid var(--line);
-  }
-
   .brand-profile-head {
     align-items: flex-start;
     flex-direction: column;
@@ -10468,22 +10525,6 @@ footer nav a {
 
   .studio {
     border-radius: 4px 28px 4px 4px;
-  }
-
-  .mvp-flow {
-    grid-template-columns: 1fr;
-  }
-
-  .mvp-flow > span,
-  .mvp-flow > div,
-  .mvp-flow > div:nth-of-type(3) {
-    grid-column: 1;
-    border-left: 0;
-    border-top: 1px solid var(--line);
-  }
-
-  .mvp-flow > span {
-    border-top: 0;
   }
 
   .brand-profile-head,
@@ -10929,7 +10970,7 @@ footer nav a {
 .workspace-content > .workspace-dashboard-bar { order: 2; }
 .workspace-content > .workspace-history { order: 3; }
 .workspace-content > .archive-editor { order: 4; }
-.workspace-content > .mvp-flow { order: 5; }
+.workspace-content > #start { order: 5; }
 .workspace-content > #brand-profile { order: 6; }
 .workspace-content > #generator { order: 7; }
 .workspace-content > #content-plan { order: 8; }
@@ -11008,29 +11049,6 @@ footer nav a {
 
 .workspace-ai-banner.ai-disconnected > i {
   background: #7c3447;
-}
-
-.mvp-flow b {
-  font-size: 15px;
-  font-weight: 650;
-  color: #fff;
-}
-
-.mvp-flow small {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.58);
-}
-
-.mvp-flow i {
-  font-size: 13px;
-  font-style: normal;
-  font-weight: 680;
-}
-
-.mvp-flow .mvp-flow-plan,
-.mvp-flow .mvp-flow-optional,
-.mvp-flow .mvp-flow-alternative {
-  background: rgba(255, 255, 255, 0.035);
 }
 
 .workspace-module {
@@ -11507,14 +11525,6 @@ footer nav a {
 }
 
 @media (max-width: 1100px) {
-  .mvp-flow {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .mvp-flow > span {
-    grid-column: 1 / -1;
-  }
-
   .archive-editor-grid,
   .content-plan-strategy {
     grid-template-columns: 1fr;
@@ -11526,19 +11536,6 @@ footer nav a {
 }
 
 @media (max-width: 700px) {
-  .mvp-flow {
-    grid-template-columns: 1fr;
-  }
-
-  .mvp-flow > span {
-    grid-column: 1;
-  }
-
-  .mvp-flow > div {
-    border-left: 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
-  }
-
   .workspace-ai-banner {
     grid-template-columns: 40px minmax(0, 1fr);
     padding: 15px;
@@ -12937,6 +12934,23 @@ footer nav a {
     border-radius: 13px 13px 4px 13px;
   }
 
+  .workspace-heading-status {
+    align-items: flex-start;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .workspace-brand-pill {
+    gap: 8px;
+    padding: 7px 8px 7px 7px;
+    border-radius: 13px 13px 4px 13px;
+  }
+
+  .workspace-brand-pill-info b,
+  .workspace-brand-pill-info small {
+    max-width: 55vw;
+  }
+
   .workspace-ai-banner {
     gap: 12px;
     margin-bottom: 11px;
@@ -12990,37 +13004,6 @@ footer nav a {
 
   .quota-card > i {
     margin-top: 7px;
-  }
-
-  .mvp-flow {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    margin-bottom: 12px;
-  }
-
-  .mvp-flow > span {
-    grid-column: 1 / -1;
-    min-height: 0;
-    padding: 12px 14px;
-    border-top: 0;
-  }
-
-  .mvp-flow > div,
-  .mvp-flow > div:nth-of-type(3) {
-    grid-column: auto;
-    min-height: 82px;
-    padding: 13px 14px;
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
-  }
-
-  .mvp-flow b {
-    margin-top: 5px;
-    font-size: 12px;
-  }
-
-  .mvp-flow small {
-    margin-top: 3px;
-    font-size: 10px;
-    line-height: 1.3;
   }
 
   .workspace-module,
@@ -13276,10 +13259,6 @@ footer nav a {
     padding-inline: 10px;
   }
 
-  .mvp-flow > div,
-  .mvp-flow > div:nth-of-type(3) {
-    padding-inline: 11px;
-  }
 }
 
 /* КЛИО: материалы бренда, три лимита и точечная замена тем */
@@ -14056,264 +14035,21 @@ footer nav a {
    duplicated the header's "Материалы" button). Plan/usage details now
    live on the /account page (see app/account/page.tsx), reachable from
    the name menu in the header. What's below re-lays-out what's left:
-   the "start here" flow strip and the brand-profile module header,
-   both flagged as too cramped/oversized in their old form. Appended at
-   the end of the file so these declarations reliably win the cascade
-   over the older, scattered .mvp-flow/.brand-profile-head rules above
-   without having to hunt down every duplicate.
+   the brand-profile module header, flagged as too cramped/oversized in
+   its old form. Appended at the end of the file so these declarations
+   reliably win the cascade over the older, scattered .brand-profile-head
+   rules above without having to hunt down every duplicate. (The
+   "quickstart" row that used to live in this comment's place — the
+   .mvp-flow strip paired side-by-side with a collapsed brand-profile
+   card — is gone: brand-profile is a normal single-module tab now, see
+   the workspace-start-* rules for its replacement, a dedicated "Начните
+   здесь" overview tab.)
    --------------------------------------------------------------------- */
-
-/* ---------------------------------------------------------------------
-   Workspace "quickstart" row: the flow strip (.mvp-flow) and the
-   collapsed brand-profile card side by side as two matched panels,
-   instead of two stacked full-width bars. Rewritten after the first
-   pass: old .mvp-flow > div / .mvp-flow > span rules from the pre-panel
-   flat-grid design (see above) were still matching the new wrapper divs
-   as literal direct children and forcing a stray 2-column grid on them —
-   removed those, so what follows is now the only layout in effect.
-   --------------------------------------------------------------------- */
-.workspace-quickstart {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: stretch;
-  gap: 16px;
-  margin-bottom: 22px;
-}
-
-.workspace-quickstart .mvp-flow,
-.workspace-quickstart .brand-profile {
-  margin: 0;
-  height: 100%;
-}
-
-.workspace-quickstart .brand-profile.is-open {
-  grid-column: 1 / -1;
-}
-
-@media (max-width: 860px) {
-  .workspace-quickstart {
-    grid-template-columns: 1fr;
-  }
-}
-
-.mvp-flow {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 20px;
-  overflow: hidden;
-  padding: 26px 28px;
-  border: 1px solid rgba(151, 190, 234, 0.17);
-  border-radius: 4px 28px 4px 4px;
-  color: #fff;
-  background:
-    radial-gradient(circle at 88% 0%, rgba(124, 58, 237, 0.29), transparent 35%),
-    linear-gradient(120deg, #04162b, #0a3155 66%, #071f38);
-  box-shadow: 0 24px 64px rgba(3, 17, 34, 0.25), inset 0 1px rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(24px) saturate(145%);
-}
-
-.mvp-flow-main {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.mvp-flow-main > span {
-  color: var(--acid);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.mvp-flow-steps {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.mvp-flow-step {
-  display: flex;
-  flex: 1 1 0;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  padding: 15px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.mvp-flow-step > i {
-  display: grid;
-  flex-shrink: 0;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  color: var(--night);
-  background: var(--acid);
-  font-size: 13px;
-  font-style: normal;
-  font-weight: 800;
-}
-
-.mvp-flow-step > span {
-  min-width: 0;
-}
-
-.mvp-flow-step b {
-  display: block;
-  color: #fff;
-  font-size: 16px;
-  font-weight: 650;
-  line-height: 1.25;
-}
-
-.mvp-flow-step small {
-  display: block;
-  margin-top: 2px;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 12px;
-}
-
-.mvp-flow-arrow {
-  flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.32);
-  font-size: 20px;
-  font-style: normal;
-}
-
-.mvp-flow-extra {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  padding-top: 18px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.mvp-flow-extra > div {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 13px 14px;
-  border: 1px dashed rgba(255, 255, 255, 0.16);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.032);
-}
-
-.mvp-flow-extra > div > i {
-  display: grid;
-  flex-shrink: 0;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
-  color: #cabdf6;
-  background: rgba(255, 255, 255, 0.08);
-  font-size: 12px;
-  font-style: normal;
-  font-weight: 700;
-}
-
-.mvp-flow-extra > div > span {
-  min-width: 0;
-}
-
-.mvp-flow-extra b {
-  display: block;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 650;
-}
-
-.mvp-flow-extra small {
-  display: block;
-  margin-top: 2px;
-  color: rgba(255, 255, 255, 0.56);
-  font-size: 11px;
-  line-height: 1.4;
-}
-
-@media (max-width: 720px) {
-  .mvp-flow-steps {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .mvp-flow-arrow {
-    display: none;
-  }
-
-  .mvp-flow-extra {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Brand-profile card, matching the flow strip's panel: same gradient
-   background, and — while collapsed — a full vertical composition
-   (kicker + title, the explanatory description, then the toggle/open
-   actions pinned to the bottom) instead of a single cramped row. Once
-   the module is actually open (.is-open), it drops all of this and
-   spans the full width again for the real editing form. */
-.workspace-quickstart .brand-profile:not(.is-open) {
-  display: flex;
-  overflow: hidden;
-  border: 1px solid rgba(151, 190, 234, 0.17);
-  border-radius: 4px 28px 4px 4px;
-  background:
-    radial-gradient(circle at 88% 0%, rgba(124, 58, 237, 0.29), transparent 35%),
-    linear-gradient(120deg, #04162b, #0a3155 66%, #071f38);
-  box-shadow: 0 24px 64px rgba(3, 17, 34, 0.25), inset 0 1px rgba(255, 255, 255, 0.1);
-}
-
-.workspace-quickstart .brand-profile:not(.is-open) .brand-profile-head {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: stretch;
-  gap: 20px;
-  width: 100%;
-  padding: 26px 28px;
-  /* .brand-profile-head normally paints its own background (see rules
-     above) — here the outer .brand-profile card already carries the
-     matching gradient, so the head must stay transparent or it hides it. */
-  background: none;
-  box-shadow: none;
-  backdrop-filter: none;
-}
-
-.workspace-quickstart .brand-profile:not(.is-open) .brand-profile-head > div:first-child {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
 .brand-profile-head h3 {
   font-weight: 540;
   letter-spacing: -0.045em;
   margin: 0;
   font-size: 22px;
-}
-
-.workspace-quickstart .brand-profile:not(.is-open) .brand-profile-head p {
-  display: block;
-  max-width: none;
-  margin: 0;
-  color: rgba(255, 255, 255, 0.68);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.workspace-quickstart .brand-profile:not(.is-open) .brand-profile-actions {
-  justify-content: space-between;
-  width: 100%;
-  padding-top: 18px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* The "Профиль отключён/активен" switch had no dark-theme track color at
@@ -14327,6 +14063,347 @@ footer nav a {
 .brand-profile-head .brand-switch input:checked + span {
   border-color: rgba(216, 255, 101, 0.5);
   background: var(--cobalt);
+}
+
+/* ---------------------------------------------------------------------
+   "Начните здесь" overview tab: greeting hero, one teaser card per
+   module (never the module itself — feedback was explicit that these
+   must stay a guide, not another accordion), a rotating copywriting tip
+   and an account-stats readout narrated in KLIO's own voice. Replaces
+   the old .mvp-flow strip; see the comment above .brand-profile-head h3
+   for context on why that class is gone.
+   --------------------------------------------------------------------- */
+.workspace-start {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  margin-bottom: 22px;
+}
+
+.workspace-start-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 28px;
+  padding: 34px 36px;
+  border: 1px solid rgba(151, 190, 234, 0.17);
+  border-radius: 4px 32px 4px 4px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 88% 0%, rgba(124, 58, 237, 0.29), transparent 35%),
+    linear-gradient(120deg, #04162b, #0a3155 66%, #071f38);
+  box-shadow: 0 24px 64px rgba(3, 17, 34, 0.25), inset 0 1px rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(24px) saturate(145%);
+}
+
+.workspace-start-hero-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.workspace-start-kicker {
+  color: var(--acid);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.workspace-start-hero-copy h2 {
+  margin: 0;
+  font-size: clamp(24px, 2.6vw, 34px);
+  font-weight: 560;
+  letter-spacing: -0.03em;
+  line-height: 1.14;
+}
+
+.workspace-start-hero-copy p {
+  max-width: 480px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.workspace-start-hero-copy .button {
+  align-self: flex-start;
+  margin-top: 6px;
+}
+
+.workspace-start-hero-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.workspace-start-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  color: inherit;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease;
+}
+
+.workspace-start-step:hover {
+  border-color: rgba(216, 255, 101, 0.4);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.workspace-start-step > i {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: var(--night);
+  background: var(--acid);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.workspace-start-step > span {
+  min-width: 0;
+}
+
+.workspace-start-step b {
+  display: block;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.workspace-start-step small {
+  display: block;
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.workspace-start-step-arrow {
+  align-self: center;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 16px;
+  font-style: normal;
+  text-align: center;
+}
+
+.workspace-start-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.workspace-start-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 22px 22px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-left: 3px solid var(--module-accent, #7450bd);
+  border-radius: 4px 20px 4px 4px;
+  color: inherit;
+  text-align: left;
+  background:
+    radial-gradient(circle at 90% 0%, var(--module-tint, rgba(124, 58, 237, 0.07)), transparent 55%),
+    rgba(255, 255, 255, 0.035);
+  cursor: pointer;
+  transition: border-color 180ms ease, transform 180ms ease, background 180ms ease;
+}
+
+.workspace-start-card:hover {
+  transform: translateY(-2px);
+  background:
+    radial-gradient(circle at 90% 0%, var(--module-tint, rgba(124, 58, 237, 0.1)), transparent 55%),
+    rgba(255, 255, 255, 0.06);
+}
+
+.workspace-start-card > i {
+  display: grid;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--module-accent, #7450bd);
+  background: color-mix(in srgb, var(--module-accent, #7450bd) 16%, transparent);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.workspace-start-card h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 620;
+  letter-spacing: -0.02em;
+}
+
+.workspace-start-card p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.workspace-start-card span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 8px;
+  color: var(--module-accent, #7450bd);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+/* Same accent each card's own module heading uses (see .semantics-module
+   etc.) — keeps the guide visually consistent with the tabs it opens. */
+.workspace-start-card-generator { --module-accent: #6539c7; --module-tint: rgba(124, 58, 237, 0.07); }
+.workspace-start-card-brand { --module-accent: #7450bd; --module-tint: rgba(124, 58, 237, 0.055); }
+.workspace-start-card-semantics { --module-accent: #376fa8; --module-tint: rgba(65, 118, 176, 0.07); }
+.workspace-start-card-competitors { --module-accent: #7a5b91; --module-tint: rgba(122, 91, 145, 0.07); }
+.workspace-start-card-content-plan { --module-accent: #3f7e70; --module-tint: rgba(54, 129, 109, 0.07); }
+.workspace-start-card-adaptation { --module-accent: #9b536d; --module-tint: rgba(155, 83, 109, 0.065); }
+
+.workspace-start-insights {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 14px;
+}
+
+.workspace-start-tip,
+.workspace-start-stats {
+  min-width: 0;
+  padding: 24px 26px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 4px 24px 4px 4px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.workspace-start-tip > span,
+.workspace-start-stats > span {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--acid);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.workspace-start-tip p {
+  margin: 0 0 16px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 540;
+  line-height: 1.5;
+}
+
+.workspace-start-tip button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease;
+}
+
+.workspace-start-tip button:hover {
+  border-color: rgba(216, 255, 101, 0.4);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.workspace-start-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.workspace-start-stats-grid > div {
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.workspace-start-stats-grid b {
+  display: block;
+  color: #fff;
+  font-size: 24px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.workspace-start-stats-grid small {
+  display: block;
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.workspace-start-stats-comment {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.workspace-start-stats-comment > i {
+  flex-shrink: 0;
+  color: var(--acid);
+  font-style: normal;
+  font-weight: 800;
+}
+
+@media (max-width: 960px) {
+  .workspace-start-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-start-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workspace-start-insights {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .workspace-start-hero {
+    padding: 24px;
+  }
+
+  .workspace-start-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ---------------------------------------------------------------------
@@ -15456,6 +15533,29 @@ footer nav a {
   color: rgba(13, 27, 49, 0.6);
 }
 
+[data-theme="light"] .workspace-brand-pill {
+  border-color: rgba(124, 58, 237, 0.18);
+  color: #0d1b31;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(124, 58, 237, 0.14), transparent 40%),
+    linear-gradient(135deg, #efe9fb 0%, #f4f1fb 55%, #ffffff 100%);
+  box-shadow: 0 16px 42px rgba(60, 30, 110, 0.1), inset 0 1px rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"] .workspace-brand-pill-info small {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .workspace-brand-pill.is-off .workspace-brand-pill-info > i {
+  color: #0d1b31;
+  background: rgba(15, 23, 42, 0.08);
+}
+
+[data-theme="light"] .workspace-brand-pill-switch > span {
+  border-color: rgba(124, 58, 237, 0.3);
+  background: rgba(124, 58, 237, 0.12);
+}
+
 /* ---- public page: cover intro, hero, "Контент-план" teaser ----------- */
 
 [data-theme="light"] .cover-intro {
@@ -15928,87 +16028,6 @@ footer nav a {
   border-top-color: rgba(15, 23, 42, 0.12);
 }
 
-/* ---------------------------------------------------------------------
-   Light theme: the collapsed "quickstart" row (.mvp-flow + the closed
-   Профиль бренда card) - missed by both earlier installments since
-   neither is inside .brand-profile-body and .workspace-quickstart's own
-   collapsed-state rules (added in a later dark pass, scoped for
-   guaranteed-win specificity: .workspace-quickstart .brand-profile:not
-   (.is-open) .brand-profile-head p is 0,4,1) outrank the general
-   .brand-profile-head rules from installment 2. Result before this fix:
-   the card background stayed dark navy while .brand-profile-head h3's
-   *text* correctly went dark-navy too (from installment 2's plain
-   .brand-profile-head h3 override) - dark-on-dark, unreadable, exactly
-   what was reported. Every new selector here matches or exceeds the
-   specificity of the rule it needs to beat. */
-[data-theme="light"] .mvp-flow {
-  border-color: rgba(15, 23, 42, 0.14);
-  color: #0d1b31;
-  background:
-    radial-gradient(circle at 88% 0%, rgba(53, 104, 212, 0.16), transparent 35%),
-    linear-gradient(120deg, #e3eaf6, #f0f4fa 66%, #ffffff);
-  box-shadow: 0 24px 64px rgba(20, 40, 80, 0.12), inset 0 1px rgba(255, 255, 255, 0.7);
-}
-
-[data-theme="light"] .mvp-flow-main > span {
-  color: #2452b8;
-}
-
-[data-theme="light"] .mvp-flow-step {
-  border-color: rgba(15, 23, 42, 0.14);
-  background: rgba(255, 255, 255, 0.6);
-}
-
-[data-theme="light"] .mvp-flow-step b {
-  color: #0d1b31;
-}
-
-[data-theme="light"] .mvp-flow-step small {
-  color: rgba(13, 27, 49, 0.6);
-}
-
-[data-theme="light"] .mvp-flow-arrow {
-  color: rgba(13, 27, 49, 0.35);
-}
-
-[data-theme="light"] .mvp-flow-extra {
-  border-top-color: rgba(15, 23, 42, 0.12);
-}
-
-[data-theme="light"] .mvp-flow-extra > div {
-  border-color: rgba(15, 23, 42, 0.18);
-  background: rgba(255, 255, 255, 0.5);
-}
-
-[data-theme="light"] .mvp-flow-extra > div > i {
-  color: #2452b8;
-  background: rgba(53, 104, 212, 0.1);
-}
-
-[data-theme="light"] .mvp-flow-extra b {
-  color: #0d1b31;
-}
-
-[data-theme="light"] .mvp-flow-extra small {
-  color: rgba(13, 27, 49, 0.56);
-}
-
-[data-theme="light"] .workspace-quickstart .brand-profile:not(.is-open) {
-  border-color: rgba(15, 23, 42, 0.14);
-  background:
-    radial-gradient(circle at 88% 0%, rgba(53, 104, 212, 0.16), transparent 35%),
-    linear-gradient(120deg, #e3eaf6, #f0f4fa 66%, #ffffff);
-  box-shadow: 0 24px 64px rgba(20, 40, 80, 0.12), inset 0 1px rgba(255, 255, 255, 0.7);
-}
-
-[data-theme="light"] .workspace-quickstart .brand-profile:not(.is-open) .brand-profile-head p {
-  color: rgba(13, 27, 49, 0.68);
-}
-
-[data-theme="light"] .workspace-quickstart .brand-profile:not(.is-open) .brand-profile-actions {
-  border-top-color: rgba(15, 23, 42, 0.12);
-}
-
 /* Toggle track (Профиль отключён/активен) had no light-theme colors at
    all - the dark version's translucent-white track/thumb would be
    near-invisible on the new light card. */
@@ -16020,6 +16039,118 @@ footer nav a {
 [data-theme="light"] .brand-profile-head .brand-switch input:checked + span {
   border-color: rgba(53, 104, 212, 0.5);
   background: #2452b8;
+}
+
+/* "Начните здесь" overview tab, light theme - same cool-blue treatment as
+   the rest of this pass rather than the dark hero's acid-green/purple. */
+[data-theme="light"] .workspace-start-hero {
+  border-color: rgba(15, 23, 42, 0.14);
+  color: #0d1b31;
+  background:
+    radial-gradient(circle at 88% 0%, rgba(53, 104, 212, 0.16), transparent 35%),
+    linear-gradient(120deg, #e3eaf6, #f0f4fa 66%, #ffffff);
+  box-shadow: 0 24px 64px rgba(20, 40, 80, 0.12), inset 0 1px rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="light"] .workspace-start-kicker {
+  color: #2452b8;
+}
+
+[data-theme="light"] .workspace-start-hero-copy p {
+  color: rgba(13, 27, 49, 0.68);
+}
+
+[data-theme="light"] .workspace-start-step {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .workspace-start-step > i {
+  color: #fff;
+  background: #2452b8;
+}
+
+[data-theme="light"] .workspace-start-step b {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .workspace-start-step small {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .workspace-start-step-arrow {
+  color: rgba(13, 27, 49, 0.35);
+}
+
+[data-theme="light"] .workspace-start-card {
+  border-color: rgba(15, 23, 42, 0.12);
+  background:
+    radial-gradient(circle at 90% 0%, var(--module-tint, rgba(53, 104, 212, 0.1)), transparent 55%),
+    #ffffff;
+  box-shadow: 0 10px 28px rgba(20, 40, 80, 0.06);
+}
+
+[data-theme="light"] .workspace-start-card:hover {
+  background:
+    radial-gradient(circle at 90% 0%, var(--module-tint, rgba(53, 104, 212, 0.16)), transparent 55%),
+    #ffffff;
+}
+
+[data-theme="light"] .workspace-start-card h3 {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .workspace-start-card p {
+  color: rgba(13, 27, 49, 0.64);
+}
+
+[data-theme="light"] .workspace-start-tip,
+[data-theme="light"] .workspace-start-stats {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: #ffffff;
+  box-shadow: 0 10px 28px rgba(20, 40, 80, 0.06);
+}
+
+[data-theme="light"] .workspace-start-tip > span,
+[data-theme="light"] .workspace-start-stats > span {
+  color: #2452b8;
+}
+
+[data-theme="light"] .workspace-start-tip p {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .workspace-start-tip button {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(53, 104, 212, 0.06);
+}
+
+[data-theme="light"] .workspace-start-tip button:hover {
+  border-color: rgba(53, 104, 212, 0.4);
+  background: rgba(53, 104, 212, 0.12);
+}
+
+[data-theme="light"] .workspace-start-stats-grid > div {
+  border-color: rgba(15, 23, 42, 0.1);
+  background: rgba(53, 104, 212, 0.04);
+}
+
+[data-theme="light"] .workspace-start-stats-grid b {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .workspace-start-stats-grid small {
+  color: rgba(13, 27, 49, 0.58);
+}
+
+[data-theme="light"] .workspace-start-stats-comment {
+  border-top-color: rgba(15, 23, 42, 0.1);
+  color: rgba(13, 27, 49, 0.78);
+}
+
+[data-theme="light"] .workspace-start-stats-comment > i {
+  color: #2452b8;
 }
 
 /* ---------------------------------------------------------------------
