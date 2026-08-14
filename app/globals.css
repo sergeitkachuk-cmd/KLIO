@@ -789,6 +789,37 @@ select:focus-visible {
   line-height: 1.72;
 }
 
+/* Legend — brand story/manifesto section, right after the hero: the myth
+   the name comes from and what KLIO actually does with it. Reuses the
+   shared .section-heading masthead grid like every other section, plus
+   one extra editorial pull-paragraph (.legend-body) below it. */
+.legend {
+  padding-top: 100px;
+  padding-bottom: 96px;
+}
+
+.legend-heading {
+  margin-bottom: 46px;
+}
+
+.legend-body {
+  max-width: 900px;
+  padding-left: 30px;
+  border-left: 3px solid var(--cobalt);
+}
+
+.legend-body p {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(18px, 1.7vw, 22px);
+  line-height: 1.7;
+}
+
+.legend-body strong {
+  color: var(--cobalt);
+  font-weight: 640;
+}
+
 /* Audience */
 .audience {
   padding-top: 126px;

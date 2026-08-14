@@ -4809,7 +4809,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
     <header className="site-header">
       <a className="wordmark" href="#top" aria-label="КЛИО — на главную"><Brand/></a>
-      <nav><a href="#audience">Для кого</a><a href="#modules">Как работает</a><a href="#cases">Примеры задач</a><a href="#plan">Контент‑план</a><a href="#pricing">Тарифы</a><a href="#faq">FAQ</a></nav>
+      <nav><a href="#legend">О КЛИО</a><a href="#audience">Для кого</a><a href="#modules">Как работает</a><a href="#cases">Примеры задач</a><a href="#plan">Контент‑план</a><a href="#pricing">Тарифы</a><a href="#faq">FAQ</a></nav>
       <div>
         <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"} title={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"}><Icon name={theme === "dark" ? "sun" : "moon"}/></button>
         <Link className="button ghost" href="/login">Войти</Link><Link className="button primary" href="/signup">Попробовать</Link>
@@ -4836,6 +4836,16 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     </section>
 
     <div className="marquee"><div className="marquee-track"><MarqueeGroup/><MarqueeGroup hidden/></div></div>
+
+    <section className="legend section" id="legend">
+      <div className="section-heading legend-heading">
+        <div><p className="kicker">КЛИО / Легенда бренда</p><h2>Воспеваем бренды<br/><em>языком цифровой эпохи.</em></h2></div>
+        <p>Муза Клио сохраняла истории и прославляла достойное. Мы перенесли эту идею в digital: КЛИО создаёт контент, который раскрывает ценность бренда, усиливает его голос и помогает быть заметнее.</p>
+      </div>
+      <div className="legend-body">
+        <p><strong>КЛИО — цифровая редакция для брендов.</strong> В древнегреческой мифологии Клио — муза, которая сохраняла значимые истории и воспевала достойные деяния. Мы переосмыслили эту идею для цифровой эпохи: КЛИО помогает брендам находить правильные слова, рассказывать о себе убедительно и становиться заметнее. Через статьи, социальные сети, SEO и рекламные тексты КЛИО превращает факты, преимущества и идеи бренда в контент, который формирует образ, привлекает аудиторию и работает на продвижение.</p>
+      </div>
+    </section>
 
     <section className="audience section" id="audience">
       <div className="section-heading audience-heading"><div><p className="kicker">КЛИО / Для кого</p><h2>Одна редакция.<br/><em>Разные задачи роста.</em></h2></div><p>Площадка подстраивается под ваш рабочий процесс: от первого экспертного материала до поточного производства контента для нескольких клиентов.</p></div>
@@ -4905,7 +4915,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         <div className="magazine-scene" aria-hidden="true"><div className="magazine-spread"><div className="magazine-page magazine-left"><span>КЛИО / 01</span><b>Слова,<br/>которые<br/><em>видят.</em></b><i>Цифровая редакция для бизнеса</i></div><div className="magazine-fold"/><div className="magazine-page magazine-right"><span>Материал номера</span><div className="magazine-photo"><u/><small>Спрос → смысл → публикация</small></div><p>Контент, собранный на основе данных и голоса вашего бренда.</p><strong>КЛИО</strong></div></div></div>
       </div>
     </section>
-    <footer><a className="wordmark" href="#top"><Brand/></a><p>Контент‑платформа для бизнеса, экспертов и агентств.</p><nav><a href="#modules">Возможности</a><a href="#cases">Примеры задач</a><a href="#plan">Контент‑план</a><a href="#pricing">Тарифы</a></nav><small>© 2026 КЛИО</small></footer>
+    <footer><a className="wordmark" href="#top"><Brand/></a><p>КЛИО — цифровая редакция для брендов.</p><nav><a href="#legend">О КЛИО</a><a href="#modules">Возможности</a><a href="#cases">Примеры задач</a><a href="#plan">Контент‑план</a><a href="#pricing">Тарифы</a></nav><small>© 2026 КЛИО</small></footer>
     {toast && <div className="toast" role="status"><Icon name="check"/><span>{toast}</span></div>}
   </main>;
 }
