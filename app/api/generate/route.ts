@@ -384,6 +384,21 @@ const TOPIC_GENERIC_WORDS = new Set([
   "оформи", "оформите", "оформить", "расскажи", "расскажите", "рассказать",
   "опиши", "опишите", "описать", "пост", "посты", "соцсеть", "соцсети",
   "публикация", "публикации", "объявление", "объявления", "текст", "тексты",
+  // Same failure as the instruction verbs above, different trigger: a topic
+  // phrased as a natural question ("Кому может подойти...", "Кому нужна...",
+  // "Стоит ли выбирать...") puts an interrogative pronoun or a modal/
+  // necessity verb ahead of the actual subject. Those words are unlikely to
+  // survive into a naturally-written body verbatim (a post says "вам
+  // подойдёт", not "кому подойдёт"), so when the first-5-tokens cut picked
+  // them up as "required subject terms", topicCoverage() rejected genuinely
+  // on-topic short posts/ads — confirmed on «Кому может подойти санаторный
+  // отдых в Карелии...», which failed on "кому" and "может" alone. Case
+  // forms are listed explicitly (not just the lemma) because this filter
+  // runs before stemRussianWord, and the stemmer's ending list doesn't
+  // collapse a 4-letter word like "кому" down to "кто" anyway.
+  "кто", "кого", "кому", "кем", "чем", "чему",
+  "может", "могут", "можно", "нужно", "нужен", "нужна", "нужны",
+  "должен", "должна", "должны", "должно", "стоит", "следует",
 ]);
 
 function semanticTokens(value: string) {
