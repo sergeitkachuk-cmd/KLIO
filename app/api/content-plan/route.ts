@@ -274,79 +274,14 @@ function validatePlan(plan: AiPlan, input: ReturnType<typeof normalizePayload>) 
   return cleaned;
 }
 
-const RESEARCH_SCHEMA = {
-  type: "object",
-  properties: {
-    summary: { type: "string" },
-    real_query_phrasings: { type: "array", items: { type: "string" } },
-    notable_facts: { type: "array", items: { type: "string" } },
-  },
-  required: ["summary", "real_query_phrasings", "notable_facts"],
-  additionalProperties: false,
-} as const;
-
-type ContentPlanResearch = {
-  summary: string;
-  realQueryPhrasings: string[];
-  notableFacts: string[];
-};
-
-// Best-effort web grounding, kept in its own small call so the main
-// generation call (generate_content_plan) can stay useWebSearch: false —
-// see that operation's config comment in ai-config.ts for why searching
-// and writing the full structured plan in one turn was the actual failure.
-// Never throws: a thin or missing research step should degrade the plan's
-// grounding, not block it entirely.
-async function researchContentPlanContext(
-  input: ReturnType<typeof normalizePayload>,
-  ownerEmail: string,
-): Promise<ContentPlanResearch | null> {
-  try {
-    const { result } = await callAiModel<{ summary?: unknown; real_query_phrasings?: unknown; notable_facts?: unknown }>({
-      operation: "research_content_plan",
-      ownerEmail,
-      schemaName: "klio_content_plan_research",
-      schema: RESEARCH_SCHEMA,
-      instructions: [
-        "Ты собираешь краткий фактический контекст перед тем, как другой редактор соберёт контент‑план.",
-        "Сделай не более 1‑2 поисковых запросов в вебе — этого достаточно, чтобы найти реальные формулировки запросов аудитории и заметные факты по теме и отрасли. Не ищи больше и не повторяй поиск, если уже нашёл достаточно.",
-        "Не пиши текстовые сообщения о ходе работы — единственный ответ это финальный JSON.",
-        "summary — 3‑5 предложений о нише, аудитории и типичных задачах читателя. real_query_phrasings — 5‑10 реальных формулировок запросов, как их ищут люди. notable_facts — до 5 конкретных проверяемых фактов об отрасли (не о конкретном бренде — бренд не проверяется на этом шаге).",
-        "Не выдумывай факты и не приписывай их конкретному бренду — это только общеотраслевой контекст.",
-      ].join("\n"),
-      input: JSON.stringify({
-        topic_or_focus: input.query || null,
-        industry_hint: input.brand.description || input.brand.positioning || null,
-        geography: input.geography.map((item) => item.label),
-      }, null, 2),
-    });
-    return {
-      summary: typeof result.summary === "string" ? result.summary.slice(0, 1200) : "",
-      realQueryPhrasings: Array.isArray(result.real_query_phrasings)
-        ? result.real_query_phrasings.filter((item): item is string => typeof item === "string").slice(0, 10)
-        : [],
-      notableFacts: Array.isArray(result.notable_facts)
-        ? result.notable_facts.filter((item): item is string => typeof item === "string").slice(0, 5)
-        : [],
-    };
-  } catch (error) {
-    console.error("content-plan research step failed (best-effort, continuing without it)", error);
-    return null;
-  }
-}
-
 // The actual AI call + validation + quota debit, extracted out of the
 // route handler so it can run after the response has already gone back
 // to the client (see async-jobs.ts for why that's safe on this host).
 async function runContentPlanGeneration(input: ReturnType<typeof normalizePayload>, ownerEmail: string) {
-  // Two independent, best-effort grounding sources gathered up front and
-  // folded into the main prompt as plain text/data — neither one gives
-  // the main generation call itself a live tool to call, which is what
-  // actually caused the runaway search-and-narrate loop before.
-  const [website, research] = await Promise.all([
-    input.brand.website ? readWebsiteContext(input.brand.website) : Promise.resolve(null),
-    researchContentPlanContext(input, ownerEmail),
-  ]);
+  // Direct HTTP read of the brand's own site (not an AI call). A separate
+  // AI research/web-search step was tried here and reverted — see the fix
+  // history in ai-config.ts's generate_content_plan entry for why.
+  const website = input.brand.website ? await readWebsiteContext(input.brand.website) : null;
   const instructions = [
       "Ты — ведущий контент‑стратег и SEO‑редактор платформы КЛИО.",
       ...CORE_SYSTEM_RULES,
@@ -377,16 +312,12 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       "Каждая строка должна иметь собственный ракурс, коммуникационную цель, целевую аудиторию, основной запрос, 2–8 поддерживающих формулировок и предметную структуру из 3–8 разделов.",
       "Поле lsi означает поддерживающие формулировки, сущности и вопросы. Не называй их LSI‑факторами и не имитируй частотность.",
       "Title, subtitle и Description должны точно соответствовать теме. subtitle — зацепка под H1: 1–2 предложения с пользой читателю, не повторяет title. Не обещай позиции, результат лечения, доход, сроки, цены и иные факты, которых нет в источниках.",
-      "В evidenceNeeded перечисли, какие факты, документы, цифры, кейсы или экспертные комментарии нужны редактору. В sources укажи только реально переданные слои: Тема, Семантика, География, Матрица, Профиль бренда, Сайт бренда, Веб‑исследование.",
+      "В evidenceNeeded перечисли, какие факты, документы, цифры, кейсы или экспертные комментарии нужны редактору. В sources укажи только реально переданные слои: Тема, Семантика, География, Матрица, Профиль бренда, Сайт бренда.",
       "Для каждой строки сначала сформируй скрытый editorialBrief: вопрос читателя, интент, сегмент аудитории, ракурс, ключевое сообщение, формат, тон, авторскую позицию, структуру, ключевые пункты, ключи, известные факты, неизвестные данные, возражения, CTA и ограничения. Во внешний JSON выводи только поля текущей схемы; не раскрывай editorialBrief в title или описании.",
-      // Used to also tell the model to web-search for real query phrasing
-      // and cap itself to 1-2 rounds — removed along with useWebSearch
-      // itself (see the fix history in ai-config.ts's generate_content_plan
-      // entry): the model kept ignoring the round cap (10 search rounds
-      // observed in one failed run) and the ban on narrating progress
-      // between them, so the instruction was pure noise once the tool
-      // it referred to was taken away too.
-      "Опирайся на переданный профиль бренда, семантику, географию, снимок сайта бренда (website_snapshot) и предварительное веб‑исследование (research_context) — не выдумывай факты, частотность или подробности, которых там нет. Если website_snapshot содержит актуальные предложения, программы или обновления, которых нет в текстовых полях профиля, обязательно учти их — это самый свежий источник о том, что бренд предлагает прямо сейчас. research_context.real_query_phrasings — ориентир по тому, как реально формулируют запросы в этой нише; research_context.notable_facts — общеотраслевой контекст, а не факты о конкретном бренде.",
+      // A separate AI research/web-search step (and, briefly, routing this
+      // whole operation to OpenAI) was tried and reverted here — see the
+      // fix history in ai-config.ts's generate_content_plan entry.
+      "Опирайся на переданный профиль бренда, семантику, географию и снимок сайта бренда (website_snapshot) — не выдумывай факты, частотность или подробности, которых там нет. Если website_snapshot содержит актуальные предложения, программы или обновления, которых нет в текстовых полях профиля, обязательно учти их — это самый свежий источник о том, что бренд предлагает прямо сейчас.",
       "Не пиши промежуточные текстовые сообщения о ходе работы («приступаю к анализу», «теперь перейду к плану» и т.п.). Единственный текстовый ответ — финальный JSON с готовым планом.",
       "Верни только структурированный результат по заданной JSON‑схеме.",
       ...FINAL_QA_RULES,
@@ -422,11 +353,6 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       website_snapshot: website && website.status === "loaded"
         ? { url: website.resolvedUrl, text: website.text }
         : null,
-      research_context: research ? {
-        summary: research.summary,
-        real_query_phrasings: research.realQueryPhrasings,
-        notable_facts: research.notableFacts,
-      } : null,
       existing_titles_to_exclude: input.existingTitles,
       editorial_brief_contract: {
         topic: "title", subtitle: "subtitle", intent: "intent", objective: "objective", audience: "audience", angle: "angle", format: "format",
@@ -444,11 +370,8 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
   const baseDataNote = input.semantics.length
     ? "План построен по карте подтверждённого спроса: каждая тема привязана к одному кластеру и отдельной задаче читателя. В приоритете — небрендовые и смежные запросы для привлечения новой аудитории; брендовый спрос вынесен в отдельную конверсионную ветку."
     : "План создан AI‑стратегом по текущей теме и подключённым источникам. Подключите семантику, чтобы приоритизировать темы по подтверждённому спросу.";
-  // Transparency for the site owner's own question about whether search
-  // actually ran and what it found — website is read directly
-  // (deterministic, not the AI's own search), research is the separate
-  // flash-tier web-search call; both are best-effort, so this note also
-  // doubles as visible confirmation when one of them didn't come through.
+  // Visible confirmation of whether the direct site read actually worked
+  // (best-effort — a failed/blocked fetch just means no note, not an error).
   const groundingNote = website?.status === "loaded" ? ` Сайт бренда прочитан (${websiteSourceLabel(website)}).` : "";
   return {
     mode: "ai" as const,

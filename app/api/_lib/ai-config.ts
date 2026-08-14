@@ -123,7 +123,6 @@ export type AiOperation =
   | "generate_quick_material"
   | "adapt_text"
   | "generate_content_plan"
-  | "research_content_plan"
   | "revise_content_plan"
   | "research_semantics"
   | "discover_competitors"
@@ -159,71 +158,29 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // per goal (see adaptationReasoningEffort below); this entry is the
   // fallback/default for the majority of goals (rewrite, shorten, tone…).
   adapt_text: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 6_000, structuredOutput: true, retryable: true, useWebSearch: false },
-  // History of this line (each fix based on real diagnostic evidence, not
-  // a guess, and each superseded by the next once it didn't hold up):
-  // 1) 18k -> 32k, reasoned from output size alone (25 rows x ~800
-  //    tokens/row). Made things worse: a 10-row plan started taking
-  //    minutes and still came back empty - the model wasn't running out
-  //    of room for the *answer*, so a bigger ceiling just gave it more
-  //    room to spend unproductively. Reverted to 18k.
-  // 2) existingTitles capped 120 -> 50 (content-plan/route.ts) after logs
-  //    showed the model's own reasoning fixating on "the existing list is
-  //    very long". Reduced but didn't fix the failure on its own.
-  // 3) reasoningEffort "low" -> "none" after logs showed the actual
-  //    runaway: a reasoning item visibly draft-rejecting-redrafting its
-  //    own topic list several times in one turn before the budget ran
-  //    out mid-thought - extended reasoning spiraling on the novelty
-  //    check, not a budget or list-length problem.
-  // 4) With reasoning off, the model now reliably reaches real output,
-  //    but compensates for not having a reasoning scratchpad by thinking
-  //    out loud via tool calls instead: logs showed 5 separate
-  //    web_search_call rounds interleaved with short "commentary"
-  //    messages ("I'll research...", "I now have enough grounding...")
-  //    before finally writing the plan JSON - which then got cut off
-  //    a couple items in once that overhead had eaten most of the 18k
-  //    budget ("AI-редакция вернула неполный структурированный ответ").
-  //    Paired that bump with two new instructions in content-plan/
-  //    route.ts capping search to 1-2 rounds and banning the
-  //    between-step commentary messages.
-  // 5) Those instructions were simply ignored. The next failure's log
-  //    showed 10 web_search_call rounds (including two open_page calls)
-  //    interleaved with 10 near-identical "I now have enough context,
-  //    I'll write the final plan" commentary messages that each led to
-  //    *another* search instead — a model that repeatedly narrates
-  //    "wrapping up" and then doesn't. Telling it to behave differently
-  //    in plain language had already failed once for reasoning (fix #3)
-  //    and now failed again for tool-call behavior; there's no further
-  //    prompt wording left to reasonably try before just removing the
-  //    tool that the runaway behavior needs to run away with.
-  //    useWebSearch: false. Real trade-off: no live grounding in current
-  //    search phrasing or brand-website facts for this operation anymore
-  //    — the plan leans entirely on brand_profile/semantics/geography in
-  //    the request payload. A plan that reliably finishes on the
-  //    information already on hand beats one that reasons or searches
-  //    forever and returns nothing. Revisit if plans start feeling
-  //    genuinely under-grounded rather than just less exhaustively
-  //    fact-checked.
-  generate_content_plan: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 26_000, structuredOutput: true, retryable: true, useWebSearch: false },
-  // Restores real web grounding for content-plan without reopening the
-  // failure above: a *separate*, much simpler call does the searching -
-  // 1-2 rounds, a short summary/fact list, no 10-25-row structured plan
-  // to also produce in the same turn - so there's far less for the model
-  // to keep "not quite finishing" on. generate_content_plan itself stays
-  // useWebSearch: false; this operation's result gets folded into its
-  // prompt as plain text instead.
+  // Long fix history compressed to the point that matters (git blame has
+  // the rest if it's ever needed): every failure chased on this operation
+  // — a reasoning item draft-rejecting-redrafting its own topic list for
+  // several turns, then (once reasoning was turned off to stop that) 10
+  // web_search_call rounds narrated with commentary text instead of ever
+  // finishing — is DeepSeek-specific behavior. Routing this operation to
+  // OpenAI instead was tried and reverted the same session: KLIO moved to
+  // DeepSeek specifically so the app doesn't depend on OpenAI, which is
+  // unreliable to reach from Russia without a VPN — not a lever available
+  // here at all, regardless of what it might have fixed. Token-budget and
+  // existingTitles-length tweaks along the way helped a little but never
+  // fixed the actual runaway; a separate research call (any provider) for
+  // extra grounding beyond the brand's own site added a full sequential
+  // round-trip that measurably slowed things down (10 topics ~2min, 13
+  // topics ~3min) for a quality gain the site owner judged not worth it.
   //
-  // On UTILITY (flash), not CONTENT (pro), on the site owner's own
-  // suggestion - with one caveat flagged directly to them: research_
-  // semantics below already found nano/flash too weak for a similarly
-  // open-ended web-research task (18-30 *novel* query phrases) and had
-  // to stay on Luna/pro for quality. This task is deliberately narrower
-  // (summarize, don't invent), which may keep it within flash's range,
-  // and FALLBACKS already promotes deepseek-v4-flash -> deepseek-v4-pro
-  // automatically once flash's own retries are exhausted - so a weak
-  // flash attempt self-heals onto pro rather than silently shipping a
-  // thin result. Revisit straight to CONTENT if flash's output is
-  // consistently thin even after that fallback.
-  research_content_plan: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 4_000, structuredOutput: true, retryable: true, useWebSearch: true },
+  // What actually stuck: reasoningEffort "none" and useWebSearch false —
+  // no search tool or reasoning scratchpad left for the model to get lost
+  // in, composing topics from the profile/semantics/geography already in
+  // the request plus the brand's website (readWebsiteContext in content-
+  // plan/route.ts — a direct HTTP read, not an AI call, so it doesn't
+  // share any of this operation's reliability problems).
+  generate_content_plan: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 18_000, structuredOutput: true, retryable: true, useWebSearch: false },
   // Up to 5 selected topics x 3 full alternatives each, each a complete
   // plan row (structure, lsi, evidence, sources...) — genuinely needs a
   // ceiling close to a fresh content plan's, not the generic "small
