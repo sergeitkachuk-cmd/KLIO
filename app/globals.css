@@ -12601,6 +12601,12 @@ footer nav a {
   }
 
   .archive-editor-modal .archive-editor-head {
+    /* Was sticky (desktop pattern: pin the title while the modal's own
+       body scrolls) — on a phone that permanently parks the title block
+       at the top of the screen for as long as the editor is open, on top
+       of the workspace header already being gone on mobile. Let it scroll
+       away with the rest of the editor like everything else does now. */
+    position: static;
     top: -18px;
     margin: -18px -18px 0;
     padding: 18px;
@@ -12613,7 +12619,6 @@ footer nav a {
 
   .archive-editor-modal .archive-editor-meta,
   .archive-editor-modal .archive-editor-seo,
-  .archive-editor-modal .archive-editor-actions,
   .archive-transform-tools,
   .archive-editor-change-log > div,
   .adaptation-goals {
@@ -12621,7 +12626,14 @@ footer nav a {
   }
 
   .archive-editor-modal .archive-editor-actions {
+    /* Same reasoning as archive-editor-head above: stop pinning the save/
+       copy button row to the bottom of the screen for the whole time the
+       editor is open. Two columns instead of one — see the mobile button
+       sizing (compact padding/font, wrapping enabled) a bit further down,
+       which is what actually keeps 2-up from overflowing. */
+    position: static;
     bottom: -18px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .seo-field-label {
@@ -13540,6 +13552,7 @@ footer nav a {
   }
 
   .archive-editor-modal .archive-editor-head {
+    position: static;
     top: -14px;
     margin: -14px -14px 0;
     padding: 14px;
@@ -13583,24 +13596,30 @@ footer nav a {
   }
 
   .archive-editor-modal .archive-editor-actions {
-    /* Same selector as the @media (max-width: 700px) block above sets
-       grid-template-columns: 1fr — but that block comes first in source
-       order, and this later (max-width: 820px, also true at phone widths)
-       block has equal specificity, so it was silently winning and cramming
-       4 buttons with long labels ("Вернуть сохранённую", "Сохранить как
-       копию"...) into 2 columns, overflowing past the button/card edge.
-       Stay on one column here too. */
-    grid-template-columns: 1fr;
+    /* Two per row (not the earlier one-per-row fix) — what actually
+       caused the old overflow wasn't the column count itself, it was
+       .archive-editor-actions > button:first-child (below) staying at
+       its desktop size (min-height: 44px, padding: 0 13px, no wrapping)
+       while its 3 siblings got the compact/wrapping treatment, so the
+       first cell didn't fit its column. Sizing all four consistently and
+       letting the label wrap onto a second line (line-height: 1.25,
+       min-height 40px has room for two lines) is what makes 2-up fit. */
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     bottom: -14px;
     gap: 7px;
   }
 
-  .archive-editor-actions > button {
+  .archive-editor-actions > button,
+  .archive-editor-actions > button:first-child {
     min-width: 0;
     min-height: 40px;
     padding: 6px 8px;
     font-size: 10px;
     line-height: 1.25;
+    white-space: normal;
+    text-align: center;
+    justify-content: center;
   }
 
   .archive-transform-tools {
