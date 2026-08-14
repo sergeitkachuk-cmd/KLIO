@@ -22,8 +22,11 @@ services:
       # "openai" or "deepseek" — switches every AI operation at once (see
       # app/api/_lib/ai-config.ts). Leave unset/anything else and it stays
       # on OpenAI — the DeepSeek integration is additive, not a replacement.
+      # Set to deepseek to match the value actually configured on the live
+      # Render service (this file previously said openai, which a fresh
+      # deploy from this blueprint would have silently reverted to).
       - key: AI_PROVIDER
-        value: openai
+        value: deepseek
       - key: YANDEX_SEARCH_API_KEY
         sync: false
       - key: YANDEX_FOLDER_ID
