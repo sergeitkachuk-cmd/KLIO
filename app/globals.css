@@ -421,7 +421,10 @@ select:focus-visible {
   border-radius: 50% !important;
   background: #b7a7ff !important;
   color: transparent !important;
-  vertical-align: middle !important;
+  /* baseline, not middle — middle floats it up around the text's
+     x-height (site owner: "стала посередине, а не внизу"); a real
+     period sits low, roughly on the baseline itself. */
+  vertical-align: baseline !important;
   font-size: inherit !important;
 }
 
