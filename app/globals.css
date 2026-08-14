@@ -4264,8 +4264,17 @@ footer nav a {
   text-align: center;
 }
 
+/* This screen (and its error variant, .workspace-loading.is-error) sits
+   directly on .workspace-shell with none of its own background — these
+   three colors were tuned for .workspace-shell's old light-gray canvas
+   and never revisited when that canvas went dark. Found by actually
+   rendering the error state locally (a mocked /api/workspace failure):
+   near-black-on-near-black, all three elements essentially invisible —
+   likely a real contributor to "blocks disappear into the background"
+   reports, since this exact screen is what a genuine API failure (e.g.
+   the accounts table missing a column a deploy expected) falls back to. */
 .workspace-loading > .brand {
-  color: #17131f;
+  color: #fff;
 }
 
 .workspace-loading > div {
@@ -4285,6 +4294,7 @@ footer nav a {
 
 .workspace-loading h1 {
   margin: 22px 0 8px;
+  color: #fff;
   font-size: clamp(30px, 5vw, 54px);
   font-weight: 540;
   letter-spacing: -0.05em;
@@ -4292,7 +4302,7 @@ footer nav a {
 
 .workspace-loading p {
   margin: 0 0 20px;
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.64);
 }
 
 .workspace-history-button {
@@ -15561,6 +15571,18 @@ footer nav a {
 
 [data-theme="light"] .workspace-heading > div:first-child > span {
   color: rgba(13, 27, 49, 0.62);
+}
+
+[data-theme="light"] .workspace-loading > .brand {
+  color: #17131f;
+}
+
+[data-theme="light"] .workspace-loading h1 {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .workspace-loading p {
+  color: var(--muted);
 }
 
 [data-theme="light"] .workspace-sidebar {
