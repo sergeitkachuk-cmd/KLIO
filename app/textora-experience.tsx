@@ -736,11 +736,11 @@ const contentPlanFormatToGeneratorFormat: Record<ContentPlanItem["format"], Form
 // the person actually intends to use the plan (e.g. filling an SMM
 // calendar shouldn't hand back landing-page topics).
 const CONTENT_PLAN_GOALS: { id: ContentPlanGoal; label: string; hint: string }[] = [
-  { id: "mixed", label: "Смешанный", hint: "КЛИО сама балансирует форматы по этапам воронки — как раньше." },
-  { id: "seo", label: "SEO‑статьи", hint: "План только из статей для блога или сайта." },
   { id: "social", label: "Посты для соцсетей", hint: "План только из постов — готово для SMM‑календаря." },
+  { id: "seo", label: "SEO‑статьи", hint: "План только из статей для блога или сайта." },
   { id: "landing", label: "Посадочные страницы", hint: "План только из продающих лендингов." },
   { id: "ads", label: "Рекламные тексты", hint: "План только из коротких рекламных текстов." },
+  { id: "mixed", label: "Смешанный", hint: "КЛИО сама балансирует форматы по этапам воронки — как раньше." },
 ];
 
 const sample: Record<Format, { title: string; body: string }> = {
@@ -1494,7 +1494,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     workspace ? [] : defaultCompetitorResult.topics.filter((item) => item.recommended).map((item) => item.id),
   );
   const [contentPlanQuery, setContentPlanQuery] = useState("");
-  const [contentPlanGoal, setContentPlanGoal] = useState<ContentPlanGoal>("mixed");
+  const [contentPlanGoal, setContentPlanGoal] = useState<ContentPlanGoal>("social");
   const [contentPlanCount, setContentPlanCount] = useState(25);
   const [contentPlanResult, setContentPlanResult] = useState<ContentPlanResult>(emptyContentPlanResult);
   const [contentPlanMode, setContentPlanMode] = useState<ContentPlanMode>("idle");
