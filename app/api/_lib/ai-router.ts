@@ -100,6 +100,24 @@ function outputText(response: unknown): { text: string; refused: boolean } {
   return { text: "", refused: false };
 }
 
+// Compact, unbounded-safe summary of response.output for the diagnostic
+// logs below — "reasoning:completed, web_search_call:completed,
+// message:completed" etc. A single verbose reasoning_text block (seen in
+// production: dozens of brainstormed topic candidates, easily 5-10k
+// characters on its own) can by itself blow through the truncated
+// diagnostic dump's budget before it ever reaches whether a message item
+// existed later in the array — this line answers that question first,
+// in a couple hundred characters, regardless of how long the reasoning
+// content is.
+function summarizeOutputItems(output: unknown): string {
+  if (!Array.isArray(output)) return "(not an array)";
+  return output.map((item) => {
+    if (!item || typeof item !== "object") return "?";
+    const record = item as Record<string, unknown>;
+    return `${record.type ?? "?"}:${record.status ?? "?"}`;
+  }).join(", ") || "(empty)";
+}
+
 function extractUsage(response: unknown) {
   const source = response && typeof response === "object" ? response as Record<string, unknown> : {};
   const usage = source.usage && typeof source.usage === "object" ? source.usage as Record<string, unknown> : {};
@@ -237,6 +255,7 @@ async function requestOnce(params: {
     // there's none to log here.
     console.error(`${provider} returned no text output for a text-expecting response`);
     const diagnostic = body && typeof body === "object" ? body as Record<string, unknown> : {};
+    console.error(`${provider} output item summary`, summarizeOutputItems(diagnostic.output));
     console.error(`${provider} response diagnostic`, JSON.stringify({
       status: diagnostic.status,
       incomplete_details: diagnostic.incomplete_details,
@@ -268,6 +287,7 @@ async function requestOnce(params: {
     // output[] array itself (tool-call items vs. message items, in what
     // order — that's what outputText() needs to walk correctly).
     const diagnostic = body && typeof body === "object" ? body as Record<string, unknown> : {};
+    console.error(`${provider} output item summary`, summarizeOutputItems(diagnostic.output));
     console.error(`${provider} response diagnostic`, JSON.stringify({
       status: diagnostic.status,
       incomplete_details: diagnostic.incomplete_details,

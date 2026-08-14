@@ -153,8 +153,18 @@ function normalizePayload(raw: ContentPlanPayload) {
     cta: clean(sourceBrand.cta, 500),
   } satisfies BrandInput;
   const query = requestedQuery || [brand.name, brand.positioning || brand.description].filter(Boolean).join(": ").slice(0, 300);
+  // Was 120 — for an account with a long history this dumped a huge
+  // "don't repeat any of these" list straight into the prompt. Confirmed
+  // via the diagnostic logging added to ai-router.ts: DeepSeek's own
+  // reasoning trace on a stuck request explicitly said "the existing list
+  // is very long and covers most brand topics" and spent enormous effort
+  // brainstorming around it, chewing through the token budget on
+  // reasoning/search without ever reaching the final message. The client
+  // sends this newest-first (see existingTitles in buildContentPlan),
+  // so capping here still keeps the titles most likely to actually
+  // collide with a fresh plan.
   const existingTitles = unique(Array.isArray(raw.existingTitles)
-    ? raw.existingTitles.map((item) => clean(item, 240)).filter(Boolean).slice(0, 120)
+    ? raw.existingTitles.map((item) => clean(item, 240)).filter(Boolean).slice(0, 50)
     : []);
   return { query, requestedQuery, goal, count, semantics, geography, competitorInsights, brand, existingTitles };
 }

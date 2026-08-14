@@ -3606,7 +3606,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       ...contentPlanResult.items.map((item) => item.title),
       ...activeBrandArticles.map((item) => item.title),
       ...savedPlanTitles,
-    ]).slice(0, 120);
+    ]).slice(0, 50);
     setContentPlanBusy(true);
     setContentPlanError("");
     try {
