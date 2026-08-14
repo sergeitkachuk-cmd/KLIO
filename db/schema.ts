@@ -110,6 +110,32 @@ export const aiUsage = pgTable("ai_usage", {
   index("ai_usage_operation_idx").on(table.operation, table.createdAt),
 ]);
 
+// Long-running AI work (currently just content-plan generation) that can
+// legitimately take minutes — too long to trust any single HTTP request to
+// stay open end to end (a hosting platform's reverse proxy enforces its own
+// idle/duration timeout independent of anything this app does, and "failed
+// to fetch" from a dropped connection was exactly what surfaced once plan
+// generation got slow enough to occasionally cross it). The route that
+// kicks off the work returns this row's id immediately; the actual AI call
+// keeps running server-side (see the "why this is safe" note in
+// app/api/_lib/async-jobs.ts) and the client polls /status until done.
+export const asyncJobs = pgTable("async_jobs", {
+  id: text("id").primaryKey(),
+  ownerEmail: text("owner_email").notNull(),
+  // "content_plan" today; a plain string (not an enum) so a future job
+  // kind doesn't need a migration to add.
+  kind: text("kind").notNull(),
+  // "pending" | "processing" | "done" | "failed"
+  status: text("status").notNull().default("pending"),
+  inputJson: text("input_json").notNull(),
+  resultJson: text("result_json"),
+  errorMessage: text("error_message"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  index("async_jobs_owner_created_idx").on(table.ownerEmail, table.createdAt),
+]);
+
 export const materials = pgTable("materials", {
   id: text("id").primaryKey(),
   ownerEmail: text("owner_email").notNull(),

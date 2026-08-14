@@ -1160,6 +1160,34 @@ async function safeJson(response: Response): Promise<Record<string, unknown>> {
   }
 }
 
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => { setTimeout(resolve, ms); });
+}
+
+// Polls a background job (see app/api/_lib/async-jobs.ts) started by a
+// route that returns { jobId } instead of the result directly. Exists
+// because some AI work (content-plan generation especially) can
+// legitimately run for minutes — long enough that keeping one HTTP
+// request open end to end risks the hosting platform's own proxy timeout
+// killing the connection first (surfaced to a user as a bare "failed to
+// fetch", not a real error from the AI or this app).
+async function pollAsyncJob<T extends Record<string, unknown>>(statusUrl: string, jobId: string): Promise<T> {
+  const startedAt = Date.now();
+  const maxWaitMs = 6 * 60_000;
+  const intervalMs = 3000;
+  while (Date.now() - startedAt < maxWaitMs) {
+    await sleep(intervalMs);
+    const response = await fetch(`${statusUrl}?id=${encodeURIComponent(jobId)}`);
+    const payload = await safeJson(response) as { status?: string; error?: string };
+    if (payload.status === "done") return payload as T;
+    if (payload.status === "failed" || (!response.ok && payload.status !== "processing" && payload.status !== "pending")) {
+      throw new Error(payload.error || "Не удалось выполнить задание.");
+    }
+    // "pending" / "processing" — keep polling.
+  }
+  throw new Error("Задание выполняется необычно долго. Попробуйте ещё раз чуть позже.");
+}
+
 function archiveDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
@@ -3582,7 +3610,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setContentPlanBusy(true);
     setContentPlanError("");
     try {
-      const response = await fetch("/api/content-plan", {
+      const startResponse = await fetch("/api/content-plan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3603,13 +3631,18 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           existingTitles,
         }),
       });
-      const payload = await safeJson(response) as {
-        error?: string;
+      const startPayload = await safeJson(startResponse) as { error?: string; jobId?: string };
+      if (!startResponse.ok || !startPayload.jobId) throw new Error(startPayload.error || "Не удалось запустить сборку контент‑плана.");
+
+      // The actual generation (web search, up to 25 full plan rows) can run
+      // for minutes — startResponse above only confirms the job was
+      // accepted, not that it's finished. See pollAsyncJob's own comment.
+      const payload = await pollAsyncJob<{
         mode?: "ai";
         result?: Omit<ContentPlanResult, "items"> & { items: Array<Omit<ContentPlanItem, "status">> };
         usage?: { account?: WorkspaceAccount } | null;
-      };
-      if (!response.ok || !payload.result?.items?.length) throw new Error(payload.error || "Не удалось собрать контент‑план.");
+      }>("/api/content-plan/status", startPayload.jobId);
+      if (!payload.result?.items?.length) throw new Error("Не удалось собрать контент‑план.");
       if (payload.mode !== "ai") throw new Error("Контент‑план не получен от AI‑стратега.");
       if (payload.usage?.account) setWorkspaceAccount(payload.usage.account);
       const result: ContentPlanResult = {
@@ -4792,6 +4825,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <div><span>Количество тем</span><div>{[10, 15, 25].map((value) => <button type="button" className={contentPlanCount === value ? "active" : ""} onClick={() => { setContentPlanCount(value); setContentPlanNeedsRefresh(true); persistContentPlan({ count: value, needsRefresh: true }); }} key={value}>{value}</button>)}</div></div>
                   <button className={`button primary large ${contentPlanBusy ? "is-busy" : ""}`} type="button" onClick={buildContentPlan} disabled={contentPlanBusy || aiConnection !== "connected" || workspaceAccount.researchRemaining <= 0}><Icon name="spark"/>{contentPlanBusy ? "Собираем систему…" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.researchRemaining <= 0 ? "Лимит исследований исчерпан" : contentPlanResult.items.length ? "Обновить контент‑план" : "Собрать контент‑план"}</button>
                 </div>
+                {contentPlanBusy && <small className="generation-wait-note">План из {contentPlanCount} тем с веб‑исследованием обычно занимает 1–3 минуты — окно можно не держать открытым, план дособерётся в фоне</small>}
                 {contentPlanError && <p className="generation-error" role="alert">{contentPlanError}</p>}
               </article>
 

@@ -1,7 +1,8 @@
 import { AiResponseError, openAiErrorResponse } from "../_lib/openai-response";
 import { CORE_SYSTEM_RULES, FINAL_QA_RULES } from "../../content-plans";
-import { callAiModel } from "../_lib/ai-router";
+import { AiCallError, callAiModel } from "../_lib/ai-router";
 import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
+import { createAsyncJob, failAsyncJob, markAsyncJobProcessing, completeAsyncJob } from "../_lib/async-jobs";
 
 type SemanticInput = {
   phrase: string;
@@ -262,15 +263,13 @@ function validatePlan(plan: AiPlan, input: ReturnType<typeof normalizePayload>) 
   return cleaned;
 }
 
-export async function POST(request: Request) {
-  try {
-    const raw = await request.json() as ContentPlanPayload;
-    const input = normalizePayload(raw);
-    if (!input.query) return Response.json({ error: "Укажите тему или заполните название и основу профиля бренда." }, { status: 400 });
-    await assertSecondaryQuotaAvailable("research");
-    const identity = await workspaceIdentity();
-
-    const instructions = [
+// The actual AI call + validation + quota debit, extracted out of the
+// route handler so it can run after the response has already gone back
+// to the client (see async-jobs.ts for why that's safe on this host).
+// Everything here is unchanged from the old synchronous handler — only
+// where it's called from moved.
+async function runContentPlanGeneration(input: ReturnType<typeof normalizePayload>, ownerEmail: string) {
+  const instructions = [
       "Ты — ведущий контент‑стратег и SEO‑редактор платформы КЛИО.",
       ...CORE_SYSTEM_RULES,
       "Работай как редакционная система бренда, а не генератор общих заголовков. Сначала используй весь доступный профиль: предложение, аудиторию, позиционирование, подтверждённые преимущества, доказательства, географию, голос и ограничения.",
@@ -299,62 +298,95 @@ export async function POST(request: Request) {
       ...FINAL_QA_RULES,
     ].join("\n");
 
-    const { result: aiPlan, model } = await callAiModel<AiPlan>({
-      operation: "generate_content_plan",
-      ownerEmail: identity.email,
-      schemaName: "klio_content_plan",
-      schema: contentPlanSchema(input.count),
-      instructions,
-      input: JSON.stringify({
-        main_topic: input.query,
-        plan_basis: input.requestedQuery ? "user_topic" : "brand_profile",
-        plan_goal: input.goal,
-        allowed_formats: GOAL_FORMAT_LOCK[input.goal],
-        selected_semantics: input.semantics,
-        semantic_strategy: input.semantics.length ? {
-          purpose: "series_of_articles_for_new_audience",
-          article_rule: "one article equals one semantic cluster and one intent",
-          prioritize: "non_brand_broad_and_related_demand",
-          separate: "brand_navigation_and_conversion_demand",
-          frequency: "verified monthly demand; use only to prioritize, never invent it",
-        } : {
-          purpose: "broad_industry_content_field_without_semantics",
-          prioritize: "audience problems, adjacent topics, expert questions and new-audience entry points",
-          seasonal_content: "include only genuinely relevant verified dates or holidays with useful angle; never use generic greetings",
-          prohibition: "do not invent search volume, seasonality or brand facts",
-        },
-        search_geography: input.geography,
-        competitor_editorial_opportunities: input.competitorInsights,
-        brand_profile: input.brand.name ? input.brand : null,
-        existing_titles_to_exclude: input.existingTitles,
-        editorial_brief_contract: {
-          topic: "title", subtitle: "subtitle", intent: "intent", objective: "objective", audience: "audience", angle: "angle", format: "format",
-          structure: "structure", keywords: ["primaryKeyword", "lsi"], evidenceNeeded: "evidenceNeeded", sources: "sources",
-          knownFacts: input.brand.name ? [input.brand.description, input.brand.positioning, input.brand.advantages, input.brand.products, input.brand.services, input.brand.proof].filter(Boolean) : [],
-          restrictions: [input.brand.restrictions, input.brand.prohibited].filter(Boolean),
-          authorPosition: "brand for commercial brand materials; neutral or expert otherwise",
-        },
-        required_items: input.count,
-      }, null, 2),
-    });
-
-    const items = validatePlan(aiPlan, input);
-    const usage = await recordResearch();
-    return Response.json({
-      mode: "ai",
-      model,
-      usage,
-      result: {
-        query: input.query,
-        items,
-        clusters: unique(items.map((item) => item.cluster)),
-        dataNote: input.semantics.length
-          ? "План построен по карте подтверждённого спроса: каждая тема привязана к одному кластеру и отдельной задаче читателя. В приоритете — небрендовые и смежные запросы для привлечения новой аудитории; брендовый спрос вынесен в отдельную конверсионную ветку."
-          : "План создан AI‑стратегом по текущей теме и подключённым источникам. Подключите семантику, чтобы приоритизировать темы по подтверждённому спросу.",
+  const { result: aiPlan, model } = await callAiModel<AiPlan>({
+    operation: "generate_content_plan",
+    ownerEmail,
+    schemaName: "klio_content_plan",
+    schema: contentPlanSchema(input.count),
+    instructions,
+    input: JSON.stringify({
+      main_topic: input.query,
+      plan_basis: input.requestedQuery ? "user_topic" : "brand_profile",
+      plan_goal: input.goal,
+      allowed_formats: GOAL_FORMAT_LOCK[input.goal],
+      selected_semantics: input.semantics,
+      semantic_strategy: input.semantics.length ? {
+        purpose: "series_of_articles_for_new_audience",
+        article_rule: "one article equals one semantic cluster and one intent",
+        prioritize: "non_brand_broad_and_related_demand",
+        separate: "brand_navigation_and_conversion_demand",
+        frequency: "verified monthly demand; use only to prioritize, never invent it",
+      } : {
+        purpose: "broad_industry_content_field_without_semantics",
+        prioritize: "audience problems, adjacent topics, expert questions and new-audience entry points",
+        seasonal_content: "include only genuinely relevant verified dates or holidays with useful angle; never use generic greetings",
+        prohibition: "do not invent search volume, seasonality or brand facts",
       },
-    });
+      search_geography: input.geography,
+      competitor_editorial_opportunities: input.competitorInsights,
+      brand_profile: input.brand.name ? input.brand : null,
+      existing_titles_to_exclude: input.existingTitles,
+      editorial_brief_contract: {
+        topic: "title", subtitle: "subtitle", intent: "intent", objective: "objective", audience: "audience", angle: "angle", format: "format",
+        structure: "structure", keywords: ["primaryKeyword", "lsi"], evidenceNeeded: "evidenceNeeded", sources: "sources",
+        knownFacts: input.brand.name ? [input.brand.description, input.brand.positioning, input.brand.advantages, input.brand.products, input.brand.services, input.brand.proof].filter(Boolean) : [],
+        restrictions: [input.brand.restrictions, input.brand.prohibited].filter(Boolean),
+        authorPosition: "brand for commercial brand materials; neutral or expert otherwise",
+      },
+      required_items: input.count,
+    }, null, 2),
+  });
+
+  const items = validatePlan(aiPlan, input);
+  const usage = await recordResearch();
+  return {
+    mode: "ai" as const,
+    model,
+    usage,
+    result: {
+      query: input.query,
+      items,
+      clusters: unique(items.map((item) => item.cluster)),
+      dataNote: input.semantics.length
+        ? "План построен по карте подтверждённого спроса: каждая тема привязана к одному кластеру и отдельной задаче читателя. В приоритете — небрендовые и смежные запросы для привлечения новой аудитории; брендовый спрос вынесен в отдельную конверсионную ветку."
+        : "План создан AI‑стратегом по текущей теме и подключённым источникам. Подключите семантику, чтобы приоритизировать темы по подтверждённому спросу.",
+    },
+  };
+}
+
+// Runs the generation in the background and writes the outcome to the job
+// row — never thrown/awaited by the route handler that kicks it off.
+async function runContentPlanJob(jobId: string, input: ReturnType<typeof normalizePayload>, ownerEmail: string) {
+  try {
+    await markAsyncJobProcessing(jobId);
+    const payload = await runContentPlanGeneration(input, ownerEmail);
+    await completeAsyncJob(jobId, payload);
+  } catch (error) {
+    const message = error instanceof WorkspaceAccessError || error instanceof AiResponseError || error instanceof AiCallError
+      ? error.message
+      : "Не удалось собрать контент‑план. Проверьте исходные данные и повторите попытку.";
+    if (!(error instanceof WorkspaceAccessError)) console.error("content-plan background job failed", error);
+    await failAsyncJob(jobId, message);
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const raw = await request.json() as ContentPlanPayload;
+    const input = normalizePayload(raw);
+    if (!input.query) return Response.json({ error: "Укажите тему или заполните название и основу профиля бренда." }, { status: 400 });
+    // Checked up front, synchronously, so an account that's already over
+    // its limit gets a clean 429 immediately instead of a job that's
+    // created only to fail a few seconds later.
+    await assertSecondaryQuotaAvailable("research");
+    const identity = await workspaceIdentity();
+    const jobId = await createAsyncJob("content_plan", identity.email, input);
+    // Intentionally not awaited — see async-jobs.ts for why this keeps
+    // running after the response below is sent on this host.
+    void runContentPlanJob(jobId, input, identity.email);
+    return Response.json({ jobId });
   } catch (error) {
     if (error instanceof WorkspaceAccessError) return workspaceErrorResponse(error);
-    return openAiErrorResponse(error, "Не удалось собрать контент‑план. Проверьте исходные данные и повторите попытку.");
+    return openAiErrorResponse(error, "Не удалось запустить сборку контент‑плана.");
   }
 }
