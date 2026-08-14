@@ -4061,7 +4061,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
         <section className="workspace-content">
           <div className="workspace-heading">
-            <div><p>Рабочее пространство / выпуск 01</p><h1>Редакционная система</h1><span>Здесь находятся инструменты КЛИО. Маркетинговые разделы остались на публичной странице.</span></div>
+            <div><p>Рабочее пространство / выпуск 01</p><h1>Редакционная система</h1><span>Ваше рабочее пространство с инструментами КЛИО — от первого черновика до готовой публикации.</span></div>
             <div className="workspace-heading-status">
               {/* Профиль бренда переехал на отдельную вкладку и больше не
                   виден по умолчанию на других модулях — этот индикатор
@@ -4153,17 +4153,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
           {activeModule === "start" && <section className="workspace-start" id="start" aria-label="Обзор кабинета">
             <div className="workspace-start-hero">
-              <div className="workspace-start-hero-copy">
-                <span className="workspace-start-kicker">КЛИО · обзор кабинета</span>
-                <h2>Привет! Я КЛИО — ваш редакционный ассистент.</h2>
-                <p>Опишите тему и ключевые слова — я соберу цельный материал за пару минут. Остальные инструменты ниже нужны, только если важна глубина: голос бренда, поисковый спрос, конкуренты или план на месяц вперёд.</p>
-                <button className="button primary large" type="button" onClick={() => openModule("generator")}>Написать первый материал <Icon name="arrow"/></button>
-              </div>
-              <div className="workspace-start-hero-steps">
-                <button type="button" className="workspace-start-step" onClick={() => openModule("generator")}><i>01</i><span><b>Тема и ключи</b><small>этого достаточно для старта</small></span></button>
-                <i className="workspace-start-step-arrow" aria-hidden="true">→</i>
-                <button type="button" className="workspace-start-step" onClick={() => openModule("generator")}><i>02</i><span><b>Готовый материал</b><small>сразу в генераторе, с SEO‑заголовком и метаописанием</small></span></button>
-              </div>
+              <span className="workspace-start-kicker">КЛИО · обзор кабинета</span>
+              <h2>Привет! Я КЛИО — ваш редакционный ассистент.</h2>
+              <p>Опишите тему и ключевые слова — я соберу цельный материал за пару минут, с SEO‑заголовком и метаописанием. Остальные инструменты ниже нужны, только если важна глубина: голос бренда, поисковый спрос, конкуренты или план на месяц вперёд.</p>
+              <button className="button primary large" type="button" onClick={() => openModule("generator")}>Написать первый материал <Icon name="arrow"/></button>
             </div>
 
             <div className="workspace-start-grid">

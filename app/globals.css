@@ -14112,10 +14112,10 @@ footer nav a {
 }
 
 .workspace-start-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-  align-items: center;
-  gap: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
   padding: 34px 36px;
   border: 1px solid rgba(151, 190, 234, 0.17);
   border-radius: 4px 32px 4px 4px;
@@ -14127,13 +14127,6 @@ footer nav a {
   backdrop-filter: blur(24px) saturate(145%);
 }
 
-.workspace-start-hero-copy {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 14px;
-}
-
 .workspace-start-kicker {
   color: var(--acid);
   font-size: 12px;
@@ -14142,7 +14135,7 @@ footer nav a {
   text-transform: uppercase;
 }
 
-.workspace-start-hero-copy h2 {
+.workspace-start-hero h2 {
   margin: 0;
   font-size: clamp(24px, 2.6vw, 34px);
   font-weight: 560;
@@ -14150,84 +14143,16 @@ footer nav a {
   line-height: 1.14;
 }
 
-.workspace-start-hero-copy p {
-  max-width: 480px;
+.workspace-start-hero p {
+  max-width: 640px;
   margin: 0;
   color: rgba(255, 255, 255, 0.72);
   font-size: 15px;
   line-height: 1.55;
 }
 
-.workspace-start-hero-copy .button {
-  align-self: flex-start;
+.workspace-start-hero .button {
   margin-top: 6px;
-}
-
-.workspace-start-hero-steps {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.workspace-start-step {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 15px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 14px;
-  color: inherit;
-  text-align: left;
-  background: rgba(255, 255, 255, 0.06);
-  cursor: pointer;
-  transition: border-color 180ms ease, background 180ms ease;
-}
-
-.workspace-start-step:hover {
-  border-color: rgba(216, 255, 101, 0.4);
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.workspace-start-step > i {
-  display: grid;
-  flex-shrink: 0;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  color: var(--night);
-  background: var(--acid);
-  font-size: 13px;
-  font-style: normal;
-  font-weight: 800;
-}
-
-.workspace-start-step > span {
-  min-width: 0;
-}
-
-.workspace-start-step b {
-  display: block;
-  color: #fff;
-  font-size: 15px;
-  font-weight: 650;
-  line-height: 1.25;
-}
-
-.workspace-start-step small {
-  display: block;
-  margin-top: 2px;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.workspace-start-step-arrow {
-  align-self: center;
-  color: rgba(255, 255, 255, 0.3);
-  font-size: 16px;
-  font-style: normal;
-  text-align: center;
 }
 
 .workspace-start-grid {
@@ -14248,9 +14173,15 @@ footer nav a {
   border-radius: 4px 20px 4px 4px;
   color: inherit;
   text-align: left;
+  /* Opaque, matching the hero right above it — this card used to rely on
+     a ~3.5% white overlay assuming a dark page behind it, but the actual
+     workspace canvas (.workspace-shell) is a light gray gradient, so that
+     overlay read as near-invisible white-on-white. Every dark panel in
+     this app (hero, module headings, sidebar) paints its own opaque
+     background for the same reason; this one now does too. */
   background:
-    radial-gradient(circle at 90% 0%, var(--module-tint, rgba(124, 58, 237, 0.07)), transparent 55%),
-    rgba(255, 255, 255, 0.035);
+    radial-gradient(circle at 90% 0%, var(--module-tint, rgba(124, 58, 237, 0.16)), transparent 55%),
+    linear-gradient(150deg, #0c1930, #0a2340 68%, #071c33);
   cursor: pointer;
   transition: border-color 180ms ease, transform 180ms ease, background 180ms ease;
 }
@@ -14258,8 +14189,8 @@ footer nav a {
 .workspace-start-card:hover {
   transform: translateY(-2px);
   background:
-    radial-gradient(circle at 90% 0%, var(--module-tint, rgba(124, 58, 237, 0.1)), transparent 55%),
-    rgba(255, 255, 255, 0.06);
+    radial-gradient(circle at 90% 0%, var(--module-tint, rgba(124, 58, 237, 0.24)), transparent 55%),
+    linear-gradient(150deg, #0e1d38, #0c2848 68%, #08213c);
 }
 
 .workspace-start-card > i {
@@ -14323,7 +14254,11 @@ footer nav a {
   padding: 24px 26px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 4px 24px 4px 4px;
-  background: rgba(255, 255, 255, 0.035);
+  /* Same fix as .workspace-start-card above — opaque now, not a subtle
+     overlay on a dark page that doesn't exist. */
+  background:
+    radial-gradient(circle at 88% 0%, rgba(124, 58, 237, 0.16), transparent 40%),
+    linear-gradient(150deg, #0c1930, #0a2340 68%, #071c33);
 }
 
 .workspace-start-tip > span,
@@ -14414,10 +14349,6 @@ footer nav a {
 }
 
 @media (max-width: 960px) {
-  .workspace-start-hero {
-    grid-template-columns: 1fr;
-  }
-
   .workspace-start-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -16087,30 +16018,8 @@ footer nav a {
   color: #2452b8;
 }
 
-[data-theme="light"] .workspace-start-hero-copy p {
+[data-theme="light"] .workspace-start-hero p {
   color: rgba(13, 27, 49, 0.68);
-}
-
-[data-theme="light"] .workspace-start-step {
-  border-color: rgba(15, 23, 42, 0.14);
-  background: rgba(255, 255, 255, 0.6);
-}
-
-[data-theme="light"] .workspace-start-step > i {
-  color: #fff;
-  background: #2452b8;
-}
-
-[data-theme="light"] .workspace-start-step b {
-  color: #0d1b31;
-}
-
-[data-theme="light"] .workspace-start-step small {
-  color: rgba(13, 27, 49, 0.6);
-}
-
-[data-theme="light"] .workspace-start-step-arrow {
-  color: rgba(13, 27, 49, 0.35);
 }
 
 [data-theme="light"] .workspace-start-card {
