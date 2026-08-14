@@ -415,15 +415,24 @@ select:focus-visible {
 .brand b span,
 .klio-mark-dot {
   display: inline-block !important;
+  overflow: hidden !important;
   width: 0.22em !important;
   height: 0.22em !important;
   margin-left: 0.14em !important;
   border-radius: 50% !important;
   background: #b7a7ff !important;
   color: transparent !important;
-  /* baseline, not middle — middle floats it up around the text's
-     x-height (site owner: "стала посередине, а не внизу"); a real
-     period sits low, roughly on the baseline itself. */
+  /* Per spec, an inline-block's baseline is normally the baseline of its
+     own last line box — here, the hidden "." character's baseline,
+     still positioned per the *parent* heading's inherited line-height.
+     h1's line-height:0.96 compresses that enough to push the (hidden)
+     text's baseline well above where the visible circle box actually
+     sits, so vertical-align:baseline was aligning to the wrong
+     reference point entirely (site owner: went from "middle" to
+     "migrated to the top" after that change, not down to the bottom as
+     intended). overflow:hidden switches an inline-block's baseline
+     reference to its own bottom margin edge instead — deterministic,
+     independent of the hidden text or the parent's line-height. */
   vertical-align: baseline !important;
   font-size: inherit !important;
 }
