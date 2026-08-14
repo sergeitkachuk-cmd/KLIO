@@ -4121,6 +4121,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           <div className="workspace-heading">
             <div><p>Рабочее пространство / выпуск 01</p><h1>Редакционная система<span className="klio-mark-dot">.</span></h1><span>Ваше рабочее пространство с инструментами КЛИО — от первого черновика до готовой публикации.</span></div>
             <div className="workspace-heading-status">
+              {/* Compact single line + dot, no subtitle - a subtitle here
+                  used to repeat the brand name a third time (sidebar
+                  switcher, the pill below, and this), which read as
+                  clutter. The error string still surfaces as the line's
+                  own text when there is one, so nothing gets lost. */}
+              <div className={`workspace-status ${workspaceDataError ? "has-error" : workspaceReady && !workspaceSaving ? "is-saved" : ""}`}><i/><b>{workspaceDataError || (!workspaceReady ? "Загружаем кабинет" : workspaceSaving ? "Сохраняем изменения" : "Все изменения сохранены")}</b></div>
               {/* Профиль бренда переехал на отдельную вкладку и больше не
                   виден по умолчанию на других модулях — этот индикатор
                   держит на виду единственное, что реально важно знать из
@@ -4139,7 +4145,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <span/>
                 </label>
               </div>
-              <div className={`workspace-status ${workspaceDataError ? "has-error" : workspaceReady && !workspaceSaving ? "is-saved" : ""}`}><i/><span><b>{workspaceDataError ? "Ошибка сохранения" : !workspaceReady ? "Загружаем кабинет" : workspaceSaving ? "Сохраняем изменения" : "Все изменения сохранены"}</b><small>{workspaceDataError || (!workspaceReady ? "Генератор уже доступен — данные брендов появятся через мгновение" : `${activeWorkspaceBrand?.name || brand.name} · защищённое хранилище кабинета`)}</small></span></div>
             </div>
           </div>
 

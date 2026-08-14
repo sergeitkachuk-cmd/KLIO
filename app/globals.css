@@ -390,16 +390,26 @@ select:focus-visible {
   letter-spacing: -0.075em;
 }
 
-.brand b span {
-  margin-left: 1px;
-  color: #b7a7ff;
-}
-
-/* KlioMark() - same dot as .brand b span above, for the handful of
-   standalone "КЛИО" display mentions outside the logo lockup itself. */
+/* A literal "." glyph read as "just a small dot", not a mark - most
+   typefaces set the period low and tiny relative to cap-height, so at
+   small sizes (module headings) it all but disappeared, and at any size
+   it never looked like a deliberate brand element, just punctuation
+   that happened to be purple. Drawn as its own filled circle instead
+   (text content is still a real "." underneath, so copy/paste and
+   screen readers still get "КЛИО." etc. — only the glyph itself is
+   hidden via color:transparent, the circle is a background box drawn
+   next to it). Sized in em off whatever heading it sits in, so it scales
+   itself consistently from tiny UI labels up to the hero's giant h1. */
+.brand b span,
 .klio-mark-dot {
-  margin-left: 1px;
-  color: #b7a7ff;
+  display: inline-block;
+  width: 0.22em;
+  height: 0.22em;
+  margin-left: 0.14em;
+  border-radius: 50%;
+  background: #b7a7ff;
+  color: transparent;
+  vertical-align: 0.03em;
 }
 
 /* Plain link reading inline inside a sentence, wherever a hint needs to
@@ -4917,11 +4927,11 @@ footer nav a {
 .workspace-status {
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 9px;
   flex: 0 0 auto;
-  padding: 13px 16px;
+  padding: 8px 14px;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 16px 16px 4px 16px;
+  border-radius: 999px;
   color: #fff;
   background: radial-gradient(circle at 90% 0%, rgba(124, 58, 237, 0.26), transparent 34%), linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
   box-shadow: 0 16px 42px rgba(3, 12, 26, 0.24), inset 0 1px rgba(255, 255, 255, 0.1);
@@ -4952,19 +4962,9 @@ footer nav a {
   box-shadow: 0 0 0 5px rgba(255, 143, 154, 0.18);
 }
 
-.workspace-status span {
-  display: grid;
-  gap: 2px;
-}
-
 .workspace-status b {
   font-size: 13px;
   font-weight: 680;
-}
-
-.workspace-status small {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 11px;
 }
 
 /* Profile moved to its own tab and stopped being visible from every other
@@ -9701,10 +9701,6 @@ footer nav a {
     font-size: clamp(42px, 11vw, 62px);
   }
 
-  .workspace-status {
-    width: 100%;
-  }
-
   .semantic-query-row,
   .semantic-primary-query {
     grid-template-columns: 1fr;
@@ -13008,9 +13004,8 @@ footer nav a {
   }
 
   .workspace-status {
-    gap: 9px;
-    padding: 10px 12px;
-    border-radius: 13px 13px 4px 13px;
+    gap: 8px;
+    padding: 7px 12px;
   }
 
   .workspace-heading-status {
@@ -15405,10 +15400,12 @@ footer nav a {
    it (.klio-mark-dot) share one flat lavender - fine on the dark header/
    dark hero this was designed against, washed out on the pale panels
    light theme flips those same spots to (same header right above this
-   rule is one of them). Darker, still clearly purple, on light. */
+   rule is one of them). Darker, still clearly purple, on light. The mark
+   is a drawn circle (background), not colored text, so it's background
+   that needs overriding here, not color. */
 [data-theme="light"] .brand b span,
 [data-theme="light"] .klio-mark-dot {
-  color: #6d28d9;
+  background: #6d28d9;
 }
 
 [data-theme="light"] .theme-toggle {
@@ -15666,10 +15663,6 @@ footer nav a {
     radial-gradient(circle at 90% 0%, rgba(53, 104, 212, 0.16), transparent 34%),
     linear-gradient(135deg, #e3eaf6 0%, #f0f4fa 55%, #ffffff 100%);
   box-shadow: 0 16px 42px rgba(20, 40, 80, 0.12), inset 0 1px rgba(255, 255, 255, 0.7);
-}
-
-[data-theme="light"] .workspace-status small {
-  color: rgba(13, 27, 49, 0.6);
 }
 
 [data-theme="light"] .workspace-brand-pill {
