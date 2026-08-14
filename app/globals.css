@@ -14247,7 +14247,16 @@ footer nav a {
     flex-direction: column;
   }
 
-  .workspace-history-list article footer > div,
+  .workspace-history-list article footer > div {
+    /* This div is still "display: flex" from the unconditional base rule
+       (~line 13726) with no flex-direction override, so it stayed a row —
+       giving both "Удалить" and "В редактор" width: 100% below just made
+       two full-width buttons fight for space in that one row instead of
+       stacking, overflowing past the card edge exactly like before. */
+    flex-direction: column;
+    width: 100%;
+  }
+
   .workspace-history-list article footer > div button {
     width: 100%;
   }
