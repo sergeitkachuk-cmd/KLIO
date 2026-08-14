@@ -243,7 +243,16 @@ async function requestOnce(params: {
   const body = await response.json();
   const usage = extractUsage(body);
   const { text, refused } = outputText(body);
-  if (refused) throw new AiCallError("AI-редакция не смогла выполнить этот запрос. Измените формулировку.", 422);
+  // From here on, every throw follows a real, billed provider response —
+  // attach the usage it already cost so callAiModel's retry loop can log
+  // it instead of silently discarding it (see the comment there: this
+  // used to mean a retried operation's real DeepSeek-billed tokens for
+  // every attempt but the last were invisible in our own ai_usage table).
+  if (refused) {
+    const error = new AiCallError("AI-редакция не смогла выполнить этот запрос. Измените формулировку.", 422);
+    (error as { usage?: typeof usage }).usage = usage;
+    throw error;
+  }
   if (!text) {
     // This branch had no diagnostics at all until a real "AI-редакция
     // вернула пустой ответ" on DeepSeek (confirmed provider — see
@@ -264,6 +273,7 @@ async function requestOnce(params: {
     }).slice(0, 6000));
     const error = new AiCallError("AI-редакция вернула пустой ответ.", 502);
     (error as { transient?: boolean }).transient = true;
+    (error as { usage?: typeof usage }).usage = usage;
     throw error;
   }
 
@@ -296,6 +306,7 @@ async function requestOnce(params: {
     }).slice(0, 6000));
     const error = new AiCallError("AI-редакция вернула неполный структурированный ответ.", 502);
     (error as { invalidOutput?: boolean }).invalidOutput = true;
+    (error as { usage?: typeof usage }).usage = usage;
     throw error;
   }
 }
@@ -383,6 +394,33 @@ export async function callAiModel<T = Record<string, unknown>>(
       lastError = error;
       const isTransient = error instanceof AiCallError && (error as { transient?: boolean }).transient;
       const isInvalidOutput = error instanceof AiCallError && (error as { invalidOutput?: boolean }).invalidOutput;
+      // requestOnce attaches real usage to every throw past the point it
+      // has a billed provider response to read it from (refused/empty-
+      // text/unparseable-JSON) — log that now, per attempt, instead of
+      // only ever recording the loop's final outcome. A retried operation
+      // (content-plan's empty-response spiral, confirmed against the
+      // site owner's real DeepSeek dashboard: our own totals were running
+      // well under what DeepSeek had actually billed) was silently
+      // discarding every attempt's real token cost but the very last one,
+      // which itself got logged with zeroed-out usage below — this ai_usage
+      // table was undercounting real spend on anything that ever retried.
+      const attemptUsage = error instanceof AiCallError ? (error as { usage?: ReturnType<typeof extractUsage> }).usage : undefined;
+      if (params.ownerEmail) {
+        void logUsage({
+          ownerEmail: params.ownerEmail,
+          brandId: params.brandId,
+          materialId: params.materialId,
+          operation: params.operation,
+          model: attemptModel,
+          reasoningEffort,
+          usage: attemptUsage ?? { inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, totalTokens: 0, requestId: null },
+          durationMs: Date.now() - startedAt,
+          retryCount: transientRetries + invalidOutputRetries,
+          status: "failed",
+          fallbackFrom,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        });
+      }
       // Note: a genuine transient 503 from OpenAI (server.status >= 500 in
       // requestOnce) also carries status 503, but only the missing-API-key
       // case is marked configError — that's the only 503 that should skip
@@ -416,23 +454,9 @@ export async function callAiModel<T = Record<string, unknown>>(
     }
   }
 
-  if (params.ownerEmail) {
-    void logUsage({
-      ownerEmail: params.ownerEmail,
-      brandId: params.brandId,
-      materialId: params.materialId,
-      operation: params.operation,
-      model: attemptModel,
-      reasoningEffort,
-      usage: { inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, totalTokens: 0, requestId: null },
-      durationMs: Date.now() - startedAt,
-      retryCount: transientRetries + invalidOutputRetries,
-      status: "failed",
-      fallbackFrom,
-      errorMessage: lastError instanceof Error ? lastError.message : String(lastError),
-    });
-  }
-
+  // Every attempt (including this final one) already logged itself with
+  // real usage from inside the catch block above — nothing left to log
+  // here.
   if (lastError instanceof AiCallError) throw lastError;
   throw new AiCallError("Не удалось получить ответ от ИИ. Попробуйте ещё раз.", 502);
 }
