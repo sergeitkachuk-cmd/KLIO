@@ -221,9 +221,12 @@ select:focus-visible {
   justify-content: center;
   max-width: 100%;
   font-size: min(27vw, 390px);
-  font-weight: 480;
+  /* Was weight 480/tracking -0.095em, its own one-off style - now the
+     same weight, tracking and trailing dot as the header wordmark
+     (.brand b), just scaled up, per request for the two to match. */
+  font-weight: 900;
   line-height: 0.72;
-  letter-spacing: -0.095em;
+  letter-spacing: -0.075em;
   text-shadow: 0 25px 70px rgba(0, 0, 0, 0.34);
   white-space: nowrap;
 }
@@ -237,6 +240,7 @@ select:focus-visible {
 .intro-title span:nth-child(2) { animation-delay: 90ms; }
 .intro-title span:nth-child(3) { animation-delay: 180ms; }
 .intro-title span:nth-child(4) { animation-delay: 270ms; }
+.intro-title-dot { animation-delay: 360ms; color: #b7a7ff; }
 
 .intro-center p {
   margin: clamp(32px, 5vh, 60px) 0 0;

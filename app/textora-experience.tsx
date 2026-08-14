@@ -4833,7 +4833,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     <div className={`cover-intro ${intro ? "is-open" : "is-gone"}`} aria-hidden={!intro}>
       <div className="cover-shine"/><div className="cover-orbit orbit-one"/><div className="cover-orbit orbit-two"/>
       <div className="issue-line"><span>Цифровая редакция</span><span>№ 01 · 2026</span></div>
-      <div className="intro-center"><div className="intro-title"><span>К</span><span>Л</span><span>И</span><span>О</span></div><p>Смысл. Стиль. Результат.</p></div>
+      <div className="intro-center"><div className="intro-title"><span>К</span><span>Л</span><span>И</span><span>О</span><span className="intro-title-dot" aria-hidden="true">.</span></div><p>Смысл. Стиль. Результат.</p></div>
       <button type="button" onClick={() => setIntro(false)}>Открыть редакцию <Icon name="arrow"/></button>
       <div className="intro-progress"><i/></div>
     </div>
