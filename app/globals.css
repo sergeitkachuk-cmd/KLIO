@@ -9768,7 +9768,15 @@ footer nav a {
   }
 
   .workspace-account {
-    display: block;
+    /* Was "display: block" — with .workspace-account b/small hidden above,
+       that dropped the grid layout the avatar circle (i, grid-row: 1/3)
+       and chevron (em, grid-row: 1/3, grid-column: 3) rely on for
+       positioning. Without it they fell back to normal flow: em is an
+       inline element with no display override, so it wrapped onto its own
+       line under the block-level avatar circle instead of sitting beside
+       it — the "crooked button, letter drifts up" look. Grid still works
+       fine with the middle (name) column empty. */
+    display: grid;
     min-width: 0;
     padding-left: 14px;
   }
@@ -12734,11 +12742,19 @@ footer nav a {
      spare, but on a phone it permanently claims ~62-76px of the viewport
      for logo/theme-toggle/materials-count/account no matter how long the
      page is, which is most noticeable on the «Материалы» list: it never
-     scrolls out of the way while paging through saved articles. The
-     account-menu dropdown positions off .account-menu (position: relative
-     on itself, line 4172), not off the header, so this doesn't disturb it. */
+     scrolls out of the way while paging through saved articles.
+     position: relative (not static) on purpose: it still leaves the header
+     in normal flow so it scrolls away like static would, but static makes
+     z-index inert, which silently broke the header's own z-index: 80
+     stacking context — the account-menu dropdown (an absolutely
+     positioned descendant of the header, z-index: 100 but scoped inside
+     that context) lost its elevation and started rendering *under* the
+     sidebar's brand-switcher card (position: relative; z-index: 45),
+     confirmed via elementFromPoint() at the overlap point returning the
+     brand card instead of the dropdown. relative + the existing z-index:80
+     restores the stacking context without reintroducing the sticky pin. */
   .workspace-header {
-    position: static;
+    position: relative;
   }
 }
 
