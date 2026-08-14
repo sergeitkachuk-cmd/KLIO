@@ -4543,12 +4543,38 @@ footer nav a {
   background: linear-gradient(135deg, #0c2848, #082849 60%, #061c34);
 }
 
-.workspace-history-list article > div,
-.workspace-history-list article footer {
+.workspace-history-list article > div {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.workspace-history-list article footer {
+  /* Used to also hold a generic type label ("Статья или текст",
+     "Сохранённый снимок") next to the button row, which is why this
+     shared space-between justification existed — the top badge already
+     names the specific type, so that label was redundant, wasted a row
+     of height, and (per the button-compaction pass) was truncating to
+     "Статья…" on narrower cards anyway. Now footer only ever has the
+     button-group div in it, so this just sits it at the start. */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* The bare, unscoped "footer { ... }" rule (~line 4065) styles the
+     real page footer at the bottom of the site (4-column link grid,
+     min-height: 130px so its columns have room) - but since it targets
+     the <footer> element with no class, it was also landing on every
+     card's <footer> in this list, which is a semantic <footer> for
+     unrelated reasons (grouping the row's action buttons). Nothing else
+     overrode min-height/width/margin, so every card was padded out to
+     at least 130px of footer alone, most of it empty. All three
+     neutralized here, at the highest-specificity rule for this
+     selector so it isn't a source-order gamble. */
+  min-height: 0;
+  width: auto;
+  margin: 0;
+  margin-top: auto;
 }
 
 .workspace-history-list article > div span {
@@ -14259,22 +14285,6 @@ footer nav a {
 
   .workspace-quota-stage {
     display: none;
-  }
-
-  .workspace-history-list article footer {
-    /* Label ("Статья или текст") stays on its own line above the button
-       row - the two together didn't reliably fit one line on a narrow
-       phone - but the buttons themselves go back to one row (see below):
-       at their natural content width (~69px + 108px + gap, measured on
-       desktop where this exact layout already fits a narrower card) they
-       comfortably fit a phone's wider single-column card, so stacking
-       them was pure wasted height, not a real overflow fix. */
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .workspace-history-list article footer > div {
-    width: 100%;
   }
 
   .workspace-history-list article footer > div button {
