@@ -158,33 +158,35 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // per goal (see adaptationReasoningEffort below); this entry is the
   // fallback/default for the majority of goals (rewrite, shorten, tone…).
   adapt_text: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 6_000, structuredOutput: true, retryable: true, useWebSearch: false },
-  // Was 18,000 - undersized for the schema this operation actually asks
-  // for. Each plan row is a full editorial brief (title, subtitle, angle,
-  // objective, 2-8 lsi terms, 3-8 structure sections, evidenceNeeded,
-  // sources...), and the client lets the user request up to 25 rows
-  // (contentPlanSchema enforces minItems === maxItems === count, no
-  // partial plan accepted). revise_content_plan below documents ~800
-  // tokens/row from its own 12,000/15 budget; at that rate 25 rows alone
-  // need ~20,000 tokens before counting the web-search reasoning this
-  // operation (unlike revise_content_plan) also has turned on - and that
-  // reasoning shares the same max_output_tokens ceiling as the final
-  // message. Confirmed root cause of a reported failure: generating a
-  // plan straight from the brand profile with no seed topic (the "explore
-  // broadly" prompt path, which needs more research to find 25 distinct
-  // angles) ran the model out of budget mid-reasoning, before it ever
-  // wrote the final JSON message - ai-router.ts's outputText() finds no
-  // message item in that case and returns empty text, surfaced to the
-  // user as "AI-редакция вернула пустой ответ" after several minutes of
-  // identical retries (same undersized budget fails the same way each
-  // time). Raised well past the 25-row worst case.
-  generate_content_plan: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 32_000, structuredOutput: true, retryable: true, useWebSearch: true },
+  // Round-tripped 18,000 -> 32,000 -> back down (see history if this
+  // comment gets edited again). The 32k version was reasoned from output
+  // size alone (25 rows x ~800 tokens/row + headroom) and looked right on
+  // paper, but real-world testing after deploying it made things *worse*:
+  // even a minimal 10-row plan started taking minutes and still came back
+  // with "AI-редакция вернула пустой ответ" (empty text, no message-type
+  // item in output[] - see ai-router.ts's outputText()). A 10-row plan
+  // needs at most ~8-10k tokens of actual JSON, nowhere near either
+  // ceiling, which means the model isn't running out of room for the
+  // *answer* - it's spending an unbounded amount of the budget on
+  // reasoning/web-search tool calls and never getting back to write the
+  // final message at all. A bigger ceiling doesn't fix that; it just
+  // gives the model more room to wander before the request is finally
+  // cut off, which is why it got slower without getting more reliable.
+  // Reverted to the last value that's actually been seen working quickly
+  // (~30s) rather than guessing a new number - a tighter budget forces
+  // the model to commit to an answer sooner if anything. If this specific
+  // failure (empty response, brand-profile-only "explore broadly" prompt
+  // path) keeps happening at 18k too, the real fix is probably capping or
+  // restructuring the web-search step itself, not this number.
+  generate_content_plan: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 18_000, structuredOutput: true, retryable: true, useWebSearch: true },
   // Up to 5 selected topics x 3 full alternatives each, each a complete
   // plan row (structure, lsi, evidence, sources...) — genuinely needs a
   // ceiling close to a fresh content plan's, not the generic "small
-  // patch" budget most other revise_* operations get. Raised alongside
-  // generate_content_plan above for the same reason (~800 tokens/row
-  // leaves too little margin at the full 15-row case).
-  revise_content_plan: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 18_000, structuredOutput: true, retryable: true, useWebSearch: false },
+  // patch" budget most other revise_* operations get. Reverted alongside
+  // generate_content_plan above — same reasoning: no web search here to
+  // run away with the budget, so the original ceiling was never actually
+  // the problem.
+  revise_content_plan: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 12_000, structuredOutput: true, retryable: true, useWebSearch: false },
   // Deviation from the spec's illustrative list (which puts keyword
   // extraction on nano): KLIO's semantics module does web-search-driven
   // *research* of 18-30 novel query phrases from a bare topic, not
