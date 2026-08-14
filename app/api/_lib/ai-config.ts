@@ -181,14 +181,28 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   //    before finally writing the plan JSON - which then got cut off
   //    a couple items in once that overhead had eaten most of the 18k
   //    budget ("AI-редакция вернула неполный структурированный ответ").
-  //    Unlike fix #1, this bump is backed by a request that was
-  //    genuinely converging on real output, just not enough room to
-  //    finish - paired with two new instructions in content-plan/
+  //    Paired that bump with two new instructions in content-plan/
   //    route.ts capping search to 1-2 rounds and banning the
-  //    between-step commentary messages, so the ceiling isn't fighting
-  //    unbounded tool-call overhead the way it fought unbounded
-  //    reasoning in attempt #1.
-  generate_content_plan: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 26_000, structuredOutput: true, retryable: true, useWebSearch: true },
+  //    between-step commentary messages.
+  // 5) Those instructions were simply ignored. The next failure's log
+  //    showed 10 web_search_call rounds (including two open_page calls)
+  //    interleaved with 10 near-identical "I now have enough context,
+  //    I'll write the final plan" commentary messages that each led to
+  //    *another* search instead — a model that repeatedly narrates
+  //    "wrapping up" and then doesn't. Telling it to behave differently
+  //    in plain language had already failed once for reasoning (fix #3)
+  //    and now failed again for tool-call behavior; there's no further
+  //    prompt wording left to reasonably try before just removing the
+  //    tool that the runaway behavior needs to run away with.
+  //    useWebSearch: false. Real trade-off: no live grounding in current
+  //    search phrasing or brand-website facts for this operation anymore
+  //    — the plan leans entirely on brand_profile/semantics/geography in
+  //    the request payload. A plan that reliably finishes on the
+  //    information already on hand beats one that reasons or searches
+  //    forever and returns nothing. Revisit if plans start feeling
+  //    genuinely under-grounded rather than just less exhaustively
+  //    fact-checked.
+  generate_content_plan: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 26_000, structuredOutput: true, retryable: true, useWebSearch: false },
   // Up to 5 selected topics x 3 full alternatives each, each a complete
   // plan row (structure, lsi, evidence, sources...) — genuinely needs a
   // ceiling close to a fresh content plan's, not the generic "small
