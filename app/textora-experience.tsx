@@ -952,7 +952,15 @@ const pricing = [
 
 const marqueeItems = ["SEO‑СТАТЬИ", "ПОСТЫ", "РЕКЛАМА", "КОНТЕНТ‑ПЛАН", "АНАЛИЗ КОНКУРЕНТОВ", "ПРОФИЛЬ БРЕНДА"];
 
-const busySteps = ["Изучаем профиль бренда", "Проектируем структуру", "Собираем материал", "Проверяем результат"];
+// Cycle spans ~9s (6 steps × 1.8s) before landing on the last, open-ended
+// label — long enough that a quick post/ad generation shows real
+// progression instead of jumping straight to "still working", but short
+// enough that a long SEO article (which can run a websearch-backed
+// generation plus a synchronous correction pass — a minute or more) settles
+// on a plausible "still working" message rather than looking frozen at an
+// earlier, now-stale step. See the indeterminate progress-bar animation
+// next to its usage for the same problem on the visual side.
+const busySteps = ["Изучаем профиль бренда", "Ищем актуальные факты", "Проектируем структуру", "Собираем черновик", "Проверяем ключи и объём", "Дорабатываем детали"];
 
 const competitorCoverageMeta: Record<CompetitorCoverage, { label: string }> = {
   strong: { label: "Раскрыто" },
@@ -2125,7 +2133,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
   useEffect(() => {
     if (!busy) return;
-    const timer = window.setInterval(() => setBusyStep((value) => Math.min(value + 1, busySteps.length - 1)), 900);
+    const timer = window.setInterval(() => setBusyStep((value) => Math.min(value + 1, busySteps.length - 1)), 1800);
     return () => window.clearInterval(timer);
   }, [busy]);
 
@@ -3827,7 +3835,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         editorialBrief,
       });
       applyGeneratedMaterial(response.material, response.mode, response.coverage);
-      showToast("Материал создан КЛИО");
+      showToast("Материал создан КЛИО и сохранён в «Материалы»");
     } catch (error) {
       setGenerationError(error instanceof Error ? error.message : "Не удалось сформировать материал.");
     } finally {
@@ -3884,7 +3892,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setKeywords("");
       if (payload.mode !== "ai") throw new Error("Материал не получен от AI‑редакции.");
       applyGeneratedMaterial(payload.material, "ai", null);
-      showToast("Материал создан КЛИО по вашему запросу");
+      showToast("Материал создан КЛИО и сохранён в «Материалы»");
     } catch (error) {
       setQuickError(error instanceof Error ? error.message : "Не удалось сформировать материал.");
     } finally {
@@ -3895,6 +3903,23 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   function copyResult() {
     navigator.clipboard?.writeText(`${title}\n\n${body}`);
     showToast("Текст скопирован без служебного комментария");
+  }
+
+  // Bridges the generator's result straight into "Редакторы КЛИО" instead
+  // of making the person copy-paste it into the adaptation module's blank
+  // source field themselves. The material is already auto-saved to
+  // «Материалы» at this point (see the archive push inside generate()) —
+  // this only carries the text across modules, it doesn't create a second
+  // copy anywhere.
+  function sendResultToAdaptation() {
+    if (!title && !body) return;
+    setAdaptationSource(`${title}\n\n${body}`.trim());
+    setAdaptationKeywords(keywords);
+    setAdaptationResult(null);
+    setAdaptationMode("example");
+    setAdaptationError("");
+    openModule("adaptation");
+    showToast("Материал передан в «Редакторы КЛИО» — выберите режим адаптации");
   }
 
   function clearGenerationResultFields() {
@@ -4699,7 +4724,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 {customLength && <label className={`field custom-length ${generatorAdvanced ? "" : "generator-advanced-hidden"}`}>Свой объём<div><input type="number" min="300" max="30000" step="100" value={length} onChange={(event) => setManualLength(event.target.value)} inputMode="numeric"/><span>знаков</span></div><small>Укажите от 300 до 30 000 знаков с пробелами</small></label>}
                 {generationError && <p className="generation-error" role="alert">{generationError}</p>}
                 <button className={`button primary generate ${busy ? "is-busy" : ""}`} type="button" onClick={generate} disabled={!activeBrandId || busy || aiConnection !== "connected" || workspaceAccount.generationsRemaining <= 0}><Icon name="spark"/>{busy ? busySteps[busyStep] : !activeBrandId ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
-                {busy && <div className="generation-progress" aria-hidden="true"><i style={{ width: `${((busyStep + 1) / busySteps.length) * 100}%` }}/></div>}
+                {busy && <>
+                  {/* Once the last step lands, this stops being a real
+                      progress readout (nothing after it is measured) and
+                      switches to a looping sweep so it never sits frozen at
+                      a fixed width — a wait that can run past a minute for
+                      long articles was reading as hung, not slow. */}
+                  <div className={`generation-progress ${busyStep === busySteps.length - 1 ? "is-indeterminate" : ""}`} aria-hidden="true"><i style={busyStep === busySteps.length - 1 ? undefined : { width: `${((busyStep + 1) / busySteps.length) * 100}%` }}/></div>
+                  <small className="generation-wait-note">Обычно 20–40 секунд; для длинных SEO‑статей с повторной проверкой — до 2 минут</small>
+                </>}
                 </>}
               </aside>
               <article className="result-panel">
@@ -4723,7 +4756,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     <div className={`quality-card ${hasQualityMaterial ? "" : "is-empty"}`} key={`keys-${metricsReplay}`}><small>Ключи</small><b>{hasQualityMaterial ? <><MetricNumber value={quality.keysFound} replay={metricsReplay}/><em>/{keyList.length}</em></> : "—"}</b><span>{hasQualityMaterial ? "с учётом словоформ" : "Появится после создания материала"}</span>{hasQualityMaterial && <i><u style={{ "--score": `${keyList.length ? (quality.keysFound / keyList.length) * 100 : 0}%` } as CSSProperties}/></i>}</div>
                   </div>
                 </div>
-                <div className="result-footer"><span>Материал и SEO‑поля можно редактировать прямо в кабинете</span><button type="button" onClick={copyResult}>Скопировать материал ↗</button></div>
+                <div className="result-footer"><span>Материал уже сохранён в «Материалы» — вернуться к нему и продолжить редактирование можно в любой момент</span><div className="result-footer-actions"><button type="button" className="button ghost" onClick={copyResult}>Скопировать материал ↗</button><button type="button" className="button primary" onClick={sendResultToAdaptation} disabled={!title && !body}>Адаптировать под площадку <Icon name="arrow"/></button></div></div>
               </article>
             </div>
           </section>

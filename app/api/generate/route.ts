@@ -455,6 +455,13 @@ function missingGeography(material: GeneratedMaterial, input: ReturnType<typeof 
   return input.geography.slice(0, 5).filter((item) => !geographyMentioned(publication, item.label)).map((item) => item.label);
 }
 
+// Exact-phrase matching only makes sense for formats a search engine
+// indexes (seo, landing) — see the same condition in the POST handler,
+// which uses it to relax the prompt's keyword_contract for social/ads.
+function keywordMatchIsStrict(input: ReturnType<typeof normalizePayload>) {
+  return input.format === "seo" || input.format === "landing";
+}
+
 function selectedKeywords(input: ReturnType<typeof normalizePayload>) {
   const maximum = input.format === "seo" ? 8 : input.format === "landing" ? 3 : 1;
   const semanticPhrases = input.useSemantics ? input.semanticContext?.selectedKeywords.map((item) => item.phrase) ?? [] : [];
@@ -484,9 +491,20 @@ function containsKeywordPhrase(value: string, keyword: string) {
   return haystack.some((_, index) => needle.every((token, offset) => haystack[index + offset] === token));
 }
 
+// Loose counterpart of containsKeywordPhrase for formats that were told to
+// paraphrase the keyword rather than quote it (see keywordMatchIsStrict):
+// every meaningful word of the phrase has to show up somewhere in the
+// text, but not glued together in the original order.
+function containsKeywordTopic(value: string, keyword: string) {
+  const haystack = new Set(keywordSearchTokens(value));
+  const needle = keywordSearchTokens(keyword);
+  return needle.length > 0 && needle.every((token) => haystack.has(token));
+}
+
 function missingKeywords(material: GeneratedMaterial, input: ReturnType<typeof normalizePayload>) {
   const publication = `${material.title}\n${material.body}\n${material.metaTitle}\n${material.metaDescription}`;
-  return selectedKeywords(input).filter((keyword) => !containsKeywordPhrase(publication, keyword));
+  const isCovered = keywordMatchIsStrict(input) ? containsKeywordPhrase : containsKeywordTopic;
+  return selectedKeywords(input).filter((keyword) => !isCovered(publication, keyword));
 }
 
 function parseEditorialFocuses(value: string): EditorialFocus[] {
@@ -579,6 +597,13 @@ export async function POST(request: Request) {
     const operation = FORMAT_OPERATION[input.format];
     const formatPlan = FORMAT_PLANS[input.format];
     const selectedToneRules = toneRules(input.tone);
+    // Exact-phrase keyword matching is a search-ranking requirement, not a
+    // writing requirement — it belongs to formats a search engine indexes
+    // (seo, landing). Forcing the same literal phrase into a social post or
+    // an ad produces the "когда говорят X, имеют в виду Y" definition-style
+    // filler sentence: technically compliant, but reads like nobody wrote it.
+    // Those formats get the topic/meaning from the phrase without quoting it.
+    const keywordMatchStrict = keywordMatchIsStrict(input);
     const userBrief = JSON.stringify({
       format: FORMAT_LABELS[input.format],
       format_contract: {
@@ -603,10 +628,14 @@ export async function POST(request: Request) {
         prohibited_substitution: "не заменять предмет запроса общей статьёй о категории, другой отрасли, выборе поставщика или абстрактном бренде",
       },
       keywords: input.keywords,
-      keyword_contract: {
+      keyword_contract: keywordMatchStrict ? {
         required_phrases: selectedKeywords(input),
         rule: "каждую фразу использовать в body хотя бы один раз в точной или грамматически корректной форме; основной ключ — также в H1 или первых 100 словах",
         prohibition: "не перечислять ключи подряд, не подписывать их как ключевые слова и не создавать ради них бессмысленные предложения",
+      } : {
+        required_topics: selectedKeywords(input),
+        rule: "каждая фраза — это ориентир по теме и смыслу, а не текст для вставки; узнаваемо раскрой её идею живым языком формата, без обязательного дословного вхождения",
+        prohibition: "не цитировать фразу дословно как поисковый оборот, не объяснять читателю, что означает запрос («когда говорят X, имеют в виду...», «по запросу X»), не создавать ради фразы отдельное неестественное предложение",
       },
       tone: input.tone,
       tone_contract: selectedToneRules,
@@ -694,8 +723,12 @@ export async function POST(request: Request) {
           "Поля source_facts и hidden_editorial_controls — внутренний бриф, а не содержание публикации. Никогда не пересказывай устройство брифа, профиль бренда, описание аудитории, выбранный стиль, ключевые слова или правила формата.",
           "Не используй мета-фразы «материал адресован», «текст говорит», «профиль бренда», «выбранный стиль», «ключевые темы» и подобные редакционные пояснения.",
           "Факты и преимущества вплетай в тему естественно. Позиционирование можно переформулировать; не копируй его отдельным рекламным абзацем.",
-          "Выполни keyword_contract: каждая required_phrases должна присутствовать в body хотя бы один раз в точной или грамматически корректной форме. Не выдавай ключи списком и не комментируй SEO‑настройки. Целевой объём указан в знаках с пробелами; отклонение до 15% допустимо.",
-          "Не добивай текст вариациями одного ключа. Поисковые формулировки нужны для ясного соответствия интенту, а не для плотности: при конфликте с естественностью используй грамматически корректную форму и сохрани смысл.",
+          keywordMatchStrict
+            ? "Выполни keyword_contract: каждая required_phrases должна присутствовать в body хотя бы один раз в точной или грамматически корректной форме. Не выдавай ключи списком и не комментируй SEO‑настройки. Целевой объём указан в знаках с пробелами; отклонение до 15% допустимо."
+            : "Выполни keyword_contract: required_topics задают тему и смысл материала, но это не поисковый формат — не цитируй фразу дословно и не встраивай её как поисковый оборот. Не выдавай ключи списком и не комментируй SEO‑настройки. Целевой объём указан в знаках с пробелами; отклонение до 15% допустимо.",
+          keywordMatchStrict
+            ? "Не добивай текст вариациями одного ключа. Поисковые формулировки нужны для ясного соответствия интенту, а не для плотности: при конфликте с естественностью используй грамматически корректную форму и сохрани смысл."
+            : "Ключевые фразы здесь — внутренний ориентир по теме, а не текст для вставки. Раскрывай их идею своими словами в интонации формата; не создавай предложение-определение вроде «когда говорят/ищут X, имеют в виду...» и не подписывай текст под конкретный поисковый запрос.",
           "Материал должен добавлять собственную пользу: предметное объяснение, подтверждённые факты бренда, независимую полезную фактуру, практический вывод или решение задачи. Не пересказывай абстрактно то, что могло бы относиться к любой компании. Для длинной статьи раскрой минимум два содержательных нюанса или практических сценария помимо описания бренда.",
           "Для медицинской тематики избегай гарантий результата, диагнозов и персональных назначений.",
           "Структура JSON: title, subtitle, body, meta_title, meta_description, editorial_comment. subtitle — отдельная зацепка под H1, 1–2 предложения, раскрывает пользу и не повторяет заголовок. Все значения — строки.",

@@ -2666,6 +2666,24 @@ select:focus-visible {
   transition: width 500ms ease;
 }
 
+.generation-progress.is-indeterminate i {
+  width: 32%;
+  transition: none;
+  animation: generation-progress-sweep 1.3s ease-in-out infinite;
+}
+
+@keyframes generation-progress-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(410%); }
+}
+
+.generation-wait-note {
+  display: block;
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+}
+
 /* Генератор dark navy pass — parity with .brief-panel (left pane, already
    dark). Redefining --ink/--muted/--line locally lets every var(--ink)/
    var(--muted)/var(--line) below (.result-title, .result-head border,
@@ -3210,6 +3228,13 @@ textarea[data-autosize="true"] {
   padding-top: 20px;
   color: rgba(255, 255, 255, 0.55);
   font-size: 13px;
+}
+
+.result-footer-actions {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 10px;
 }
 
 /* Capabilities */
@@ -10913,6 +10938,16 @@ footer nav a {
     flex-direction: column;
   }
 
+  .result-footer-actions {
+    align-self: stretch;
+    flex-wrap: wrap;
+  }
+
+  .result-footer-actions button {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
   .module-grid {
     grid-template-columns: 1fr;
   }
@@ -12693,6 +12728,18 @@ footer nav a {
     position: static;
     min-height: auto;
   }
+
+  /* .workspace-header is "position: sticky; top: 0" unconditionally (base
+     rule, ~line 4132) — sensible on desktop where there's headroom to
+     spare, but on a phone it permanently claims ~62-76px of the viewport
+     for logo/theme-toggle/materials-count/account no matter how long the
+     page is, which is most noticeable on the «Материалы» list: it never
+     scrolls out of the way while paging through saved articles. The
+     account-menu dropdown positions off .account-menu (position: relative
+     on itself, line 4172), not off the header, so this doesn't disturb it. */
+  .workspace-header {
+    position: static;
+  }
 }
 
 .brief-panel {
@@ -12738,7 +12785,20 @@ footer nav a {
   place-items: center;
   padding: 22px;
   backdrop-filter: blur(14px) saturate(90%);
+  /* This unconditional padding comes after the @media (max-width: 700px)
+     block that sets padding: 0 for the full-bleed phone layout (see
+     .archive-editor-modal's border:0/border-radius:0/min-height:100svh
+     right below it) — same specificity, later source order, so it was
+     silently winning even on phones. Re-declared with the same media
+     query immediately after so the mobile case wins again; see the
+     duplicate below. */
   background: rgba(3, 16, 32, 0.78);
+}
+
+@media (max-width: 700px) {
+  .archive-editor-overlay {
+    padding: 0;
+  }
 }
 
 .archive-editor-actions > .button.primary {
@@ -13507,7 +13567,14 @@ footer nav a {
   }
 
   .archive-editor-modal .archive-editor-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    /* Same selector as the @media (max-width: 700px) block above sets
+       grid-template-columns: 1fr — but that block comes first in source
+       order, and this later (max-width: 820px, also true at phone widths)
+       block has equal specificity, so it was silently winning and cramming
+       4 buttons with long labels ("Вернуть сохранённую", "Сохранить как
+       копию"...) into 2 columns, overflowing past the button/card edge.
+       Stay on one column here too. */
+    grid-template-columns: 1fr;
     bottom: -14px;
     gap: 7px;
   }
@@ -17017,6 +17084,10 @@ footer nav a {
 
 [data-theme="light"] .result-footer {
   color: rgba(13, 27, 49, 0.55);
+}
+
+[data-theme="light"] .generation-wait-note {
+  color: rgba(13, 27, 49, 0.45);
 }
 
 /* .quality-zone ("Идеи для полировки") was left dark on purpose in
