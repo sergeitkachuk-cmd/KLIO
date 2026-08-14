@@ -77,6 +77,20 @@ type AiPlan = {
   items: PlanItem[];
 };
 
+// A content plan is intentionally rich, but its first screen and the
+// generator only need a compact editorial brief.  Letting a model expand
+// every one of 25 rows into eight keywords, eight headings and eight fact
+// requests turns a plan into a very large generation for little practical
+// benefit.  These limits keep the result actionable and bound both output
+// latency and the amount of JSON the provider has to assemble.
+const PLAN_LSI_LIMIT = 4;
+const PLAN_STRUCTURE_LIMIT = 5;
+const PLAN_EVIDENCE_LIMIT = 3;
+const PLAN_SEMANTICS_LIMIT = 24;
+const PLAN_COMPETITOR_INSIGHTS_LIMIT = 5;
+const PLAN_EXISTING_TITLES_LIMIT = 24;
+const PLAN_WEBSITE_SNAPSHOT_LIMIT = 6_000;
+
 function clean(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
@@ -165,7 +179,7 @@ function normalizePayload(raw: ContentPlanPayload) {
   // so capping here still keeps the titles most likely to actually
   // collide with a fresh plan.
   const existingTitles = unique(Array.isArray(raw.existingTitles)
-    ? raw.existingTitles.map((item) => clean(item, 240)).filter(Boolean).slice(0, 50)
+    ? raw.existingTitles.map((item) => clean(item, 240)).filter(Boolean).slice(0, PLAN_EXISTING_TITLES_LIMIT)
     : []);
   return { query, requestedQuery, goal, count, semantics, geography, competitorInsights, brand, existingTitles };
 }
@@ -184,16 +198,15 @@ const itemSchema = {
     angle: { type: "string" },
     objective: { type: "string" },
     primaryKeyword: { type: "string" },
-    lsi: { type: "array", items: { type: "string" } },
+    lsi: { type: "array", minItems: 2, maxItems: PLAN_LSI_LIMIT, items: { type: "string" } },
     audience: { type: "string" },
     metaTitle: { type: "string" },
     metaDescription: { type: "string" },
-    structure: { type: "array", items: { type: "string" } },
+    structure: { type: "array", minItems: 3, maxItems: PLAN_STRUCTURE_LIMIT, items: { type: "string" } },
     cta: { type: "string" },
-    evidenceNeeded: { type: "array", items: { type: "string" } },
-    sources: { type: "array", items: { type: "string" } },
+    evidenceNeeded: { type: "array", maxItems: PLAN_EVIDENCE_LIMIT, items: { type: "string" } },
   },
-  required: ["id", "title", "subtitle", "cluster", "format", "intent", "stage", "priority", "angle", "objective", "primaryKeyword", "lsi", "audience", "metaTitle", "metaDescription", "structure", "cta", "evidenceNeeded", "sources"],
+  required: ["id", "title", "subtitle", "cluster", "format", "intent", "stage", "priority", "angle", "objective", "primaryKeyword", "lsi", "audience", "metaTitle", "metaDescription", "structure", "cta", "evidenceNeeded"],
   additionalProperties: false,
 } as const;
 
@@ -232,7 +245,18 @@ const GOAL_INSTRUCTION: Record<ContentPlanGoal, string> = {
   ads: "Обязательное ограничение: формат каждой темы — только «Рекламный текст». План собирается как набор коротких рекламных текстов, а не блог, лендинги или соцсети.",
 };
 
-function validatePlan(plan: AiPlan, input: ReturnType<typeof normalizePayload>) {
+function availablePlanSources(input: ReturnType<typeof normalizePayload>, websiteLoaded: boolean) {
+  return [
+    input.requestedQuery ? "Тема" : "",
+    input.semantics.length ? "Семантика" : "",
+    input.geography.length ? "География" : "",
+    input.competitorInsights.length ? "Матрица" : "",
+    input.brand.name ? "Профиль бренда" : "",
+    websiteLoaded ? "Сайт бренда" : "",
+  ].filter(Boolean);
+}
+
+function validatePlan(plan: AiPlan, input: ReturnType<typeof normalizePayload>, sources: string[]) {
   if (!Array.isArray(plan.items) || plan.items.length !== input.count) {
     throw new AiResponseError(`AI‑редакция подготовила неполный план. Требуется ${input.count} тем.`, 422);
   }
@@ -246,14 +270,17 @@ function validatePlan(plan: AiPlan, input: ReturnType<typeof normalizePayload>) 
     angle: clean(item.angle, 500),
     objective: clean(item.objective, 500),
     primaryKeyword: clean(item.primaryKeyword, 220),
-    lsi: unique((Array.isArray(item.lsi) ? item.lsi : []).map((value) => clean(value, 180))).slice(0, 8),
+    lsi: unique((Array.isArray(item.lsi) ? item.lsi : []).map((value) => clean(value, 180))).slice(0, PLAN_LSI_LIMIT),
     audience: clean(item.audience, 700),
     metaTitle: clean(item.metaTitle, 90),
     metaDescription: clean(item.metaDescription, 190),
-    structure: unique((Array.isArray(item.structure) ? item.structure : []).map((value) => clean(value, 180))).slice(0, 8),
+    structure: unique((Array.isArray(item.structure) ? item.structure : []).map((value) => clean(value, 180))).slice(0, PLAN_STRUCTURE_LIMIT),
     cta: clean(item.cta, 300),
-    evidenceNeeded: unique((Array.isArray(item.evidenceNeeded) ? item.evidenceNeeded : []).map((value) => clean(value, 220))).slice(0, 8),
-    sources: unique((Array.isArray(item.sources) ? item.sources : []).map((value) => clean(value, 80))).slice(0, 8),
+    evidenceNeeded: unique((Array.isArray(item.evidenceNeeded) ? item.evidenceNeeded : []).map((value) => clean(value, 220))).slice(0, PLAN_EVIDENCE_LIMIT),
+    // Sources are deterministic metadata about this request, not creative
+    // content.  Filling them here saves one array per plan row and prevents
+    // the model from inventing a source that was never supplied.
+    sources,
   }));
 
   const normalizedTitles = cleaned.map((item) => titleKey(item.title));
@@ -309,10 +336,10 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       "Если тема или фокус не указывает на конкретную категорию для разбора по пунктам (см. правило выше), не строй план вокруг одного преимущества и не превращай его в скучный каталог услуг без содержания. Разделяй образовательные, коммерческие, репутационные и вовлекающие задачи; не выдумывай сезонность, статистику, тренды или кейсы.",
       "Каждый title — чистый публикационный заголовок без номера, комментария, редакционной команды, пояснения в скобках и фраз вроде «использовать выводы». Не добавляй одинаковые каркасы «полный разбор», «основные ошибки», «пошаговый маршрут» ко всем темам.",
       input.existingTitles.length ? `Это уже созданные темы и материалы бренда. Не повторяй их, не делай близкие перефразировки и не возвращай ту же задачу с переставленными словами: ${input.existingTitles.map((title) => `«${title}»`).join("; ")}` : "Если ранее созданные темы не переданы, всё равно не повторяй идеи внутри текущего плана.",
-      "Каждая строка должна иметь собственный ракурс, коммуникационную цель, целевую аудиторию, основной запрос, 2–8 поддерживающих формулировок и предметную структуру из 3–8 разделов.",
+      `Каждая строка должна иметь собственный ракурс, коммуникационную цель, целевую аудиторию, основной запрос, 2–${PLAN_LSI_LIMIT} поддерживающие формулировки и предметную структуру из 3–${PLAN_STRUCTURE_LIMIT} разделов. Формулируй поля кратко и по существу.`,
       "Поле lsi означает поддерживающие формулировки, сущности и вопросы. Не называй их LSI‑факторами и не имитируй частотность.",
       "Title, subtitle и Description должны точно соответствовать теме. subtitle — зацепка под H1: 1–2 предложения с пользой читателю, не повторяет title. Не обещай позиции, результат лечения, доход, сроки, цены и иные факты, которых нет в источниках.",
-      "В evidenceNeeded перечисли, какие факты, документы, цифры, кейсы или экспертные комментарии нужны редактору. В sources укажи только реально переданные слои: Тема, Семантика, География, Матрица, Профиль бренда, Сайт бренда.",
+      `В evidenceNeeded перечисли до ${PLAN_EVIDENCE_LIMIT} самых важных фактов, документов, цифр, кейсов или экспертных комментариев, которые нужны редактору. Поле sources не выводи: КЛИО добавит его из фактически переданных слоёв.`,
       "Для каждой строки сначала сформируй скрытый editorialBrief: вопрос читателя, интент, сегмент аудитории, ракурс, ключевое сообщение, формат, тон, авторскую позицию, структуру, ключевые пункты, ключи, известные факты, неизвестные данные, возражения, CTA и ограничения. Во внешний JSON выводи только поля текущей схемы; не раскрывай editorialBrief в title или описании.",
       // A separate AI research/web-search step (and, briefly, routing this
       // whole operation to OpenAI) was tried and reverted here — see the
@@ -334,7 +361,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       plan_basis: input.requestedQuery ? "user_topic" : "brand_profile",
       plan_goal: input.goal,
       allowed_formats: GOAL_FORMAT_LOCK[input.goal],
-      selected_semantics: input.semantics,
+      selected_semantics: input.semantics.slice(0, PLAN_SEMANTICS_LIMIT),
       semantic_strategy: input.semantics.length ? {
         purpose: "series_of_articles_for_new_audience",
         article_rule: "one article equals one semantic cluster and one intent",
@@ -348,10 +375,10 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
         prohibition: "do not invent search volume, seasonality or brand facts",
       },
       search_geography: input.geography,
-      competitor_editorial_opportunities: input.competitorInsights,
+      competitor_editorial_opportunities: input.competitorInsights.slice(0, PLAN_COMPETITOR_INSIGHTS_LIMIT),
       brand_profile: input.brand.name ? input.brand : null,
       website_snapshot: website && website.status === "loaded"
-        ? { url: website.resolvedUrl, text: website.text }
+        ? { url: website.resolvedUrl, text: website.text.slice(0, PLAN_WEBSITE_SNAPSHOT_LIMIT) }
         : null,
       existing_titles_to_exclude: input.existingTitles,
       editorial_brief_contract: {
@@ -365,7 +392,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
     }, null, 2),
   });
 
-  const items = validatePlan(aiPlan, input);
+  const items = validatePlan(aiPlan, input, availablePlanSources(input, website?.status === "loaded"));
   const usage = await recordResearch();
   const baseDataNote = input.semantics.length
     ? "План построен по карте подтверждённого спроса: каждая тема привязана к одному кластеру и отдельной задаче читателя. В приоритете — небрендовые и смежные запросы для привлечения новой аудитории; брендовый спрос вынесен в отдельную конверсионную ветку."
