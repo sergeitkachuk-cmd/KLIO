@@ -3513,7 +3513,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     }));
   }
 
-  function useCurrentSemanticsForPlan() {
+  function applyCurrentSemanticsForPlan() {
     if (!semanticAnalysisReady) {
       showToast("Сначала соберите актуальную семантику или укажите тему вручную");
       return;
@@ -3531,7 +3531,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       showToast("Сначала соберите актуальную семантику");
       return;
     }
-    useCurrentSemanticsForPlan();
+    applyCurrentSemanticsForPlan();
     setContentPlanGoal("seo");
     openModule("content-plan");
   }
@@ -4744,7 +4744,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   </label>
                   <div className="content-plan-basis-actions">
                     <button type="button" className={brandPlanBasisSelected ? "is-active" : ""} aria-pressed={brandPlanBasisSelected} onClick={useBrandForPlan} disabled={!useBrand || !foundationReady}><Icon name="arrow"/> По профилю бренда{brandPlanBasisSelected && <b aria-label="Выбрано">✓</b>}</button>
-                    <button type="button" className={semanticPlanBasisSelected ? "is-active" : ""} aria-pressed={semanticPlanBasisSelected} onClick={useCurrentSemanticsForPlan} disabled={!semanticAnalysisReady} title={semanticAnalysisReady ? undefined : "Сначала найдите запросы в модуле «Семантика»"}><Icon name="arrow"/> Из найденных тем{semanticPlanBasisSelected && <b aria-label="Выбрано">✓</b>}</button>
+                    <button type="button" className={semanticPlanBasisSelected ? "is-active" : ""} aria-pressed={semanticPlanBasisSelected} onClick={applyCurrentSemanticsForPlan} disabled={!semanticAnalysisReady} title={semanticAnalysisReady ? undefined : "Сначала найдите запросы в модуле «Семантика»"}><Icon name="arrow"/> Из найденных тем{semanticPlanBasisSelected && <b aria-label="Выбрано">✓</b>}</button>
                   </div>
                 </div>
 
