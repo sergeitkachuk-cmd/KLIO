@@ -12555,6 +12555,29 @@ footer nav a {
     linear-gradient(165deg, #041326 0%, #082947 60%, #051b31 100%);
 }
 
+/* Found by actually rendering the page (headless Chromium, mobile
+   viewport) and measuring the DOM: .workspace-sidebar's sticky/min-height
+   from the unconditional rule above was winning over the @media
+   (max-width: 820px) reset elsewhere in the file that turns it back to
+   position: static/min-height: auto for mobile - same selector, same
+   specificity, and this "dark navy pass" declaration (appended near the
+   end of the file, no media guard) simply comes later in source order,
+   so it applies at every width, mobile included. That kept the sidebar
+   reserving calc(100vh - 76px) (~768px on a phone) of real document-flow
+   height even once it had nothing left inside it worth that much space
+   (nav becomes a fixed bottom bar, the quota widget hides) - the exact
+   dead zone the site owner reported between the brand switcher and the
+   real page content, pushing "Редакционная система" and everything
+   after it below the fold on load. Redeclared here, after the rule it
+   needs to beat, instead of hunting down and reordering that whole
+   scattered block. */
+@media (max-width: 820px) {
+  .workspace-sidebar {
+    position: static;
+    min-height: auto;
+  }
+}
+
 .brief-panel {
   position: relative;
   padding: 34px;
