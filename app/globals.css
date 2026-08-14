@@ -9808,6 +9808,54 @@ footer nav a {
     font-size: 14px;
   }
 
+  /* .brand-tabs button was flex: 1 1 200px — two buttons at 200px basis
+     plus gap don't fit a phone-width row, so flex-wrap dropped each one
+     onto its own full-width line. The icon+label stayed left-aligned
+     (justify-content: flex-start) inside that now much wider box, so the
+     whole right two-thirds of each tab sat empty (site owner screenshot:
+     both the active purple tab and the one below it had a red circle
+     drawn around exactly that dead space). flex: 1 1 0 keeps both tabs
+     sharing the row 50/50 instead of wrapping, and the reduced min-height
+     /padding/font-sizes here keep that pairing from feeling cramped. */
+  .brand-tabs button {
+    flex: 1 1 0;
+    min-height: 46px;
+    padding: 0 10px;
+    gap: 8px;
+  }
+
+  .brand-tabs button b {
+    font-size: 13px;
+    line-height: 1.2;
+  }
+
+  .brand-tabs button i {
+    width: 22px;
+    height: 22px;
+    font-size: 9px;
+  }
+
+  .brand-tabs button > span {
+    width: 18px;
+    height: 18px;
+    font-size: 15px;
+  }
+
+  /* Same family of bug as .brand-tabs above: the "Заполнить с помощью
+     ИИ" button's white-space: nowrap forced it to its full label width
+     regardless of how little room was left, squeezing the URL input
+     down to a sliver next to it. Stacking the two removes that fight for
+     width entirely. */
+  .brand-website-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .brand-website-row button {
+    white-space: normal;
+    padding: 10px 14px;
+  }
+
   .length-control {
     margin-top: 14px;
   }
