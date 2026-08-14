@@ -801,6 +801,23 @@ const KLIO_TIPS = [
   "Разбивайте длинные абзацы: в ленте и в поиске побеждает текст, который легко просматривается за пару секунд.",
 ];
 
+// Alternates with KLIO_TIPS on the same "Начните здесь" rotator (see
+// tipIndex below) — warmer and less actionable on purpose, so the two
+// pools read as two different registers of the same voice, not one flat
+// list of advice.
+const KLIO_INSPIRATION = [
+  "Каждый бренд — это история, которая ждёт своего рассказчика. Сегодня эта роль ваша.",
+  "Хороший текст не кричит громче других — он звучит точнее и оттого запоминается.",
+  "Слова, подобранные с заботой, работают дольше, чем любая реклама.",
+  "Ваш голос уникален — задача не заглушить его правилами, а помочь ему прозвучать яснее.",
+  "Лучшие бренды не продают — они рассказывают, во что стоит поверить.",
+  "Одна честная история стоит десяти громких обещаний.",
+  "Аудитория запоминает не факты, а то, как вы заставили её почувствовать себя рядом с брендом.",
+  "Мастерство — это не талант с рождения, а тексты, доведённые до ясности раз за разом.",
+  "Смысл важнее объёма: короткая точная мысль живёт дольше длинного текста ни о чём.",
+  "Ваша экспертиза уже готова стать историей — осталось её рассказать.",
+];
+
 const landingUseCases = [
   {
     number: "01", label: "Для сайта", title: "Запустить раздел статей, который приводит новых посетителей",
@@ -1355,7 +1372,19 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }
   // Starts on a tip picked by the day (so it reads as "updated" on return
   // visits without needing a backend), then just cycles forward on click.
-  const [tipIndex, setTipIndex] = useState(() => Math.floor(Date.now() / 86400000) % KLIO_TIPS.length);
+  // Even values read from KLIO_TIPS, odd ones from KLIO_INSPIRATION — see
+  // tipIsInspiration/tipText below — so the two pools alternate instead
+  // of playing back to back.
+  const [tipIndex, setTipIndex] = useState(() => Math.floor(Date.now() / 86400000));
+  // Auto-advances the tip on its own, but only while "Начните здесь" is
+  // actually on screen (no point ticking a hidden tab) - the manual
+  // "Следующий совет" button next to it still works at any time, it just
+  // restarts this same interval rather than fighting it.
+  useEffect(() => {
+    if (activeModule !== "start") return;
+    const timer = window.setInterval(() => setTipIndex((current) => current + 1), 9000);
+    return () => window.clearInterval(timer);
+  }, [activeModule]);
   const [brandSaved, setBrandSaved] = useState(false);
   const [brandTab, setBrandTab] = useState<BrandTab>("foundation");
   const [profileMode, setProfileMode] = useState<ProfileMode>("quick");
@@ -4002,6 +4031,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       ? "Генерации есть, а в архиве этого бренда пока пусто — сохраняйте удачные материалы кнопкой «Сохранить», чтобы не потерять."
       : "Всё идёт ровно — так держать.";
 
+    const tipIsInspiration = tipIndex % 2 === 1;
+    const tipPool = tipIsInspiration ? KLIO_INSPIRATION : KLIO_TIPS;
+    const tipText = tipPool[Math.floor(tipIndex / 2) % tipPool.length];
+
     if (workspaceDataError && !activeBrandId) {
       return <main className="workspace-shell workspace-loading is-error"><Brand/><div><h1>Кабинет временно недоступен</h1><p>{workspaceDataError}</p><button className="button primary" type="button" onClick={() => window.location.reload()}>Повторить</button></div></main>;
     }
@@ -4152,11 +4185,29 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </div>}
 
           {activeModule === "start" && <section className="workspace-start" id="start" aria-label="Обзор кабинета">
+            <div className="workspace-start-stats-bar">
+              <span>Ваша статистика</span>
+              <div className="workspace-start-stats-bar-items">
+                <div><b>{workspaceAccount.generationsUsed}</b><small>материалов {workspaceAccount.period}</small></div>
+                <div><b>{workspaceAccount.researchUsed}</b><small>исследований {workspaceAccount.period}</small></div>
+                <div><b>{workspaceAccount.editorActionsUsed}</b><small>правок в редакторах {workspaceAccount.period}</small></div>
+                <div><b>{activeMaterialCount}</b><small>материалов сохранено у бренда</small></div>
+              </div>
+              <p className="workspace-start-stats-bar-comment"><i>КЛИО:</i> {klioComment}</p>
+            </div>
+
             <div className="workspace-start-hero">
-              <span className="workspace-start-kicker">КЛИО · обзор кабинета</span>
-              <h2>Привет! Я КЛИО — ваш редакционный ассистент.</h2>
-              <p>Опишите тему и ключевые слова — я соберу цельный материал за пару минут, с SEO‑заголовком и метаописанием. Остальные инструменты ниже нужны, только если важна глубина: голос бренда, поисковый спрос, конкуренты или план на месяц вперёд.</p>
-              <button className="button primary large" type="button" onClick={() => openModule("generator")}>Написать первый материал <Icon name="arrow"/></button>
+              <div className="workspace-start-hero-copy">
+                <span className="workspace-start-kicker">КЛИО · обзор кабинета</span>
+                <h2>Привет! Я КЛИО — ваш редакционный ассистент.</h2>
+                <p>Опишите тему и ключевые слова — я соберу цельный материал за пару минут, с SEO‑заголовком и метаописанием. Остальные инструменты ниже нужны, только если важна глубина: голос бренда, поисковый спрос, конкуренты или план на месяц вперёд.</p>
+                <button className="button primary large" type="button" onClick={() => openModule("generator")}>Написать первый материал <Icon name="arrow"/></button>
+              </div>
+              <div className="workspace-start-hero-tip">
+                <span>{tipIsInspiration ? "Вдохновение от КЛИО" : "Совет от КЛИО"}</span>
+                <p>{tipText}</p>
+                <button type="button" onClick={() => setTipIndex((current) => current + 1)}>Следующий совет <Icon name="arrow"/></button>
+              </div>
             </div>
 
             <div className="workspace-start-grid">
@@ -4166,24 +4217,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <p>{item.text}</p>
                 <span>{item.cta} <Icon name="arrow"/></span>
               </button>)}
-            </div>
-
-            <div className="workspace-start-insights">
-              <div className="workspace-start-tip">
-                <span>Совет от КЛИО</span>
-                <p>{KLIO_TIPS[tipIndex]}</p>
-                <button type="button" onClick={() => setTipIndex((current) => (current + 1) % KLIO_TIPS.length)}>Следующий совет <Icon name="arrow"/></button>
-              </div>
-              <div className="workspace-start-stats">
-                <span>Ваша статистика</span>
-                <div className="workspace-start-stats-grid">
-                  <div><b>{workspaceAccount.generationsUsed}</b><small>материалов {workspaceAccount.period}</small></div>
-                  <div><b>{workspaceAccount.researchUsed}</b><small>исследований {workspaceAccount.period}</small></div>
-                  <div><b>{workspaceAccount.editorActionsUsed}</b><small>правок в редакторах {workspaceAccount.period}</small></div>
-                  <div><b>{activeMaterialCount}</b><small>материалов сохранено у бренда</small></div>
-                </div>
-                <p className="workspace-start-stats-comment"><i>КЛИО:</i> {klioComment}</p>
-              </div>
             </div>
           </section>}
 
