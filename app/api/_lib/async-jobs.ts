@@ -1,4 +1,4 @@
-import { and, eq, lt } from "drizzle-orm";
+import { and, desc, eq, inArray, lt } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { asyncJobs } from "../../../db/schema";
@@ -46,6 +46,20 @@ export async function createAsyncJob(kind: string, ownerEmail: string, input: un
     console.error("async job cleanup failed (non-fatal)", error);
   });
   return id;
+}
+
+// The browser can resend a POST after a network hiccup, be open in two tabs,
+// or let a person press the action again after a long wait.  A content-plan
+// job is expensive, so the route reuses the owner's already active job
+// instead of starting a second identical provider call.
+export async function findActiveAsyncJob(kind: string, ownerEmail: string) {
+  const db = getDb();
+  const [job] = await db.select().from(asyncJobs).where(and(
+    eq(asyncJobs.kind, kind),
+    eq(asyncJobs.ownerEmail, ownerEmail),
+    inArray(asyncJobs.status, ["pending", "processing"]),
+  )).orderBy(desc(asyncJobs.createdAt)).limit(1);
+  return job ?? null;
 }
 
 export async function markAsyncJobProcessing(id: string) {

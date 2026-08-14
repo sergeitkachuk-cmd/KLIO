@@ -180,7 +180,12 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // the request plus the brand's website (readWebsiteContext in content-
   // plan/route.ts — a direct HTTP read, not an AI call, so it doesn't
   // share any of this operation's reliability problems).
-  generate_content_plan: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 18_000, structuredOutput: true, retryable: true, useWebSearch: false },
+  // A failed long generation can still have consumed a very large cached
+  // prompt at the provider. Do not automatically replay this operation:
+  // the user can explicitly retry after seeing the error, while automatic
+  // retries turn one malformed/empty provider response into several full
+  // billed requests.
+  generate_content_plan: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 18_000, structuredOutput: true, retryable: false, useWebSearch: false },
   // Up to 5 selected topics x 3 full alternatives each, each a complete
   // plan row (structure, lsi, evidence, sources...) — genuinely needs a
   // ceiling close to a fresh content plan's, not the generic "small

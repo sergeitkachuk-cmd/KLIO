@@ -2,7 +2,7 @@ import { AiResponseError, openAiErrorResponse } from "../_lib/openai-response";
 import { CORE_SYSTEM_RULES, FINAL_QA_RULES } from "../../content-plans";
 import { AiCallError, callAiModel } from "../_lib/ai-router";
 import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
-import { createAsyncJob, failAsyncJob, markAsyncJobProcessing, completeAsyncJob } from "../_lib/async-jobs";
+import { createAsyncJob, failAsyncJob, findActiveAsyncJob, markAsyncJobProcessing, completeAsyncJob } from "../_lib/async-jobs";
 import { readWebsiteContext, websiteSourceLabel } from "../_lib/website-context";
 
 type SemanticInput = {
@@ -439,6 +439,8 @@ export async function POST(request: Request) {
     // created only to fail a few seconds later.
     await assertSecondaryQuotaAvailable("research");
     const identity = await workspaceIdentity();
+    const activeJob = await findActiveAsyncJob("content_plan", identity.email);
+    if (activeJob) return Response.json({ jobId: activeJob.id, reused: true });
     const jobId = await createAsyncJob("content_plan", identity.email, input);
     // Intentionally not awaited — see async-jobs.ts for why this keeps
     // running after the response below is sent on this host.

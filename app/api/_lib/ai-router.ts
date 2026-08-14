@@ -436,7 +436,7 @@ export async function callAiModel<T = Record<string, unknown>>(
         continue;
       }
 
-      if (isInvalidOutput && invalidOutputRetries < 1) {
+      if (isInvalidOutput && config.retryable && invalidOutputRetries < 1) {
         invalidOutputRetries += 1;
         continue;
       }
