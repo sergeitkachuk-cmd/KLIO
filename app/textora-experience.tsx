@@ -1270,6 +1270,15 @@ function Brand() {
   return <span className="brand"><i>К</i><b>КЛИО<span aria-hidden="true">.</span></b><small>Цифровая редакция</small></span>;
 }
 
+// Same "КЛИО." wordmark as Brand() (bold name + accent dot), for the few
+// spots where the name stands alone as a display mark rather than a
+// logo lockup - a mid-sentence mention ("КЛИО находит...", toasts,
+// error strings) stays plain text, since a period there would just be a
+// punctuation bug, not a stylistic touch.
+function KlioMark() {
+  return <>КЛИО<span className="klio-mark-dot" aria-hidden="true">.</span></>;
+}
+
 function MetricNumber({ value, replay }: { value: number; replay: number }) {
   const safeValue = Number.isFinite(value) ? Math.round(value) : 0;
   return <span className="metric-number" key={`${replay}-${safeValue}`}>{safeValue}</span>;
@@ -4208,7 +4217,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     manual alike), which is what restarts the CSS fade
                     below - no extra animation state to manage. */}
                 <div className="workspace-start-hero-tip-content" key={tipIndex}>
-                  <span>{tipIsInspiration ? "Вдохновение от КЛИО" : "Совет от КЛИО"}</span>
+                  <span>{tipIsInspiration ? "Вдохновение от " : "Совет от "}<KlioMark/></span>
                   <p>{tipText}</p>
                 </div>
                 <button type="button" onClick={() => setTipIndex((current) => current + 1)}>Следующий совет <Icon name="arrow"/></button>
@@ -4920,7 +4929,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       <div className="use-cases-track" id="use-cases-track" aria-label="Примеры использования КЛИО">
         {landingUseCases.map((item) => <article className="use-case-slide" key={item.number}>
           <div className="use-case-copy"><span>{item.number} / {item.label}</span><h3>{item.title}</h3><p>{item.text}</p><div><b>Что получится</b><p>{item.result}</p></div></div>
-          <div className="use-case-preview" aria-label={`Пример: ${item.preview[0]}`}><header><i/><i/><i/><b>КЛИО</b></header><section><small>{item.preview[0]}</small>{item.preview.slice(1).map((row, index) => <p key={row}><b>{String(index + 1).padStart(2, "0")}</b>{row}<i>↗</i></p>)}</section></div>
+          <div className="use-case-preview" aria-label={`Пример: ${item.preview[0]}`}><header><i/><i/><i/><b><KlioMark/></b></header><section><small>{item.preview[0]}</small>{item.preview.slice(1).map((row, index) => <p key={row}><b>{String(index + 1).padStart(2, "0")}</b>{row}<i>↗</i></p>)}</section></div>
           <div className="use-case-steps"><span>Как это сделать</span><h4>Четыре простых шага</h4><ol>{item.steps.map(([title, description], index) => <li key={title}><b>{index + 1}</b><div><strong>{title}</strong><p>{description}</p></div></li>)}</ol><Link className="button primary" href={item.href}>{item.cta} <Icon name="arrow"/></Link></div>
         </article>)}
       </div>
@@ -4946,7 +4955,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         <div className="magazine-scene" aria-hidden="true"><div className="magazine-spread"><div className="magazine-page magazine-left"><span>КЛИО / 01</span><b>Слова,<br/>которые<br/><em>видят.</em></b><i>Цифровая редакция для бизнеса</i></div><div className="magazine-fold"/><div className="magazine-page magazine-right"><span>Материал номера</span><div className="magazine-photo"><u/><small>Спрос → смысл → публикация</small></div><p>Контент, собранный на основе данных и голоса вашего бренда.</p><strong>КЛИО</strong></div></div></div>
       </div>
     </section>
-    <footer><a className="wordmark" href="#top"><Brand/></a><p>КЛИО — цифровая редакция для брендов.</p><nav><a href="#legend">О КЛИО</a><a href="#modules">Возможности</a><a href="#cases">Примеры задач</a><a href="#plan">Контент‑план</a><a href="#pricing">Тарифы</a></nav><small>© 2026 КЛИО</small></footer>
+    <footer><a className="wordmark" href="#top"><Brand/></a><p>КЛИО — цифровая редакция для брендов.</p><nav><a href="#legend">О КЛИО</a><a href="#modules">Возможности</a><a href="#cases">Примеры задач</a><a href="#plan">Контент‑план</a><a href="#pricing">Тарифы</a></nav><small>© 2026 <KlioMark/></small></footer>
     {toast && <div className="toast" role="status"><Icon name="check"/><span>{toast}</span></div>}
   </main>;
 }

@@ -395,6 +395,13 @@ select:focus-visible {
   color: #b7a7ff;
 }
 
+/* KlioMark() - same dot as .brand b span above, for the handful of
+   standalone "КЛИО" display mentions outside the logo lockup itself. */
+.klio-mark-dot {
+  margin-left: 1px;
+  color: #b7a7ff;
+}
+
 .brand small {
   margin-top: 4px;
   font-size: 9px;
