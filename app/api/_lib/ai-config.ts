@@ -123,6 +123,7 @@ export type AiOperation =
   | "generate_quick_material"
   | "adapt_text"
   | "generate_content_plan"
+  | "research_content_plan"
   | "revise_content_plan"
   | "research_semantics"
   | "discover_competitors"
@@ -203,6 +204,26 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   //    genuinely under-grounded rather than just less exhaustively
   //    fact-checked.
   generate_content_plan: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 26_000, structuredOutput: true, retryable: true, useWebSearch: false },
+  // Restores real web grounding for content-plan without reopening the
+  // failure above: a *separate*, much simpler call does the searching -
+  // 1-2 rounds, a short summary/fact list, no 10-25-row structured plan
+  // to also produce in the same turn - so there's far less for the model
+  // to keep "not quite finishing" on. generate_content_plan itself stays
+  // useWebSearch: false; this operation's result gets folded into its
+  // prompt as plain text instead.
+  //
+  // On UTILITY (flash), not CONTENT (pro), on the site owner's own
+  // suggestion - with one caveat flagged directly to them: research_
+  // semantics below already found nano/flash too weak for a similarly
+  // open-ended web-research task (18-30 *novel* query phrases) and had
+  // to stay on Luna/pro for quality. This task is deliberately narrower
+  // (summarize, don't invent), which may keep it within flash's range,
+  // and FALLBACKS already promotes deepseek-v4-flash -> deepseek-v4-pro
+  // automatically once flash's own retries are exhausted - so a weak
+  // flash attempt self-heals onto pro rather than silently shipping a
+  // thin result. Revisit straight to CONTENT if flash's output is
+  // consistently thin even after that fallback.
+  research_content_plan: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 4_000, structuredOutput: true, retryable: true, useWebSearch: true },
   // Up to 5 selected topics x 3 full alternatives each, each a complete
   // plan row (structure, lsi, evidence, sources...) — genuinely needs a
   // ceiling close to a fresh content plan's, not the generic "small

@@ -47,6 +47,7 @@ const OPERATION_LABELS: Record<AiOperation, string> = {
   generate_quick_material: "Быстрый ввод",
   adapt_text: "Редактор адаптации",
   generate_content_plan: "Контент-план",
+  research_content_plan: "Контент-план: веб-исследование",
   revise_content_plan: "Контент-план: замена тем",
   research_semantics: "Семантика",
   discover_competitors: "Поиск конкурентов",
