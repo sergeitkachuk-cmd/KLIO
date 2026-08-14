@@ -14420,6 +14420,20 @@ footer nav a {
   font-weight: 650;
 }
 
+/* The actual bug behind "some arrows look smaller": unlike every other
+   Icon() usage on the site (.button svg, .toast svg, etc.), this one had
+   no explicit size at all - a bare inline <svg> with no width/height
+   falls back to inconsistent browser-default sizing instead of a fixed
+   box, so it could render at a different size per instance even though
+   the markup is identical. Last pass only brightened two of the six
+   arrows' color, which didn't touch this. Fixed size now, same as every
+   other icon-with-text pattern on the site. */
+.workspace-start-card span svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
 /* Same accent each card's own module heading uses (see .semantics-module
    etc.) — keeps the guide visually consistent with the tabs it opens. */
 .workspace-start-card-generator { --module-accent: #6539c7; --module-tint: rgba(124, 58, 237, 0.07); }
