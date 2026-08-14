@@ -158,49 +158,37 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // per goal (see adaptationReasoningEffort below); this entry is the
   // fallback/default for the majority of goals (rewrite, shorten, tone…).
   adapt_text: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 6_000, structuredOutput: true, retryable: true, useWebSearch: false },
-  // Round-tripped 18,000 -> 32,000 -> back down (see history if this
-  // comment gets edited again). The 32k version was reasoned from output
-  // size alone (25 rows x ~800 tokens/row + headroom) and looked right on
-  // paper, but real-world testing after deploying it made things *worse*:
-  // even a minimal 10-row plan started taking minutes and still came back
-  // with "AI-редакция вернула пустой ответ" (empty text, no message-type
-  // item in output[] - see ai-router.ts's outputText()). A 10-row plan
-  // needs at most ~8-10k tokens of actual JSON, nowhere near either
-  // ceiling, which means the model isn't running out of room for the
-  // *answer* - it's spending an unbounded amount of the budget on
-  // reasoning/web-search tool calls and never getting back to write the
-  // final message at all. A bigger ceiling doesn't fix that; it just
-  // gives the model more room to wander before the request is finally
-  // cut off, which is why it got slower without getting more reliable.
-  // Reverted to the last value that's actually been seen working quickly
-  // (~30s) rather than guessing a new number - a tighter budget forces
-  // the model to commit to an answer sooner if anything. If this specific
-  // failure (empty response, brand-profile-only "explore broadly" prompt
-  // path) keeps happening at 18k too, the real fix is probably capping or
-  // restructuring the web-search step itself, not this number.
-  //
-  // ...it kept happening at 18k, and shrinking existingTitles (see
-  // content-plan/route.ts) didn't fix it either. The actual pattern,
-  // confirmed from the new output-item-summary + diagnostic logs on a
-  // still-stuck request: one single web_search_call (fast, 5 queries),
-  // then a *second* reasoning item that draft-rejects-redrafts its own
-  // topic list two or three times in a row inside one reasoning turn
-  // ("Let me list 15 truly distinct... Hmm many overlap. Need fresh
-  // distinct. Let me brainstorm brand-new angles...") before the budget
-  // runs out mid-thought. This is DeepSeek's own reasoning process
-  // spiraling on the novelty-checking part of the prompt, not a token-
-  // budget or exclusion-list-size problem - three retries of the exact
-  // same prompt just paid for that spiral three times (~15 minutes
-  // reported for what should be a 10-15 row plan). Dropped reasoningEffort
-  // to "none": every other operation with search-and-write-freely prompts
-  // (generate_social_post, generate_ad_copy) already runs at "none", and
-  // validatePlan()'s own duplicate/weak-plan check still catches a bad
-  // result and forces a normal, fast retry - cheaper insurance than
-  // trusting extended reasoning not to spiral. Genuine trade-off (less
-  // deliberate novelty-seeking against the existing-titles list) - revisit
-  // if plan quality/duplication visibly gets worse, but a plan that
-  // reliably finishes beats one that reasons forever and returns nothing.
-  generate_content_plan: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 18_000, structuredOutput: true, retryable: true, useWebSearch: true },
+  // History of this line (each fix based on real diagnostic evidence, not
+  // a guess, and each superseded by the next once it didn't hold up):
+  // 1) 18k -> 32k, reasoned from output size alone (25 rows x ~800
+  //    tokens/row). Made things worse: a 10-row plan started taking
+  //    minutes and still came back empty - the model wasn't running out
+  //    of room for the *answer*, so a bigger ceiling just gave it more
+  //    room to spend unproductively. Reverted to 18k.
+  // 2) existingTitles capped 120 -> 50 (content-plan/route.ts) after logs
+  //    showed the model's own reasoning fixating on "the existing list is
+  //    very long". Reduced but didn't fix the failure on its own.
+  // 3) reasoningEffort "low" -> "none" after logs showed the actual
+  //    runaway: a reasoning item visibly draft-rejecting-redrafting its
+  //    own topic list several times in one turn before the budget ran
+  //    out mid-thought - extended reasoning spiraling on the novelty
+  //    check, not a budget or list-length problem.
+  // 4) With reasoning off, the model now reliably reaches real output,
+  //    but compensates for not having a reasoning scratchpad by thinking
+  //    out loud via tool calls instead: logs showed 5 separate
+  //    web_search_call rounds interleaved with short "commentary"
+  //    messages ("I'll research...", "I now have enough grounding...")
+  //    before finally writing the plan JSON - which then got cut off
+  //    a couple items in once that overhead had eaten most of the 18k
+  //    budget ("AI-редакция вернула неполный структурированный ответ").
+  //    Unlike fix #1, this bump is backed by a request that was
+  //    genuinely converging on real output, just not enough room to
+  //    finish - paired with two new instructions in content-plan/
+  //    route.ts capping search to 1-2 rounds and banning the
+  //    between-step commentary messages, so the ceiling isn't fighting
+  //    unbounded tool-call overhead the way it fought unbounded
+  //    reasoning in attempt #1.
+  generate_content_plan: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 26_000, structuredOutput: true, retryable: true, useWebSearch: true },
   // Up to 5 selected topics x 3 full alternatives each, each a complete
   // plan row (structure, lsi, evidence, sources...) — genuinely needs a
   // ceiling close to a fresh content plan's, not the generic "small
