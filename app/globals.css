@@ -402,6 +402,27 @@ select:focus-visible {
   color: #b7a7ff;
 }
 
+/* Plain link reading inline inside a sentence, wherever a hint needs to
+   jump the reader straight to another module (e.g. "включится, когда в
+   модуле «Семантика»..." next to the disabled "Из найденных тем"
+   button) instead of leaving them to guess where to go. Inherits color
+   from whatever <small>/<p> it sits in rather than fighting it, so it
+   works unmodified in both dark and light module treatments. */
+.inline-text-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.inline-text-link:hover {
+  text-decoration-thickness: 2px;
+}
+
 .brand small {
   margin-top: 4px;
   font-size: 9px;
