@@ -14111,22 +14111,32 @@ footer nav a {
   margin-bottom: 22px;
 }
 
-/* Stats moved up out of their own boxed panel per feedback: one plain
-   line, set apart from the page only by a faintly darker background -
-   no border, no card shadow, nothing that reads as "another block". */
+/* Stats moved up out of their own boxed panel per feedback: one line,
+   set apart from the page. First pass used a ~5% tint and it read as
+   "lost" against .workspace-shell's own pale canvas (site owner: "in
+   dark theme we've got too much light background, and the stats get
+   lost in it") - real frosted glass now, dark and blurred regardless of
+   theme, so it reads as a deliberate panel rather than a faint smudge.
+   Each number is tinted like its own module (see workspace-start-card-*
+   for the same accents used as solid hex there vs brightened here for
+   contrast on a dark glass background). */
 .workspace-start-stats-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 20px;
-  padding: 15px 24px;
-  border-radius: 14px;
-  background: rgba(13, 23, 42, 0.05);
+  padding: 16px 26px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(8, 14, 30, 0.72), rgba(20, 13, 36, 0.62));
+  box-shadow: 0 18px 40px rgba(8, 8, 26, 0.2), inset 0 1px rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(26px) saturate(160%);
+  -webkit-backdrop-filter: blur(26px) saturate(160%);
 }
 
 .workspace-start-stats-bar > span {
   flex: 0 0 auto;
-  color: var(--muted);
+  color: var(--acid);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -14147,28 +14157,32 @@ footer nav a {
 }
 
 .workspace-start-stats-bar-items b {
-  color: var(--ink);
   font-size: 19px;
   font-weight: 680;
 }
 
 .workspace-start-stats-bar-items small {
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.62);
   font-size: 12px;
 }
+
+.stat-generator b { color: var(--violet); }
+.stat-semantics b { color: #6fa8dc; }
+.stat-adaptation b { color: #e08fac; }
+.stat-content-plan b { color: #55c2a3; }
 
 .workspace-start-stats-bar-comment {
   display: flex;
   align-items: baseline;
   gap: 6px;
   margin: 0 0 0 auto;
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.7);
   font-size: 13px;
   line-height: 1.4;
 }
 
 .workspace-start-stats-bar-comment > i {
-  color: var(--cobalt);
+  color: var(--acid);
   font-style: normal;
   font-weight: 700;
 }
@@ -16033,6 +16047,37 @@ footer nav a {
 [data-theme="light"] .brand-profile-head .brand-switch input:checked + span {
   border-color: rgba(53, 104, 212, 0.5);
   background: #2452b8;
+}
+
+/* Stats bar keeps the glass effect in light theme too, just inverted to
+   a frosted-white panel instead of frosted-dark - the module accents on
+   the numbers switch to their plain hex (the brightened dark-theme
+   versions would wash out against a light panel). */
+[data-theme="light"] .workspace-start-stats-bar {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(237, 242, 250, 0.68));
+  box-shadow: 0 14px 34px rgba(20, 40, 80, 0.1), inset 0 1px rgba(255, 255, 255, 0.8);
+}
+
+[data-theme="light"] .workspace-start-stats-bar > span {
+  color: #2452b8;
+}
+
+[data-theme="light"] .workspace-start-stats-bar-items small {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .stat-generator b { color: #6539c7; }
+[data-theme="light"] .stat-semantics b { color: #376fa8; }
+[data-theme="light"] .stat-adaptation b { color: #9b536d; }
+[data-theme="light"] .stat-content-plan b { color: #3f7e70; }
+
+[data-theme="light"] .workspace-start-stats-bar-comment {
+  color: rgba(13, 27, 49, 0.7);
+}
+
+[data-theme="light"] .workspace-start-stats-bar-comment > i {
+  color: #2452b8;
 }
 
 /* "Начните здесь" overview tab, light theme - same cool-blue treatment as

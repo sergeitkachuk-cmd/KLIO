@@ -4188,10 +4188,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <div className="workspace-start-stats-bar">
               <span>Ваша статистика</span>
               <div className="workspace-start-stats-bar-items">
-                <div><b>{workspaceAccount.generationsUsed}</b><small>материалов {workspaceAccount.period}</small></div>
-                <div><b>{workspaceAccount.researchUsed}</b><small>исследований {workspaceAccount.period}</small></div>
-                <div><b>{workspaceAccount.editorActionsUsed}</b><small>правок в редакторах {workspaceAccount.period}</small></div>
-                <div><b>{activeMaterialCount}</b><small>материалов сохранено у бренда</small></div>
+                <div className="stat-generator"><b>{workspaceAccount.generationsUsed}</b><small>материалов {workspaceAccount.period}</small></div>
+                <div className="stat-semantics"><b>{workspaceAccount.researchUsed}</b><small>исследований {workspaceAccount.period}</small></div>
+                <div className="stat-adaptation"><b>{workspaceAccount.editorActionsUsed}</b><small>правок в редакторах {workspaceAccount.period}</small></div>
+                <div className="stat-content-plan"><b>{activeMaterialCount}</b><small>материалов сохранено у бренда</small></div>
               </div>
               <p className="workspace-start-stats-bar-comment"><i>КЛИО:</i> {klioComment}</p>
             </div>
