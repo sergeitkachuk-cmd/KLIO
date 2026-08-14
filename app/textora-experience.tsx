@@ -1382,7 +1382,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // restarts this same interval rather than fighting it.
   useEffect(() => {
     if (activeModule !== "start") return;
-    const timer = window.setInterval(() => setTipIndex((current) => current + 1), 9000);
+    const timer = window.setInterval(() => setTipIndex((current) => current + 1), 10000);
     return () => window.clearInterval(timer);
   }, [activeModule]);
   const [brandSaved, setBrandSaved] = useState(false);
@@ -4204,8 +4204,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <button className="button primary large" type="button" onClick={() => openModule("generator")}>Написать первый материал <Icon name="arrow"/></button>
               </div>
               <div className="workspace-start-hero-tip">
-                <span>{tipIsInspiration ? "Вдохновение от КЛИО" : "Совет от КЛИО"}</span>
-                <p>{tipText}</p>
+                {/* key={tipIndex} remounts this on every change (auto or
+                    manual alike), which is what restarts the CSS fade
+                    below - no extra animation state to manage. */}
+                <div className="workspace-start-hero-tip-content" key={tipIndex}>
+                  <span>{tipIsInspiration ? "Вдохновение от КЛИО" : "Совет от КЛИО"}</span>
+                  <p>{tipText}</p>
+                </div>
                 <button type="button" onClick={() => setTipIndex((current) => current + 1)}>Следующий совет <Icon name="arrow"/></button>
               </div>
             </div>

@@ -14254,7 +14254,29 @@ footer nav a {
   border-left: 1px solid rgba(255, 255, 255, 0.16);
 }
 
-.workspace-start-hero-tip > span {
+.workspace-start-hero-tip-content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+  /* Content remounts (key={tipIndex}) each time the tip changes, whether
+     that's the 10s auto-advance or the manual button - restarting this
+     animation is the whole point of the remount. */
+  animation: workspace-tip-fade 520ms ease;
+}
+
+@keyframes workspace-tip-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.workspace-start-hero-tip-content > span {
   color: var(--acid);
   font-size: 11px;
   font-weight: 800;
@@ -14262,7 +14284,7 @@ footer nav a {
   text-transform: uppercase;
 }
 
-.workspace-start-hero-tip p {
+.workspace-start-hero-tip-content p {
   margin: 0;
   color: #fff;
   font-size: 15px;
@@ -16105,11 +16127,11 @@ footer nav a {
   border-color: rgba(15, 23, 42, 0.14);
 }
 
-[data-theme="light"] .workspace-start-hero-tip > span {
+[data-theme="light"] .workspace-start-hero-tip-content > span {
   color: #2452b8;
 }
 
-[data-theme="light"] .workspace-start-hero-tip p {
+[data-theme="light"] .workspace-start-hero-tip-content p {
   color: #0d1b31;
 }
 
