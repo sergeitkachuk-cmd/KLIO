@@ -13829,18 +13829,28 @@ footer nav a {
   font-size: 10px;
 }
 
-@media (min-width: 821px) and (max-height: 900px) {
+@media (min-width: 821px) {
   .workspace-sidebar {
+    display: flex;
+    flex-direction: column;
     height: calc(100vh - 76px);
     min-height: 0;
+    overflow: hidden;
+  }
+
+  .workspace-sidebar nav {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin-bottom: 16px;
+    padding: 3px 4px 8px 0;
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-color: rgba(181, 156, 255, 0.52) transparent;
     scrollbar-width: thin;
   }
 
-  .workspace-sidebar nav {
-    margin-bottom: 16px;
+  .workspace-quota-stage {
+    flex: 0 0 auto;
   }
 }
 
