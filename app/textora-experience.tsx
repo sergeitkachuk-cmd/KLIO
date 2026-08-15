@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent as ReactMouseEvent, TextareaHTMLAttributes } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
@@ -1398,6 +1398,20 @@ function MarqueeGroup({ hidden = false }: { hidden?: boolean }) {
 }
 
 export default function TextoraExperience({ workspace = false }: { workspace?: boolean }) {
+  // Browsers restore the previous vertical offset after a hard reload. In the
+  // workspace that leaves the first heading hidden under the fixed top bar,
+  // so every fresh app mount intentionally starts from the page top.
+  useLayoutEffect(() => {
+    const previousScrollRestoration = window.history.scrollRestoration;
+    window.history.scrollRestoration = "manual";
+    window.scrollTo(0, 0);
+    const frame = window.requestAnimationFrame(() => window.scrollTo(0, 0));
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.history.scrollRestoration = previousScrollRestoration;
+    };
+  }, []);
+
   const [intro, setIntro] = useState(true);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [format, setFormat] = useState<Format>("seo");
