@@ -36,6 +36,14 @@ function monthKey(date = new Date()) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
+// Product-owner test account. Kept narrowly scoped so production limits and
+// the trial window remain unchanged for every other user.
+const TEST_ACCOUNT_EMAIL = "sergeitkachuk@gmail.com";
+
+function isTestAccount(email: string) {
+  return email.trim().toLocaleLowerCase("en-US") === TEST_ACCOUNT_EMAIL;
+}
+
 export async function ensureAccount(user: ChatGPTUser) {
   const db = await getWorkspaceDb();
   const currentMonth = monthKey();
@@ -45,7 +53,7 @@ export async function ensureAccount(user: ChatGPTUser) {
     [account] = await db.insert(accounts).values({
       email: user.email,
       displayName: user.displayName,
-      planId: "trial",
+      planId: isTestAccount(user.email) ? "agency" : "trial",
       generationMonth: currentMonth,
       generationsUsed: 0,
       researchUsed: 0,
@@ -69,6 +77,13 @@ export async function ensureAccount(user: ChatGPTUser) {
   } else if (account.displayName !== user.displayName) {
     [account] = await db.update(accounts).set({
       displayName: user.displayName,
+      updatedAt: sql`CURRENT_TIMESTAMP`,
+    }).where(eq(accounts.email, user.email)).returning();
+  }
+
+  if (isTestAccount(user.email) && account.planId !== "agency") {
+    [account] = await db.update(accounts).set({
+      planId: "agency",
       updatedAt: sql`CURRENT_TIMESTAMP`,
     }).where(eq(accounts.email, user.email)).returning();
   }
