@@ -4847,8 +4847,12 @@ footer nav a {
 }
 
 .workspace-sidebar nav a {
-  border-color: rgba(255, 255, 255, 0.11);
-  background: rgba(255, 255, 255, 0.055);
+  /* Resting items need to read as usable controls, not disabled cards.
+     Keep them navy, only a shade deeper and more saturated than the
+     sidebar, while reserving the module colour for the active item. */
+  border-color: rgba(176, 202, 239, 0.2);
+  color: rgba(244, 248, 255, 0.86);
+  background: linear-gradient(120deg, rgba(30, 62, 98, 0.78), rgba(19, 46, 76, 0.82));
 }
 
 /* Each link carries the same --module-accent its module's own heading
@@ -4874,7 +4878,7 @@ footer nav a {
 }
 
 .workspace-sidebar nav i {
-  color: rgba(216, 255, 101, 0.72);
+  color: rgba(216, 255, 101, 0.9);
   font-size: 12px;
   font-style: normal;
   font-weight: 700;
@@ -4886,12 +4890,13 @@ footer nav a {
 }
 
 .workspace-sidebar nav b {
+  color: rgba(244, 248, 255, 0.9);
   font-size: 14px;
   font-weight: 620;
 }
 
 .workspace-sidebar nav small {
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(222, 234, 250, 0.62);
   font-size: 11px;
 }
 
