@@ -15066,8 +15066,8 @@ footer nav a {
 .brand-profile-body {
   color: #fff;
   background:
-    radial-gradient(circle at 88% 0%, rgba(124, 58, 237, 0.24), transparent 40%),
-    linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
+    radial-gradient(circle at 88% 0%, rgba(124, 58, 237, 0.18), transparent 40%),
+    linear-gradient(135deg, #06182e, #08233f 55%, #041426 100%);
 }
 
 .profile-mode-bar {
