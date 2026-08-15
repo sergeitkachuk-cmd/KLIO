@@ -4296,7 +4296,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <div className="workspace-start-hero-copy">
                 <span className="workspace-start-kicker">КЛИО · обзор кабинета</span>
                 <h2>Привет! Я КЛИО — ваш редакционный ассистент.</h2>
-                <p>Опишите тему и ключевые слова — я соберу цельный материал за пару минут, с SEO‑заголовком и метаописанием. Остальные инструменты ниже нужны, только если важна глубина: голос бренда, поисковый спрос, конкуренты или план на месяц вперёд.</p>
+                <p>Опишите тему и ключевые слова — я соберу цельный материал с SEO‑заголовком и метаописанием. Остальные инструменты ниже нужны, только если важна глубина: голос бренда, поисковый спрос, конкуренты или план на месяц вперёд.</p>
                 <button className="button primary large" type="button" onClick={() => openModule("generator")}>Написать первый материал <Icon name="arrow"/></button>
               </div>
               <div className="workspace-start-hero-tip">
