@@ -18636,6 +18636,44 @@ footer nav a {
   box-shadow: 0 3px 11px rgba(29, 57, 104, 0.09), inset 0 1px #fff;
 }
 
+/* On phones two icon-only actions in the result header were too easy to
+   confuse. Keep their labels and give destructive clearing its own row. */
+@media (max-width: 720px) {
+  .result-head {
+    flex-wrap: wrap;
+  }
+
+  .result-head-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .result-head-actions button {
+    justify-content: center;
+    min-height: 46px;
+    padding: 0 14px;
+    border: 1px solid rgba(190, 213, 244, 0.26);
+    border-radius: 12px;
+    color: #e7effc;
+    background: rgba(255, 255, 255, 0.08);
+    font-size: 13px !important;
+  }
+
+  .result-head-actions button:not(.result-clear) {
+    order: 1;
+  }
+
+  .result-head-actions .result-clear {
+    order: 2;
+    border-color: rgba(248, 166, 166, 0.28);
+    color: rgba(255, 221, 221, 0.84) !important;
+    background: rgba(155, 43, 61, 0.16);
+  }
+}
+
 [data-theme="light"] .competitor-mode {
   border-color: rgba(15, 23, 42, 0.16);
   color: #0d1b31;
