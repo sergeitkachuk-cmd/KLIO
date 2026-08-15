@@ -2586,7 +2586,7 @@ select:focus-visible {
   width: 22px;
   height: 22px;
   border: 1px solid rgba(216, 201, 255, 0.22);
-  border-radius: 7px;
+  border-radius: 50%;
   color: #fff;
   background: rgba(255, 255, 255, 0.06);
   content: counter(editorial-plan, decimal-leading-zero);
@@ -5150,7 +5150,7 @@ footer nav a {
   place-items: center;
   width: 30px;
   height: 30px;
-  border-radius: 10px;
+  border-radius: 50%;
   font-size: 13px;
   font-weight: 700;
   font-style: normal;
@@ -5788,7 +5788,7 @@ footer nav a {
   width: 19px;
   height: 19px;
   border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 6px;
+  border-radius: 50%;
   color: #fff;
   background: rgba(255, 255, 255, 0.06);
   font-size: 10px;
@@ -6073,7 +6073,7 @@ footer nav a {
   width: 68px;
   height: 68px;
   border: 1px solid rgba(124, 58, 237, 0.32);
-  border-radius: 22px 22px 6px 22px;
+  border-radius: 50%;
   background: rgba(255, 255, 255, 0.08);
   box-shadow: 0 15px 38px rgba(3, 12, 26, 0.24);
   font-size: 20px;
@@ -6132,7 +6132,7 @@ footer nav a {
   place-items: center;
   width: 25px;
   height: 25px;
-  border-radius: 8px;
+  border-radius: 50%;
   color: #cabdf6;
   background: rgba(124, 58, 237, 0.18);
   font-size: 10px;
@@ -6225,7 +6225,7 @@ footer nav a {
   place-items: center;
   min-width: 27px;
   height: 27px;
-  border-radius: 8px;
+  border-radius: 50%;
   color: rgba(255, 255, 255, 0.72);
   background: rgba(255, 255, 255, 0.1);
   font-size: 11px;
@@ -6427,7 +6427,7 @@ footer nav a {
   width: 23px;
   height: 23px;
   border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 7px;
+  border-radius: 50%;
   color: #fff;
   background: rgba(255, 255, 255, 0.06);
   font-size: 12px;
@@ -6908,7 +6908,7 @@ footer nav a {
   place-items: center;
   width: 30px;
   height: 30px;
-  border-radius: 9px;
+  border-radius: 50%;
   color: #fff;
   background: linear-gradient(145deg, #6d42dc, #8b5cf6);
   font-size: 10px;
@@ -7471,7 +7471,7 @@ footer nav a {
   place-items: center;
   width: 34px;
   height: 34px;
-  border-radius: 10px;
+  border-radius: 50%;
   color: #fff;
   background: linear-gradient(145deg, #7250d0, #8b5cf6);
   font-size: 11px;
@@ -7588,7 +7588,7 @@ footer nav a {
   flex: 0 0 auto;
   width: 24px;
   height: 24px;
-  border-radius: 8px;
+  border-radius: 50%;
   color: #fff;
   background: var(--cobalt);
   font-size: 12px;
@@ -7708,7 +7708,7 @@ footer nav a {
   place-items: center;
   width: 26px;
   height: 26px;
-  border-radius: 9px;
+  border-radius: 50%;
   font-size: 11px;
   font-style: normal;
   font-weight: 750;
@@ -9316,7 +9316,7 @@ footer nav a {
   width: 22px;
   height: 22px;
   border: 1px solid rgba(255, 255, 255, 0.24);
-  border-radius: 7px;
+  border-radius: 50%;
   color: #fff;
   font-size: 11px;
   font-style: normal;
@@ -9699,7 +9699,7 @@ footer nav a {
   width: 68px;
   height: 68px;
   border: 1px solid rgba(124, 58, 237, 0.35);
-  border-radius: 24px 24px 5px 24px;
+  border-radius: 50%;
   color: #cabdf6;
   background: rgba(124, 58, 237, 0.16);
   font-size: 24px;
@@ -12016,7 +12016,7 @@ footer nav a {
   width: 34px;
   height: 34px;
   border: 1px solid rgba(216, 255, 101, 0.32);
-  border-radius: 11px;
+  border-radius: 50%;
   color: #17131f;
   background: var(--acid);
   font-size: 12px;
@@ -12403,7 +12403,7 @@ footer nav a {
   width: 42px;
   height: 42px;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
+  border-radius: 50%;
   color: #fff;
   background: rgba(255, 255, 255, 0.08);
   font-size: 24px;
@@ -13035,7 +13035,7 @@ footer nav a {
   width: 25px;
   height: 25px;
   border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 7px;
+  border-radius: 50%;
   color: transparent;
   background: rgba(255, 255, 255, 0.06);
   font-size: 11px;
@@ -13288,7 +13288,7 @@ footer nav a {
   .workspace-project .brand-menu-list button > i {
     width: 30px;
     height: 30px;
-    border-radius: 9px;
+    border-radius: 50%;
   }
 
   .workspace-project .brand-menu-trigger b {
@@ -13645,7 +13645,7 @@ footer nav a {
   .archive-editor-head-actions > button {
     width: 38px;
     height: 38px;
-    border-radius: 11px;
+    border-radius: 50%;
   }
 
   .archive-editor-modal .archive-editor-meta {
@@ -14117,7 +14117,7 @@ footer nav a {
   width: 38px;
   height: 38px;
   border: 1px solid rgba(54, 86, 118, 0.13);
-  border-radius: 11px;
+  border-radius: 50%;
   color: #294967;
   background: rgba(255, 255, 255, 0.66);
   cursor: pointer;
@@ -14348,7 +14348,7 @@ footer nav a {
   width: 27px;
   height: 27px;
   border: 1px solid rgba(64, 91, 119, 0.18);
-  border-radius: 8px;
+  border-radius: 50%;
   color: transparent;
   background: rgba(255, 255, 255, 0.62);
   font-size: 11px;
