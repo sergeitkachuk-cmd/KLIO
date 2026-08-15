@@ -18905,13 +18905,13 @@ footer nav a {
 }
 
 [data-theme="light"] .competitor-analysis-action {
-  border-color: rgba(53, 104, 212, 0.28);
-  background: rgba(53, 104, 212, 0.1);
+  border-color: transparent;
+  background: transparent;
 }
 
 [data-theme="light"] .competitor-analysis-action.needs-refresh {
-  border-color: rgba(200, 140, 30, 0.4);
-  background: rgba(230, 172, 76, 0.16);
+  border-color: transparent;
+  background: transparent;
 }
 
 [data-theme="light"] .competitor-analysis-action > span {
