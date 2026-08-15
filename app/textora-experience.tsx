@@ -763,7 +763,7 @@ const sample: Record<Format, { title: string; body: string }> = {
 };
 
 const modules = [
-  ["01", "Профиль компании", "Загрузите PDF, описание бизнеса, скриншоты сайта и примеры текстов. КЛИО определит аудиторию, УТП, услуги и тон коммуникации — все материалы будут звучать как ваш бренд."],
+  ["01", "Профиль компании", "Загрузите PDF, описание бизнеса, скриншоты сайта и примеры текстов. КЛИО определит аудиторию, сильные стороны, услуги и тон коммуникации — все материалы будут звучать как ваш бренд."],
   ["02", "Поисковые запросы", "Введите тему и географию. КЛИО найдёт реальные запросы, подскажет самые перспективные направления для статей и не даст смешать разные темы в одном тексте."],
   ["03", "Анализ конкурентов · по желанию", "Необязательный углублённый режим для SEO‑задач: добавьте 2–5 прямых страниц, найдите смысловые пробелы и при необходимости передайте выбранные выводы в дополнительный акцент материала."],
   ["04", "Готовая статья по ключам", "Выберите ключевые слова, объём и стиль. Сервис подготовит цельный материал с SEO‑заголовком, метаописанием, подзаголовками и естественным распределением семантики."],
@@ -786,12 +786,12 @@ const WORKSPACE_MODULE_GUIDE: Array<{
   // adaptation -> semantics -> competitors), not the old
   // required-first/optional-after grouping - the sidebar is what people
   // actually navigate by, so the cards should read the same way.
-  { id: "brand", step: "+", title: "Профиль бренда", text: "Опишите компанию один раз — аудиторию, УТП, тон голоса. Дальше КЛИО сама подставляет это в каждую генерацию, пока профиль включён вверху страницы.", cta: "Заполнить профиль" },
-  { id: "generator", step: "01", title: "Генератор материала", text: "Опишите тему и ключевые слова — КЛИО соберёт цельный текст с SEO‑заголовком, метаописанием и подзаголовками. Работает и без заполненного профиля бренда.", cta: "Написать материал" },
-  { id: "content-plan", step: "+", title: "Контент‑план", text: "Получите очередь тем по теме и профилю бренда — точнее, если сначала подключить семантику и анализ конкурентов. Откройте тему и сразу отправьте её в генератор.", cta: "Собрать план" },
-  { id: "adaptation", step: "+", title: "Редакторы КЛИО", text: "14 режимов для готового текста: вычитка, смена тона, адаптация под площадку, SEO‑пересборка и другое — свой материал или сохранённый в архиве.", cta: "Открыть редакторы" },
-  { id: "semantics", step: "+", title: "Семантика", text: "Введите тему и географию — КЛИО найдёт реальные запросы и разложит их по смыслу, чтобы не смешивать разные темы в одной статье.", cta: "Найти запросы" },
-  { id: "competitors", step: "+", title: "Анализ конкурентов", text: "Добавьте 2–5 страниц конкурентов — КЛИО найдёт смысловые пробелы и подскажет, чем будущая статья будет отличаться от того, что уже есть в выдаче.", cta: "Изучить конкурентов" },
+  { id: "brand", step: "+", title: "Профиль бренда", text: "Один раз опишите компанию: аудиторию, сильные стороны и тон общения. Пока профиль включён, КЛИО учитывает его в каждой новой генерации.", cta: "Заполнить профиль" },
+  { id: "generator", step: "01", title: "Генератор материала", text: "Укажите тему и ключевые слова — КЛИО подготовит черновик с заголовком, метаописанием и подзаголовками. Профиль бренда можно подключить, но он не обязателен.", cta: "Написать материал" },
+  { id: "content-plan", step: "+", title: "Контент‑план", text: "Соберите очередь тем для публикаций. Семантика и анализ конкурентов необязательны, но помогут точнее выбрать темы. Любую строку можно сразу отправить в генератор.", cta: "Собрать план" },
+  { id: "adaptation", step: "+", title: "Редакторы КЛИО", text: "Улучшайте готовый текст: проверьте ошибки, измените тон, адаптируйте под площадку или пересоберите материал для SEO. Подойдёт новый текст или материал из архива.", cta: "Открыть редакторы" },
+  { id: "semantics", step: "+", title: "Семантика", text: "Введите тему и географию — КЛИО найдёт реальные поисковые запросы и сгруппирует их по смыслу. Так каждая статья будет отвечать на один понятный запрос читателя.", cta: "Найти запросы" },
+  { id: "competitors", step: "+", title: "Анализ конкурентов", text: "Добавьте 2–5 страниц конкурентов. КЛИО покажет, какие полезные темы уже раскрыты и где есть возможность сделать ваш материал более содержательным.", cta: "Изучить конкурентов" },
 ];
 
 // Rotates on the "Начните здесь" tab (see tipIndex below) — short,
@@ -915,7 +915,7 @@ const faq = [
   },
   {
     question: "Можно ли начать без готового семантического ядра?",
-    answer: "Да. Достаточно указать тему или основной запрос. КЛИО поможет собрать связанные ключи по интенту и ширине формулировки и использовать выбранную семантику в материале. Точные показатели спроса появляются только при подключённом поисковом источнике.",
+    answer: "Да. Достаточно указать тему или основной запрос. КЛИО поможет собрать связанные поисковые фразы, понять задачу читателя и использовать выбранные запросы в материале. Точные показатели спроса появляются только при подключённом поисковом источнике.",
   },
 ];
 
@@ -4168,12 +4168,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </div>
           <nav aria-label="Рабочие модули">
             <a href="#start" className={activeModule === "start" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("start"); }}><i>·</i><span><b>Начните здесь</b><small>обзор и подсказки</small></span></a>
-            <a href="#brand-profile" className={activeModule === "brand" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("brand"); }}><i>+</i><span><b>Профиль бренда</b><small>по желанию</small></span></a>
-            <a href="#generator" className={activeModule === "generator" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("generator"); }}><i>+</i><span><b>Генерировать материал</b><small>быстрый старт</small></span></a>
-            <a href="#content-plan" className={activeModule === "content-plan" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("content-plan"); }}><i>+</i><span><b>Контент‑план</b><small>самостоятельный инструмент</small></span></a>
+            <a href="#brand-profile" className={activeModule === "brand" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("brand"); }}><i>+</i><span><b>Профиль бренда</b><small>настройте один раз</small></span></a>
+            <a href="#generator" className={activeModule === "generator" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("generator"); }}><i>+</i><span><b>Генерировать материал</b><small>создать новый текст</small></span></a>
+            <a href="#content-plan" className={activeModule === "content-plan" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("content-plan"); }}><i>+</i><span><b>Контент‑план</b><small>очередь тем для публикаций</small></span></a>
             <a href="#adaptation" className={activeModule === "adaptation" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("adaptation"); }}><i>+</i><span><b>Редакторы КЛИО</b><small>14 режимов для готового текста</small></span></a>
-            <a href="#semantics" className={activeModule === "semantics" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("semantics"); }}><i>+</i><span><b>Семантика</b><small>самостоятельно или в бриф</small></span></a>
-            <a href="#competitors" className={activeModule === "competitors" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("competitors"); }}><i>+</i><span><b>Конкуренты</b><small>По желанию</small></span></a>
+            <a href="#semantics" className={activeModule === "semantics" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("semantics"); }}><i>+</i><span><b>Семантика</b><small>реальные поисковые запросы</small></span></a>
+            <a href="#competitors" className={activeModule === "competitors" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("competitors"); }}><i>+</i><span><b>Конкуренты</b><small>для более точных тем</small></span></a>
           </nav>
           <div className="workspace-stage workspace-quota-stage"><span>Ваш тариф</span><b>{workspaceAccount.planName}</b><div className="workspace-quota-list"><p><span>Материалы</span><em>{workspaceAccount.generationsRemaining} / {workspaceAccount.generationLimit}</em><i><u style={{ width: `${generationProgress}%` }}/></i></p><p><span>Исследования</span><em>{workspaceAccount.researchRemaining} / {workspaceAccount.researchLimit}</em><i><u style={{ width: `${researchProgress}%` }}/></i></p><p><span>AI‑редактура</span><em>{workspaceAccount.editorActionsRemaining} / {workspaceAccount.editorActionLimit}</em><i><u style={{ width: `${editorProgress}%` }}/></i></p></div></div>
         </aside>
@@ -4395,7 +4395,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <div className="brand-fields">
                     <label className="wide">Голос бренда<AutoTextarea rows={4} value={brand.voice} onChange={(event) => updateBrand("voice", event.target.value)}/><small>Интонация, сложность языка, длина фраз и степень эмоциональности.</small></label>
                     <label className="wide">Словарь бренда<AutoTextarea rows={2} value={brand.vocabulary} onChange={(event) => updateBrand("vocabulary", event.target.value)}/><small>Предпочтительные термины и формулировки, которые помогают узнаваемости.</small></label>
-                    <label className="wide">Предпочтительный CTA<AutoTextarea rows={2} value={brand.cta} onChange={(event) => updateBrand("cta", event.target.value)}/><small>Естественный следующий шаг, если он подходит задаче материала.</small></label>
+                    <label className="wide">Желаемое действие читателя<AutoTextarea rows={2} value={brand.cta} onChange={(event) => updateBrand("cta", event.target.value)}/><small>Например: оставить заявку, записаться на консультацию или узнать условия. КЛИО использует этот призыв, только когда он уместен в материале.</small></label>
                     <label className="wide">Фирменная подпись<AutoTextarea rows={2} value={brand.signature} onChange={(event) => updateBrand("signature", event.target.value)}/><small>Финальная формулировка для постов; КЛИО добавляет её только там, где она уместна.</small></label>
                     <label>Ограничения<AutoTextarea rows={4} value={brand.restrictions} onChange={(event) => updateBrand("restrictions", event.target.value)}/><small>Что нельзя обещать, утверждать или придумывать без проверки.</small></label>
                     <label>Стоп-слова и клише<AutoTextarea rows={4} value={brand.prohibited} onChange={(event) => updateBrand("prohibited", event.target.value)}/><small>Разделяйте слова и выражения точкой с запятой — они попадут в автоматическую проверку.</small></label>
@@ -4495,7 +4495,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               {semanticAnalysisReady ? <>
               <div className="semantic-insight-grid">
                 <article className="semantic-intent-card">
-                  <span>Поисковый интент</span>
+                  <span>Что ищет читатель</span>
                   <div><b>{semanticResult.intent.label}</b><small>{semanticResult.intent.stage}</small></div>
                   <p>{semanticResult.intent.summary}</p>
                 </article>
@@ -4506,7 +4506,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <p className="semantic-result-source">Сформировано из запроса «{semanticResult.primaryQuery}». В генератор материал ещё не передан.</p>
                 </article>
                 <article className="semantic-selection-card">
-                  <span>Собрано для брифа</span>
+                  <span>Выбрано для материала</span>
                   <div><b>{selectedSemanticKeywords.length}</b><small>КЛИО учтёт {selectedSemanticKeywords.length} похожих запросов в этой статье</small></div>
                   <p>{selectedClusters === 1 ? "Статья будет отвечать на один вопрос читателя" : "Выберите одну группу похожих запросов"} · основной запрос {selectedSemanticKeywords.some((item) => item.role === "Основной") ? "выбран" : "не выбран"}</p>
                 </article>
@@ -4521,7 +4521,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                       return <button type="button" className={activeSemanticCluster === cluster ? "active" : ""} onClick={() => setActiveSemanticCluster(cluster)} key={cluster}><span>{cluster}</span><b>{count}</b></button>;
                     })}
                   </nav>
-                  <div className="semantic-cluster-tip"><i>✦</i><p><b>Рекомендация КЛИО</b>Сначала разделите брендовый спрос и новую аудиторию. Одна статья — один кластер: 1 самый сильный запрос и 3–5 близких поддерживающих.</p></div>
+                  <div className="semantic-cluster-tip"><i>✦</i><p><b>Рекомендация КЛИО</b>Сначала отделите запросы с названием вашей компании от тем для новой аудитории. Одна статья — одна смысловая группа: один основной запрос и 3–5 близких формулировок.</p></div>
                 </aside>
 
                 <div className="semantic-keywords-panel">
@@ -4536,7 +4536,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   </div>
 
                   <div className="semantic-table" aria-label="Ключевые запросы">
-                    <div className="semantic-table-head"><span>Выбор</span><span>Фраза</span><span>Интент</span><span>Связь</span><span>Частота</span></div>
+                    <div className="semantic-table-head"><span>Выбор</span><span>Поисковая фраза</span><span>Задача читателя</span><span>Связь с темой</span><span>Частота</span></div>
                     {visibleSemanticKeywords.map((keyword) => {
                       const selected = selectedSemanticIds.includes(keyword.id);
                       const breadthClass = keyword.breadth === "Широкий" ? "high" : keyword.breadth === "Средний" ? "medium" : "niche";
@@ -4636,9 +4636,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
             <div className="competitor-summary-grid">
               <article><span>Источники</span><b>{loadedCompetitorSources}<small> / {competitorResult.competitors.length}</small></b><p>{competitorMode === "example" ? "демонстрационные страницы" : "страниц удалось прочитать"}</p></article>
-              <article><span>Темы сравнения</span><b>{competitorResult.topics.length}</b><p>связаны с запросом и интентом</p></article>
-              <article className="competitor-summary-accent"><span>Возможности</span><b>{competitorResult.gaps.length}</b><p>смысловых пробелов для усиления</p></article>
-              <article><span>В будущий бриф</span><b>{selectedCompetitorTopics.length}<small> / 6</small></b><p>выбранных редакционных выводов</p></article>
+              <article><span>Темы сравнения</span><b>{competitorResult.topics.length}</b><p>связаны с запросом и задачей читателя</p></article>
+              <article className="competitor-summary-accent"><span>Возможности</span><b>{competitorResult.gaps.length}</b><p>темы, которые можно раскрыть полезнее</p></article>
+              <article><span>Для будущего материала</span><b>{selectedCompetitorTopics.length}<small> / 6</small></b><p>выбранных выводов из анализа</p></article>
             </div>
 
             <div className="competitor-matrix-card">
@@ -4735,7 +4735,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                         if (checked && !generatorSemanticsReady) showToast("Выбор сохранён — сначала подготовьте семантику в разделе «Семантика»");
                       }}/>
                       <i aria-hidden="true">✓</i>
-                      <span><b>Семантика</b><small>{generatorSemanticsReady ? `${selectedSemanticKeywords.length} фраз · ${semanticResult.intent.label || "интент определён"}` : generatorUseSemantics ? semanticNeedsRefresh ? "Выбрана · соберите или обновите семантику" : "Выбрана · отметьте ключевые фразы" : "Не использовать в этой генерации"}</small></span>
+                        <span><b>Поисковые запросы</b><small>{generatorSemanticsReady ? `${selectedSemanticKeywords.length} фраз · ${semanticResult.intent.label || "задача читателя определена"}` : generatorUseSemantics ? semanticNeedsRefresh ? "Выбрано · соберите или обновите запросы" : "Выбрано · отметьте нужные фразы" : "Не использовать в этом материале"}</small></span>
                     </label>
                     <label className={`${generatorCompetitorsReady ? "is-ready" : "is-pending"} ${generatorUseCompetitors ? "is-checked" : ""}`}>
                       <input type="checkbox" checked={generatorUseCompetitors} onChange={(event) => {
@@ -4832,7 +4832,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               {contentPlanResult.items.length ? <>
                 <div className={`content-plan-summary ${contentPlanNeedsRefresh ? "needs-refresh" : ""}`}>
                   <article><span>Темы</span><b>{contentPlanResult.items.length}</b><small>без дублей заголовков</small></article>
-                  <article><span>Кластеры</span><b>{contentPlanResult.clusters.length}</b><small>разные задачи читателя</small></article>
+                  <article><span>Смысловые группы</span><b>{contentPlanResult.clusters.length}</b><small>разные задачи читателя</small></article>
                   <article><span>В работе</span><b>{contentPlanProgress.working}</b><small>переданы в генератор</small></article>
                   <article><span>Готово</span><b>{contentPlanProgress.ready}</b><small>отмечено редактором</small></article>
                 </div>
@@ -4857,7 +4857,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                       {expanded && <div className="content-plan-brief">
                         <div className="content-plan-strategy"><section><span>Редакционный ракурс</span><p>{item.angle}</p></section><section><span>Коммуникационная цель</span><p>{item.objective}</p></section><section><span>Следующий шаг</span><p>{item.cta || "Определяется редактором"}</p></section></div>
                         <div className="content-plan-seo"><label><span className="seo-field-label"><b>Зацепка статьи</b><button type="button" onClick={() => copyPlainText(item.subtitle, "Зацепка статьи")}><Icon name="copy"/> Копировать</button></span><p>{item.subtitle || "Будет создана при подготовке материала"}</p></label><label><span className="seo-field-label"><b>SEO‑заголовок</b><button type="button" onClick={() => copyPlainText(item.metaTitle, "SEO‑заголовок")}><Icon name="copy"/> Копировать</button></span><p>{item.metaTitle}</p><small>{item.metaTitle.length} знаков</small></label><label><span className="seo-field-label"><b>Описание страницы для поиска</b><button type="button" onClick={() => copyPlainText(item.metaDescription, "Описание страницы для поиска")}><Icon name="copy"/> Копировать</button></span><p>{item.metaDescription}</p><small>{item.metaDescription.length} знаков</small></label></div>
-                        <div className="content-plan-brief-grid"><section><span>Поддерживающая семантика и сущности</span><div>{item.lsi.map((phrase) => <i key={phrase}>{phrase}</i>)}</div></section><section><span>Целевая аудитория</span><p>{item.audience}</p></section><section><span>Структура материала</span><ol>{item.structure.map((part, index) => <li key={part}><i>{index + 1}</i>{part}</li>)}</ol></section><section><span>Фактура для проверки</span><div>{item.evidenceNeeded.length ? item.evidenceNeeded.map((source) => <i key={source}>{source}</i>) : <p>Дополнительная фактура не запрошена.</p>}</div></section><section><span>На чём основана тема</span><div>{item.sources.map((source) => <i key={source}>{source}</i>)}</div></section></div>
+                        <div className="content-plan-brief-grid"><section><span>Дополнительные поисковые фразы</span><div>{item.lsi.map((phrase) => <i key={phrase}>{phrase}</i>)}</div></section><section><span>Для кого материал</span><p>{item.audience}</p></section><section><span>План материала</span><ol>{item.structure.map((part, index) => <li key={part}><i>{index + 1}</i>{part}</li>)}</ol></section><section><span>Что проверить перед публикацией</span><div>{item.evidenceNeeded.length ? item.evidenceNeeded.map((source) => <i key={source}>{source}</i>) : <p>Дополнительные факты не требуются.</p>}</div></section><section><span>Откуда взята тема</span><div>{item.sources.map((source) => <i key={source}>{source}</i>)}</div></section></div>
                       </div>}
                     </article>;
                   })}

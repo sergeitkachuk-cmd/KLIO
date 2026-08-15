@@ -15950,19 +15950,20 @@ footer nav a {
    header/sidebar/stage panels. */
 [data-theme="light"] .workspace-sidebar nav a,
 [data-theme="light"] .workspace-sidebar nav button {
-  color: rgba(13, 27, 49, 0.7);
+  color: #17243b;
 }
 
 [data-theme="light"] .workspace-sidebar nav a {
-  border-color: rgba(53, 104, 212, 0.16);
-  background: rgba(53, 104, 212, 0.06);
+  border-color: rgba(36, 82, 184, 0.28);
+  background: linear-gradient(120deg, rgba(53, 104, 212, 0.12), rgba(220, 229, 243, 0.82));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.7), 0 1px 2px rgba(29, 57, 104, 0.05);
 }
 
 [data-theme="light"] .workspace-sidebar nav a:hover,
 [data-theme="light"] .workspace-sidebar nav button:hover {
-  border-color: rgba(53, 104, 212, 0.4);
-  color: #0d1b31;
-  background: linear-gradient(120deg, rgba(53, 104, 212, 0.18), rgba(220, 229, 243, 0.7));
+  border-color: rgba(36, 82, 184, 0.56);
+  color: #0a1629;
+  background: linear-gradient(120deg, rgba(53, 104, 212, 0.23), rgba(210, 222, 240, 0.92));
 }
 
 /* Same per-module accent as the dark theme's active state, just tinted
@@ -15974,10 +15975,10 @@ footer nav a {
 [data-theme="light"] .workspace-sidebar nav a[href="#start"] { --module-accent: #4c2e8f; }
 
 [data-theme="light"] .workspace-sidebar nav a.active {
-  border-color: color-mix(in srgb, var(--module-accent, #2452b8) 55%, transparent);
-  color: #0d1b31;
-  background: linear-gradient(120deg, color-mix(in srgb, var(--module-accent, #2452b8) 30%, white), color-mix(in srgb, var(--module-accent, #2452b8) 12%, white));
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.6);
+  border-color: color-mix(in srgb, var(--module-accent, #2452b8) 72%, #17243b);
+  color: #091426;
+  background: linear-gradient(120deg, color-mix(in srgb, var(--module-accent, #2452b8) 42%, white), color-mix(in srgb, var(--module-accent, #2452b8) 20%, white));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.72), 0 4px 12px color-mix(in srgb, var(--module-accent, #2452b8) 16%, transparent);
 }
 
 [data-theme="light"] .workspace-sidebar nav a.active i {
@@ -15993,7 +15994,7 @@ footer nav a {
 }
 
 [data-theme="light"] .workspace-sidebar nav small {
-  color: rgba(13, 27, 49, 0.5);
+  color: rgba(13, 27, 49, 0.68);
 }
 
 [data-theme="light"] .workspace-stage {
