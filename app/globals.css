@@ -15958,6 +15958,17 @@ footer nav a {
   color: #17243b;
 }
 
+/* The link color above cannot override the title's own dark-theme white
+   color. Keep the title readable in the light sidebar too. */
+[data-theme="light"] .workspace-sidebar nav b {
+  color: #17243b;
+}
+
+[data-theme="light"] .workspace-sidebar nav a:hover b,
+[data-theme="light"] .workspace-sidebar nav a.active b {
+  color: #091426;
+}
+
 [data-theme="light"] .workspace-sidebar nav a {
   border-color: rgba(36, 82, 184, 0.28);
   background: linear-gradient(120deg, rgba(53, 104, 212, 0.12), rgba(220, 229, 243, 0.82));
@@ -18671,6 +18682,19 @@ footer nav a {
     border-color: rgba(248, 166, 166, 0.28);
     color: rgba(255, 221, 221, 0.84) !important;
     background: rgba(155, 43, 61, 0.16);
+  }
+
+  [data-theme="light"] .result-head-actions button {
+    border-color: rgba(36, 82, 184, 0.3);
+    color: #2452b8;
+    background: rgba(255, 255, 255, 0.88);
+    box-shadow: 0 3px 10px rgba(29, 57, 104, 0.08);
+  }
+
+  [data-theme="light"] .result-head-actions .result-clear {
+    border-color: rgba(166, 57, 74, 0.32);
+    color: #963345 !important;
+    background: rgba(166, 57, 74, 0.1);
   }
 }
 
