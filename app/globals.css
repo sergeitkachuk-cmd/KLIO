@@ -13794,6 +13794,56 @@ footer nav a {
   background: linear-gradient(90deg, var(--acid), #b59cff);
 }
 
+/* The sidebar already carries the full navigation and brand picker. Keep the
+   tariff useful at a glance instead of letting a tall vertical list push it
+   below the first screen: three compact counters fit in one stable card. */
+.workspace-quota-stage {
+  padding: 14px;
+}
+
+.workspace-quota-stage > b {
+  margin: 5px 0 8px;
+  font-size: 17px;
+}
+
+.workspace-quota-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 0;
+}
+
+.workspace-quota-list p {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+
+.workspace-quota-list p > span,
+.workspace-quota-list p > em {
+  overflow: hidden;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-quota-list p > em {
+  font-size: 10px;
+}
+
+@media (min-width: 821px) and (max-height: 900px) {
+  .workspace-sidebar {
+    height: calc(100vh - 76px);
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-color: rgba(181, 156, 255, 0.52) transparent;
+    scrollbar-width: thin;
+  }
+
+  .workspace-sidebar nav {
+    margin-bottom: 16px;
+  }
+}
+
 .workspace-history-list .material-card {
   position: relative;
 }
