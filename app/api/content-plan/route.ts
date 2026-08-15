@@ -4,6 +4,7 @@ import { AiCallError, callAiModel } from "../_lib/ai-router";
 import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 import { createAsyncJob, failAsyncJob, findActiveAsyncJob, markAsyncJobProcessing, completeAsyncJob } from "../_lib/async-jobs";
 import { readWebsiteContext, websiteSourceLabel } from "../_lib/website-context";
+import { researchContentPlanWeb } from "../_lib/tavily";
 
 type SemanticInput = {
   phrase: string;
@@ -245,7 +246,7 @@ const GOAL_INSTRUCTION: Record<ContentPlanGoal, string> = {
   ads: "Обязательное ограничение: формат каждой темы — только «Рекламный текст». План собирается как набор коротких рекламных текстов, а не блог, лендинги или соцсети.",
 };
 
-function availablePlanSources(input: ReturnType<typeof normalizePayload>, websiteLoaded: boolean) {
+function availablePlanSources(input: ReturnType<typeof normalizePayload>, websiteLoaded: boolean, webResearchLoaded: boolean) {
   return [
     input.requestedQuery ? "Тема" : "",
     input.semantics.length ? "Семантика" : "",
@@ -253,6 +254,7 @@ function availablePlanSources(input: ReturnType<typeof normalizePayload>, websit
     input.competitorInsights.length ? "Матрица" : "",
     input.brand.name ? "Профиль бренда" : "",
     websiteLoaded ? "Сайт бренда" : "",
+    webResearchLoaded ? "Веб-поиск" : "",
   ].filter(Boolean);
 }
 
@@ -308,7 +310,12 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
   // Direct HTTP read of the brand's own site (not an AI call). A separate
   // AI research/web-search step was tried here and reverted — see the fix
   // history in ai-config.ts's generate_content_plan entry for why.
-  const website = input.brand.website ? await readWebsiteContext(input.brand.website) : null;
+  // Both reads are independent and bounded.  They run concurrently, then
+  // DeepSeek gets their compact results as plain input — never a web tool.
+  const [website, webResearch] = await Promise.all([
+    input.brand.website ? readWebsiteContext(input.brand.website) : Promise.resolve(null),
+    researchContentPlanWeb(input.query, input.geography),
+  ]);
   const instructions = [
       "Ты — ведущий контент‑стратег и SEO‑редактор платформы КЛИО.",
       ...CORE_SYSTEM_RULES,
@@ -339,7 +346,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       `Каждая строка должна иметь собственный ракурс, коммуникационную цель, целевую аудиторию, основной запрос, 2–${PLAN_LSI_LIMIT} поддерживающие формулировки и предметную структуру из 3–${PLAN_STRUCTURE_LIMIT} разделов. Формулируй поля кратко и по существу.`,
       "Поле lsi означает поддерживающие формулировки, сущности и вопросы. Не называй их LSI‑факторами и не имитируй частотность.",
       "Title, subtitle и Description должны точно соответствовать теме. subtitle — зацепка под H1: 1–2 предложения с пользой читателю, не повторяет title. Не обещай позиции, результат лечения, доход, сроки, цены и иные факты, которых нет в источниках.",
-      `В evidenceNeeded перечисли до ${PLAN_EVIDENCE_LIMIT} самых важных фактов, документов, цифр, кейсов или экспертных комментариев, которые нужны редактору. Поле sources не выводи: КЛИО добавит его из фактически переданных слоёв.`,
+      `В evidenceNeeded перечисли до ${PLAN_EVIDENCE_LIMIT} самых важных фактов, документов, цифр, кейсов или экспертных комментариев, которые нужны редактору. Поле sources не выводи: КЛИО добавит его из фактически переданных слоёв, включая веб-поиск, если он есть.`,
       "Для каждой строки сначала сформируй скрытый editorialBrief: вопрос читателя, интент, сегмент аудитории, ракурс, ключевое сообщение, формат, тон, авторскую позицию, структуру, ключевые пункты, ключи, известные факты, неизвестные данные, возражения, CTA и ограничения. Во внешний JSON выводи только поля текущей схемы; не раскрывай editorialBrief в title или описании.",
       // A separate AI research/web-search step (and, briefly, routing this
       // whole operation to OpenAI) was tried and reverted here — see the
@@ -380,6 +387,11 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       website_snapshot: website && website.status === "loaded"
         ? { url: website.resolvedUrl, text: website.text.slice(0, PLAN_WEBSITE_SNAPSHOT_LIMIT) }
         : null,
+      web_research: webResearch ? {
+        query: webResearch.query,
+        results: webResearch.results,
+        rule: "Это краткие выдержки поиска. Используй их только как ориентир для актуальности и тематики; не приписывай бренду факты из чужих сайтов и не выдумывай данные.",
+      } : null,
       existing_titles_to_exclude: input.existingTitles,
       editorial_brief_contract: {
         topic: "title", subtitle: "subtitle", intent: "intent", objective: "objective", audience: "audience", angle: "angle", format: "format",
@@ -392,14 +404,17 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
     }, null, 2),
   });
 
-  const items = validatePlan(aiPlan, input, availablePlanSources(input, website?.status === "loaded"));
+  const items = validatePlan(aiPlan, input, availablePlanSources(input, website?.status === "loaded", Boolean(webResearch)));
   const usage = await recordResearch();
   const baseDataNote = input.semantics.length
     ? "План построен по карте подтверждённого спроса: каждая тема привязана к одному кластеру и отдельной задаче читателя. В приоритете — небрендовые и смежные запросы для привлечения новой аудитории; брендовый спрос вынесен в отдельную конверсионную ветку."
     : "План создан AI‑стратегом по текущей теме и подключённым источникам. Подключите семантику, чтобы приоритизировать темы по подтверждённому спросу.";
   // Visible confirmation of whether the direct site read actually worked
   // (best-effort — a failed/blocked fetch just means no note, not an error).
-  const groundingNote = website?.status === "loaded" ? ` Сайт бренда прочитан (${websiteSourceLabel(website)}).` : "";
+  const groundingNote = [
+    website?.status === "loaded" ? `Сайт бренда прочитан (${websiteSourceLabel(website)}).` : "",
+    webResearch ? "Веб-поиск Tavily выполнен в ограниченном режиме и добавлен как справочный слой." : "",
+  ].filter(Boolean).join(" ");
   return {
     mode: "ai" as const,
     model,
@@ -408,7 +423,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       query: input.query,
       items,
       clusters: unique(items.map((item) => item.cluster)),
-      dataNote: baseDataNote + groundingNote,
+      dataNote: `${baseDataNote}${groundingNote ? ` ${groundingNote}` : ""}`,
     },
   };
 }
