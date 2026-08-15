@@ -28,7 +28,7 @@ function cacheKey(topic: string, geography: Geography[]) {
 // This is deliberately a single, server-controlled request.  DeepSeek never
 // receives a search tool, so it cannot decide to make more searches or enter
 // an agent loop.  A short cached digest is enough to ground a content plan.
-export async function researchContentPlanWeb(topic: string, geography: Geography[]): Promise<TavilyResearch | null> {
+export async function researchContentPlanWeb(topic: string, geography: Geography[], currentIndustryFocus = false): Promise<TavilyResearch | null> {
   const apiKey = process.env.TAVILY_API_KEY?.trim();
   if (!apiKey) return null;
 
@@ -39,7 +39,7 @@ export async function researchContentPlanWeb(topic: string, geography: Geography
   if (cached) researchCache.delete(key);
 
   const geographyHint = geography.slice(0, 2).map((item) => [item.label, item.detail].filter(Boolean).join(", ")).filter(Boolean).join("; ");
-  const query = `${topic}${geographyHint ? ` ${geographyHint}` : ""} актуальная информация, вопросы аудитории и критерии выбора`;
+  const query = `${topic}${geographyHint ? ` ${geographyHint}` : ""} ${currentIndustryFocus ? "актуальные отраслевые тренды, изменения, новости и запросы аудитории" : "актуальная информация, вопросы аудитории и критерии выбора"}`;
 
   try {
     const response = await fetch("https://api.tavily.com/search", {

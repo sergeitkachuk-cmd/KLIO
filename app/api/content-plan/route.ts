@@ -2,7 +2,7 @@ import { AiResponseError, openAiErrorResponse } from "../_lib/openai-response";
 import { CORE_SYSTEM_RULES, FINAL_QA_RULES } from "../../content-plans";
 import { AiCallError, callAiModel } from "../_lib/ai-router";
 import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
-import { claimAsyncJob, failAsyncJob, markAsyncJobProcessing, completeAsyncJob } from "../_lib/async-jobs";
+import { claimAsyncJob, failAsyncJob, markAsyncJobProcessing, completeAsyncJob, recentCompletedContentPlanTitles } from "../_lib/async-jobs";
 import { readWebsiteContext, websiteSourceLabel } from "../_lib/website-context";
 import { researchContentPlanWeb } from "../_lib/tavily";
 
@@ -126,6 +126,27 @@ function titleKey(value: string) {
     .replace(/ё/g, "е")
     .replace(/[^a-zа-я0-9]+/gi, " ")
     .trim();
+}
+
+const TITLE_STOP_WORDS = new Set(["и", "в", "во", "на", "для", "по", "как", "что", "это", "или", "из", "от", "до", "при", "о", "об", "а", "не", "ли"]);
+
+function titleTerms(value: string) {
+  return new Set(value.toLocaleLowerCase("ru-RU").replace(/[^\p{L}\p{N}]+/gu, " ").split(" ")
+    .map((word) => word.replace(/(?:иями|ями|ами|ого|ему|ыми|ими|иях|иях|ия|ий|ый|ой|ая|ое|ое|ам|ям|ах|ях|ов|ев|ом|ем|а|ы|и|у|е|о|я)$/u, ""))
+    .filter((word) => word.length >= 4 && !TITLE_STOP_WORDS.has(word)));
+}
+
+function titlesAreTooSimilar(left: string, right: string) {
+  const a = titleTerms(left);
+  const b = titleTerms(right);
+  if (!a.size || !b.size) return titleKey(left) === titleKey(right);
+  let shared = 0;
+  for (const word of a) if (b.has(word)) shared += 1;
+  return shared / Math.min(a.size, b.size) >= 0.67;
+}
+
+function isCurrentIndustryFocus(query: string) {
+  return /(?:актуальн|тренд|отрасл|рын(?:ок|очн)|новост|изменени|тенденц)/iu.test(query);
 }
 
 const CONTENT_PLAN_GOALS = new Set<ContentPlanGoal>(["mixed", "seo", "social", "landing", "ads"]);
@@ -286,10 +307,8 @@ function validatePlan(plan: AiPlan, input: ReturnType<typeof normalizePayload>, 
     sources,
   }));
 
-  const normalizedTitles = cleaned.map((item) => titleKey(item.title));
-  const duplicates = normalizedTitles.filter((title, index) => title && normalizedTitles.indexOf(title) !== index);
-  const existingTitleKeys = new Set(input.existingTitles.map(titleKey).filter(Boolean));
-  const repeatsExisting = cleaned.filter((item) => existingTitleKeys.has(titleKey(item.title)));
+  const duplicates = cleaned.filter((item, index) => cleaned.slice(0, index).some((previous) => titlesAreTooSimilar(previous.title, item.title)));
+  const repeatsExisting = cleaned.filter((item) => input.existingTitles.some((title) => titlesAreTooSimilar(title, item.title)));
   const allowedFormats = GOAL_FORMAT_LOCK[input.goal];
   const invalid = cleaned.filter((item) => (
     !item.title || !item.cluster || !item.primaryKeyword || !item.angle || !item.objective
@@ -308,6 +327,9 @@ function validatePlan(plan: AiPlan, input: ReturnType<typeof normalizePayload>, 
 // route handler so it can run after the response has already gone back
 // to the client (see async-jobs.ts for why that's safe on this host).
 async function runContentPlanGeneration(input: ReturnType<typeof normalizePayload>, ownerEmail: string) {
+  const historicalTitles = await recentCompletedContentPlanTitles(ownerEmail, PLAN_EXISTING_TITLES_LIMIT);
+  input = { ...input, existingTitles: unique([...input.existingTitles, ...historicalTitles]).slice(0, PLAN_EXISTING_TITLES_LIMIT) };
+  const currentIndustryFocus = isCurrentIndustryFocus(input.query);
   // Direct HTTP read of the brand's own site (not an AI call). A separate
   // AI research/web-search step was tried here and reverted — see the fix
   // history in ai-config.ts's generate_content_plan entry for why.
@@ -315,13 +337,14 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
   // DeepSeek gets their compact results as plain input — never a web tool.
   const [website, webResearch] = await Promise.all([
     input.brand.website ? readWebsiteContext(input.brand.website) : Promise.resolve(null),
-    researchContentPlanWeb(input.query, input.geography),
+    researchContentPlanWeb(input.query, input.geography, currentIndustryFocus),
   ]);
   const instructions = [
       "Ты — ведущий контент‑стратег и SEO‑редактор платформы КЛИО.",
       ...CORE_SYSTEM_RULES,
       "Работай как редакционная система бренда, а не генератор общих заголовков. Сначала используй весь доступный профиль: предложение, аудиторию, позиционирование, подтверждённые преимущества, доказательства, географию, голос и ограничения.",
       input.requestedQuery ? "Основная тема пользователя задаёт фокус плана; не выходи за неё без явной связи с брендом." : "Отдельная тема и семантика не заданы: построй разнообразный общий контент‑план вокруг отрасли и задач аудитории, а не каталог бренда. Расширяй поле от услуг бренда к близким проблемам, критериям выбора, подготовке, использованию, уходу, типичным ошибкам, смежным решениям и экспертным вопросам, которые могут привести новую аудиторию. Не сужай план до одного преимущества или одной услуги.",
+      currentIndustryFocus ? "Пользователь просит актуальные отраслевые темы. Это приоритет выше перечня программ на сайте: минимум 60% плана посвяти внешнему отраслевому полю — подтверждённым веб‑поиском изменениям, трендам, ожиданиям аудитории, новым практикам и значимым вопросам отрасли. Сайт бренда используй только для проверки релевантности и мягкой связи с предложением; не подменяй отраслевой план каталогом услуг. Не выдумывай новости, даты, тренды или регулирование: если этого нет в web_research, формулируй тему как вопрос или критерий выбора без заявления о факте." : "",
       // Универсальное правило для любого бренда и отрасли: тема/фокус часто
       // называет категорию, а не одну конкретную тему ("акцент на
       // программах лечения", "по каждой услуге", "линейка продуктов",
@@ -366,6 +389,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
     instructions,
     input: JSON.stringify({
       main_topic: input.query,
+      focus_mode: currentIndustryFocus ? "current_industry_topics" : "brand_or_general_topic",
       plan_basis: input.requestedQuery ? "user_topic" : "brand_profile",
       plan_goal: input.goal,
       allowed_formats: GOAL_FORMAT_LOCK[input.goal],
@@ -391,7 +415,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       web_research: webResearch ? {
         query: webResearch.query,
         results: webResearch.results,
-        rule: "Это краткие выдержки поиска. Используй их только как ориентир для актуальности и тематики; не приписывай бренду факты из чужих сайтов и не выдумывай данные.",
+        rule: currentIndustryFocus ? "Это первичный источник для выбора актуальных отраслевых ракурсов. Не приписывай бренду факты из чужих сайтов и не выдумывай данные." : "Это краткие выдержки поиска. Используй их только как ориентир для актуальности и тематики; не приписывай бренду факты из чужих сайтов и не выдумывай данные.",
       } : null,
       existing_titles_to_exclude: input.existingTitles,
       editorial_brief_contract: {

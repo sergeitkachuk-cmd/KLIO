@@ -144,3 +144,28 @@ export async function getAsyncJob(id: string, ownerEmail: string) {
   )).limit(1);
   return job ?? null;
 }
+
+// A freshly regenerated plan replaces the browser's previous draft, so the
+// client alone cannot reliably remember titles from earlier unsaved versions.
+// Keep a compact server-side exclusion list from recently completed jobs.
+export async function recentCompletedContentPlanTitles(ownerEmail: string, limit = 24) {
+  const db = getDb();
+  const jobs = await db.select({ resultJson: asyncJobs.resultJson }).from(asyncJobs).where(and(
+    eq(asyncJobs.ownerEmail, ownerEmail),
+    eq(asyncJobs.kind, "content_plan"),
+    eq(asyncJobs.status, "done"),
+  )).orderBy(desc(asyncJobs.createdAt)).limit(8);
+  const titles: string[] = [];
+  for (const job of jobs) {
+    try {
+      const parsed = JSON.parse(job.resultJson || "{}") as { result?: { items?: Array<{ title?: unknown }> } };
+      for (const item of parsed.result?.items || []) {
+        if (typeof item.title === "string" && item.title.trim()) titles.push(item.title.trim());
+        if (titles.length >= limit) return [...new Set(titles)];
+      }
+    } catch {
+      // A malformed historical result must never block a new plan.
+    }
+  }
+  return [...new Set(titles)].slice(0, limit);
+}
