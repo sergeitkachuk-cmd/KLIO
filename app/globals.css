@@ -18576,6 +18576,66 @@ footer nav a {
   color: rgba(13, 27, 49, 0.6);
 }
 
+/* ---------------------------------------------------------------------
+   Cross-module form separation. Every working module follows the same
+   hierarchy: dark/light canvas -> module surface -> clearly editable
+   field. This prevents forms from becoming one undifferentiated panel
+   when modules are opened one after another.
+   --------------------------------------------------------------------- */
+:root:not([data-theme="light"]) .brand-profile-body,
+:root:not([data-theme="light"]) .semantic-shell,
+:root:not([data-theme="light"]) .competitor-setup-card,
+:root:not([data-theme="light"]) .content-plan-setup,
+:root:not([data-theme="light"]) .adaptation-shell {
+  background:
+    radial-gradient(circle at 92% 2%, rgba(124, 58, 237, 0.16), transparent 34%),
+    linear-gradient(135deg, #06182e 0%, #08233f 55%, #041426 100%);
+}
+
+:root:not([data-theme="light"]) .brand-fields input,
+:root:not([data-theme="light"]) .brand-fields textarea,
+:root:not([data-theme="light"]) .semantic-primary-query input,
+:root:not([data-theme="light"]) .semantic-primary-query textarea,
+:root:not([data-theme="light"]) .semantic-geo-menu-head input,
+:root:not([data-theme="light"]) .semantic-query-row input,
+:root:not([data-theme="light"]) .semantic-query-row select,
+:root:not([data-theme="light"]) .content-plan-query-row input,
+:root:not([data-theme="light"]) .content-plan-replacement-comment textarea,
+:root:not([data-theme="light"]) .adaptation-source-field textarea,
+:root:not([data-theme="light"]) .adaptation-field textarea,
+:root:not([data-theme="light"]) .adaptation-result-card textarea {
+  border-color: rgba(190, 213, 244, 0.36);
+  background: linear-gradient(135deg, rgba(92, 123, 164, 0.48), rgba(42, 73, 112, 0.66));
+  box-shadow: 0 4px 13px rgba(2, 8, 18, 0.28), inset 0 1px rgba(255, 255, 255, 0.15);
+}
+
+:root[data-theme="light"] .brand-profile-body,
+:root[data-theme="light"] .semantic-shell,
+:root[data-theme="light"] .competitor-setup-card,
+:root[data-theme="light"] .content-plan-setup,
+:root[data-theme="light"] .adaptation-shell {
+  background:
+    radial-gradient(circle at 92% 2%, rgba(53, 104, 212, 0.14), transparent 34%),
+    linear-gradient(135deg, #d9e4f2 0%, #e8eef7 55%, #f5f8fc 100%);
+}
+
+:root[data-theme="light"] .brand-fields input,
+:root[data-theme="light"] .brand-fields textarea,
+:root[data-theme="light"] .semantic-primary-query input,
+:root[data-theme="light"] .semantic-primary-query textarea,
+:root[data-theme="light"] .semantic-geo-menu-head input,
+:root[data-theme="light"] .semantic-query-row input,
+:root[data-theme="light"] .semantic-query-row select,
+:root[data-theme="light"] .content-plan-query-row input,
+:root[data-theme="light"] .content-plan-replacement-comment textarea,
+:root[data-theme="light"] .adaptation-source-field textarea,
+:root[data-theme="light"] .adaptation-field textarea,
+:root[data-theme="light"] .adaptation-result-card textarea {
+  border-color: rgba(36, 82, 184, 0.3);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 3px 11px rgba(29, 57, 104, 0.09), inset 0 1px #fff;
+}
+
 [data-theme="light"] .competitor-mode {
   border-color: rgba(15, 23, 42, 0.16);
   color: #0d1b31;
