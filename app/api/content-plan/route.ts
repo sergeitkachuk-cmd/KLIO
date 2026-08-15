@@ -2,7 +2,7 @@ import { AiResponseError, openAiErrorResponse } from "../_lib/openai-response";
 import { CORE_SYSTEM_RULES, FINAL_QA_RULES } from "../../content-plans";
 import { AiCallError, callAiModel } from "../_lib/ai-router";
 import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
-import { createAsyncJob, failAsyncJob, findActiveAsyncJob, markAsyncJobProcessing, completeAsyncJob } from "../_lib/async-jobs";
+import { claimAsyncJob, failAsyncJob, markAsyncJobProcessing, completeAsyncJob } from "../_lib/async-jobs";
 import { readWebsiteContext, websiteSourceLabel } from "../_lib/website-context";
 import { researchContentPlanWeb } from "../_lib/tavily";
 
@@ -455,9 +455,9 @@ export async function POST(request: Request) {
     // created only to fail a few seconds later.
     await assertSecondaryQuotaAvailable("research");
     const identity = await workspaceIdentity();
-    const activeJob = await findActiveAsyncJob("content_plan", identity.email, CONTENT_PLAN_TIMEOUT_MS + 10_000);
-    if (activeJob) return Response.json({ jobId: activeJob.id, reused: true });
-    const jobId = await createAsyncJob("content_plan", identity.email, input);
+    const job = await claimAsyncJob("content_plan", identity.email, input, CONTENT_PLAN_TIMEOUT_MS + 10_000);
+    if (job.reused) return Response.json({ jobId: job.id, reused: true });
+    const jobId = job.id;
     // Intentionally not awaited — see async-jobs.ts for why this keeps
     // running after the response below is sent on this host.
     void runContentPlanJob(jobId, input, identity.email);

@@ -24,6 +24,49 @@ import { asyncJobs } from "../../../db/schema";
 
 export type AsyncJobStatus = "pending" | "processing" | "done" | "failed";
 
+type AsyncJobClaim = { id: string; reused: boolean };
+
+// Claiming a job must be one database operation. A separate "find active"
+// followed by INSERT has a race: a browser retry, two tabs, or a proxy replay
+// can make both requests observe no job and both start a billable AI call.
+// PostgreSQL advisory locks are transaction-scoped, need no persistent schema
+// change, and serialize only the same owner's same job kind.
+export async function claimAsyncJob(kind: string, ownerEmail: string, input: unknown, maxAgeMs?: number): Promise<AsyncJobClaim> {
+  const db = getDb();
+  return db.transaction(async (tx) => {
+    const lockKey = `klio:async-job:${kind}:${ownerEmail.toLowerCase()}`;
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`);
+
+    const [active] = await tx.select().from(asyncJobs).where(and(
+      eq(asyncJobs.kind, kind),
+      eq(asyncJobs.ownerEmail, ownerEmail),
+      inArray(asyncJobs.status, ["pending", "processing"]),
+    )).orderBy(desc(asyncJobs.createdAt)).limit(1);
+
+    if (active) {
+      const updatedAt = Date.parse(active.updatedAt);
+      if (!maxAgeMs || !Number.isFinite(updatedAt) || Date.now() - updatedAt <= maxAgeMs) {
+        return { id: active.id, reused: true };
+      }
+      await tx.update(asyncJobs).set({
+        status: "failed",
+        errorMessage: "Сборка контент‑плана превысила лимит времени. Запустите её ещё раз.",
+        updatedAt: sql`CURRENT_TIMESTAMP`,
+      }).where(eq(asyncJobs.id, active.id));
+    }
+
+    const id = crypto.randomUUID();
+    await tx.insert(asyncJobs).values({
+      id,
+      ownerEmail,
+      kind,
+      status: "pending",
+      inputJson: JSON.stringify(input),
+    });
+    return { id, reused: false };
+  });
+}
+
 export async function createAsyncJob(kind: string, ownerEmail: string, input: unknown) {
   const db = getDb();
   const id = crypto.randomUUID();
