@@ -73,7 +73,9 @@ export async function completeAsyncJob(id: string, result: unknown) {
     status: "done",
     resultJson: JSON.stringify(result),
     updatedAt: sql`CURRENT_TIMESTAMP`,
-  }).where(eq(asyncJobs.id, id));
+  // A job that the status endpoint has expired must stay failed even if an
+  // old provider request finally returns after its deadline.
+  }).where(and(eq(asyncJobs.id, id), eq(asyncJobs.status, "processing")));
 }
 
 export async function failAsyncJob(id: string, errorMessage: string) {

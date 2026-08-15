@@ -36,6 +36,11 @@ type CallAiModelInput = {
   operation: AiOperation;
   instructions: string;
   input: string;
+  // Some operations have a response size known from their user-selected
+  // shape (for example, a 10/15/25-row plan). They may lower, never raise,
+  // the configured ceiling and set a hard provider-response deadline.
+  maxOutputTokensOverride?: number;
+  requestTimeoutMs?: number;
   // Structured-output schema. Required when the operation's config sets
   // structuredOutput: true.
   schemaName?: string;
@@ -185,6 +190,7 @@ async function requestOnce(params: {
   model: AiModelId;
   reasoningEffort: ReasoningEffort;
   maxOutputTokens: number;
+  requestTimeoutMs?: number;
   structuredOutput: boolean;
   useWebSearch: boolean;
   schemaName?: string;
@@ -202,24 +208,33 @@ async function requestOnce(params: {
     throw error;
   }
 
-  const response = await fetch(PROVIDER_ENDPOINTS[provider], {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: params.model,
-      store: false,
-      reasoning: { effort: params.reasoningEffort },
-      max_output_tokens: params.maxOutputTokens,
-      ...(params.useWebSearch ? { tools: [{ type: "web_search", search_context_size: "medium" }] } : {}),
-      ...(params.toolChoice ? { tool_choice: params.toolChoice } : {}),
-      ...(params.includeSources ? { include: ["web_search_call.action.sources"] } : {}),
-      ...(params.structuredOutput
-        ? { text: { verbosity: "medium", format: { type: "json_schema", name: params.schemaName, strict: true, schema: params.schema } } }
-        : { text: { verbosity: "medium" } }),
-      instructions: params.instructions,
-      input: params.input,
-    }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(PROVIDER_ENDPOINTS[provider], {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: params.model,
+        store: false,
+        reasoning: { effort: params.reasoningEffort },
+        max_output_tokens: params.maxOutputTokens,
+        ...(params.useWebSearch ? { tools: [{ type: "web_search", search_context_size: "medium" }] } : {}),
+        ...(params.toolChoice ? { tool_choice: params.toolChoice } : {}),
+        ...(params.includeSources ? { include: ["web_search_call.action.sources"] } : {}),
+        ...(params.structuredOutput
+          ? { text: { verbosity: "medium", format: { type: "json_schema", name: params.schemaName, strict: true, schema: params.schema } } }
+          : { text: { verbosity: "medium" } }),
+        instructions: params.instructions,
+        input: params.input,
+      }),
+      ...(params.requestTimeoutMs ? { signal: AbortSignal.timeout(params.requestTimeoutMs) } : {}),
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "TimeoutError") {
+      throw new AiCallError("AI‑редакция не успела собрать план за отведённое время. Попробуйте ещё раз с меньшим количеством тем.", 504);
+    }
+    throw new AiCallError("AI‑редакция временно недоступна.", 502);
+  }
 
   if (response.status === 401 || response.status === 403) {
     throw new AiCallError("Ошибка авторизации в AI API.", response.status);
@@ -334,6 +349,7 @@ export async function callAiModel<T = Record<string, unknown>>(
 ): Promise<CallAiModelResult<T>> {
   const config = OPERATION_CONFIG[params.operation];
   const reasoningEffort = params.reasoningEffortOverride ?? config.reasoningEffort;
+  const maxOutputTokens = Math.max(1, Math.min(params.maxOutputTokensOverride ?? config.maxOutputTokens, config.maxOutputTokens));
   const startedAt = Date.now();
 
   let attemptModel = config.model;
@@ -349,7 +365,8 @@ export async function callAiModel<T = Record<string, unknown>>(
       const outcome = await requestOnce({
         model: attemptModel,
         reasoningEffort,
-        maxOutputTokens: config.maxOutputTokens,
+        maxOutputTokens,
+        requestTimeoutMs: params.requestTimeoutMs,
         structuredOutput: config.structuredOutput,
         useWebSearch: config.useWebSearch,
         schemaName: params.schemaName,

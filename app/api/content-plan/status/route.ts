@@ -1,4 +1,4 @@
-import { getAsyncJob } from "../../_lib/async-jobs";
+import { failAsyncJob, getAsyncJob } from "../../_lib/async-jobs";
 import { workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../../_lib/workspace-account";
 
 // Polled by the client every few seconds while a content-plan job (started
@@ -23,6 +23,15 @@ export async function GET(request: Request) {
     }
     if (job.status === "failed") {
       return Response.json({ status: "failed", error: job.errorMessage || "Не удалось собрать контент‑план." });
+    }
+    // Keep the browser from polling a background promise forever. The AI
+    // request itself has the same two-minute deadline; this also releases a
+    // job left behind if a deploy restarted the Node process mid-generation.
+    const updatedAt = Date.parse(job.updatedAt);
+    if (Number.isFinite(updatedAt) && Date.now() - updatedAt > 130_000) {
+      const message = "Сборка контент‑плана превысила лимит времени. Запустите её ещё раз — предыдущий запрос не будет повторён автоматически.";
+      await failAsyncJob(job.id, message);
+      return Response.json({ status: "failed", error: message }, { status: 504 });
     }
     return Response.json({ status: job.status });
   } catch (error) {

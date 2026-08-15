@@ -91,6 +91,13 @@ const PLAN_SEMANTICS_LIMIT = 24;
 const PLAN_COMPETITOR_INSIGHTS_LIMIT = 5;
 const PLAN_EXISTING_TITLES_LIMIT = 24;
 const PLAN_WEBSITE_SNAPSHOT_LIMIT = 6_000;
+const CONTENT_PLAN_TIMEOUT_MS = 120_000;
+
+function contentPlanOutputTokenBudget(count: number) {
+  if (count <= 10) return 4_500;
+  if (count <= 15) return 6_500;
+  return 10_000;
+}
 
 function clean(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
@@ -359,6 +366,8 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
 
   const { result: aiPlan, model } = await callAiModel<AiPlan>({
     operation: "generate_content_plan",
+    maxOutputTokensOverride: contentPlanOutputTokenBudget(input.count),
+    requestTimeoutMs: CONTENT_PLAN_TIMEOUT_MS,
     ownerEmail,
     schemaName: "klio_content_plan",
     schema: contentPlanSchema(input.count),
