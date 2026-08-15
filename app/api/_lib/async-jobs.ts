@@ -52,14 +52,20 @@ export async function createAsyncJob(kind: string, ownerEmail: string, input: un
 // or let a person press the action again after a long wait.  A content-plan
 // job is expensive, so the route reuses the owner's already active job
 // instead of starting a second identical provider call.
-export async function findActiveAsyncJob(kind: string, ownerEmail: string) {
+export async function findActiveAsyncJob(kind: string, ownerEmail: string, maxAgeMs?: number) {
   const db = getDb();
   const [job] = await db.select().from(asyncJobs).where(and(
     eq(asyncJobs.kind, kind),
     eq(asyncJobs.ownerEmail, ownerEmail),
     inArray(asyncJobs.status, ["pending", "processing"]),
   )).orderBy(desc(asyncJobs.createdAt)).limit(1);
-  return job ?? null;
+  if (!job) return null;
+  const updatedAt = Date.parse(job.updatedAt);
+  if (maxAgeMs && Number.isFinite(updatedAt) && Date.now() - updatedAt > maxAgeMs) {
+    await failAsyncJob(job.id, "Сборка контент‑плана превысила лимит времени. Запустите её ещё раз.");
+    return null;
+  }
+  return job;
 }
 
 export async function markAsyncJobProcessing(id: string) {

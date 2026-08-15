@@ -463,7 +463,7 @@ export async function POST(request: Request) {
     // created only to fail a few seconds later.
     await assertSecondaryQuotaAvailable("research");
     const identity = await workspaceIdentity();
-    const activeJob = await findActiveAsyncJob("content_plan", identity.email);
+    const activeJob = await findActiveAsyncJob("content_plan", identity.email, CONTENT_PLAN_TIMEOUT_MS + 10_000);
     if (activeJob) return Response.json({ jobId: activeJob.id, reused: true });
     const jobId = await createAsyncJob("content_plan", identity.email, input);
     // Intentionally not awaited — see async-jobs.ts for why this keeps
