@@ -85,8 +85,6 @@ type AiPlan = {
 // benefit.  These limits keep the result actionable and bound both output
 // latency and the amount of JSON the provider has to assemble.
 const PLAN_LSI_LIMIT = 4;
-const PLAN_STRUCTURE_LIMIT = 5;
-const PLAN_EVIDENCE_LIMIT = 3;
 const PLAN_SEMANTICS_LIMIT = 24;
 const PLAN_COMPETITOR_INSIGHTS_LIMIT = 5;
 const PLAN_EXISTING_TITLES_LIMIT = 24;
@@ -206,15 +204,11 @@ const itemSchema = {
     angle: { type: "string" },
     objective: { type: "string" },
     primaryKeyword: { type: "string" },
-    lsi: { type: "array", minItems: 2, maxItems: PLAN_LSI_LIMIT, items: { type: "string" } },
-    audience: { type: "string" },
-    metaTitle: { type: "string" },
-    metaDescription: { type: "string" },
-    structure: { type: "array", minItems: 3, maxItems: PLAN_STRUCTURE_LIMIT, items: { type: "string" } },
-    cta: { type: "string" },
-    evidenceNeeded: { type: "array", maxItems: PLAN_EVIDENCE_LIMIT, items: { type: "string" } },
   },
-  required: ["id", "title", "subtitle", "cluster", "format", "intent", "stage", "priority", "angle", "objective", "primaryKeyword", "lsi", "audience", "metaTitle", "metaDescription", "structure", "cta", "evidenceNeeded"],
+  // The model returns only a compact editorial core. The remaining display
+  // fields are deterministic derivatives below; asking it to write them for
+  // every row was the source of max_output_tokens truncation on DeepSeek.
+  required: ["id", "title", "subtitle", "cluster", "format", "intent", "stage", "priority", "angle", "objective", "primaryKeyword"],
   additionalProperties: false,
 } as const;
 
@@ -279,13 +273,13 @@ function validatePlan(plan: AiPlan, input: ReturnType<typeof normalizePayload>, 
     angle: clean(item.angle, 500),
     objective: clean(item.objective, 500),
     primaryKeyword: clean(item.primaryKeyword, 220),
-    lsi: unique((Array.isArray(item.lsi) ? item.lsi : []).map((value) => clean(value, 180))).slice(0, PLAN_LSI_LIMIT),
-    audience: clean(item.audience, 700),
-    metaTitle: clean(item.metaTitle, 90),
-    metaDescription: clean(item.metaDescription, 190),
-    structure: unique((Array.isArray(item.structure) ? item.structure : []).map((value) => clean(value, 180))).slice(0, PLAN_STRUCTURE_LIMIT),
-    cta: clean(item.cta, 300),
-    evidenceNeeded: unique((Array.isArray(item.evidenceNeeded) ? item.evidenceNeeded : []).map((value) => clean(value, 220))).slice(0, PLAN_EVIDENCE_LIMIT),
+    lsi: unique([clean(item.primaryKeyword, 180), clean(item.cluster, 180)]).slice(0, PLAN_LSI_LIMIT),
+    audience: input.brand.audience || "Читатели, выбирающие решение по теме материала",
+    metaTitle: cleanPlanTitle(clean(item.title, 90)),
+    metaDescription: clean(item.subtitle, 190),
+    structure: ["Контекст и вопрос читателя", "Ключевые факты и критерии выбора", "Практический ориентир по теме", "Следующий шаг"],
+    cta: input.brand.cta || "Узнать подробности и получить консультацию.",
+    evidenceNeeded: ["Проверить актуальные факты и данные перед публикацией"],
     // Sources are deterministic metadata about this request, not creative
     // content.  Filling them here saves one array per plan row and prevents
     // the model from inventing a source that was never supplied.
@@ -350,11 +344,9 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       "Если тема или фокус не указывает на конкретную категорию для разбора по пунктам (см. правило выше), не строй план вокруг одного преимущества и не превращай его в скучный каталог услуг без содержания. Разделяй образовательные, коммерческие, репутационные и вовлекающие задачи; не выдумывай сезонность, статистику, тренды или кейсы.",
       "Каждый title — чистый публикационный заголовок без номера, комментария, редакционной команды, пояснения в скобках и фраз вроде «использовать выводы». Не добавляй одинаковые каркасы «полный разбор», «основные ошибки», «пошаговый маршрут» ко всем темам.",
       input.existingTitles.length ? `Это уже созданные темы и материалы бренда. Не повторяй их, не делай близкие перефразировки и не возвращай ту же задачу с переставленными словами: ${input.existingTitles.map((title) => `«${title}»`).join("; ")}` : "Если ранее созданные темы не переданы, всё равно не повторяй идеи внутри текущего плана.",
-      `Каждая строка должна иметь собственный ракурс, коммуникационную цель, целевую аудиторию, основной запрос, 2–${PLAN_LSI_LIMIT} поддерживающие формулировки и предметную структуру из 3–${PLAN_STRUCTURE_LIMIT} разделов. Формулируй поля кратко и по существу.`,
-      "Поле lsi означает поддерживающие формулировки, сущности и вопросы. Не называй их LSI‑факторами и не имитируй частотность.",
-      "Title, subtitle и Description должны точно соответствовать теме. subtitle — зацепка под H1: 1–2 предложения с пользой читателю, не повторяет title. Не обещай позиции, результат лечения, доход, сроки, цены и иные факты, которых нет в источниках.",
-      `В evidenceNeeded перечисли до ${PLAN_EVIDENCE_LIMIT} самых важных фактов, документов, цифр, кейсов или экспертных комментариев, которые нужны редактору. Поле sources не выводи: КЛИО добавит его из фактически переданных слоёв, включая веб-поиск, если он есть.`,
-      "Для каждой строки сначала сформируй скрытый editorialBrief: вопрос читателя, интент, сегмент аудитории, ракурс, ключевое сообщение, формат, тон, авторскую позицию, структуру, ключевые пункты, ключи, известные факты, неизвестные данные, возражения, CTA и ограничения. Во внешний JSON выводи только поля текущей схемы; не раскрывай editorialBrief в title или описании.",
+      "Для каждой строки верни только title, subtitle, cluster, format, intent, stage, priority, angle, objective и primaryKeyword. Не выводи lsi, audience, metaTitle, metaDescription, structure, cta, evidenceNeeded или sources: КЛИО заполнит их из профиля и темы. Формулируй поля кратко и по существу.",
+      "Title и subtitle должны точно соответствовать теме. subtitle — одна короткая зацепка под H1 с пользой читателю, не повторяет title. Не обещай позиции, результат лечения, доход, сроки, цены и иные факты, которых нет в источниках.",
+      "Сначала продумай задачу читателя и редакционный ракурс, но во внешний JSON выведи только компактную схему. Не добавляй объяснений вне JSON.",
       // A separate AI research/web-search step (and, briefly, routing this
       // whole operation to OpenAI) was tried and reverted here — see the
       // fix history in ai-config.ts's generate_content_plan entry.
