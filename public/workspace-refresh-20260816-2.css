@@ -1,0 +1,85 @@
+/* One-time versioned stylesheet for clients that cached an older stable
+   Turbopack CSS chunk. Keep only high-priority workspace overrides here. */
+:root:not([data-theme="light"]) .brand-profile {
+  border-color: transparent !important;
+  box-shadow: 0 28px 82px rgba(3, 17, 34, 0.22) !important;
+}
+
+@media (max-width: 720px) {
+  .result-head-actions {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+
+  .result-head-actions button {
+    min-height: 42px !important;
+    border-radius: 999px !important;
+    white-space: nowrap !important;
+  }
+
+  .result-head-actions button:not(.result-clear) {
+    order: 1 !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+  }
+
+  .result-head-actions .result-clear {
+    order: 2 !important;
+    flex: 0 0 auto !important;
+  }
+}
+
+@media (max-width: 820px) {
+  .workspace-sidebar {
+    padding-bottom: 0 !important;
+    border-right: 0 !important;
+    background: transparent !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .workspace-start-stats-bar {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 12px 8px !important;
+    padding: 14px !important;
+    border-radius: 14px !important;
+  }
+
+  .workspace-start-stats-bar > span { grid-column: 1 / -1; }
+  .workspace-start-stats-bar-items { display: contents !important; }
+  .workspace-start-stats-bar-items > div { display: grid !important; gap: 2px; min-width: 0; }
+  .workspace-start-stats-bar-comment { display: none !important; }
+}
+
+[data-theme="light"] .workspace-shell {
+  background: radial-gradient(900px 620px at 91% 8%, rgba(53, 104, 212, 0.1), transparent 68%), linear-gradient(180deg, #f7f9fd 0%, #edf3fb 100%) !important;
+}
+
+@media (max-width: 820px) {
+  [data-theme="light"] .workspace-sidebar nav {
+    border-top-color: rgba(36, 82, 184, 0.18) !important;
+    background: rgba(238, 244, 252, 0.96) !important;
+    box-shadow: 0 -12px 28px rgba(34, 73, 126, 0.14) !important;
+  }
+
+  [data-theme="light"] .workspace-sidebar nav a {
+    border-color: rgba(36, 82, 184, 0.38) !important;
+    color: #173b85 !important;
+    background: linear-gradient(135deg, #f8fbff, #dbe8f8) !important;
+  }
+
+  [data-theme="light"] .workspace-sidebar nav b,
+  [data-theme="light"] .workspace-sidebar nav i { color: #173b85 !important; }
+
+  [data-theme="light"] .workspace-sidebar nav a.active {
+    border-color: #2452b8 !important;
+    background: linear-gradient(135deg, #3568d4, #2452b8) !important;
+  }
+
+  [data-theme="light"] .workspace-sidebar nav a.active b,
+  [data-theme="light"] .workspace-sidebar nav a.active i { color: #fff !important; }
+}

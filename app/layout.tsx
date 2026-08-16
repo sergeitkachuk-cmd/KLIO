@@ -48,6 +48,7 @@ export default function RootLayout({
     <html lang="ru">
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
+        <link rel="stylesheet" href="/workspace-refresh-20260816-2.css" />
       </head>
       <body className={`${manrope.variable} antialiased`}>
         {children}
