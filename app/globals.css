@@ -12918,6 +12918,15 @@ footer nav a {
   background: linear-gradient(135deg, #082744, #1d4a75);
 }
 
+/* Tone is a choice that changes the result, not a secondary filter. Give the
+   selected editor tone the same lime confirmation as KLIO's primary actions. */
+.editor-tone-picker button.active {
+  border-color: var(--acid);
+  color: var(--deep-navy);
+  background: var(--acid);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.42), 0 9px 22px rgba(170, 218, 65, 0.24);
+}
+
 .workspace-ai-banner > i {
   display: grid;
   place-items: center;
@@ -18139,10 +18148,10 @@ footer nav a {
 }
 
 [data-theme="light"] .editor-tone-picker button.active {
-  border-color: rgba(53, 104, 212, 0.4);
-  color: #fff;
-  background: linear-gradient(135deg, #2452b8, #3568d4);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.2), 0 9px 22px rgba(20, 40, 80, 0.16);
+  border-color: var(--acid);
+  color: var(--deep-navy);
+  background: var(--acid);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.42), 0 9px 22px rgba(170, 218, 65, 0.2);
 }
 
 [data-theme="light"] .adaptation-source-field textarea.adaptation-source-textarea {
