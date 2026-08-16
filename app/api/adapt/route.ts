@@ -11,6 +11,7 @@ import {
   type ContentTone,
 } from "../../content-plans";
 import { readWebsiteContext } from "../_lib/website-context";
+import { researchContentPlanWeb } from "../_lib/tavily";
 import { assertSecondaryQuotaAvailable, recordEditorialAction, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 import { AiCallError, callAiModel } from "../_lib/ai-router";
 import { adaptationReasoningEffort, aiConfigured } from "../_lib/ai-config";
@@ -58,6 +59,7 @@ const allowedGoals = new Set<AdaptationGoal>(Object.keys(ADAPTATION_PLANS) as Ad
 const goalLabels: Record<AdaptationGoal, string> = {
   proofread: "профессиональная вычитка и типографика",
   clarity: "редактура ясности",
+  deepen: "содержательное углубление темы",
   rewrite: "полная редакторская пересборка",
   seo: "SEO‑статья",
   social: "публикация для социальных сетей",
@@ -72,7 +74,15 @@ const goalLabels: Record<AdaptationGoal, string> = {
   change_tone: "смена интонации",
 };
 
-const deepRewriteGoals = new Set<AdaptationGoal>(["rewrite", "seo", "social", "landing", "ads", "shorten", "cold_email"]);
+const deepRewriteGoals = new Set<AdaptationGoal>(["deepen", "rewrite", "seo", "social", "landing", "ads", "shorten", "cold_email"]);
+
+function coreRulesFor(goal: AdaptationGoal) {
+  if (goal !== "deepen") return ADAPTATION_CORE_RULES;
+  // Other editors must preserve the source as their complete fact base.
+  // "Глубина" is deliberately different: it receives a single bounded
+  // server-side research digest and may use only that extra fact base.
+  return ADAPTATION_CORE_RULES.filter((rule) => !rule.startsWith("Используй только сведения") && !rule.startsWith("Не дополняй исходник фактами"));
+}
 
 function normalizeTone(value: unknown): ContentTone {
   const requested = clean(value, 80) as ContentTone;
@@ -148,7 +158,7 @@ function adaptationViolationReason(
   if (input.goal === "ads" && (resultWords < 30 || resultWords > 120)) return "Длина рекламного текста должна быть от 30 до 120 слов.";
   if (input.goal === "cold_email" && (resultWords < 45 || resultWords > 190)) return "Длина холодного письма должна быть от 45 до 190 слов.";
   if (input.goal === "shorten" && (resultWords / sourceWords < 0.45 || resultWords / sourceWords > 0.6)) {
-    return `Режим «Сжатие» требует 45–60% от исходника: ${sourceWords} слов в исходнике, нужно от ${Math.ceil(sourceWords * 0.45)} до ${Math.floor(sourceWords * 0.6)} слов в результате, сейчас ${resultWords}.`;
+    return `Режим «Коротко» требует 45–60% от исходника: ${sourceWords} слов в исходнике, нужно от ${Math.ceil(sourceWords * 0.45)} до ${Math.floor(sourceWords * 0.6)} слов в результате, сейчас ${resultWords}.`;
   }
   return null;
 }
@@ -173,7 +183,11 @@ export async function POST(request: Request) {
 
     const identity = await workspaceIdentity();
     const brandWebsite = input.useBrand ? clean(input.brand.website, 220) : "";
-    const website = await readWebsiteContext(brandWebsite);
+    const researchTopic = input.keywords || input.instructions || input.sourceText.slice(0, 420);
+    const [website, webResearch] = await Promise.all([
+      readWebsiteContext(brandWebsite),
+      input.goal === "deepen" ? researchContentPlanWeb(researchTopic, []) : Promise.resolve(null),
+    ]);
     const reasoningEffort = adaptationReasoningEffort(input.goal);
     const plan = ADAPTATION_PLANS[input.goal];
     const toneRules = TONE_PLANS[input.tone];
@@ -181,7 +195,7 @@ export async function POST(request: Request) {
       ? "Создай самостоятельную редакторскую версию: измени композицию, порядок подачи и формулировки в объёме, необходимом для выбранного сценария."
       : "Выполни точечную редактуру в границах выбранного сценария: сохраняй удачные фрагменты, композицию и объём там, где их изменение не требуется задачей.";
     const shortenLengthDirective = input.goal === "shorten"
-      ? `В режиме «Сжатие» длина поля body обязательна: от ${Math.ceil(wordCount(input.sourceText) * 0.45)} до ${Math.floor(wordCount(input.sourceText) * 0.6)} слов (45–60% от ${wordCount(input.sourceText)} слов исходника). Проверь число слов перед ответом.`
+      ? `В режиме «Коротко» длина поля body обязательна: от ${Math.ceil(wordCount(input.sourceText) * 0.45)} до ${Math.floor(wordCount(input.sourceText) * 0.6)} слов (45–60% от ${wordCount(input.sourceText)} слов исходника). Проверь число слов перед ответом.`
       : "";
     const adaptationBrief = {
       target: goalLabels[input.goal],
@@ -200,6 +214,9 @@ export async function POST(request: Request) {
       website_snapshot: input.useBrand && website.status === "loaded"
         ? { url: website.resolvedUrl, text: website.text }
         : null,
+      web_research: input.goal === "deepen" && webResearch
+        ? webResearch.results.slice(0, 3).map(({ title, url, content }) => ({ title, url, fact: content }))
+        : null,
     };
     let material: AdaptedMaterial | null = null;
     let usedModel = "";
@@ -214,7 +231,7 @@ export async function POST(request: Request) {
           "Ты — старший русскоязычный редактор и контент‑маркетолог платформы КЛИО.",
           "Переработай готовый текст пользователя под указанную задачу и верни только валидный JSON без Markdown-ограждений.",
           ...CORE_SYSTEM_RULES,
-          ...ADAPTATION_CORE_RULES,
+          ...coreRulesFor(input.goal),
           transformationDirective,
           shortenLengthDirective,
           `Соблюдай выбранную интонацию «${input.tone}»:`,
@@ -249,7 +266,7 @@ export async function POST(request: Request) {
             "Ты — выпускающий редактор КЛИО. Пересобери материал: текущая версия не прошла проверку формата или слишком похожа на исходник.",
             "Верни только валидный JSON с полями title, subtitle, body, meta_title, meta_description, editorial_comment, changes.",
             ...CORE_SYSTEM_RULES,
-            ...ADAPTATION_CORE_RULES,
+            ...coreRulesFor(input.goal),
             `Строго выполни сценарий «${plan.title}»:`,
             ...plan.aiRules,
             `Сохрани интонацию «${input.tone}»:`,
@@ -283,7 +300,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "AI‑редактор не прошёл проверку формата. Исходный текст сохранён; повторите попытку или уточните задачу." }, { status: 422 });
     }
     const usage = await recordEditorialAction();
-    return Response.json({ material, mode: "ai", model: usedModel, sources: { website: website.status }, usage });
+    return Response.json({ material, mode: "ai", model: usedModel, sources: { website: website.status, webResearch: input.goal === "deepen" ? webResearch?.results.length ?? 0 : 0 }, usage });
   } catch (error) {
     if (error instanceof WorkspaceAccessError) return workspaceErrorResponse(error);
     console.error("Adaptation route failed", error);

@@ -620,7 +620,7 @@ function normalizeStoredGeo(value: unknown, fallbackRegion?: string): SemanticGe
 }
 
 const adaptationGoalIds: AdaptationGoal[] = [
-  "proofread", "clarity", "rewrite", "shorten", "opening", "closing",
+  "proofread", "clarity", "deepen", "rewrite", "shorten", "opening", "closing",
   "review", "social", "seo", "landing", "ads", "cold_email", "brand_voice", "change_tone",
 ];
 
@@ -768,7 +768,7 @@ const modules = [
   ["03", "Анализ конкурентов · по желанию", "Необязательный углублённый режим для SEO‑задач: добавьте 2–5 прямых страниц, найдите смысловые пробелы и при необходимости передайте выбранные выводы в дополнительный акцент материала."],
   ["04", "Готовая статья по ключам", "Выберите ключевые слова, объём и стиль. Сервис подготовит цельный материал с SEO‑заголовком, метаописанием, подзаголовками и естественным распределением семантики."],
   ["05", "План статей", "Получите понятную очередь тем для сайта. КЛИО сама разделит их по задачам читателей: выберите нужную тему — и отправьте её в генератор статьи."],
-  ["06", "Редакторы КЛИО", "14 редакторских режимов: от вычитки и ясности до SEO‑пересборки, адаптации под голос бренда, смены интонации и первого делового контакта."],
+  ["06", "Редакторы КЛИО", "15 редакторских режимов: от вычитки и ясности до содержательного углубления темы, SEO‑пересборки, адаптации под голос бренда и смены интонации."],
 ];
 
 // Teaser cards for the workspace's "Начните здесь" tab — same six modules
@@ -4185,7 +4185,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <a href="#brand-profile" className={activeModule === "brand" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("brand"); }}><i>+</i><span><b>Профиль бренда</b><small>настройте один раз</small></span></a>
             <a href="#generator" className={activeModule === "generator" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("generator"); }}><i>+</i><span><b>Генерировать материал</b><small>создать новый текст</small></span></a>
             <a href="#content-plan" className={activeModule === "content-plan" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("content-plan"); }}><i>+</i><span><b>Контент‑план</b><small>очередь тем для публикаций</small></span></a>
-            <a href="#adaptation" className={activeModule === "adaptation" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("adaptation"); }}><i>+</i><span><b>Редакторы КЛИО</b><small>14 режимов для готового текста</small></span></a>
+            <a href="#adaptation" className={activeModule === "adaptation" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("adaptation"); }}><i>+</i><span><b>Редакторы КЛИО</b><small>15 режимов для готового текста</small></span></a>
             <a href="#semantics" className={activeModule === "semantics" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("semantics"); }}><i>+</i><span><b>Семантика</b><small>реальные поисковые запросы</small></span></a>
             <a href="#competitors" className={activeModule === "competitors" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("competitors"); }}><i>+</i><span><b>Конкуренты</b><small>для более точных тем</small></span></a>
           </nav>
@@ -4278,7 +4278,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   </div>
                 </article>
                 <aside className="archive-transform-panel">
-                  <span>Редакторы КЛИО</span><h3>{activeArchivePlan.title}</h3><p>{activeArchivePlan.result}. Все режимы используют сохранённый материал как единственный источник фактов.</p>
+                  <span>Редакторы КЛИО</span><h3>{activeArchivePlan.title}</h3><p>{activeArchivePlan.result}. {archiveTransformGoal === "deepen" ? "КЛИО добавит только краткую проверяемую фактуру из одного серверного поиска." : "Все остальные режимы используют сохранённый материал как единственный источник фактов."}</p>
                   <div className="archive-transform-tools">{adaptationGoals.map((item) => {
                     const active = archiveTransformGoal === item.id;
                     return <article className={active ? "active" : ""} key={item.id}>
@@ -4915,7 +4915,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>
 
           <section className={`workspace-module adaptation-module ${adaptationOpen ? "" : "tool-collapsed"}`} id="adaptation" style={{ display: activeModule === "adaptation" ? undefined : "none" }}>
-            <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Редакторы КЛИО<span className="klio-mark-dot">.</span></h2></div><p>14 режимов для готового текста: вычитка, ясность, пересборка, SEO, соцсети, реклама, адаптация под голос бренда и смена интонации.</p><button type="button" onClick={() => toggleModule("adaptation")} aria-expanded={adaptationOpen}>{adaptationOpen ? "Свернуть" : "Открыть инструмент"}<i>{adaptationOpen ? "−" : "+"}</i></button></div>
+            <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Редакторы КЛИО<span className="klio-mark-dot">.</span></h2></div><p>15 режимов для готового текста: вычитка, ясность, углубление темы, пересборка, SEO, соцсети, реклама, адаптация под голос бренда и смена интонации.</p><button type="button" onClick={() => toggleModule("adaptation")} aria-expanded={adaptationOpen}>{adaptationOpen ? "Свернуть" : "Открыть инструмент"}<i>{adaptationOpen ? "−" : "+"}</i></button></div>
             <div className="adaptation-shell">
               <article className="adaptation-input-card">
                 <div className="adaptation-card-head"><div><span>Исходник заказчика</span><h3>Вставьте готовый текст</h3></div><b>{adaptationSourceWords.toLocaleString("ru-RU")} слов</b></div>

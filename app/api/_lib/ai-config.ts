@@ -248,6 +248,9 @@ const ADAPT_GOAL_REASONING: Record<string, ReasoningEffort> = {
   cold_email: "none",
   // Mechanical restyling of an existing draft — same weight as shorten/social.
   change_tone: "none",
+  // One bounded web digest is supplied by the route; the model itself has
+  // no search tool and therefore cannot enter a tool loop.
+  deepen: "low",
   rewrite: "low",
   review: "low",
   landing: "low",
