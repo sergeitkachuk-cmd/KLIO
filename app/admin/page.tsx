@@ -6,6 +6,7 @@ import type { AiOperation } from "../api/_lib/ai-config";
 import { getDb } from "../../db";
 import { accounts, aiUsage, brands } from "../../db/schema";
 import { planRule } from "../plans";
+import { getExternalServiceStatuses } from "../api/_lib/external-service-status";
 
 export const metadata = { title: "КЛИО / Админка" };
 
@@ -74,7 +75,7 @@ export default async function AdminPage() {
 
   const db = getDb();
 
-  const [userRows, usageByUser, brandCounts, totalsRows, last30Rows, byModelRows, byOperationRows] = await Promise.all([
+  const [userRows, usageByUser, brandCounts, totalsRows, last30Rows, byModelRows, byOperationRows, externalServices] = await Promise.all([
     db.select().from(accounts).orderBy(desc(accounts.createdAt)),
     db.select({
       ownerEmail: aiUsage.ownerEmail,
@@ -106,6 +107,7 @@ export default async function AdminPage() {
       totalCostUsd: sql<number>`coalesce(sum(${aiUsage.estimatedCostUsd}), 0)`,
       totalCalls: sql<number>`count(*)`,
     }).from(aiUsage).groupBy(aiUsage.operation).orderBy(sql`sum(${aiUsage.estimatedCostUsd}) desc`),
+    getExternalServiceStatuses(),
   ]);
 
   const usageMap = new Map(usageByUser.map((row) => [row.ownerEmail, row]));
@@ -154,6 +156,29 @@ export default async function AdminPage() {
         <article><span>Расход на ИИ · всего</span><b>{formatUsd(num(totals.totalCostUsd))}</b><small>{formatNumber(num(totals.totalCalls))} запросов, {formatNumber(num(totals.totalTokens))} токенов</small></article>
         <article><span>Расход на ИИ · 30 дней</span><b>{formatUsd(num(last30.totalCostUsd))}</b><small>{formatNumber(num(last30.totalCalls))} запросов</small></article>
         <article><span>Тариф</span><b>Старт (у всех)</b><small>оплата подписки пока не подключена</small></article>
+      </section>
+
+      <section className="admin-block admin-integrations-block">
+        <div className="admin-block-heading">
+          <div>
+            <h2>Внешние сервисы</h2>
+            <p>Данные запрашиваются заново при открытии этой страницы. Ключи и токены остаются только на сервере.</p>
+          </div>
+          <a className="admin-refresh" href="/admin">Обновить</a>
+        </div>
+        <div className="admin-integrations">
+          {externalServices.map((service) => (
+            <article className={`admin-integration admin-integration-${service.state}`} key={service.id}>
+              <div className="admin-integration-top">
+                <span>{service.name}</span>
+                <i>{service.state === "connected" ? "Подключён" : service.state === "needs_setup" ? "Нужна настройка" : "Нет ответа"}</i>
+              </div>
+              <b>{service.primary}</b>
+              <small>{service.detail}</small>
+              <a href={service.href} target="_blank" rel="noreferrer">Открыть кабинет ↗</a>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="admin-block">
@@ -250,6 +275,21 @@ function AdminStyles() {
       .admin-cards small { display: block; margin-top: 4px; font-size: 12px; color: #9ca3af; }
       .admin-block { margin-bottom: 32px; }
       .admin-block h2 { font-size: 16px; margin: 0 0 10px; }
+      .admin-block-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
+      .admin-block-heading h2 { margin-bottom: 4px; }
+      .admin-block-heading p { margin: 0; font-size: 12px; color: #6b7280; }
+      .admin-refresh { flex: 0 0 auto; border: 1px solid #d1d5db; border-radius: 999px; padding: 7px 12px; color: inherit; font-size: 12px; font-weight: 700; text-decoration: none; }
+      .admin-integrations { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+      .admin-integration { display: flex; min-height: 154px; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; background: #fff; }
+      .admin-integration-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .admin-integration-top span { font-size: 13px; font-weight: 700; }
+      .admin-integration-top i { border-radius: 999px; padding: 3px 7px; font-size: 10px; font-style: normal; font-weight: 700; }
+      .admin-integration-connected i { background: #dcfce7; color: #166534; }
+      .admin-integration-needs_setup i { background: #fef3c7; color: #92400e; }
+      .admin-integration-unavailable i { background: #fee2e2; color: #991b1b; }
+      .admin-integration b { display: block; margin-top: 14px; font-size: 20px; }
+      .admin-integration small { display: block; margin-top: 5px; color: #6b7280; font-size: 12px; line-height: 1.4; }
+      .admin-integration a { margin-top: auto; padding-top: 12px; color: #4f46e5; font-size: 12px; font-weight: 700; text-decoration: none; }
       .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
       .admin-table th, .admin-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eef0f3; white-space: nowrap; }
       .admin-table th { color: #6b7280; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
@@ -259,6 +299,12 @@ function AdminStyles() {
       @media (prefers-color-scheme: dark) {
         .admin-page { color: #e5e7eb; }
         .admin-cards article { background: #14161b; border-color: #262933; }
+        .admin-integration { background: #14161b; border-color: #262933; }
+        .admin-block-heading p, .admin-integration small { color: #a0a7b4; }
+        .admin-refresh { border-color: #3b404d; }
+        .admin-integration-connected i { background: #153d2a; color: #86efac; }
+        .admin-integration-needs_setup i { background: #4a3610; color: #fde68a; }
+        .admin-integration-unavailable i { background: #4a1d24; color: #fca5a5; }
         .admin-table th, .admin-table td { border-color: #262933; }
         .admin-table-scroll { border-color: #262933; }
       }

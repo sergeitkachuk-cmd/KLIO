@@ -35,6 +35,20 @@ services:
       # only in Render and must never be committed to this blueprint.
       - key: TAVILY_API_KEY
         sync: false
+      # Optional limit of the active Tavily tariff. This lets /admin calculate
+      # remaining credits from Tavily's usage API.
+      - key: TAVILY_MONTHLY_CREDIT_LIMIT
+        sync: false
+      # Optional owner-only monitoring tokens. Render API exposes service
+      # state, while GitHub's token needs the Plan: read account permission.
+      - key: RENDER_API_KEY
+        sync: false
+      - key: GITHUB_BILLING_TOKEN
+        sync: false
+      - key: GITHUB_BILLING_ACCOUNT
+        sync: false
+      - key: GITHUB_BILLING_SCOPE
+        sync: false
       # Comma-separated emails allowed to open /admin (users, plan usage,
       # AI spend). Leave unset and nobody can open it.
       - key: ADMIN_EMAILS
