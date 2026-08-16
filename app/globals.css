@@ -19731,3 +19731,32 @@ footer nav a {
   color: #2452b8;
   background: rgba(53, 104, 212, 0.1);
 }
+
+/* The bright outline belonged to the old light brand-profile shell. In the
+   dark workspace it reads as a white frame around an otherwise dark module,
+   so keep the shape but remove that perimeter highlight. */
+:root:not([data-theme="light"]) .brand-profile {
+  border-color: transparent;
+  box-shadow: 0 28px 82px rgba(3, 17, 34, 0.22);
+}
+
+@media (max-width: 720px) {
+  /* Explicit flex wins over earlier mobile grid rules and guarantees the two
+     result actions stay on one line at every phone width. */
+  .result-head-actions {
+    display: flex !important;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .result-head-actions button:not(.result-clear) {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .result-head-actions .result-clear {
+    flex: 0 0 auto;
+  }
+}
