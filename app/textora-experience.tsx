@@ -4198,7 +4198,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           <div className="workspace-heading">
             <div><p>Рабочее пространство / выпуск 01</p><h1>Редакционная система<span className="klio-mark-dot">.</span></h1><span>Ваше рабочее пространство с инструментами КЛИО — от первого черновика до готовой публикации.</span></div>
             <div className="workspace-heading-status">
-              {(workspaceDataError || !workspaceReady || workspaceSaving) && <div className={`workspace-status ${workspaceDataError ? "has-error" : ""}`}><i/><b>{workspaceDataError || (!workspaceReady ? "Загружаем кабинет" : "Сохраняем изменения")}</b></div>}
               <div className={`workspace-brand-pill ${useBrand ? "is-on" : "is-off"}`}>
                 <button type="button" className="workspace-brand-pill-info" onClick={() => openModule("brand")}>
                   <span>
