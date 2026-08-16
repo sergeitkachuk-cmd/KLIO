@@ -62,7 +62,11 @@
   border-radius: 4px 38px 4px 4px !important;
 }
 
+/* Matches .workspace-module-heading's padding (27px 30px) — beats both
+   the stale open-state 29px/32px and the stale collapsed-state
+   25px/28px/25px/25px, since neither of those is !important. */
 .brand-profile-head {
+  padding: 27px 30px !important;
   border-left: 4px solid var(--module-accent, #7450bd) !important;
   margin-bottom: 20px !important;
 }

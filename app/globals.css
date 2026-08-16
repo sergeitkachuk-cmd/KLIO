@@ -11568,7 +11568,10 @@ footer nav a {
   justify-content: space-between;
   gap: 42px;
   margin-bottom: 20px;
-  padding: 29px 32px;
+  /* Matches .workspace-module-heading's padding exactly (27px 30px) — every
+     other module's heading uses that value, this one had drifted to 29/32
+     and read as a stray 2px indent difference next to the rest. */
+  padding: 27px 30px;
   border: 1px solid rgba(255, 255, 255, 0.17);
   border-left: 4px solid var(--module-accent, #7450bd);
   border-radius: 4px 38px 4px 4px;
@@ -11624,9 +11627,10 @@ footer nav a {
   backdrop-filter: blur(28px) saturate(145%);
 }
 
+/* Same padding as the open state — .workspace-module.tool-collapsed's
+   heading doesn't change padding when collapsed either, only margin. */
 .brand-profile:not(.is-open) .brand-profile-head {
   margin-bottom: 0;
-  padding: 25px 28px 25px 25px;
 }
 
 .competitor-module:not(.tool-collapsed) .competitor-entry-card {

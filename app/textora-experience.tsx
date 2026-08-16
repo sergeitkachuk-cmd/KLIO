@@ -4361,7 +4361,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <div className="brand-profile-head">
               <div><span>По желанию</span><h3>Профиль бренда<span className="klio-mark-dot">.</span></h3><p>КЛИО использует эти данные как редакционную память — факты и интонация переходят в каждый новый материал.</p></div>
               <div className="brand-profile-actions">
-                <label className="brand-switch"><input type="checkbox" checked={useBrand} onChange={(event) => { setUseBrand(event.target.checked); setSemanticNeedsRefresh(true); setContentPlanNeedsRefresh(true); }}/><span/><b>{useBrand ? "Профиль активен" : "Профиль отключён"}</b></label>
                 <button type="button" className="profile-toggle" onClick={() => toggleModule("brand")} aria-expanded={brandOpen}>{brandOpen ? "Свернуть" : "Открыть профиль"} <i>{brandOpen ? "−" : "+"}</i></button>
               </div>
             </div>
