@@ -148,11 +148,15 @@ export type OperationConfig = {
 const { CONTENT, UTILITY } = AI_MODELS;
 
 export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
-  generate_seo_article: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 10_000, structuredOutput: true, retryable: true, useWebSearch: true },
-  generate_social_post: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 2_500, structuredOutput: true, retryable: true, useWebSearch: true },
-  generate_ad_copy: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 2_000, structuredOutput: true, retryable: true, useWebSearch: true },
-  generate_landing: { model: CONTENT, reasoningEffort: "medium", maxOutputTokens: 10_000, structuredOutput: true, retryable: true, useWebSearch: true },
-  generate_quick_material: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 10_000, structuredOutput: true, retryable: true, useWebSearch: true },
+  // Full materials are grounded by one bounded Tavily request in the route,
+  // not by a model-owned web tool. DeepSeek can otherwise spend minutes in
+  // search/tool loops before it starts writing; a single compact digest keeps
+  // the facts while making generation a single predictable model pass.
+  generate_seo_article: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 10_000, structuredOutput: true, retryable: true, useWebSearch: false },
+  generate_social_post: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 2_500, structuredOutput: true, retryable: true, useWebSearch: false },
+  generate_ad_copy: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 2_000, structuredOutput: true, retryable: true, useWebSearch: false },
+  generate_landing: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 10_000, structuredOutput: true, retryable: true, useWebSearch: false },
+  generate_quick_material: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 6_000, structuredOutput: true, retryable: true, useWebSearch: false },
   // adapt_text spans 12 KLIO editor goals with very different weight
   // (proofread vs. full SEO rebuild) — the route picks reasoningEffort
   // per goal (see adaptationReasoningEffort below); this entry is the

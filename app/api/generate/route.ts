@@ -11,6 +11,7 @@ import {
   type ContentTone,
 } from "../../content-plans";
 import { readWebsiteContext } from "../_lib/website-context";
+import { researchContentPlanWeb } from "../_lib/tavily";
 import { assertGenerationQuotaAvailable, recordGeneration, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 import { AiCallError, callAiModel } from "../_lib/ai-router";
 import { aiConfigured } from "../_lib/ai-config";
@@ -112,6 +113,13 @@ const DEFAULT_LENGTHS: Record<Format, number> = {
   ads: 700,
   landing: 3500,
 };
+
+function materialOutputTokenBudget(targetCharacters: number) {
+  // The body is Russian prose plus a small JSON envelope. A bounded budget
+  // prevents a short post from inheriting a 10k-token ceiling intended for a
+  // long SEO article, while leaving enough headroom for headings and meta.
+  return Math.max(1_100, Math.min(10_000, Math.ceil(targetCharacters / 2.2) + 900));
+}
 
 function cleanText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
@@ -605,9 +613,10 @@ export async function POST(request: Request) {
       }, { status: 503 });
     }
 
-    const [identity, website] = await Promise.all([
+    const [identity, website, webResearch] = await Promise.all([
       workspaceIdentity(),
       readWebsiteContext(input.useBrand ? input.brand.website : ""),
+      researchContentPlanWeb(input.topic, input.geography),
     ]);
     const operation = FORMAT_OPERATION[input.format];
     const formatPlan = FORMAT_PLANS[input.format];
@@ -692,6 +701,7 @@ export async function POST(request: Request) {
       website_snapshot: input.useBrand && website.status === "loaded"
         ? { url: website.resolvedUrl, text: website.text }
         : null,
+      web_research: webResearch ? webResearch.results.slice(0, 3).map((item) => ({ title: item.title, url: item.url, fact: item.content })) : null,
     }, null, 2);
 
     let material: GeneratedMaterial;
@@ -699,6 +709,7 @@ export async function POST(request: Request) {
     try {
       const call = await callAiModel<Record<string, unknown>>({
         operation,
+        maxOutputTokensOverride: materialOutputTokenBudget(input.length),
         ownerEmail: identity.email,
         brandId: input.useBrand ? input.brandId : undefined,
         schemaName: "klio_generated_material",
@@ -708,6 +719,7 @@ export async function POST(request: Request) {
           "Создай готовый к публикации материал по брифу и верни только валидный JSON без Markdown-ограждений.",
           ...CORE_SYSTEM_RULES,
           ...GENERATION_RESEARCH_RULES,
+          "Веб-исследование, если оно нужно, уже выполнено сервером и передано в поле web_research. Не запускай собственный поиск и не выдумывай факты: используй только переданные источники, профиль и снимок сайта.",
           `Контракт выбранного формата «${formatPlan.title}» обязателен и важнее стилистической окраски:`,
           ...formatPlan.aiRules,
           "Тема — главный контракт материала. Сначала выдели конкретный предмет запроса, затем построй вокруг него вступление, подзаголовки, аргументацию и финал.",
@@ -773,7 +785,13 @@ export async function POST(request: Request) {
     let missingFocuses = missingEditorialFocuses(material, input);
     let missingKeyPhrases = missingKeywords(material, input);
 
-    if (countCharacters(material.body) < minimumCharacters || countCharacters(material.body) > maximumCharacters || hasMetaLeakage(material.body) || hasPublicationMarkup(material.body) || missingGeo.length || !subjectCheck.passes || missingFocuses.length || missingKeyPhrases.length) {
+    // The coverage badges already expose small misses without blocking the
+    // result. A full second article pass for a missing keyword or a 15%
+    // length drift was the main source of two-minute "small" generations.
+    // Repair only a genuinely unusable draft; formatting is sanitized below
+    // and an overshoot is handled by the deterministic trim backstop.
+    const needsModelCorrection = countCharacters(material.body) < Math.floor(minimumCharacters * 0.55) || !subjectCheck.passes;
+    if (needsModelCorrection) {
       try {
         const correctionCall = await callAiModel<Record<string, unknown>>({
           operation: "revise_content",
