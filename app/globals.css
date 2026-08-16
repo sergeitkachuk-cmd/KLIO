@@ -19672,3 +19672,62 @@ footer nav a {
     color: #fff;
   }
 }
+
+/* The selected profile mode used a literal white card even in dark mode.
+   Keep it in the same navy family as the generator, using the accent only
+   for its border and icon. */
+.brand-profile-body .profile-mode-switch button.active {
+  border-color: rgba(216, 255, 101, 0.42);
+  color: #fff;
+  background: linear-gradient(135deg, rgba(23, 65, 108, 0.96), rgba(38, 32, 84, 0.98));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.14), 0 8px 20px rgba(3, 17, 34, 0.24);
+}
+
+.brand-profile-body .profile-mode-switch button.active > i {
+  border-color: rgba(216, 255, 101, 0.45);
+  color: #152033;
+  background: var(--acid);
+}
+
+@media (max-width: 720px) {
+  /* Result actions remain side by side: copying is prominent, clearing is a
+     smaller destructive action, and both use the rounded control language. */
+  .result-head-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    width: 100%;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .result-head-actions button {
+    min-height: 42px;
+    padding: 0 14px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .result-head-actions button:not(.result-clear) {
+    order: 1;
+  }
+
+  .result-head-actions .result-clear {
+    order: 2;
+    padding-inline: 13px;
+  }
+}
+
+/* The light theme keeps its white selection intentionally; the override
+   above is only for the dark profile panel shown in the workspace. */
+[data-theme="light"] .brand-profile-body .profile-mode-switch button.active {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(20, 40, 80, 0.14), inset 0 1px #fff;
+}
+
+[data-theme="light"] .brand-profile-body .profile-mode-switch button.active > i {
+  border-color: rgba(53, 104, 212, 0.35);
+  color: #2452b8;
+  background: rgba(53, 104, 212, 0.1);
+}
