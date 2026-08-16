@@ -1,4 +1,5 @@
 import { readWebsiteContext, websiteSourceLabel } from "../../_lib/website-context";
+import { extractTavilyWebsite } from "../../_lib/tavily";
 import { CORE_SYSTEM_RULES } from "../../../content-plans";
 import { AiNotConfiguredError, AiResponseError, openAiErrorResponse } from "../../_lib/openai-response";
 import { callAiModel } from "../../_lib/ai-router";
@@ -93,6 +94,9 @@ export async function POST(request: Request) {
     if (website.status === "blocked") {
       return Response.json({ error: "Этот адрес сайта отклонён проверкой безопасности. Проверьте ссылку и попробуйте снова." }, { status: 400 });
     }
+    // The direct read is fast and free. Tavily Extract is a single bounded
+    // fallback for SPAs or protected pages; DeepSeek never searches itself.
+    const tavilyWebsite = website.status === "loaded" ? null : await extractTavilyWebsite(input.website);
 
     const instructions = [
       "Ты — бренд-стратег платформы КЛИО. По открытой странице сайта (и, если она недоступна или скудная, по данным из веб‑поиска) собери основу профиля бренда для редакционной команды.",
@@ -124,7 +128,9 @@ export async function POST(request: Request) {
       input: JSON.stringify({
         requested_website: input.website,
         website_status: website.status,
-        website_snapshot: website.status === "loaded" ? { url: website.resolvedUrl, text: website.text } : null,
+        website_snapshot: website.status === "loaded"
+          ? { url: website.resolvedUrl, text: website.text }
+          : tavilyWebsite ? { url: tavilyWebsite.url, text: tavilyWebsite.content } : null,
         existing_profile_draft: {
           name: input.name || null,
           description: input.description || null,
@@ -149,7 +155,7 @@ export async function POST(request: Request) {
       result: normalized,
       mode: "ai",
       model,
-      sources: { website: website.status, websiteNote: websiteSourceLabel(website) },
+      sources: { website: tavilyWebsite ? "tavily_extract" : website.status, websiteNote: tavilyWebsite ? `страница прочитана через Tavily: ${tavilyWebsite.url}` : websiteSourceLabel(website) },
       usage,
     });
   } catch (error) {

@@ -2,6 +2,7 @@ import { AiCallError, callAiModel } from "../../_lib/ai-router";
 import { aiConfigured } from "../../_lib/ai-config";
 import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../../_lib/workspace-account";
 import { readWebsiteContext } from "../../_lib/website-context";
+import { discoverTavilyWeb } from "../../_lib/tavily";
 
 type BrandInput = {
   name: string;
@@ -303,14 +304,15 @@ export async function POST(request: Request) {
     let responseBody: unknown;
     let model = "";
     let yandexResults: Citation[] = [];
+    let tavilyResults: Citation[] = [];
     try {
       // yandexSearch never throws (it catches internally and resolves to
       // []), so Promise.all's rejection can only come from callAiModel —
       // the catch below keeps the exact same AiCallError handling as before,
       // it just no longer waits for the AI call before starting the
       // independent Yandex Search request.
-      const [call, yandex] = await Promise.all([
-        callAiModel({
+      const [call, yandex, tavily] = await Promise.all([
+        Promise.resolve({ rawResponse: null, model: "" }), /* Legacy DeepSeek web search removed:
           operation: "discover_competitors",
           ownerEmail: identity.email,
           toolChoice: "required",
@@ -325,12 +327,14 @@ export async function POST(request: Request) {
             "Не придумывай адреса и не перечисляй страницы, которые не были найдены веб‑поиском.",
           ].join("\n"),
           input: `Найди страницы конкурентов по этому брифу:\n${brief}`,
-        }),
+        */
         yandexSearch(marketQuery(query, brand)),
+        discoverTavilyWeb([marketQuery(query, brand), geography.slice(0, 2).map((item) => [item.label, item.detail].filter(Boolean).join(" ")).filter(Boolean).join(" "), "прямые конкуренты официальный сайт услуги"].filter(Boolean).join(" ")),
       ]);
       responseBody = call.rawResponse;
       model = call.model;
       yandexResults = yandex;
+      tavilyResults = tavily?.results.map((item) => ({ title: item.title, url: item.url })) ?? [];
     } catch (error) {
       if (error instanceof AiCallError) {
         return Response.json({ error: error.message }, { status: error.status });
@@ -340,7 +344,7 @@ export async function POST(request: Request) {
 
     const brandDomain = domainOf(brand.website);
     const seen = new Set<string>();
-    const pool = [...yandexResults, ...citationsFromResponse(responseBody)]
+    const pool = [...yandexResults, ...tavilyResults, ...citationsFromResponse(responseBody)]
       .filter((item) => isDirectCandidate(item.url, brandDomain))
       .filter((item) => {
         const key = domainOf(item.url);
