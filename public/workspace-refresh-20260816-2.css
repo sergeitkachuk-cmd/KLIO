@@ -58,6 +58,22 @@ html {
   background: none !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
+  /* Matches generator/semantics' effective gap below .workspace-heading
+     (30px margin-top + 34px padding-top = 64px) in one margin, since this
+     element has no padding-top of its own to split it across. */
+  margin-top: 64px !important;
+}
+
+/* No comment on record for why these three carried their own
+   padding-top: 72px against every other module's 34px — measured with
+   only each module visible at a time (matching how activeModule
+   swapping actually works) and confirmed it was the reason those three
+   opened 38px lower. Zeroing the override here so the stale 72px falls
+   back to .workspace-module's 34px. */
+.competitor-module,
+.content-plan-module,
+.adaptation-module {
+  padding-top: 34px !important;
 }
 
 .brand-profile-head,

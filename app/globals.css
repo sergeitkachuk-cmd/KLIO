@@ -11471,13 +11471,19 @@ footer nav a {
   border-color: rgba(124, 58, 237, 0.22) !important;
   box-shadow: 0 24px 70px rgba(43, 31, 79, 0.11) !important; --module-accent: #6539c7; --module-tint: rgba(124, 58, 237, 0.065); }
 .semantics-module { --module-accent: #376fa8; --module-tint: rgba(65, 118, 176, 0.07); }
-.competitor-module {
-  padding-top: 72px; --module-accent: #7a5b91; --module-tint: rgba(122, 91, 145, 0.07); }
+/* competitor/content-plan/adaptation used to carry their own
+   padding-top: 72px here (vs the 34px every other module gets from
+   .workspace-module above), with nothing on record explaining why —
+   found by actually measuring each module's rendered heading position
+   with only it visible (matching how activeModule swapping really
+   works): those three opened 38px lower than generator/semantics every
+   time, which is what "modules start at different heights" was. Removed
+   so all six now share the base 34px. */
+.competitor-module { --module-accent: #7a5b91; --module-tint: rgba(122, 91, 145, 0.07); }
 .content-plan-module {
   scroll-margin-top: 96px;
-  padding-top: 72px; --module-accent: #3f7e70; --module-tint: rgba(54, 129, 109, 0.07); }
-.adaptation-module {
-  padding-top: 72px; --module-accent: #9b536d; --module-tint: rgba(155, 83, 109, 0.065); }
+  --module-accent: #3f7e70; --module-tint: rgba(54, 129, 109, 0.07); }
+.adaptation-module { --module-accent: #9b536d; --module-tint: rgba(155, 83, 109, 0.065); }
 
 .workspace-module > .workspace-module-heading {
   /* Was position: sticky; top: 88px — floated over the module's own
@@ -11567,7 +11573,11 @@ footer nav a {
    that border lived here, not on the head/body cards that replace it). */
 .brand-profile {
   scroll-margin-top: 100px;
-  margin-top: 46px;
+  /* .workspace-module reaches the same visual gap below .workspace-heading
+     via margin-top (30px) + padding-top (34px) = 64px; .brand-profile has
+     no padding-top of its own to split that across, so 64px goes here in
+     one piece to land its heading at the identical height. */
+  margin-top: 64px;
   margin-bottom: 22px;
 }
 
