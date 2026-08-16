@@ -10941,7 +10941,12 @@ footer nav a {
     align-items: flex-start;
   }
 
-  .result-head > div {
+  /* Excludes .result-head-actions: it's also a direct child div of
+     .result-head, so this used to stack its two buttons into a column
+     too (silently outranking .result-head-actions's own row rules below,
+     since ">div" is more specific) — the actual reason earlier attempts
+     at a one-line mobile layout for those buttons kept not sticking. */
+  .result-head > div:not(.result-head-actions) {
     align-items: flex-start;
     flex-direction: column;
     gap: 7px;
@@ -11541,18 +11546,20 @@ footer nav a {
   background: var(--acid);
 }
 
+/* Layout-only wrapper now: .brand-profile-head and .brand-profile-body
+   are each their own card (border, radius, shadow) with a gap between,
+   the same "heading card, then field card" split every other module
+   uses (.workspace-module-heading + .studio/.brief-panel/etc.) — this
+   used to fuse both into one bordered shell (overflow: hidden, its own
+   border/radius/background/shadow), which both read as visually
+   different from the rest of the workspace and was the thing carrying
+   the stray light border around the whole module (see the deleted
+   :root:not([data-theme="light"]) .brand-profile rules further down —
+   that border lived here, not on the head/body cards that replace it). */
 .brand-profile {
   scroll-margin-top: 100px;
-  margin-bottom: 22px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.82);
-  border-radius: 4px 38px 4px 4px;
-  background:
-    radial-gradient(circle at 92% 0%, rgba(139, 92, 246, 0.16), transparent 30%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.83), rgba(244, 241, 252, 0.62));
-  box-shadow: 0 28px 82px rgba(28, 21, 55, 0.1), inset 0 1px rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(28px) saturate(145%);
   margin-top: 46px;
+  margin-bottom: 22px;
 }
 
 .brand-profile-head {
@@ -11560,7 +11567,11 @@ footer nav a {
   align-items: center;
   justify-content: space-between;
   gap: 42px;
+  margin-bottom: 20px;
   padding: 29px 32px;
+  border: 1px solid rgba(255, 255, 255, 0.17);
+  border-left: 4px solid var(--module-accent, #7450bd);
+  border-radius: 4px 38px 4px 4px;
   color: #fff;
   background:
     radial-gradient(circle at 88% 0%, rgba(124, 58, 237, 0.36), transparent 40%),
@@ -11605,11 +11616,16 @@ footer nav a {
 
 .brand-profile-body {
   padding: 28px 32px 30px;
-  border-top: 1px solid var(--line);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.17);
+  border-radius: 4px 38px 4px 4px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.83), rgba(244, 241, 252, 0.72));
+  box-shadow: 0 24px 64px rgba(3, 17, 34, 0.22), inset 0 1px rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(28px) saturate(145%);
 }
 
 .brand-profile:not(.is-open) .brand-profile-head {
+  margin-bottom: 0;
   padding: 25px 28px 25px 25px;
 }
 
@@ -12867,7 +12883,11 @@ footer nav a {
   box-shadow: 0 20px 54px rgba(3, 19, 38, 0.23), inset 0 1px rgba(255, 255, 255, 0.11);
 }
 
-.brand-profile:not(.is-open) {
+/* Collapsed accordion: .brand-profile-head is the only visible card (no
+   .brand-profile-body in the DOM until expanded), styled a notch quieter
+   than the open look above. Targets the head card itself now that the
+   card lives there instead of on the shared .brand-profile shell. */
+.brand-profile:not(.is-open) .brand-profile-head {
   border-color: rgba(92, 65, 156, 0.2);
   border-left: 4px solid #8a65cf;
   background: rgba(5, 25, 48, 0.96);
@@ -16421,11 +16441,12 @@ footer nav a {
    the dark navy pass comment above each rule 1:1: same selectors, same
    cool-blue-instead-of-violet convention as the rest of this file's
    light theme, var(--cobalt) kept only for text-only label accents. */
-[data-theme="light"] .brand-profile {
+/* .brand-profile itself is a plain layout wrapper (see its base rule) —
+   border/shadow now live on the head/body cards it wraps, same split as
+   the dark-theme default. */
+[data-theme="light"] .brand-profile-head,
+[data-theme="light"] .brand-profile-body {
   border-color: rgba(15, 23, 42, 0.12);
-  background:
-    radial-gradient(circle at 92% 0%, rgba(53, 104, 212, 0.1), transparent 34%),
-    linear-gradient(135deg, #ffffff 0%, #f5f7fb 100%);
   box-shadow: 0 28px 82px rgba(20, 40, 80, 0.1), inset 0 1px rgba(255, 255, 255, 0.85);
 }
 
@@ -18786,18 +18807,22 @@ footer nav a {
   box-shadow: 0 3px 11px rgba(29, 57, 104, 0.09), inset 0 1px #fff;
 }
 
-/* On phones two icon-only actions in the result header were too easy to
-   confuse. Keep their labels and give destructive clearing its own row. */
+/* On phones the two result actions ("Копировать текст" / "Очистить") stay
+   on one row: labelled pills, copying takes the spare width, clearing
+   stays compact and reads as the destructive one. This used to be three
+   separate, mutually-contradicting mobile blocks (one even stacked them
+   into their own rows) accumulated across earlier passes — consolidated
+   into the single rule that actually wins. */
 @media (max-width: 720px) {
   .result-head {
     flex-wrap: wrap;
   }
 
   .result-head-actions {
-    display: grid;
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-wrap: nowrap;
     width: 100%;
-    gap: 10px;
+    gap: 8px;
     margin-top: 8px;
   }
 
@@ -18806,18 +18831,22 @@ footer nav a {
     min-height: 46px;
     padding: 0 14px;
     border: 1px solid rgba(190, 213, 244, 0.26);
-    border-radius: 12px;
+    border-radius: 999px;
     color: #e7effc;
     background: rgba(255, 255, 255, 0.08);
     font-size: 13px !important;
+    white-space: nowrap;
   }
 
   .result-head-actions button:not(.result-clear) {
     order: 1;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .result-head-actions .result-clear {
     order: 2;
+    flex: 0 0 auto;
     border-color: rgba(248, 166, 166, 0.28);
     color: rgba(255, 221, 221, 0.84) !important;
     background: rgba(155, 43, 61, 0.16);
@@ -19689,34 +19718,6 @@ footer nav a {
   background: var(--acid);
 }
 
-@media (max-width: 720px) {
-  /* Result actions remain side by side: copying is prominent, clearing is a
-     smaller destructive action, and both use the rounded control language. */
-  .result-head-actions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    width: 100%;
-    gap: 8px;
-    margin-top: 8px;
-  }
-
-  .result-head-actions button {
-    min-height: 42px;
-    padding: 0 14px;
-    border-radius: 999px;
-    white-space: nowrap;
-  }
-
-  .result-head-actions button:not(.result-clear) {
-    order: 1;
-  }
-
-  .result-head-actions .result-clear {
-    order: 2;
-    padding-inline: 13px;
-  }
-}
-
 /* The light theme keeps its white selection intentionally; the override
    above is only for the dark profile panel shown in the workspace. */
 [data-theme="light"] .brand-profile-body .profile-mode-switch button.active {
@@ -19732,57 +19733,28 @@ footer nav a {
   background: rgba(53, 104, 212, 0.1);
 }
 
-/* The bright outline belonged to the old light brand-profile shell. In the
-   dark workspace it reads as a white frame around an otherwise dark module,
-   so keep the shape but remove that perimeter highlight. */
-:root:not([data-theme="light"]) .brand-profile {
-  border-color: transparent;
-  box-shadow: 0 28px 82px rgba(3, 17, 34, 0.22);
-}
-
-@media (max-width: 720px) {
-  /* Explicit flex wins over earlier mobile grid rules and guarantees the two
-     result actions stay on one line at every phone width. */
-  .result-head-actions {
-    display: flex !important;
-    flex-wrap: nowrap;
-    align-items: stretch;
-    width: 100%;
-    gap: 8px;
-  }
-
-  .result-head-actions button:not(.result-clear) {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-
-  .result-head-actions .result-clear {
-    flex: 0 0 auto;
-  }
-}
-
-/* Brand profile is one continuous dark workspace surface. On desktop it uses
-   the generator's restrained blue outline; on phones the outline disappears
-   entirely, so it neither frames nor visually narrows the reading column. */
-:root:not([data-theme="light"]) .brand-profile {
-  border-color: rgba(86, 184, 213, 0.32) !important;
-}
-
+/* On phones both cards go full-bleed edge-to-edge, same as the other
+   modules' heading + field cards do at this width — no frame, no corner
+   cut, just padding to keep the text off the viewport edge. (The old
+   "restrained blue outline" this used to carve out of a single fused
+   .brand-profile shell is gone now that the border lives on the head/
+   body cards themselves — see their base rules above.) */
 @media (max-width: 820px) {
-  :root:not([data-theme="light"]) .brand-profile {
+  .brand-profile-head,
+  .brand-profile-body {
     box-sizing: border-box;
     width: 100vw;
     max-width: none;
     margin-left: calc(50% - 50vw);
     margin-right: calc(50% - 50vw);
-    border: 0 !important;
+    border: 0;
     border-radius: 0;
-    box-shadow: none !important;
-  }
-
-  :root:not([data-theme="light"]) .brand-profile-head,
-  :root:not([data-theme="light"]) .brand-profile-body {
+    box-shadow: none;
     padding-left: clamp(20px, 5vw, 28px);
     padding-right: clamp(20px, 5vw, 28px);
+  }
+
+  .brand-profile-head {
+    margin-bottom: 12px;
   }
 }

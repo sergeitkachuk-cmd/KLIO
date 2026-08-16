@@ -1,13 +1,24 @@
 /* One-time versioned stylesheet for clients that cached an older stable
-   Turbopack CSS chunk. Keep only high-priority workspace overrides here. */
-:root:not([data-theme="light"]) .brand-profile {
-  border-color: rgba(86, 184, 213, 0.32) !important;
-  box-shadow: 0 28px 82px rgba(3, 17, 34, 0.22) !important;
-}
-
+   Turbopack CSS chunk. Keep only high-priority workspace overrides here.
+   Mirrors app/globals.css's .result-head-actions / .brand-profile rules
+   1:1 — see that file for the reasoning behind each value. Both files
+   must move together: a client stuck on a stale Turbopack chunk only
+   ever sees this one, so a fix that lands only in globals.css is
+   invisible to exactly the clients this file exists to reach. */
 @media (max-width: 720px) {
+  .result-head {
+    flex-wrap: wrap !important;
+  }
+
+  /* A stale bundle's .result-head > div (≤700px breakpoint) also matches
+     this element — it's a direct child div of .result-head too — and
+     sets flex-direction: column there. flex-direction has no !important
+     in that stale rule, so this alone would already win on importance,
+     but stating it explicitly keeps this override readable on its own
+     rather than relying on that fact staying true forever. */
   .result-head-actions {
     display: flex !important;
+    flex-direction: row !important;
     flex-wrap: nowrap !important;
     align-items: stretch !important;
     width: 100% !important;
@@ -32,8 +43,44 @@
   }
 }
 
+/* .brand-profile is a plain layout wrapper now — no border/background of
+   its own — so a stale client must have that forced too, not just the
+   head/body cards, or it keeps painting the old fused-card frame this
+   whole pass removes. */
+.brand-profile {
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.brand-profile-head,
+.brand-profile-body {
+  border: 1px solid rgba(255, 255, 255, 0.17) !important;
+  border-radius: 4px 38px 4px 4px !important;
+}
+
+.brand-profile-head {
+  border-left: 4px solid var(--module-accent, #7450bd) !important;
+  margin-bottom: 20px !important;
+}
+
+.brand-profile:not(.is-open) .brand-profile-head {
+  border-color: rgba(92, 65, 156, 0.2) !important;
+  border-left: 4px solid #8a65cf !important;
+  margin-bottom: 0 !important;
+}
+
+[data-theme="light"] .brand-profile-head,
+[data-theme="light"] .brand-profile-body {
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+
 @media (max-width: 820px) {
-  :root:not([data-theme="light"]) .brand-profile {
+  .brand-profile-head,
+  .brand-profile-body {
     box-sizing: border-box !important;
     width: 100vw !important;
     max-width: none !important;
@@ -42,12 +89,12 @@
     border: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
-  }
-
-  :root:not([data-theme="light"]) .brand-profile-head,
-  :root:not([data-theme="light"]) .brand-profile-body {
     padding-left: clamp(20px, 5vw, 28px) !important;
     padding-right: clamp(20px, 5vw, 28px) !important;
+  }
+
+  .brand-profile-head {
+    margin-bottom: 12px !important;
   }
 
   .workspace-sidebar {
