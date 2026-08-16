@@ -1373,6 +1373,33 @@ function AutoTextarea({ value, className, onInput, ...props }: AutoTextareaProps
     return () => window.removeEventListener("resize", resize);
   }, []);
 
+  // `window.resize` does not fire when a field changes width because its
+  // parent panel opens, a grid column changes, or the mobile bottom bar
+  // changes the available space. The same text can wrap to a different
+  // number of lines in all of those cases, so observe its container too.
+  // Only react to width changes: this avoids an observer loop caused by our
+  // own height update while still covering desktop and mobile reflows.
+  useEffect(() => {
+    const textarea = fieldRef.current;
+    const container = textarea?.parentElement;
+    if (!textarea || !container || typeof ResizeObserver === "undefined") return;
+
+    let previousWidth = container.getBoundingClientRect().width;
+    let frame = 0;
+    const observer = new ResizeObserver(([entry]) => {
+      const width = entry?.contentRect.width ?? container.getBoundingClientRect().width;
+      if (Math.abs(width - previousWidth) < 0.5) return;
+      previousWidth = width;
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => resizeTextarea(textarea));
+    });
+    observer.observe(container);
+    return () => {
+      observer.disconnect();
+      window.cancelAnimationFrame(frame);
+    };
+  }, []);
+
   return <textarea
     {...props}
     ref={fieldRef}
