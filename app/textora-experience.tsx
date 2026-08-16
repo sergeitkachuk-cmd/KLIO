@@ -4163,10 +4163,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           <div className="workspace-project brand-project-switcher">
             <span>Активный бренд</span>
             <div className={`brand-menu ${brandMenuOpen ? "is-open" : ""}`} ref={brandPickerRef}>
-              <button className="brand-menu-trigger" type="button" onClick={() => setBrandMenuOpen((value) => !value)} disabled={brandSwitchBusy} aria-haspopup="listbox" aria-expanded={brandMenuOpen}>
-                <i>{(activeWorkspaceBrand?.name || brand.name || "К").trim().charAt(0).toLocaleUpperCase("ru-RU")}</i>
-                <span><b>{activeWorkspaceBrand?.name || brand.name || "Выберите бренд"}</b><small>{activeWorkspaceBrand?.website || "Профиль компании"}</small></span>
-                <em>⌄</em>
+              <button className="brand-menu-trigger" type="button" onClick={() => workspaceBrands.length ? setBrandMenuOpen((value) => !value) : setBrandCreatorOpen(true)} disabled={brandSwitchBusy} aria-haspopup={workspaceBrands.length ? "listbox" : undefined} aria-expanded={workspaceBrands.length ? brandMenuOpen : undefined}>
+                <i>{workspaceBrands.length ? (activeWorkspaceBrand?.name || brand.name || "К").trim().charAt(0).toLocaleUpperCase("ru-RU") : "+"}</i>
+                <span><b>{workspaceBrands.length ? (activeWorkspaceBrand?.name || brand.name || "Выберите бренд") : "Добавить первый бренд"}</b><small>{workspaceBrands.length ? (activeWorkspaceBrand?.website || "Профиль компании") : "Создайте профиль компании"}</small></span>
+                <em>{workspaceBrands.length ? "⌄" : "→"}</em>
               </button>
               {brandMenuOpen && <div className="brand-menu-list" role="listbox" aria-label="Выбор бренда">
                 {workspaceBrands.map((item) => <button type="button" role="option" aria-selected={item.id === activeBrandId} className={item.id === activeBrandId ? "active" : ""} onClick={() => void switchWorkspaceBrand(item.id)} key={item.id}>
@@ -4174,10 +4174,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <span><b>{item.name}</b><small>{item.website || "Профиль без сайта"}</small></span>
                   <em>{item.id === activeBrandId ? "✓" : ""}</em>
                 </button>)}
+                <button type="button" className="brand-menu-add" onClick={() => { setBrandMenuOpen(false); setBrandCreatorOpen(true); }} disabled={workspaceBrands.length >= workspaceAccount.brandLimit || brandSwitchBusy}>
+                  <i>+</i><span><b>Добавить бренд</b><small>{workspaceBrands.length} из {workspaceAccount.brandLimit} доступно</small></span><em>→</em>
+                </button>
               </div>}
             </div>
             <small>{workspaceBrands.length} из {workspaceAccount.brandLimit} брендов · данные раздельны</small>
-            <button type="button" onClick={() => setBrandCreatorOpen((value) => !value)} disabled={workspaceBrands.length >= workspaceAccount.brandLimit || brandSwitchBusy}>+ Добавить бренд</button>
             {brandCreatorOpen && <div className="brand-create-form"><input value={newBrandName} onChange={(event) => setNewBrandName(event.target.value)} placeholder="Название бренда" autoFocus autoComplete="off"/><button type="button" onClick={() => void createWorkspaceBrand()}>Создать</button></div>}
           </div>
           <nav aria-label="Рабочие модули">
@@ -4196,23 +4198,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           <div className="workspace-heading">
             <div><p>Рабочее пространство / выпуск 01</p><h1>Редакционная система<span className="klio-mark-dot">.</span></h1><span>Ваше рабочее пространство с инструментами КЛИО — от первого черновика до готовой публикации.</span></div>
             <div className="workspace-heading-status">
-              {/* Compact single line + dot, no subtitle - a subtitle here
-                  used to repeat the brand name a third time (sidebar
-                  switcher, the pill below, and this), which read as
-                  clutter. The error string still surfaces as the line's
-                  own text when there is one, so nothing gets lost. */}
-              <div className={`workspace-status ${workspaceDataError ? "has-error" : workspaceReady && !workspaceSaving ? "is-saved" : ""}`}><i/><b>{workspaceDataError || (!workspaceReady ? "Загружаем кабинет" : workspaceSaving ? "Сохраняем изменения" : "Все изменения сохранены")}</b></div>
-              {/* Профиль бренда переехал на отдельную вкладку и больше не
-                  виден по умолчанию на других модулях — этот индикатор
-                  держит на виду единственное, что реально важно знать из
-                  любого места кабинета: используется ли сейчас бренд-голос
-                  и на скольких брифах он реально заполнен. */}
+              {(workspaceDataError || !workspaceReady || workspaceSaving) && <div className={`workspace-status ${workspaceDataError ? "has-error" : ""}`}><i/><b>{workspaceDataError || (!workspaceReady ? "Загружаем кабинет" : "Сохраняем изменения")}</b></div>}
               <div className={`workspace-brand-pill ${useBrand ? "is-on" : "is-off"}`}>
                 <button type="button" className="workspace-brand-pill-info" onClick={() => openModule("brand")}>
-                  <i>{(activeWorkspaceBrand?.name || brand.name || "К").trim().charAt(0).toLocaleUpperCase("ru-RU")}</i>
                   <span>
-                    <b>{activeWorkspaceBrand?.name || brand.name || "Бренд не выбран"}</b>
-                    <small>{useBrand ? (generatorBrandReady ? `Профиль активен · заполнен на ${brandScore}%` : "Профиль включён · заполните карточку") : "Профиль отключён в этой сессии"}</small>
+                    <b>Профиль бренда</b>
+                    <small>{useBrand ? (generatorBrandReady ? `Включён · заполнен на ${brandScore}%` : "Включён · заполните карточку") : "Выключен в этой сессии"}</small>
                   </span>
                 </button>
                 <label className="brand-switch workspace-brand-pill-switch" title={useBrand ? "Отключить профиль бренда" : "Включить профиль бренда"}>
