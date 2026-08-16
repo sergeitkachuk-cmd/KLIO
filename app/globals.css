@@ -19624,3 +19624,51 @@ footer nav a {
     display: none;
   }
 }
+
+/* Light mode uses one cool-blue surface family. The older violet radial on
+   the workspace canvas made the whole overview look pink, especially on a
+   phone where the canvas occupies most of the first screen. */
+[data-theme="light"] .workspace-shell {
+  background:
+    radial-gradient(900px 620px at 91% 8%, rgba(53, 104, 212, 0.1), transparent 68%),
+    linear-gradient(180deg, #f7f9fd 0%, #edf3fb 100%);
+}
+
+[data-theme="light"] .workspace-sidebar nav a[href="#start"] {
+  --module-accent: #2452b8;
+}
+
+@media (max-width: 820px) {
+  /* The bottom module navigation inherited the dark-mode dock but its light
+     labels, producing pale, low-contrast buttons on a navy strip. Make it a
+     clear light dock with calm blue controls instead. */
+  [data-theme="light"] .workspace-sidebar nav {
+    border-top-color: rgba(36, 82, 184, 0.18);
+    background: rgba(238, 244, 252, 0.96);
+    box-shadow: 0 -12px 28px rgba(34, 73, 126, 0.14);
+  }
+
+  [data-theme="light"] .workspace-sidebar nav a {
+    border-color: rgba(36, 82, 184, 0.38);
+    color: #173b85;
+    background: linear-gradient(135deg, #f8fbff, #dbe8f8);
+    box-shadow: inset 0 1px rgba(255, 255, 255, 0.92), 0 3px 8px rgba(36, 82, 184, 0.1);
+  }
+
+  [data-theme="light"] .workspace-sidebar nav b,
+  [data-theme="light"] .workspace-sidebar nav i {
+    color: #173b85;
+  }
+
+  [data-theme="light"] .workspace-sidebar nav a.active {
+    border-color: #2452b8;
+    color: #fff;
+    background: linear-gradient(135deg, #3568d4, #2452b8);
+    box-shadow: inset 0 1px rgba(255, 255, 255, 0.28), 0 5px 12px rgba(36, 82, 184, 0.25);
+  }
+
+  [data-theme="light"] .workspace-sidebar nav a.active b,
+  [data-theme="light"] .workspace-sidebar nav a.active i {
+    color: #fff;
+  }
+}
