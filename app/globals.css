@@ -7,6 +7,15 @@
 html {
   scroll-behavior: smooth;
   scroll-padding-top: 94px;
+  /* Reserves the vertical scrollbar's track permanently instead of only
+     when a page is tall enough to need one. Without this, .workspace-content
+     (centered via margin: 0 auto, width: min(100%, 1520px)) recenters
+     itself a few px sideways every time the scrollbar toggles on/off -
+     which happens per-module here, since each one shows/hides its own
+     content via display:none and so changes the page's total height.
+     That's what made every module's heading start at a slightly different
+     left edge depending on which one happened to be open. */
+  scrollbar-gutter: stable;
 }
 
 body {

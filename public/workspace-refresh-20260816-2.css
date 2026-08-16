@@ -5,6 +5,10 @@
    must move together: a client stuck on a stale Turbopack chunk only
    ever sees this one, so a fix that lands only in globals.css is
    invisible to exactly the clients this file exists to reach. */
+html {
+  scrollbar-gutter: stable !important;
+}
+
 @media (max-width: 720px) {
   .result-head {
     flex-wrap: wrap !important;
