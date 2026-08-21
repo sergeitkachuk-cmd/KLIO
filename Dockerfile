@@ -21,9 +21,4 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 
 EXPOSE 3000
-# App Platform evaluates the container health status before publishing it.
-# A TCP probe is intentionally independent of Next.js routing, the database,
-# and AI-provider environment variables; it only succeeds once the server is
-# actually listening on the exposed port.
-HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=6 CMD node -e "const socket = require('net').connect(3000, '127.0.0.1'); socket.on('connect', () => { socket.end(); process.exit(0); }); socket.on('error', () => process.exit(1));"
 CMD ["npm", "start"]
