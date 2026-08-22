@@ -4105,6 +4105,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         body: JSON.stringify({ planId: selected.planId, mode, billing: annual ? "annual" : "monthly" }),
       });
       const payload = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        const returnTo = `${window.location.pathname}${window.location.search}#pricing`;
+        window.location.assign(`/login?return_to=${encodeURIComponent(returnTo)}`);
+        return;
+      }
       if (!response.ok || !payload.paymentUrl) throw new Error(payload.error || "Не удалось создать ссылку на оплату.");
       window.location.assign(payload.paymentUrl);
     } catch (error) {

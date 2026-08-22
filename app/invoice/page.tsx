@@ -38,6 +38,11 @@ function InvoiceForm() {
     try {
       const response = await fetch("/api/payments/tochka/invoice", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ planId, billing, buyer: { ...form, type } }) });
       const payload = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        const returnTo = `${window.location.pathname}${window.location.search}`;
+        window.location.assign(`/login?return_to=${encodeURIComponent(returnTo)}`);
+        return;
+      }
       if (!response.ok || !payload.invoiceUrl) throw new Error(payload.error || "Не удалось создать счёт.");
       setResult({ invoiceUrl: payload.invoiceUrl, amount: payload.amount });
     } catch (caught) { setError(caught instanceof Error ? caught.message : "Не удалось создать счёт."); }
