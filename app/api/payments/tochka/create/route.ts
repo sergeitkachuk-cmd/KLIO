@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     };
     const response = await tochkaRequest<unknown>("/acquiring/v1.0/payments", {
       method: "POST",
-      body: JSON.stringify({ Data: { Operation: [operation] } }),
+      body: JSON.stringify({ Data: operation }),
     });
     const paymentUrl = extractPaymentUrl(response);
     if (!paymentUrl) throw new Error("Точка не вернула ссылку на оплату.");
