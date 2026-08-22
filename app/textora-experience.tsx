@@ -1563,6 +1563,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [generationError, setGenerationError] = useState("");
   const [toast, setToast] = useState("");
   const [annual, setAnnual] = useState(false);
+  const [paymentTermsAccepted, setPaymentTermsAccepted] = useState(false);
+  const [paymentMarketingAccepted, setPaymentMarketingAccepted] = useState(false);
   const [metricsVisible, setMetricsVisible] = useState(workspace);
   const [metricsReplay, setMetricsReplay] = useState(0);
   const [adaptationSource, setAdaptationSource] = useState(workspace ? "" : defaultAdaptationSource);
@@ -4092,6 +4094,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   async function choosePlan(name: string, mode: "sbp" | "card" = "sbp") {
     const selected = pricing.find((plan) => plan.name === name);
     if (!selected) return;
+    if (!paymentTermsAccepted) {
+      showToast("Перед оплатой подтвердите оферту и политику обработки данных.");
+      return;
+    }
     try {
       const response = await fetch("/api/payments/tochka/create", {
         method: "POST",
@@ -5093,7 +5099,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
     <section className="pricing section" id="pricing">
       <div className="section-heading pricing-heading"><div><p className="kicker">Глава 04 / Тарифы</p><h2>Выберите объём<br/><em>редакционной работы<span className="klio-mark-dot">.</span></em></h2></div><div className="billing-toggle" role="group" aria-label="Период оплаты"><button type="button" className={!annual ? "active" : ""} onClick={() => setAnnual(false)}>Ежемесячно</button><button type="button" className={annual ? "active" : ""} onClick={() => setAnnual(true)}>За год <span>−20%</span></button></div></div>
-      <div className="price-grid">{pricing.map((plan) => <article className={`price-card ${plan.popular ? "popular" : ""}`} key={plan.name}>{plan.popular && <span className="popular-label">Полный доступ</span>}<p className="price-index">КЛИО / {plan.name}</p><h3>{plan.name}</h3><p className="price-description">{plan.description}</p><div className="price"><strong>{(annual ? plan.yearly : plan.monthly).toLocaleString("ru-RU")} ₽</strong><span>/ месяц</span></div><small>{annual ? "при оплате за 12 месяцев" : "оплата помесячно"}</small><b className="plan-limit">{plan.limit}</b><ul>{plan.features.map((feature) => <li key={feature}><Icon name="check"/>{feature}</li>)}</ul><div className="payment-actions"><button className={`button ${plan.popular ? "primary" : "outline"}`} type="button" onClick={() => choosePlan(plan.name, "sbp")}>Оплатить через СБП</button><button className="payment-card-button" type="button" onClick={() => choosePlan(plan.name, "card")}>Оплатить картой</button></div></article>)}</div>
+      <div className="price-grid">{pricing.map((plan) => <article className={`price-card ${plan.popular ? "popular" : ""}`} key={plan.name}>{plan.popular && <span className="popular-label">Полный доступ</span>}<p className="price-index">КЛИО / {plan.name}</p><h3>{plan.name}</h3><p className="price-description">{plan.description}</p><div className="price"><strong>{(annual ? plan.yearly : plan.monthly).toLocaleString("ru-RU")} ₽</strong><span>/ месяц</span></div><small>{annual ? "при оплате за 12 месяцев" : "оплата помесячно"}</small><b className="plan-limit">{plan.limit}</b><ul>{plan.features.map((feature) => <li key={feature}><Icon name="check"/>{feature}</li>)}</ul><div className="payment-consents"><label><input type="checkbox" checked={paymentTermsAccepted} onChange={(event) => setPaymentTermsAccepted(event.target.checked)}/><span>Соглашаюсь с <a href="/legal/offer">Публичной офертой</a> и <a href="/legal/privacy">Политикой обработки персональных данных</a>.</span></label><label><input type="checkbox" checked={paymentMarketingAccepted} onChange={(event) => setPaymentMarketingAccepted(event.target.checked)}/><span>Хочу получать новости и полезные материалы КЛИО.</span></label></div><div className="payment-actions"><button className={`button ${plan.popular ? "primary" : "outline"}`} type="button" disabled={!paymentTermsAccepted} onClick={() => choosePlan(plan.name, "sbp")}>Оплатить через СБП</button><button className="payment-card-button" type="button" disabled={!paymentTermsAccepted} onClick={() => choosePlan(plan.name, "card")}>Оплатить картой</button></div></article>)}</div>
       <div className="payment-note"><span>МИР</span><span>СБП</span><span>₽</span><p>Оплата российскими картами и по СБП · документы для юридических лиц</p></div>
     </section>
 
