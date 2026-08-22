@@ -30,7 +30,9 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
   start: {
     id: "start",
     name: "Старт",
-    generationLimit: 20,
+    // A full content plan contains 25 publication slots. The entry plan must
+    // let a customer actually generate the whole first plan for one brand.
+    generationLimit: 25,
     researchLimit: 5,
     editorActionLimit: 100,
     brandLimit: 1,
