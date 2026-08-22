@@ -1,6 +1,49 @@
+import { createPublicKey, createVerify, type JsonWebKey as NodeJsonWebKey } from "node:crypto";
+
 const TOCHKA_BASE_URL = "https://enter.tochka.com/uapi";
+const TOCHKA_WEBHOOK_KEY_URL = "https://enter.tochka.com/doc/openapi/static/keys/public";
 
 export class TochkaConfigError extends Error {}
+
+type TochkaWebhookClaims = Record<string, unknown>;
+
+let webhookKeyPromise: Promise<NodeJsonWebKey> | undefined;
+
+async function webhookKey() {
+  webhookKeyPromise ??= fetch(TOCHKA_WEBHOOK_KEY_URL, { cache: "no-store" })
+    .then(async (response) => {
+      if (!response.ok) throw new Error(`Tochka public key request failed (${response.status}).`);
+      const value = await response.json() as NodeJsonWebKey | { keys?: NodeJsonWebKey[] };
+      return "keys" in value && Array.isArray(value.keys) ? value.keys[0] : value as NodeJsonWebKey;
+    });
+  return webhookKeyPromise;
+}
+
+function decodeBase64Url(value: string) {
+  return Buffer.from(value.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
+}
+
+export async function verifyTochkaWebhook(raw: string): Promise<TochkaWebhookClaims | null> {
+  const parts = raw.trim().split(".");
+  if (parts.length !== 3) return null;
+  let header: Record<string, unknown>;
+  let claims: TochkaWebhookClaims;
+  try {
+    header = JSON.parse(decodeBase64Url(parts[0])) as Record<string, unknown>;
+    claims = JSON.parse(decodeBase64Url(parts[1])) as TochkaWebhookClaims;
+  } catch {
+    return null;
+  }
+  if (header.alg !== "RS256") return null;
+  const key = await webhookKey();
+  const verifier = createVerify("RSA-SHA256");
+  verifier.update(`${parts[0]}.${parts[1]}`);
+  verifier.end();
+  const publicKey = createPublicKey({ key, format: "jwk" });
+  if (!verifier.verify(publicKey, Buffer.from(parts[2].replace(/-/g, "+").replace(/_/g, "/"), "base64"))) return null;
+  if (typeof claims.exp === "number" && claims.exp < Math.floor(Date.now() / 1000)) return null;
+  return claims;
+}
 
 function credentials() {
   const token = process.env.TOCHKA_JWT_TOKEN?.trim();

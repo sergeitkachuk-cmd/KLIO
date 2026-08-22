@@ -26,6 +26,25 @@ export const accounts = pgTable("accounts", {
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Payment links are persisted before they are sent to Tochka. The payment
+// link id is also the idempotency key used by the webhook handler.
+export const payments = pgTable("payments", {
+  id: text("id").primaryKey(),
+  ownerEmail: text("owner_email").notNull(),
+  planId: text("plan_id").notNull(),
+  billing: text("billing").notNull(),
+  mode: text("mode").notNull(),
+  amountKopecks: integer("amount_kopecks").notNull(),
+  status: text("status").notNull().default("pending"),
+  operationId: text("operation_id"),
+  paidAt: text("paid_at"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  index("payments_owner_created_idx").on(table.ownerEmail, table.createdAt),
+  index("payments_status_idx").on(table.status, table.createdAt),
+]);
+
 export const sessions = pgTable("sessions", {
   // sha256 hex digest of the raw session token — the raw token only ever
   // lives in the visitor's cookie, never in the database.

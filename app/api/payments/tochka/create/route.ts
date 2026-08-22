@@ -1,6 +1,9 @@
-import { workspaceIdentity, WorkspaceAccessError } from "../../../_lib/workspace-account";
+﻿import { workspaceIdentity, WorkspaceAccessError } from "../../../_lib/workspace-account";
 import { discoverTochkaIds, extractPaymentUrl, tochkaRequest, TochkaConfigError } from "../../../_lib/tochka";
 import { isPlanId, type PlanId } from "../../../../plans";
+import { payments } from "../../../../../db/schema";
+import { ensureAccount } from "../../../_lib/workspace-account";
+import { getWorkspaceDb } from "../../../_lib/workspace-account";
 
 const PRICES: Record<Exclude<PlanId, "trial">, { monthly: number; yearly: number; name: string }> = {
   start: { monthly: 1190, yearly: 950, name: "Старт" },
@@ -10,7 +13,8 @@ const PRICES: Record<Exclude<PlanId, "trial">, { monthly: number; yearly: number
 
 export async function POST(request: Request) {
   try {
-    await workspaceIdentity();
+    const user = await workspaceIdentity();
+    await ensureAccount(user);
     const input = await request.json().catch(() => ({}));
     const planId = input?.planId as PlanId;
     const mode = input?.mode === "card" ? "card" : "sbp";
@@ -21,6 +25,15 @@ export async function POST(request: Request) {
     const { customerCode, merchantId } = await discoverTochkaIds();
     const baseUrl = process.env.APP_BASE_URL?.trim() || new URL(request.url).origin;
     const paymentLinkId = `klio-${planId}-${crypto.randomUUID()}`.slice(0, 45);
+    const db = await getWorkspaceDb();
+    await db.insert(payments).values({
+      id: paymentLinkId,
+      ownerEmail: user.email,
+      planId,
+      billing,
+      mode,
+      amountKopecks: amount * 100,
+    });
     const operation = {
       amount,
       purpose: `КЛИО: тариф «${price.name}», ${billing === "annual" ? "годовая" : "месячная"} оплата`,
@@ -30,6 +43,7 @@ export async function POST(request: Request) {
       paymentLinkId,
       redirectUrl: `${baseUrl}/account?payment=success`,
       failRedirectUrl: `${baseUrl}/account?payment=failed`,
+      callbackUrl: `${baseUrl}/api/payments/tochka/webhook`,
       ttl: 10080,
     };
     const response = await tochkaRequest<unknown>("/acquiring/v1.0/payments", {
