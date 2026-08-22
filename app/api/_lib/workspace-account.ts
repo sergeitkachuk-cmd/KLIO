@@ -289,6 +289,8 @@ export function workspaceErrorResponse(error: unknown) {
   if (/does not exist|DATABASE_URL/i.test(message)) {
     return Response.json({ error: "Хранилище кабинета ещё не подготовлено. Повторите попытку после обновления сайта." }, { status: 503 });
   }
-  console.error("Workspace persistence failed", error);
+  // Do not log the complete database connection error: postgres may include
+  // DATABASE_URL (including its password) in the error object.
+  console.error("Workspace persistence failed", error instanceof Error ? error.message : "unknown error");
   return Response.json({ error: "Не удалось сохранить данные кабинета." }, { status: 500 });
 }
