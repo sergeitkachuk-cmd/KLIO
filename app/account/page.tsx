@@ -4,6 +4,7 @@ import { requireCurrentUser } from "../identity";
 import { getDb } from "../../db";
 import { brands } from "../../db/schema";
 import { accountSummary, ensureAccount, workspaceDatabaseAvailable } from "../api/_lib/workspace-account";
+import BillingActions from "./billing-actions";
 
 export const metadata = { title: "КЛИО / Личный кабинет" };
 
@@ -60,7 +61,7 @@ export default async function AccountPage() {
         <section className="account-card account-plan-card">
           <div className="account-plan-head">
             <div><span>Текущий тариф</span><h2>{summary.planName}</h2><small>1 пользователь на всех тарифах · лимиты обновляются ежемесячно</small></div>
-            <Link className="account-upgrade" href="/#pricing">Сравнить тарифы</Link>
+            <a className="account-upgrade" href="#billing">Выбрать тариф</a>
           </div>
           <div className="account-progress-grid">
             <Progress label="Материалы" used={summary.generationsUsed} remaining={summary.generationsRemaining} limit={summary.generationLimit} />
@@ -68,6 +69,13 @@ export default async function AccountPage() {
             <Progress label="AI‑редактура" used={summary.editorActionsUsed} remaining={summary.editorActionsRemaining} limit={summary.editorActionLimit} />
           </div>
           <small className="account-plan-note">Брендов подключено: {summary.brandCount} из {summary.brandLimit}. Нужен другой тариф или больше лимитов раньше конца месяца — напишите нам, оплата и смена тарифа пока оформляются вручную.</small>
+        </section>
+
+        <section className="account-card account-billing-card" id="billing">
+          <span>Платный доступ</span>
+          <h2>Выберите тариф и способ оплаты</h2>
+          <p className="account-billing-lead">Оплата открывается из личного кабинета и привязывается к вашему аккаунту. СБП — быстрый способ, карта также доступна.</p>
+          <BillingActions />
         </section>
 
         <section className="account-card">
@@ -106,6 +114,21 @@ function AccountStyles() {
       .account-plan-head small { color: rgba(255,255,255,0.55); font-size: 14px; }
       .account-upgrade { flex-shrink: 0; padding: 11px 18px; border-radius: 999px; color: var(--night); font-size: 15px; font-weight: 700; text-decoration: none; background: var(--acid); }
       .account-upgrade:hover { opacity: 0.88; }
+      .account-billing-card h2 { margin: 0 0 8px; font-size: 28px; }
+      .account-billing-lead { max-width: 620px; margin: 0 0 22px; color: rgba(255,255,255,0.62); line-height: 1.55; }
+      .account-billing-selects { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      .account-billing-selects label { display: grid; gap: 7px; color: rgba(255,255,255,0.62); font-size: 13px; font-weight: 700; }
+      .account-billing-selects select { min-height: 48px; padding: 0 13px; border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; background: rgba(3,14,29,0.3); color: #fff; font: inherit; }
+      .account-billing-consent { display: flex; align-items: flex-start; gap: 9px; margin: 18px 0; color: rgba(255,255,255,0.6); font-size: 13px; line-height: 1.45; }
+      .account-billing-consent input { margin-top: 3px; accent-color: var(--acid); }
+      .account-billing-consent a, .account-billing-buttons a { color: var(--acid); }
+      .account-billing-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+      .account-billing-buttons button, .account-billing-buttons a { min-height: 46px; padding: 0 16px; border: 0; border-radius: 999px; font: inherit; font-weight: 750; text-decoration: none; cursor: pointer; }
+      .account-billing-buttons button { background: var(--acid); color: var(--night); }
+      .account-billing-buttons button + button { background: rgba(255,255,255,0.12); color: #fff; }
+      .account-billing-buttons button:disabled { opacity: .5; cursor: not-allowed; }
+      .account-billing-buttons a { display: inline-flex; align-items: center; border: 1px solid rgba(255,255,255,0.22); }
+      .account-billing-error { margin: 14px 0 0; color: #ff9aa6; font-weight: 700; }
       .account-progress-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px; margin-bottom: 18px; }
       .account-progress > div { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
       .account-progress span { color: rgba(255,255,255,0.62); font-size: 14px; }
@@ -139,6 +162,10 @@ function AccountStyles() {
       [data-theme="light"] .account-card > span { color: #2452b8; }
       [data-theme="light"] .account-plan-head span { color: #2452b8; }
       [data-theme="light"] .account-plan-head small { color: rgba(13,27,49,0.5); }
+      [data-theme="light"] .account-billing-lead, [data-theme="light"] .account-billing-selects label, [data-theme="light"] .account-billing-consent { color: rgba(13,27,49,0.62); }
+      [data-theme="light"] .account-billing-selects select { border-color: rgba(15,23,42,0.16); background: rgba(255,255,255,0.7); color: #0d1b31; }
+      [data-theme="light"] .account-billing-buttons button + button { color: #0d1b31; background: rgba(15,23,42,0.1); }
+      [data-theme="light"] .account-billing-buttons a { border-color: rgba(15,23,42,0.18); }
       [data-theme="light"] .account-progress span { color: rgba(13,27,49,0.6); }
       [data-theme="light"] .account-progress b small { color: rgba(13,27,49,0.45); }
       [data-theme="light"] .account-progress i { background: rgba(15,23,42,0.1); }
@@ -146,6 +173,7 @@ function AccountStyles() {
       [data-theme="light"] .account-facts > div { border-bottom-color: rgba(15,23,42,0.08); }
       [data-theme="light"] .account-facts dt { color: rgba(13,27,49,0.5); }
       [data-theme="light"] .account-empty { color: rgba(13,27,49,0.55); }
+      @media (max-width: 640px) { .account-content { padding: 28px 16px 72px; } .account-billing-selects { grid-template-columns: 1fr; } .account-billing-buttons { align-items: stretch; flex-direction: column; } .account-billing-buttons button, .account-billing-buttons a { width: 100%; justify-content: center; } }
     `}</style>
   );
 }
