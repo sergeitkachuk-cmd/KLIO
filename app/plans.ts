@@ -42,7 +42,8 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
   pro: {
     id: "pro",
     name: "Профи",
-    generationLimit: 100,
+    // Five brands × one complete 25-topic content plan.
+    generationLimit: 125,
     researchLimit: 20,
     editorActionLimit: 500,
     brandLimit: 5,
