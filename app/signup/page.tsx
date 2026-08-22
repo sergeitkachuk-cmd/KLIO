@@ -90,7 +90,7 @@ export default function SignupPage() {
           <p className="auth-subtitle">Мы отправили письмо со ссылкой подтверждения на <b>{sentTo}</b>. Перейдите по ней, чтобы открыть кабинет — ссылка действует 24 часа.</p>
           {resendMessage && <p className="auth-error" style={{ color: "#d3ffd8", background: "rgba(92,255,140,0.12)", borderColor: "rgba(118,255,118,0.35)" }}>{resendMessage}</p>}
           <button className="button ghost large" type="button" onClick={() => void handleResend()} disabled={resendBusy}>{resendBusy ? "Отправляем…" : "Отправить письмо ещё раз"}</button>
-          <p className="auth-switch">Уже подтвердили? <Link href="/login">Войти</Link></p>
+          <p className="auth-switch">Уже подтвердили? <Link href={{ pathname: "/login", query: { return_to: safeReturnTo() } }}>Войти</Link></p>
         </div>
       </main>
     );
@@ -112,7 +112,7 @@ export default function SignupPage() {
           {error && <p className="auth-error">{error}</p>}
           <button className="button primary large" type="submit" disabled={busy}>{busy ? "Создаём…" : "Создать кабинет"}</button>
         </form>
-        <p className="auth-switch">Уже есть аккаунт? <Link href="/login">Войти</Link></p>
+        <p className="auth-switch">Уже есть аккаунт? <Link href={{ pathname: "/login", query: { return_to: safeReturnTo() } }}>Войти</Link></p>
       </div>
     </main>
   );

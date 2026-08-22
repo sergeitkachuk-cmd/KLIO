@@ -102,7 +102,7 @@ export default function LoginPage() {
           {resendMessage && <p className="auth-error" style={{ color: "#d3ffd8", background: "rgba(92,255,140,0.12)", borderColor: "rgba(118,255,118,0.35)" }}>{resendMessage}</p>}
           <button className="button primary large" type="submit" disabled={busy}>{busy ? "Входим…" : "Войти"}</button>
         </form>
-        <p className="auth-switch">Нет аккаунта? <Link href="/signup">Зарегистрироваться</Link></p>
+        <p className="auth-switch">Нет аккаунта? <Link href={{ pathname: "/signup", query: { return_to: safeReturnTo() } }}>Зарегистрироваться</Link></p>
       </div>
     </main>
   );
