@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 
 function safeReturnTo(): string {
+  if (typeof window === "undefined") return "/workspace";
   const target = new URLSearchParams(window.location.search).get("return_to");
   if (target && target.startsWith("/") && !target.startsWith("//")) return target;
   return "/workspace";
