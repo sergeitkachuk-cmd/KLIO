@@ -3710,6 +3710,31 @@ textarea[data-autosize="true"] {
   margin-top: auto;
 }
 
+.payment-actions {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.payment-actions .button { margin-top: 0; }
+
+.payment-card-button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px;
+}
+
+.payment-card-button:hover { color: var(--ink); }
+.popular .payment-card-button:hover { color: #fff; }
+.payment-card-button:disabled { cursor: wait; opacity: .6; }
+
 .payment-note {
   display: flex;
   align-items: center;

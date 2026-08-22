@@ -4084,9 +4084,26 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     showToast("Адаптированная версия скопирована");
   }
 
-  function choosePlan(name: string) {
+  function legacyChoosePlan(name: string) {
     showToast(`Выбран тариф «${name}»`);
     window.location.assign("/workspace");
+  }
+
+  async function choosePlan(name: string, mode: "sbp" | "card" = "sbp") {
+    const selected = pricing.find((plan) => plan.name === name);
+    if (!selected) return;
+    try {
+      const response = await fetch("/api/payments/tochka/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId: selected.planId, mode, billing: annual ? "annual" : "monthly" }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.paymentUrl) throw new Error(payload.error || "Не удалось создать ссылку на оплату.");
+      window.location.assign(payload.paymentUrl);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Не удалось открыть оплату.");
+    }
   }
 
   function openLandingModule(number: string) {
