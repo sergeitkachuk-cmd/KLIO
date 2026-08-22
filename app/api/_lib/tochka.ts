@@ -105,8 +105,11 @@ function findRetailerId(value: unknown): string | undefined {
   if (!value || typeof value !== "object") return undefined;
   if (Array.isArray(value)) return value.map(findRetailerId).find(Boolean);
   const record = value as Record<string, unknown>;
+  const merchantId = typeof record.merchantId === "number" && Number.isInteger(record.merchantId)
+    ? String(record.merchantId)
+    : typeof record.merchantId === "string" ? record.merchantId : undefined;
   const active = record.isActive === true || record.isActive === "true" || record.isActive === "TRUE";
-  if (String(record.status ?? "").toUpperCase() === "REG" && active && typeof record.merchantId === "string") return record.merchantId;
+  if (String(record.status ?? "").toUpperCase() === "REG" && active && merchantId) return merchantId;
   for (const item of Object.values(record)) {
     const nested = findRetailerId(item);
     if (nested) return nested;
@@ -114,7 +117,7 @@ function findRetailerId(value: unknown): string | undefined {
   // Some API responses omit the status fields on the retailer wrapper. If the
   // acquiring application has already been approved, its merchantId is still
   // the identifier required by Create Payment Operation.
-  if (typeof record.merchantId === "string" && /^\d{8,}$/.test(record.merchantId)) return record.merchantId;
+  if (merchantId && /^\d{8,}$/.test(merchantId)) return merchantId;
   return undefined;
 }
 
