@@ -138,7 +138,10 @@ export async function tochkaRequest<T>(path: string, init: RequestInit = {}) {
   if (!response.ok) {
     const message = body && typeof body === "object" && "message" in body && typeof body.message === "string"
       ? body.message : `Точка вернула ошибку ${response.status} для ${path}.`;
-    throw new Error(`Tochka API ${response.status} for ${path}: ${message}`);
+    const details = body && typeof body === "object" && "Errors" in body && Array.isArray(body.Errors)
+      ? (body.Errors as unknown[]).map((item) => item && typeof item === "object" && "message" in item && typeof item.message === "string" ? item.message : "").filter(Boolean).join("; ")
+      : "";
+    throw new Error(`Tochka API ${response.status} for ${path}: ${details || message}`);
   }
   return body as T;
 }
