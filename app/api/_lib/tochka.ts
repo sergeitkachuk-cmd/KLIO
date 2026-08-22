@@ -67,7 +67,7 @@ export async function discoverTochkaIds() {
   let customerCode = configured.customerCode;
   if (!customerCode) {
     const customers = await tochkaRequest<unknown>("/customers");
-    customerCode = findString(customers, "customerCode");
+    customerCode = findBusinessCustomerCode(customers) || findString(customers, "customerCode");
   }
   if (!customerCode) throw new TochkaConfigError("Точка не вернула customerCode вашей компании.");
   let merchantId = configured.merchantId;
@@ -76,6 +76,18 @@ export async function discoverTochkaIds() {
     merchantId = findRetailerId(retailers);
   }
   return { customerCode, merchantId };
+}
+
+function findBusinessCustomerCode(value: unknown): string | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  if (Array.isArray(value)) return value.map(findBusinessCustomerCode).find(Boolean);
+  const record = value as Record<string, unknown>;
+  if (record.customerType === "Business" && typeof record.customerCode === "string") return record.customerCode;
+  for (const item of Object.values(record)) {
+    const nested = findBusinessCustomerCode(item);
+    if (nested) return nested;
+  }
+  return undefined;
 }
 
 function findString(value: unknown, key: string): string | undefined {
@@ -92,8 +104,9 @@ function findString(value: unknown, key: string): string | undefined {
 function findRetailerId(value: unknown): string | undefined {
   if (!value || typeof value !== "object") return undefined;
   if (Array.isArray(value)) return value.map(findRetailerId).find(Boolean);
-  for (const [key, item] of Object.entries(value)) {
-    if (key === "merchantId" && typeof item === "string") return item;
+  const record = value as Record<string, unknown>;
+  if (record.status === "REG" && record.isActive === true && typeof record.merchantId === "string") return record.merchantId;
+  for (const item of Object.values(record)) {
     const nested = findRetailerId(item);
     if (nested) return nested;
   }
@@ -116,7 +129,7 @@ export async function tochkaRequest<T>(path: string, init: RequestInit = {}) {
   const body = await response.json().catch(() => null);
   if (!response.ok) {
     const message = body && typeof body === "object" && "message" in body && typeof body.message === "string"
-      ? body.message : `Точка вернула ошибку ${response.status}.`;
+      ? body.message : `Точка вернула ошибку ${response.status} для ${path}.`;
     throw new Error(message);
   }
   return body as T;
