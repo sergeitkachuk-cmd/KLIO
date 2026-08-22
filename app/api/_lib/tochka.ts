@@ -130,7 +130,7 @@ export async function tochkaRequest<T>(path: string, init: RequestInit = {}) {
   if (!response.ok) {
     const message = body && typeof body === "object" && "message" in body && typeof body.message === "string"
       ? body.message : `Точка вернула ошибку ${response.status} для ${path}.`;
-    throw new Error(message);
+    throw new Error(`Tochka API ${response.status} for ${path}: ${message}`);
   }
   return body as T;
 }
