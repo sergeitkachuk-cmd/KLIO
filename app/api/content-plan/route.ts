@@ -5,6 +5,7 @@ import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, Works
 import { claimAsyncJob, failAsyncJob, markAsyncJobProcessing, completeAsyncJob, recentCompletedContentPlanTitles } from "../_lib/async-jobs";
 import { readWebsiteContext, websiteSourceLabel } from "../_lib/website-context";
 import { researchContentPlanWeb } from "../_lib/tavily";
+import { isAiRateLimited } from "../_lib/rate-limit";
 
 type SemanticInput = {
   phrase: string;
@@ -471,6 +472,7 @@ async function runContentPlanJob(jobId: string, input: ReturnType<typeof normali
 
 export async function POST(request: Request) {
   try {
+    if (isAiRateLimited(request, "content-plan", 2)) return Response.json({ error: "Слишком много запусков контент-плана подряд. Подождите минуту и повторите." }, { status: 429 });
     const raw = await request.json() as ContentPlanPayload;
     const input = normalizePayload(raw);
     if (!input.query) return Response.json({ error: "Укажите тему или заполните название и основу профиля бренда." }, { status: 400 });

@@ -16,6 +16,7 @@ import { assertGenerationQuotaAvailable, recordGeneration, workspaceIdentity, Wo
 import { AiCallError, callAiModel } from "../_lib/ai-router";
 import { aiConfigured } from "../_lib/ai-config";
 import type { AiOperation } from "../_lib/ai-config";
+import { isAiRateLimited } from "../_lib/rate-limit";
 
 type Format = ContentFormat;
 
@@ -597,6 +598,7 @@ function materialFromRecord(parsed: Record<string, unknown>): GeneratedMaterial 
 
 export async function POST(request: Request) {
   try {
+    if (isAiRateLimited(request, "generate", 4)) return Response.json({ error: "Слишком много запусков подряд. Подождите минуту и повторите." }, { status: 429 });
     const raw = (await request.json()) as GeneratePayload;
     const input = normalizePayload(raw);
 

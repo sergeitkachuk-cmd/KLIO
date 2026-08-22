@@ -197,7 +197,7 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // generate_content_plan above — same reasoning: no web search here to
   // run away with the budget, so the original ceiling was never actually
   // the problem.
-  revise_content_plan: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 12_000, structuredOutput: true, retryable: true, useWebSearch: false },
+  revise_content_plan: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 12_000, structuredOutput: true, retryable: false, useWebSearch: false },
   // Deviation from the spec's illustrative list (which puts keyword
   // extraction on nano): KLIO's semantics module does web-search-driven
   // *research* of 18-30 novel query phrases from a bare topic, not
@@ -205,9 +205,9 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // is too weak for at useful quality — verified this session: nano/mini-
   // tier models either time out on it or degrade to near-brand-only
   // phrases. Kept on Luna.
-  research_semantics: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 9_000, structuredOutput: true, retryable: true, useWebSearch: false },
-  discover_competitors: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 1_800, structuredOutput: false, retryable: true, useWebSearch: false },
-  analyze_competitors: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 9_000, structuredOutput: true, retryable: true, useWebSearch: false },
+  research_semantics: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 9_000, structuredOutput: true, retryable: false, useWebSearch: false },
+  discover_competitors: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 1_800, structuredOutput: false, retryable: false, useWebSearch: false },
+  analyze_competitors: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 9_000, structuredOutput: true, retryable: false, useWebSearch: false },
   // The correction/patch pass (missing keyword, off-target length, etc.):
   // always a small, targeted rewrite of an already-generated draft, never
   // a fresh full generation.
@@ -220,7 +220,7 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // nano. web_search stays on as a fallback for when the fetched page is
   // thin or unreadable (SPA, blocked, etc.) — the model can still ground
   // itself in public information about the company instead of guessing.
-  analyze_brand_website: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 3_500, structuredOutput: true, retryable: true, useWebSearch: false },
+  analyze_brand_website: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 3_500, structuredOutput: true, retryable: false, useWebSearch: false },
 
   normalize_quick_brief: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 800, structuredOutput: true, retryable: true, useWebSearch: false },
   validate_content: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 1_500, structuredOutput: true, retryable: true, useWebSearch: false },

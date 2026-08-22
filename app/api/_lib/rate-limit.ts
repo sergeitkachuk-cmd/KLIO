@@ -47,3 +47,10 @@ export function clientIp(request: Request): string {
   }
   return request.headers.get("x-real-ip")?.trim() || "unknown";
 }
+
+// Expensive AI operations share one small in-memory guard. It is deliberately
+// conservative: normal work remains available, while accidental double-clicks
+// and runaway browser retries cannot fan out into many billed provider calls.
+export function isAiRateLimited(request: Request, scope: string, limit: number, windowMs = 60_000): boolean {
+  return isRateLimited(`ai:${scope}:${clientIp(request)}`, limit, windowMs);
+}

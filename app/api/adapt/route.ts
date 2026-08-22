@@ -15,6 +15,7 @@ import { researchContentPlanWeb } from "../_lib/tavily";
 import { assertSecondaryQuotaAvailable, recordEditorialAction, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 import { AiCallError, callAiModel } from "../_lib/ai-router";
 import { adaptationReasoningEffort, aiConfigured } from "../_lib/ai-config";
+import { isAiRateLimited } from "../_lib/rate-limit";
 
 type AdaptationGoal = AdaptationPlan;
 
@@ -169,6 +170,7 @@ function adaptationHasViolation(input: ReturnType<typeof normalizePayload>, mate
 
 export async function POST(request: Request) {
   try {
+    if (isAiRateLimited(request, "adapt", 4)) return Response.json({ error: "Слишком много редакторских запусков подряд. Подождите минуту и повторите." }, { status: 429 });
     const input = normalizePayload(await request.json() as AdaptPayload);
     if (wordCount(input.sourceText) < 30) {
       return Response.json({ error: "Добавьте исходный текст объёмом не менее 30 слов." }, { status: 400 });

@@ -3,6 +3,7 @@ import { aiConfigured } from "../../_lib/ai-config";
 import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../../_lib/workspace-account";
 import { readWebsiteContext } from "../../_lib/website-context";
 import { discoverTavilyWeb } from "../../_lib/tavily";
+import { isAiRateLimited } from "../../_lib/rate-limit";
 
 type BrandInput = {
   name: string;
@@ -276,6 +277,7 @@ function selectionSchema(candidateIds: string[]) {
 
 export async function POST(request: Request) {
   try {
+    if (isAiRateLimited(request, "research", 2)) return Response.json({ error: "Слишком много исследований подряд. Подождите минуту и повторите." }, { status: 429 });
     const payload = await request.json() as DiscoverPayload;
     const query = clean(payload.query, 260);
     const brand = cleanBrand(payload.brand);

@@ -5,6 +5,7 @@ import { AiNotConfiguredError, AiResponseError, openAiErrorResponse } from "../.
 import { callAiModel } from "../../_lib/ai-router";
 import { aiConfigured } from "../../_lib/ai-config";
 import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../../_lib/workspace-account";
+import { isAiRateLimited } from "../../_lib/rate-limit";
 
 type BrandAnalysisPayload = {
   website?: unknown;
@@ -85,6 +86,7 @@ function normalizeResult(result: BrandAnalysisResult, fallbackName: string) {
 
 export async function POST(request: Request) {
   try {
+    if (isAiRateLimited(request, "research", 2)) return Response.json({ error: "Слишком много исследований подряд. Подождите минуту и повторите." }, { status: 429 });
     const input = normalizePayload(await request.json() as BrandAnalysisPayload);
     if (!input.website) return Response.json({ error: "Укажите сайт бренда, чтобы КЛИО могла его прочитать." }, { status: 400 });
 

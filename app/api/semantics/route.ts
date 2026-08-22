@@ -2,6 +2,7 @@ import { AiNotConfiguredError, AiResponseError, openAiErrorResponse } from "../_
 import { callAiModel } from "../_lib/ai-router";
 import { aiConfigured } from "../_lib/ai-config";
 import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
+import { isAiRateLimited } from "../_lib/rate-limit";
 
 type Intent = "Информационный" | "Коммерческий" | "Транзакционный" | "Смешанный" | "Навигационный";
 type Role = "Основной" | "Поддерживающий" | "Вопрос" | "Гео";
@@ -113,6 +114,7 @@ async function wordstat(query: string, regions: string[]) {
 
 export async function POST(request: Request) {
   try {
+    if (isAiRateLimited(request, "research", 2)) return Response.json({ error: "Слишком много исследований подряд. Подождите минуту и повторите." }, { status: 429 });
     const payload = await request.json() as SemanticPayload;
     const query = clean(payload.query, 240);
     if (!query) return Response.json({ error: "Введите основной запрос или тему." }, { status: 400 });

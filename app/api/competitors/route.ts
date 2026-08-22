@@ -2,6 +2,7 @@ import { readWebsiteContext, websiteSourceLabel, type WebsiteContext } from "../
 import { AiResponseError, openAiErrorResponse } from "../_lib/openai-response";
 import { callAiModel } from "../_lib/ai-router";
 import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
+import { isAiRateLimited } from "../_lib/rate-limit";
 
 type CompetitorCoverage = "strong" | "partial" | "missing" | "unknown";
 
@@ -183,6 +184,7 @@ function analysisSchema(competitorIds: string[]) {
 
 export async function POST(request: Request) {
   try {
+    if (isAiRateLimited(request, "research", 2)) return Response.json({ error: "Слишком много исследований подряд. Подождите минуту и повторите." }, { status: 429 });
     const payload = await request.json() as CompetitorPayload;
     const query = clean(payload.query, 220);
     const rawCompetitors = cleanCompetitors(payload.competitors);
