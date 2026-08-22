@@ -153,7 +153,9 @@ export function extractPaymentUrl(value: unknown): string | null {
     return null;
   }
   for (const [key, item] of Object.entries(value)) {
-    if (["redirectUrl", "paymentUrl", "url"].includes(key) && typeof item === "string" && /^https?:\/\//i.test(item)) return item;
+    const normalizedKey = key.toLowerCase().replace(/[_-]/g, "");
+    if (["redirecturl", "paymenturl", "paymentlink", "paymentlinkurl", "url", "link"].includes(normalizedKey)
+      && typeof item === "string" && /^https?:\/\//i.test(item)) return item;
     const result = extractPaymentUrl(item);
     if (result) return result;
   }
