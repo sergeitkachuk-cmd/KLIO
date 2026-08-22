@@ -37,7 +37,9 @@ export async function POST(request: Request) {
     const operation = {
       amount,
       purpose: `КЛИО: тариф «${price.name}», ${billing === "annual" ? "годовая" : "месячная"} оплата`,
-      paymentMode: mode === "card" ? ["card"] : ["sbp", "card"],
+      // Tochka fixes the order of mixed methods in its hosted page. Keep the
+      // default checkout SBP-only so SBP is the first and primary action.
+      paymentMode: mode === "card" ? ["card"] : ["sbp"],
       customerCode,
       ...(merchantId ? { merchantId } : {}),
       paymentLinkId,
