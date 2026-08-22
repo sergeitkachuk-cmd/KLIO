@@ -146,6 +146,23 @@ export async function tochkaRequest<T>(path: string, init: RequestInit = {}) {
   return body as T;
 }
 
+export async function tochkaFileRequest(path: string) {
+  const { token, clientId } = credentials();
+  const response = await fetch(`${TOCHKA_BASE_URL}${path}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/pdf",
+      "X-Client-Id": clientId,
+    },
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(`Точка API ${response.status} для ${path}${body ? `: ${body.slice(0, 240)}` : "."}`);
+  }
+  return response;
+}
+
 export function extractPaymentUrl(value: unknown): string | null {
   if (!value || typeof value !== "object") return null;
   if (Array.isArray(value)) {
