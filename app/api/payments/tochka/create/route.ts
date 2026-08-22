@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     const operation = {
       amount,
       purpose: `КЛИО: тариф «${price.name}», ${billing === "annual" ? "годовая" : "месячная"} оплата`,
-      paymentMode: [mode],
+      paymentMode: mode === "card" ? ["card"] : ["sbp", "card"],
       customerCode,
       ...(merchantId ? { merchantId } : {}),
       paymentLinkId,
