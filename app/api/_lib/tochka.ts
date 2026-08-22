@@ -66,7 +66,7 @@ export async function discoverTochkaIds() {
   const configured = credentials();
   let customerCode = configured.customerCode;
   if (!customerCode) {
-    const customers = await tochkaRequest<unknown>("/customers");
+    const customers = await tochkaRequest<unknown>("/open-banking/v1.0/customers");
     customerCode = findBusinessCustomerCode(customers) || findString(customers, "customerCode");
   }
   if (!customerCode) throw new TochkaConfigError("Точка не вернула customerCode вашей компании.");
