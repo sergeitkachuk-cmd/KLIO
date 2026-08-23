@@ -28,6 +28,6 @@ export function AdminAccountControls({ users }: { users: AdminUser[] }) {
       <label>Добавить месяцев<input type="number" min="1" max="120" value={months} onChange={(event) => setMonths(event.target.value)} /></label>
       <div className="admin-control-actions"><button type="button" onClick={() => void save()}>Сохранить тариф</button><button type="button" className="admin-danger-button" onClick={() => void save(true)}>Очистить</button></div>
     </div>}
-    {selected && <p className="admin-muted">Текущий тариф: {selected.planName}; до {selected.planExpiresAt ? new Date(selected.planExpiresAt).toLocaleDateString("ru-RU") : "не ограничен / пробный период"}. {message}</p>}
+    {selected && <p className="admin-muted">Текущий тариф: {selected.planName}; {selected.planExpiresAt ? `до ${new Date(selected.planExpiresAt).toLocaleDateString("ru-RU")}` : selected.planId === "trial" ? "пробный период" : "срок не задан"}. {message}</p>}
   </section>;
 }
