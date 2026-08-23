@@ -31,6 +31,9 @@ services:
         sync: false
       - key: YANDEX_FOLDER_ID
         sync: false
+      # DaData party suggestions for autofilling invoice requisites.
+      - key: DADATA_API_KEY
+        sync: false
       # Bounded Tavily search for content-plan grounding. The value is set
       # only in Render and must never be committed to this blueprint.
       - key: TAVILY_API_KEY

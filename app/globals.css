@@ -3766,6 +3766,18 @@ textarea[data-autosize="true"] {
 .invoice-primary:disabled { opacity: .5; cursor: not-allowed; }
 .invoice-error { margin: 0 !important; color: #f47b88 !important; font-weight: 700; }
 .invoice-note { margin-top: 24px; font-size: .92rem; }
+.invoice-lookup-label { position: relative; }
+.invoice-lookup { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
+.invoice-lookup button { min-width: 92px; border: 1px solid var(--accent); border-radius: 14px; background: transparent; color: var(--accent); font: inherit; font-weight: 800; cursor: pointer; }
+.invoice-lookup button:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.invoice-lookup button:disabled { opacity: .5; cursor: not-allowed; }
+.invoice-suggestions { display: grid; gap: 6px; margin-top: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
+.invoice-suggestion { display: grid; gap: 3px; width: 100%; padding: 11px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--ink); text-align: left; font: inherit; cursor: pointer; }
+.invoice-suggestion:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.invoice-suggestion-name { font-weight: 800; }
+.invoice-suggestion-meta, .invoice-lookup-status { color: var(--muted); font-size: .88rem; font-weight: 500; line-height: 1.45; }
+.invoice-lookup-status { display: block; margin-top: 7px; }
+.invoice-lookup-error { color: #f47b88; }
 @media (max-width: 640px) { .invoice-page { padding: 24px 14px 60px; } .invoice-card { border-radius: 20px; padding: 24px 18px; } .invoice-two { grid-template-columns: 1fr; } .payment-actions { grid-template-columns: 1fr; } }
 
 .payment-card-button {
