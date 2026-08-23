@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { BILLING_PERIODS, periodAmount, type BillingPeriod } from "@/app/billing-pricing";
 
 const plans: Record<string, { name: string; monthly: number; yearly: number }> = {
   start: { name: "Старт", monthly: 1190, yearly: 950 },
@@ -12,7 +13,7 @@ const plans: Record<string, { name: string; monthly: number; yearly: number }> =
 function InvoiceForm() {
   const params = useSearchParams();
   const [planId, setPlanId] = useState("start");
-  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
+  const [billing, setBilling] = useState<BillingPeriod>("monthly");
   const [type, setType] = useState<"company" | "ip">("company");
   const [form, setForm] = useState({ name: "", inn: "", kpp: "", legalAddress: "", email: "" });
   const [accepted, setAccepted] = useState(false);
@@ -23,11 +24,12 @@ function InvoiceForm() {
   useEffect(() => {
     const candidate = params.get("planId");
     if (candidate && plans[candidate]) setPlanId(candidate);
-    if (params.get("billing") === "annual") setBilling("annual");
+    const billingParam = params.get("billing");
+    if (BILLING_PERIODS.some((period) => period.id === billingParam)) setBilling(billingParam as BillingPeriod);
   }, [params]);
 
   const plan = plans[planId];
-  const amount = billing === "annual" ? plan.yearly * 12 : plan.monthly;
+  const amount = periodAmount(plan.monthly, plan.yearly, billing);
   const update = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
 
   async function submit(event: FormEvent) {

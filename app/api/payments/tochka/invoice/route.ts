@@ -3,6 +3,7 @@ import { invoices } from "../../../../../db/schema";
 import { ensureAccount, getWorkspaceDb, WorkspaceAccessError, workspaceIdentity } from "../../../_lib/workspace-account";
 import { tochkaCustomerCode, tochkaRequest, TochkaConfigError } from "../../../_lib/tochka";
 import { isPlanId, type PlanId } from "../../../../plans";
+import { isBillingPeriod, periodAmount, billingDescription } from "../../../../billing-pricing";
 
 const PRICES: Record<Exclude<PlanId, "trial">, { monthly: number; yearly: number; name: string }> = {
   start: { monthly: 1190, yearly: 950, name: "Старт" },
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
     await ensureAccount(user);
     const input = await request.json().catch(() => ({}));
     const planId = input?.planId as PlanId;
-    const billing = input?.billing === "annual" ? "annual" : "monthly";
+    const billing = isBillingPeriod(input?.billing) ? input.billing : "monthly";
     if (!isPlanId(planId) || planId === "trial" || !PRICES[planId]) return Response.json({ error: "Неизвестный тариф." }, { status: 400 });
 
     const buyer = input?.buyer && typeof input.buyer === "object" ? input.buyer : {};
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
     const customerCode = tochkaCustomerCode();
     if (!customerCode) throw new TochkaConfigError("Для счёта не найден customerCode компании в Точке.");
     const price = PRICES[planId];
-    const amount = billing === "annual" ? price.yearly * 12 : price.monthly;
+    const amount = periodAmount(price.monthly, price.yearly, billing);
     const documentNumber = String(Date.now()).slice(-10);
     const response = await tochkaRequest<unknown>("/invoice/v1.0/bills", {
       method: "POST",
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
               number: documentNumber,
               date: new Date().toISOString().slice(0, 10),
               paymentExpiryDate: dateInDays(7),
-              comment: `Тариф «${price.name}», ${billing === "annual" ? "оплата за год" : "оплата за месяц"}. Клиент: ${user.email}`,
+              comment: `Тариф «${price.name}», период: ${billingDescription(billing)}. Клиент: ${user.email}`,
               totalAmount: amount,
               totalNds: 0,
               Positions: [{

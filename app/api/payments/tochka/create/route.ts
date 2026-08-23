@@ -4,6 +4,7 @@ import { isPlanId, type PlanId } from "../../../../plans";
 import { payments } from "../../../../../db/schema";
 import { ensureAccount } from "../../../_lib/workspace-account";
 import { getWorkspaceDb } from "../../../_lib/workspace-account";
+import { isBillingPeriod, periodAmount, billingDescription } from "../../../../billing-pricing";
 
 const PRICES: Record<Exclude<PlanId, "trial">, { monthly: number; yearly: number; name: string }> = {
   start: { monthly: 1190, yearly: 950, name: "Старт" },
@@ -18,10 +19,10 @@ export async function POST(request: Request) {
     const input = await request.json().catch(() => ({}));
     const planId = input?.planId as PlanId;
     const mode = input?.mode === "card" ? "card" : "sbp";
-    const billing = input?.billing === "annual" ? "annual" : "monthly";
+    const billing = isBillingPeriod(input?.billing) ? input.billing : "monthly";
     if (!isPlanId(planId) || planId === "trial" || !PRICES[planId]) return Response.json({ error: "Неизвестный тариф." }, { status: 400 });
     const price = PRICES[planId];
-    const amount = billing === "annual" ? price.yearly * 12 : price.monthly;
+    const amount = periodAmount(price.monthly, price.yearly, billing);
     const { customerCode, merchantId } = await discoverTochkaIds();
     const baseUrl = process.env.APP_BASE_URL?.trim() || new URL(request.url).origin;
     const paymentLinkId = `klio-${planId}-${crypto.randomUUID()}`.slice(0, 45);
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
     });
     const operation = {
       amount,
-      purpose: `КЛИО: тариф «${price.name}», ${billing === "annual" ? "годовая" : "месячная"} оплата`,
+      purpose: `КЛИО: тариф «${price.name}», ${billingDescription(billing)}`,
       // Tochka fixes the order of mixed methods in its hosted page. Keep the
       // default checkout SBP-only so SBP is the first and primary action.
       paymentMode: mode === "card" ? ["card"] : ["sbp"],

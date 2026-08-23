@@ -119,8 +119,14 @@ function AccountStyles() {
       .account-billing-card h2 { margin: 0 0 8px; font-size: 28px; }
       .account-billing-lead { max-width: 620px; margin: 0 0 22px; color: rgba(255,255,255,0.62); line-height: 1.55; }
       .account-billing-selects { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-      .account-billing-selects label { display: grid; gap: 7px; color: rgba(255,255,255,0.62); font-size: 13px; font-weight: 700; }
-      .account-billing-selects select { min-height: 48px; padding: 0 13px; border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; background: rgba(3,14,29,0.3); color: #fff; font: inherit; }
+      .account-select { position: relative; display: grid; gap: 7px; }
+      .account-select-label { color: rgba(255,255,255,0.62); font-size: 13px; font-weight: 700; }
+      .account-select-trigger { min-height: 48px; padding: 0 13px; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(255,255,255,0.16); border-radius: 14px; background: rgba(3,14,29,0.3); color: #fff; font: inherit; text-align: left; cursor: pointer; }
+      .account-select-trigger.is-open { border-color: var(--acid); box-shadow: 0 0 0 2px rgba(207,255,62,0.18); }
+      .account-select-chevron { margin-left: 12px; color: var(--acid); font-size: 22px; line-height: 1; transform: translateY(-2px); }
+      .account-select-menu { position: absolute; z-index: 30; top: calc(100% + 7px); left: 0; right: 0; padding: 6px; border: 1px solid rgba(255,255,255,0.2); border-radius: 16px; background: #102d4a; box-shadow: 0 18px 40px rgba(0,0,0,0.35); }
+      .account-select-option { width: 100%; padding: 11px 12px; border: 0; border-radius: 10px; background: transparent; color: rgba(255,255,255,0.82); font: inherit; text-align: left; cursor: pointer; }
+      .account-select-option:hover, .account-select-option.is-selected { background: rgba(255,255,255,0.12); color: var(--acid); }
       .account-billing-consent { display: flex; align-items: flex-start; gap: 9px; margin: 18px 0; color: rgba(255,255,255,0.6); font-size: 13px; line-height: 1.45; }
       .account-billing-consent input { margin-top: 3px; accent-color: var(--acid); }
       .account-billing-consent a, .account-billing-buttons a { color: var(--acid); }
@@ -173,8 +179,11 @@ function AccountStyles() {
       [data-theme="light"] .account-card > span { color: #2452b8; }
       [data-theme="light"] .account-plan-head span { color: #2452b8; }
       [data-theme="light"] .account-plan-head small { color: rgba(13,27,49,0.5); }
-      [data-theme="light"] .account-billing-lead, [data-theme="light"] .account-billing-selects label, [data-theme="light"] .account-billing-consent { color: rgba(13,27,49,0.62); }
-      [data-theme="light"] .account-billing-selects select { border-color: rgba(15,23,42,0.16); background: rgba(255,255,255,0.7); color: #0d1b31; }
+      [data-theme="light"] .account-billing-lead, [data-theme="light"] .account-select-label, [data-theme="light"] .account-billing-consent { color: rgba(13,27,49,0.62); }
+      [data-theme="light"] .account-select-trigger { border-color: rgba(15,23,42,0.16); background: rgba(255,255,255,0.7); color: #0d1b31; }
+      [data-theme="light"] .account-select-menu { border-color: rgba(15,23,42,0.16); background: #fff; box-shadow: 0 18px 40px rgba(15,23,42,0.18); }
+      [data-theme="light"] .account-select-option { color: #0d1b31; }
+      [data-theme="light"] .account-select-option:hover, [data-theme="light"] .account-select-option.is-selected { background: rgba(15,23,42,0.08); color: #3656c9; }
       [data-theme="light"] .account-billing-buttons button + button { color: #0d1b31; background: rgba(15,23,42,0.1); }
       [data-theme="light"] .account-billing-buttons a { border-color: rgba(15,23,42,0.18); }
       [data-theme="light"] .account-documents { border-top-color: rgba(15,23,42,0.12); }
