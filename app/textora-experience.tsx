@@ -1239,7 +1239,7 @@ function ModuleSelect({ label, value, options, onChange }: {
   onChange: (value: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [menuRect, setMenuRect] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [menuRect, setMenuRect] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -1259,11 +1259,25 @@ function ModuleSelect({ label, value, options, onChange }: {
     // Scrolling *inside* the option list itself (a capture-phase scroll
     // event bubbling up from listRef) must not close the menu — that used
     // to make picking a style/length impossible to scroll to.
-    const repositionOnScroll = (event: Event) => {
-      if (listRef.current?.contains(event.target as Node)) return;
+    const measureMenu = () => {
       if (!triggerRef.current) return;
       const rect = triggerRef.current.getBoundingClientRect();
-      setMenuRect({ top: rect.bottom + 8, left: rect.left, width: rect.width });
+      const edgeGap = 12;
+      const maxMenuHeight = 480;
+      const spaceBelow = Math.max(0, window.innerHeight - rect.bottom - edgeGap);
+      const spaceAbove = Math.max(0, rect.top - edgeGap);
+      const openUp = spaceBelow < 240 && spaceAbove > spaceBelow;
+      const maxHeight = Math.max(120, Math.min(maxMenuHeight, openUp ? spaceAbove : spaceBelow));
+      setMenuRect({
+        top: openUp ? Math.max(edgeGap, rect.top - maxHeight) : rect.bottom + 8,
+        left: rect.left,
+        width: rect.width,
+        maxHeight,
+      });
+    };
+    const repositionOnScroll = (event: Event) => {
+      if (listRef.current?.contains(event.target as Node)) return;
+      measureMenu();
     };
     document.addEventListener("mousedown", closeOnOutsideClick);
     document.addEventListener("keydown", closeOnEscape);
@@ -1280,7 +1294,13 @@ function ModuleSelect({ label, value, options, onChange }: {
   function toggleOpen() {
     if (!open && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
-      setMenuRect({ top: rect.bottom + 8, left: rect.left, width: rect.width });
+      const edgeGap = 12;
+      const maxMenuHeight = 480;
+      const spaceBelow = Math.max(0, window.innerHeight - rect.bottom - edgeGap);
+      const spaceAbove = Math.max(0, rect.top - edgeGap);
+      const openUp = spaceBelow < 240 && spaceAbove > spaceBelow;
+      const maxHeight = Math.max(120, Math.min(maxMenuHeight, openUp ? spaceAbove : spaceBelow));
+      setMenuRect({ top: openUp ? Math.max(edgeGap, rect.top - maxHeight) : rect.bottom + 8, left: rect.left, width: rect.width, maxHeight });
     }
     setOpen((current) => !current);
   }
@@ -1294,7 +1314,7 @@ function ModuleSelect({ label, value, options, onChange }: {
       <em>⌄</em>
     </button>
     {open && menuRect && createPortal(
-      <div className="module-select-list" role="listbox" aria-label={label} ref={listRef} style={{ position: "fixed", top: menuRect.top, left: menuRect.left, width: menuRect.width }}>
+      <div className="module-select-list" role="listbox" aria-label={label} ref={listRef} style={{ position: "fixed", top: menuRect.top, left: menuRect.left, width: menuRect.width, maxHeight: menuRect.maxHeight }}>
         {options.map((item) => <button type="button" role="option" aria-selected={item.value === value} className={item.value === value ? "active" : ""} onClick={() => { onChange(item.value); setOpen(false); }} key={item.value}>
           <span>{item.label}</span><em>{item.value === value ? "✓" : ""}</em>
         </button>)}
