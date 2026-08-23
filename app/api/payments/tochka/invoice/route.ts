@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { invoices } from "../../../../../db/schema";
 import { ensureAccount, getWorkspaceDb, WorkspaceAccessError, workspaceIdentity } from "../../../_lib/workspace-account";
-import { tochkaCustomerCode, tochkaRequest, TochkaConfigError } from "../../../_lib/tochka";
+import { discoverTochkaIds, tochkaRequest, TochkaConfigError } from "../../../_lib/tochka";
 import { isPlanId, type PlanId } from "../../../../plans";
 import { isBillingPeriod, periodAmount, billingDescription } from "../../../../billing-pricing";
 
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     if (type === "company" && !kpp) return Response.json({ error: "Для организации укажите КПП." }, { status: 400 });
     if (!/^\S+@\S+\.\S+$/.test(email)) return Response.json({ error: "Проверьте e-mail покупателя." }, { status: 400 });
 
-    const customerCode = tochkaCustomerCode();
+    const { customerCode } = await discoverTochkaIds();
     if (!customerCode) throw new TochkaConfigError("Для счёта не найден customerCode компании в Точке.");
     const price = PRICES[planId];
     const amount = periodAmount(price.monthly, price.yearly, billing);

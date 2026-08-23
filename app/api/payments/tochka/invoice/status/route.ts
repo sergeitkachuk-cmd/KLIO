@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { accounts, invoices } from "../../../../../../db/schema";
 import { getWorkspaceDb, WorkspaceAccessError, workspaceIdentity } from "../../../../_lib/workspace-account";
-import { tochkaCustomerCode, tochkaRequest, TochkaConfigError } from "../../../../_lib/tochka";
+import { discoverTochkaIds, tochkaRequest, TochkaConfigError } from "../../../../_lib/tochka";
 
 function text(value: unknown, max = 300) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     const db = await getWorkspaceDb();
     const [invoice] = await db.select().from(invoices).where(and(eq(invoices.id, id), eq(invoices.ownerEmail, user.email))).limit(1);
     if (!invoice) return Response.json({ error: "Счёт не найден." }, { status: 404 });
-    const customerCode = tochkaCustomerCode();
+    const { customerCode } = await discoverTochkaIds();
     const accountId = text(process.env.TOCHKA_ACCOUNT_ID, 120);
     if (!customerCode || !accountId) throw new TochkaConfigError("Не настроены идентификаторы Точки для работы со счетами.");
 
