@@ -69,7 +69,7 @@ export async function POST(request: Request) {
               totalAmount: amount,
               totalNds: 0,
               Positions: [{
-                positionName: `КЛИО — тариф «${price.name}», ${billingDescription(billing)}`,
+                positionName: `Подписка КЛИО. Цифровая редакция — тариф «${price.name}», ${billingDescription(billing)}`,
                 unitCode: "\u0443\u0441\u043b\u0443\u0433\u0430.",
                 ndsKind: "without_nds",
                 quantity: 1,

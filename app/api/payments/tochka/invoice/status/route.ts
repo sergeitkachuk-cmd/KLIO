@@ -2,6 +2,8 @@ import { and, eq } from "drizzle-orm";
 import { accounts, invoices } from "../../../../../../db/schema";
 import { getWorkspaceDb, WorkspaceAccessError, workspaceIdentity } from "../../../../_lib/workspace-account";
 import { discoverTochkaIds, tochkaRequest, TochkaConfigError } from "../../../../_lib/tochka";
+import { billingDescription, type BillingPeriod } from "../../../../../billing-pricing";
+import { planRule } from "../../../../../plans";
 
 function text(value: unknown, max = 300) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -63,6 +65,7 @@ export async function POST(request: Request) {
     }).where(eq(accounts.email, invoice.ownerEmail));
 
     const amount = invoice.amountKopecks / 100;
+    const subscriptionName = `Подписка КЛИО. Цифровая редакция — тариф «${planRule(invoice.planId).name}», ${billingDescription(invoice.billing as BillingPeriod)}`;
     const number = `UPD-${String(Date.now()).slice(-10)}`;
     const response = await tochkaRequest<unknown>("/invoice/v1.0/closing-documents", {
       method: "POST",
@@ -76,7 +79,7 @@ export async function POST(request: Request) {
         Content: { Upd: {
           number, date: new Date().toISOString().slice(0, 10), function: "dop",
           totalAmount: amount, totalNds: 0,
-          Positions: [{ positionName: "Доступ к сервису КЛИО", unitCode: "услуга.", ndsKind: "without_nds", price: amount, quantity: 1, totalAmount: amount, totalNds: 0 }],
+          Positions: [{ positionName: subscriptionName, unitCode: "услуга.", ndsKind: "without_nds", price: amount, quantity: 1, totalAmount: amount, totalNds: 0 }],
         } },
       } }),
     });
