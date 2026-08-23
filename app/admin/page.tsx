@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
-import { desc, sql } from "drizzle-orm";
+import { and, desc, eq, lt, sql } from "drizzle-orm";
 import { getCurrentUser } from "../identity";
 import { isAdminEmail } from "../api/_lib/admin";
 import type { AiOperation } from "../api/_lib/ai-config";
 import { getDb } from "../../db";
-import { accounts, aiUsage, brands } from "../../db/schema";
+import { accounts, aiUsage, asyncJobs, brands, emailVerifications, generations, invoices, materials, passwordResets, payments, sessions } from "../../db/schema";
 import { planRule } from "../plans";
 import { getExternalServiceStatuses } from "../api/_lib/external-service-status";
 import { AdminThemeToggle } from "./admin-theme-toggle";
@@ -93,6 +93,24 @@ export default async function AdminPage() {
 
   const db = getDb();
 
+  // Unverified sign-ups are only registration attempts. Remove stale ones so
+  // typos do not accumulate as permanent customer rows.
+  const staleCutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+  const staleAccounts = await db.select({ email: accounts.email }).from(accounts).where(and(eq(accounts.emailVerified, false), lt(accounts.createdAt, staleCutoff)));
+  for (const stale of staleAccounts) {
+    await db.delete(payments).where(eq(payments.ownerEmail, stale.email));
+    await db.delete(invoices).where(eq(invoices.ownerEmail, stale.email));
+    await db.delete(sessions).where(eq(sessions.email, stale.email));
+    await db.delete(emailVerifications).where(eq(emailVerifications.email, stale.email));
+    await db.delete(passwordResets).where(eq(passwordResets.email, stale.email));
+    await db.delete(brands).where(eq(brands.ownerEmail, stale.email));
+    await db.delete(generations).where(eq(generations.ownerEmail, stale.email));
+    await db.delete(materials).where(eq(materials.ownerEmail, stale.email));
+    await db.delete(aiUsage).where(eq(aiUsage.ownerEmail, stale.email));
+    await db.delete(asyncJobs).where(eq(asyncJobs.ownerEmail, stale.email));
+    await db.delete(accounts).where(eq(accounts.email, stale.email));
+  }
+
   const [userRows, usageByUser, brandCounts, totalsRows, last30Rows, byModelRows, byOperationRows, externalServices] = await Promise.all([
     db.select().from(accounts).orderBy(desc(accounts.createdAt)),
     db.select({
@@ -155,6 +173,8 @@ export default async function AdminPage() {
       lastCallAt: usage?.lastCallAt ?? null,
     };
   });
+  const activeUsers = users.filter((item) => item.emailVerified);
+  const pendingUsers = users.filter((item) => !item.emailVerified);
 
   const totals = totalsRows[0] ?? { totalCostUsd: 0, totalCalls: 0, totalTokens: 0 };
   const last30 = last30Rows[0] ?? { totalCostUsd: 0, totalCalls: 0 };
@@ -237,7 +257,7 @@ export default async function AdminPage() {
       </section>
 
       <section className="admin-block">
-        <h2>Пользователи ({users.length})</h2>
+        <h2>Пользователи ({activeUsers.length})</h2>
         <div className="admin-table-scroll">
           <table className="admin-table admin-table-users">
             <thead>
@@ -257,7 +277,7 @@ export default async function AdminPage() {
               </tr>
             </thead>
             <tbody>
-              {users.map((item) => (
+              {activeUsers.map((item) => (
                 <tr key={item.email}>
                   <td>{item.email}</td>
                   <td>{item.displayName}</td>
@@ -273,12 +293,22 @@ export default async function AdminPage() {
                   <td>{formatDate(item.lastCallAt)}</td>
                 </tr>
               ))}
-              {!users.length && <tr><td colSpan={12} className="admin-empty-row">Пока нет зарегистрированных пользователей.</td></tr>}
+              {!activeUsers.length && <tr><td colSpan={12} className="admin-empty-row">Пока нет подтверждённых пользователей.</td></tr>}
             </tbody>
           </table>
         </div>
       </section>
-      <AdminAccountControls users={users.map((item) => ({ email: item.email, displayName: item.displayName, planId: item.planId, planName: item.planName, planExpiresAt: item.planExpiresAt }))} />
+      {pendingUsers.length > 0 && <section className="admin-block admin-pending-registrations">
+        <h2>Ожидают подтверждения ({pendingUsers.length})</h2>
+        <p className="admin-note">Это ещё не клиенты: аккаунты удаляются автоматически через 48 часов без подтверждения email.</p>
+        <div className="admin-table-scroll">
+          <table className="admin-table">
+            <thead><tr><th>Email</th><th>Имя</th><th>Регистрация</th><th>Статус</th></tr></thead>
+            <tbody>{pendingUsers.map((item) => <tr key={item.email}><td>{item.email}</td><td>{item.displayName}</td><td>{formatDate(item.createdAt)}</td><td>Не подтверждена</td></tr>)}</tbody>
+          </table>
+        </div>
+      </section>}
+      <AdminAccountControls users={activeUsers.map((item) => ({ email: item.email, displayName: item.displayName, planId: item.planId, planName: item.planName, planExpiresAt: item.planExpiresAt }))} />
     </main>
   );
 }
