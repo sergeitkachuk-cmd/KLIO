@@ -9,6 +9,7 @@ import { planRule } from "../plans";
 import { getExternalServiceStatuses } from "../api/_lib/external-service-status";
 import { AdminThemeToggle } from "./admin-theme-toggle";
 import { AdminAccountControls } from "./admin-account-controls";
+import { AdminUsersTable, type AdminUserRow } from "./admin-users-table";
 
 export const metadata = { title: "КЛИО / Админка" };
 
@@ -113,7 +114,7 @@ export default async function AdminPage() {
     await db.delete(accounts).where(eq(accounts.email, stale.email));
   }
 
-  const [userRows, usageByUser, brandCounts, totalsRows, last30Rows, byModelRows, byOperationRows, externalServices] = await Promise.all([
+  const [userRows, usageByUser, brandCounts, invoiceRefsByUser, transactionRefsByUser, totalsRows, last30Rows, byModelRows, byOperationRows, externalServices] = await Promise.all([
     db.select().from(accounts).orderBy(desc(accounts.createdAt)),
     db.select({
       ownerEmail: aiUsage.ownerEmail,
@@ -126,6 +127,15 @@ export default async function AdminPage() {
       ownerEmail: brands.ownerEmail,
       count: sql<number>`count(*)`,
     }).from(brands).groupBy(brands.ownerEmail),
+    db.select({
+      ownerEmail: invoices.ownerEmail,
+      invoiceRefs: sql<string>`coalesce(string_agg(distinct ${invoices.tochkaDocumentId}, ', '), '')`,
+      payerNames: sql<string>`coalesce(string_agg(distinct ${invoices.buyerName}, ', '), '')`,
+    }).from(invoices).groupBy(invoices.ownerEmail),
+    db.select({
+      ownerEmail: payments.ownerEmail,
+      transactionRefs: sql<string>`coalesce(string_agg(distinct coalesce(${payments.operationId}, ${payments.id}), ', '), '')`,
+    }).from(payments).groupBy(payments.ownerEmail),
     db.select({
       totalCostUsd: sql<number>`coalesce(sum(${aiUsage.estimatedCostUsd}), 0)`,
       totalCalls: sql<number>`count(*)`,
@@ -150,6 +160,8 @@ export default async function AdminPage() {
 
   const usageMap = new Map(usageByUser.map((row) => [row.ownerEmail, row]));
   const brandMap = new Map(brandCounts.map((row) => [row.ownerEmail, num(row.count)]));
+  const invoiceMap = new Map(invoiceRefsByUser.map((row) => [row.ownerEmail, row]));
+  const transactionMap = new Map(transactionRefsByUser.map((row) => [row.ownerEmail, row.transactionRefs]));
 
   const users = userRows.map((account) => {
     const plan = planRule(account.planId);
@@ -173,6 +185,9 @@ export default async function AdminPage() {
       totalCalls: num(usage?.totalCalls),
       totalTokens: num(usage?.totalTokens),
       lastCallAt: usage?.lastCallAt ?? null,
+      invoiceRefs: invoiceMap.get(account.email)?.invoiceRefs ?? "",
+      payerNames: invoiceMap.get(account.email)?.payerNames ?? "",
+      transactionRefs: transactionMap.get(account.email) ?? "",
     };
   });
   const activeUsers = users.filter((item) => item.emailVerified);
@@ -260,7 +275,25 @@ export default async function AdminPage() {
 
       <section className="admin-block">
         <h2>Пользователи ({activeUsers.length})</h2>
-        <div className="admin-table-scroll">
+        <div className="admin-table-scroll admin-legacy-user-table">
+          <AdminUsersTable users={activeUsers.map((item): AdminUserRow => ({
+            email: item.email,
+            displayName: item.displayName,
+            emailStatus: item.emailVerified ? "\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0430" : "\u041d\u0435 \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0430",
+            createdAt: formatDate(item.createdAt),
+            planName: item.planName,
+            planExpires: formatPlanExpiry(item.planId, item.planExpiresAt),
+            planExpiryState: planExpiryState(item.planId, item.planExpiresAt),
+            generations: `${item.generationsUsed} / ${item.generationLimit}`,
+            research: `${item.researchUsed} / ${item.researchLimit}`,
+            editor: `${item.editorActionsUsed} / ${item.editorActionLimit}`,
+            brandCount: item.brandCount,
+            totalCost: formatUsd(item.totalCostUsd),
+            lastCallAt: formatDate(item.lastCallAt),
+            invoiceRefs: item.invoiceRefs,
+            transactionRefs: item.transactionRefs,
+            payerNames: item.payerNames,
+          }))} />
           <table className="admin-table admin-table-users">
             <thead>
               <tr>
@@ -357,7 +390,14 @@ function AdminStyles() {
       .admin-table-scroll::-webkit-scrollbar { height: 8px; }
       .admin-table-scroll::-webkit-scrollbar-track { background: transparent; }
       .admin-table-scroll::-webkit-scrollbar-thumb { background: #64748b; border-radius: 999px; }
+      .admin-legacy-user-table { border: 0; overflow: visible; }
       .admin-table-users { min-width: 0; table-layout: auto; }
+      .admin-table-users { display: none; }
+      .admin-users-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0 0 10px; }
+      .admin-users-toolbar label { color: #6b7280; font-size: 12px; font-weight: 700; }
+      .admin-users-toolbar input { flex: 1 1 360px; min-width: 220px; min-height: 38px; border: 1px solid #d1d5db; border-radius: 999px; padding: 0 14px; background: #fff; color: #1c1f26; font: inherit; }
+      .admin-users-toolbar input:focus { outline: 2px solid rgba(79, 70, 229, 0.25); outline-offset: 1px; border-color: #6366f1; }
+      .admin-users-toolbar span { color: #6b7280; font-size: 12px; white-space: nowrap; }
       .admin-header-actions { display: flex; align-items: flex-end; gap: 12px; }
       .admin-theme-toggle, .admin-control-actions button { border: 1px solid #cbd5e1; border-radius: 999px; padding: 9px 13px; background: #fff; color: #1c1f26; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; }
       .admin-controls-grid { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 12px; align-items: end; }
@@ -372,6 +412,7 @@ function AdminStyles() {
       body[data-admin-theme="dark"] .admin-page { color: #e5e7eb; }
       body[data-admin-theme="dark"] .admin-cards article, body[data-admin-theme="dark"] .admin-integration, body[data-admin-theme="dark"] .admin-account-controls { background: #111d2d; border-color: #2c4059; }
       body[data-admin-theme="dark"] .admin-theme-toggle, body[data-admin-theme="dark"] .admin-controls-grid select, body[data-admin-theme="dark"] .admin-controls-grid input { background: #17263a; border-color: #3a506b; color: #e5e7eb; }
+      body[data-admin-theme="dark"] .admin-users-toolbar input { background: #17263a; border-color: #3a506b; color: #e5e7eb; }
       @media (max-width: 800px) { .admin-controls-grid { grid-template-columns: 1fr; } .admin-header-actions { width: 100%; justify-content: space-between; align-items: center; } }
       @media (prefers-color-scheme: dark) {
         .admin-page { color: #e5e7eb; }
