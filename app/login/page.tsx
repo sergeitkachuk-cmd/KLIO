@@ -26,6 +26,8 @@ export default function LoginPage() {
   const [needsVerification, setNeedsVerification] = useState(false);
   const [resendBusy, setResendBusy] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
+  const [forgotBusy, setForgotBusy] = useState(false);
+  const [forgotMessage, setForgotMessage] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -83,6 +85,30 @@ export default function LoginPage() {
     }
   }
 
+  async function handleForgotPassword() {
+    setError("");
+    setForgotMessage("");
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setForgotMessage("Сначала укажите email — на него придёт ссылка для смены пароля.");
+      return;
+    }
+    setForgotBusy(true);
+    try {
+      const response = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: normalizedEmail }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      setForgotMessage(payload.message || "Если аккаунт существует, мы отправили письмо со ссылкой для смены пароля.");
+    } catch {
+      setForgotMessage("Не удалось отправить письмо. Попробуйте немного позже.");
+    } finally {
+      setForgotBusy(false);
+    }
+  }
+
   return (
     <main className="auth-shell">
       <div className="auth-card">
@@ -94,6 +120,10 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit}>
           <label className="field">Email<input type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
           <label className="field">Пароль<input type="password" required autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+          <button className="auth-forgot" type="button" onClick={() => void handleForgotPassword()} disabled={forgotBusy}>
+            {forgotBusy ? "Отправляем…" : "Забыли пароль?"}
+          </button>
+          {forgotMessage && <p className="auth-reset-message">{forgotMessage}</p>}
           {error && <p className="auth-error">{error}</p>}
           {needsVerification && (
             <button className="button ghost" type="button" onClick={() => void handleResend()} disabled={resendBusy}>

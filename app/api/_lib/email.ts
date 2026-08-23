@@ -93,6 +93,20 @@ export async function sendVerificationEmail(email: string, verifyUrl: string) {
   });
 }
 
+export async function sendPasswordResetEmail(email: string, resetUrl: string) {
+  const safeUrl = escapeHtml(resetUrl);
+  await sendTransactionalEmail({
+    to: email,
+    subject: "Смена пароля в КЛИО",
+    html: emailShell("Смена пароля", `
+      <p>Вы запросили смену пароля для личного кабинета КЛИО. Ссылка действует 1 час и только один раз.</p>
+      <p><a href="${safeUrl}" style="display: inline-block; padding: 12px 22px; border-radius: 10px; background: #101015; color: #fff; text-decoration: none; font-weight: 650;">Задать новый пароль</a></p>
+      <p style="color: #686879; font-size: 13px;">Если вы не запрашивали смену пароля, просто проигнорируйте это письмо.</p>
+    `),
+    plaintext: `Смена пароля в КЛИО: ${resetUrl} (ссылка действует 1 час и только один раз). Если вы не запрашивали смену пароля, проигнорируйте это письмо.`,
+  });
+}
+
 // Sent by the trial-reminder cron job (not yet wired up — see workspace-account.ts's
 // TRIAL_DURATION_MS) once an account is approaching the end of its 48h trial window.
 export async function sendTrialEndingEmail(email: string, workspaceUrl: string) {

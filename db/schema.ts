@@ -95,6 +95,16 @@ export const emailVerifications = pgTable("email_verifications", {
   index("email_verifications_email_idx").on(table.email),
 ]);
 
+export const passwordResets = pgTable("password_resets", {
+  // SHA-256 digest of a one-time raw token sent by email.
+  id: text("id").primaryKey(),
+  email: text("email").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  expiresAt: text("expires_at").notNull(),
+}, (table) => [
+  index("password_resets_email_idx").on(table.email),
+]);
+
 export const brands = pgTable("brands", {
   id: text("id").primaryKey(),
   ownerEmail: text("owner_email").notNull(),
