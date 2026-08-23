@@ -48,6 +48,8 @@ export async function POST(request: Request) {
     const amount = periodAmount(price.monthly, price.yearly, billing);
     const documentNumber = String(Date.now()).slice(-10);
     const paymentPurpose = `Оплата по счёту № ${documentNumber} за подписку «КЛИО — Цифровая редакция», тариф «${price.name}», ${billingDescription(billing)}. Без НДС.`;
+    const legalNotice = `Оплачивая настоящий счёт, Покупатель принимает условия публичной оферты ООО «Творческая мастерская „МЕДИАЛИПАС“» на оказание услуг по подписке «КЛИО — Цифровая редакция», размещённой по адресу: https://цифроваяредакция.рф/legal/offer. Оплата счёта означает акцепт оферты в соответствии с п. 3 ст. 438 ГК РФ.`;
+    const invoiceComment = `Назначение платежа:\n${paymentPurpose}\n\nВажно для оплаты:\nСкопируйте назначение платежа полностью. Номер счёта нужен для автоматической идентификации платежа; без него зачисление и активация тарифа могут задержаться.\n\nЮридическая информация:\n${legalNotice}\n\nКлиент: ${user.email}`;
     const response = await tochkaRequest<unknown>("/invoice/v1.0/bills", {
       method: "POST",
       body: JSON.stringify({
@@ -66,11 +68,11 @@ export async function POST(request: Request) {
               number: documentNumber,
               date: new Date().toISOString().slice(0, 10),
               paymentExpiryDate: dateInDays(7),
-              comment: `${paymentPurpose} Клиент: ${user.email}`,
+              comment: invoiceComment,
               totalAmount: amount,
               totalNds: 0,
               Positions: [{
-                positionName: `Подписка «КЛИО — Цифровая редакция», тариф «${price.name}», ${billingDescription(billing)}. ВАЖНО ДЛЯ ОПЛАТЫ: скопируйте назначение платежа полностью; номер счёта нужен для автоматической идентификации платежа. Оплата по счёту № ${documentNumber}. Без НДС.`,
+                positionName: `Подписка «КЛИО — Цифровая редакция», тариф «${price.name}», ${billingDescription(billing)}`,
                 unitCode: "\u0443\u0441\u043b\u0443\u0433\u0430.",
                 ndsKind: "without_nds",
                 quantity: 1,
