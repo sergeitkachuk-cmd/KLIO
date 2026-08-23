@@ -3778,6 +3778,12 @@ textarea[data-autosize="true"] {
 .invoice-primary:disabled { opacity: .5; cursor: not-allowed; }
 .invoice-error { margin: 0 !important; color: #f47b88 !important; font-weight: 700; }
 .invoice-note { margin-top: 24px; font-size: .92rem; }
+.invoice-payment-warning { margin: 24px 0; padding: 18px 20px; border: 1px solid color-mix(in srgb, var(--cobalt) 42%, var(--line)); border-left: 4px solid var(--cobalt); border-radius: 16px; background: color-mix(in srgb, var(--cobalt) 8%, var(--paper)); }
+.invoice-payment-warning > strong { display: block; color: var(--ink); font-size: 1.02rem; }
+.invoice-payment-warning p { margin: 7px 0 12px; font-size: .92rem; }
+.invoice-purpose { padding: 13px 14px; border-radius: 12px; background: color-mix(in srgb, var(--paper) 72%, var(--cobalt)); color: var(--ink); font-size: .95rem; line-height: 1.5; overflow-wrap: anywhere; }
+.invoice-copy { margin-top: 12px; min-height: 42px; padding: 0 16px; border: 1px solid var(--cobalt); border-radius: 999px; background: transparent; color: var(--cobalt); font: inherit; font-weight: 800; cursor: pointer; }
+.invoice-copy:hover { background: color-mix(in srgb, var(--cobalt) 10%, transparent); }
 .invoice-lookup-label { position: relative; }
 .invoice-lookup { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
 .invoice-lookup button { min-width: 92px; border: 1px solid var(--accent); border-radius: 14px; background: transparent; color: var(--accent); font: inherit; font-weight: 800; cursor: pointer; }

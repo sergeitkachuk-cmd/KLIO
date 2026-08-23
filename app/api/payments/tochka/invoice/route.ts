@@ -47,6 +47,7 @@ export async function POST(request: Request) {
     const price = PRICES[planId];
     const amount = periodAmount(price.monthly, price.yearly, billing);
     const documentNumber = String(Date.now()).slice(-10);
+    const paymentPurpose = `Оплата по счёту № ${documentNumber} за подписку «КЛИО — Цифровая редакция», тариф «${price.name}», ${billingDescription(billing)}. Без НДС.`;
     const response = await tochkaRequest<unknown>("/invoice/v1.0/bills", {
       method: "POST",
       body: JSON.stringify({
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
               number: documentNumber,
               date: new Date().toISOString().slice(0, 10),
               paymentExpiryDate: dateInDays(7),
-              comment: `Тариф «${price.name}», период: ${billingDescription(billing)}. Клиент: ${user.email}`,
+              comment: `${paymentPurpose} Клиент: ${user.email}`,
               totalAmount: amount,
               totalNds: 0,
               Positions: [{
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
       buyerType: type, buyerName: name, buyerInn: inn, buyerKpp: kpp || null,
       buyerLegalAddress: legalAddress, buyerEmail: email,
     });
-    return Response.json({ documentId, invoiceUrl: `/api/payments/tochka/invoice/${encodeURIComponent(documentId)}`, amount, planId, billing });
+    return Response.json({ documentId, invoiceNumber: documentNumber, paymentPurpose, invoiceUrl: `/api/payments/tochka/invoice/${encodeURIComponent(documentId)}`, amount, planId, billing });
   } catch (error) {
     if (error instanceof WorkspaceAccessError || error instanceof TochkaConfigError) return Response.json({ error: error.message }, { status: error instanceof WorkspaceAccessError ? error.status : 503 });
     console.error("Tochka invoice failed", error instanceof Error ? error.message : "unknown error");
