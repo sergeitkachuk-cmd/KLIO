@@ -294,7 +294,7 @@ export default async function AdminPage() {
             transactionRefs: item.transactionRefs,
             payerNames: item.payerNames,
           }))} />
-          <table className="admin-table admin-table-users">
+          <table className="admin-table admin-table-users-legacy">
             <thead>
               <tr>
                 <th>Email</th>
@@ -392,7 +392,7 @@ function AdminStyles() {
       .admin-table-scroll::-webkit-scrollbar-thumb { background: #64748b; border-radius: 999px; }
       .admin-legacy-user-table { border: 0; overflow: visible; }
       .admin-table-users { min-width: 0; table-layout: auto; }
-      .admin-table-users { display: none; }
+      .admin-table-users-legacy { display: none; }
       .admin-users-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0 0 10px; }
       .admin-users-toolbar label { color: #6b7280; font-size: 12px; font-weight: 700; }
       .admin-users-toolbar input { flex: 1 1 360px; min-width: 220px; min-height: 38px; border: 1px solid #d1d5db; border-radius: 999px; padding: 0 14px; background: #fff; color: #1c1f26; font: inherit; }
