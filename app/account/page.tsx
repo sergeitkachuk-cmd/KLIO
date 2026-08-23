@@ -147,12 +147,17 @@ function AccountStyles() {
       .account-document-actions button:disabled { opacity: .55; cursor: wait; }
       .account-billing-error { margin: 14px 0 0; color: #ff9aa6; font-weight: 700; }
       .account-progress-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px; margin-bottom: 18px; }
+      .account-plan-card .account-progress-grid { align-items: stretch; }
+      .account-plan-card .account-progress { min-width: 0; display: flex; flex-direction: column; }
       .account-progress > div { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
       .account-progress span { color: rgba(255,255,255,0.62); font-size: 14px; }
       .account-progress b { font-size: 20px; font-weight: 650; }
       .account-progress b small { color: rgba(255,255,255,0.5); font-size: 13px; font-weight: 500; }
       .account-progress i { display: block; height: 5px; border-radius: 4px; overflow: hidden; background: rgba(255,255,255,0.12); }
-      .account-progress u { display: block; height: 100%; background: linear-gradient(90deg, var(--acid), #fff); }
+      .account-plan-card .account-progress i { margin-top: auto; }
+      .account-plan-card .account-progress u { display: block; height: 100%; background: linear-gradient(90deg, #8f7cf5, #638bd8); }
+      .account-plan-card .account-upgrade { color: #fff; background: linear-gradient(135deg, #6654c8, #8574e8); box-shadow: 0 8px 18px rgba(73, 57, 168, 0.2); }
+      .account-plan-card .account-upgrade:hover { opacity: 1; background: linear-gradient(135deg, #5b49b9, #7664d8); }
       .account-plan-note { display: block; color: rgba(255,255,255,0.55); font-size: 14px; line-height: 1.55; }
       .account-facts { display: grid; gap: 12px; margin: 0; }
       .account-facts > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.08); }
@@ -192,6 +197,9 @@ function AccountStyles() {
       [data-theme="light"] .account-progress span { color: rgba(13,27,49,0.6); }
       [data-theme="light"] .account-progress b small { color: rgba(13,27,49,0.45); }
       [data-theme="light"] .account-progress i { background: rgba(15,23,42,0.1); }
+      [data-theme="light"] .account-plan-card .account-progress u { background: linear-gradient(90deg, #6654c8, #7b8fd8); }
+      [data-theme="light"] .account-plan-card .account-upgrade { color: #fff; background: linear-gradient(135deg, #5b4bb7, #7568d1); box-shadow: 0 8px 18px rgba(74,60,163,0.18); }
+      [data-theme="light"] .account-plan-card .account-upgrade:hover { background: linear-gradient(135deg, #4f40a7, #6659c1); }
       [data-theme="light"] .account-plan-note { color: rgba(13,27,49,0.5); }
       [data-theme="light"] .account-facts > div { border-bottom-color: rgba(15,23,42,0.08); }
       [data-theme="light"] .account-facts dt { color: rgba(13,27,49,0.5); }
