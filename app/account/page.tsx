@@ -191,6 +191,16 @@ function AccountStyles() {
       [data-theme="light"] .account-select-option:hover, [data-theme="light"] .account-select-option.is-selected { background: rgba(15,23,42,0.08); color: #3656c9; }
       [data-theme="light"] .account-billing-buttons button + button { color: #0d1b31; background: rgba(15,23,42,0.1); }
       [data-theme="light"] .account-billing-buttons a { border-color: rgba(15,23,42,0.18); }
+      [data-theme="light"] .account-billing-buttons button:first-child,
+      [data-theme="light"] .account-billing-buttons button + button:not(:disabled),
+      [data-theme="light"] .account-document-actions button,
+      [data-theme="light"] .account-document-actions a { color: #fff; background: linear-gradient(135deg, #5b4bb7, #7568d1); box-shadow: 0 8px 18px rgba(74,60,163,0.18); }
+      [data-theme="light"] .account-billing-buttons button:first-child:hover,
+      [data-theme="light"] .account-billing-buttons button + button:not(:disabled):hover,
+      [data-theme="light"] .account-document-actions button:hover,
+      [data-theme="light"] .account-document-actions a:hover { background: linear-gradient(135deg, #4f40a7, #6659c1); }
+      [data-theme="light"] .account-billing-buttons button:disabled { color: rgba(13,27,49,0.45); background: rgba(15,23,42,0.1); box-shadow: none; }
+      [data-theme="light"] .account-billing-buttons a { color: #5b4bb7; }
       [data-theme="light"] .account-documents { border-top-color: rgba(15,23,42,0.12); }
       [data-theme="light"] .account-document { border-top-color: rgba(15,23,42,0.09); }
       [data-theme="light"] .account-documents > p, [data-theme="light"] .account-document small { color: rgba(13,27,49,0.56); }

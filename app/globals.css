@@ -19957,3 +19957,29 @@ input[type="radio"] {
     margin-bottom: 12px;
   }
 }
+
+/* Keep primary actions calm and legible in the light theme. The acid color
+   remains available for small status accents, while prominent actions use
+   the same violet treatment as the account's plan switcher. */
+[data-theme="light"] .button.primary,
+[data-theme="light"] .trial-plan-button,
+[data-theme="light"] .invoice-primary {
+  color: #fff;
+  background: linear-gradient(135deg, #5b4bb7, #7568d1);
+  box-shadow: 0 8px 18px rgba(74, 60, 163, 0.18);
+}
+
+[data-theme="light"] .button.primary:hover,
+[data-theme="light"] .trial-plan-button:hover,
+[data-theme="light"] .invoice-primary:hover {
+  color: #fff;
+  background: linear-gradient(135deg, #4f40a7, #6659c1);
+}
+
+[data-theme="light"] .button.primary:disabled,
+[data-theme="light"] .trial-plan-button:disabled,
+[data-theme="light"] .invoice-primary:disabled {
+  color: rgba(13, 27, 49, 0.45);
+  background: rgba(15, 23, 42, 0.1);
+  box-shadow: none;
+}
