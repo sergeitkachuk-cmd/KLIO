@@ -45,6 +45,11 @@
    const [copied, setCopied] = useState(false);
    const plan = plans[planId] || plans.start;
    const amount = periodAmount(plan.monthly, plan.yearly, billing);
+   useEffect(() => {
+     document.querySelectorAll<HTMLAnchorElement>("a.invoice-back").forEach((link) => {
+       link.href = "/account#billing";
+     });
+   }, [result]);
    const update = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
 
    async function searchCompanies(query = lookupQuery) {
