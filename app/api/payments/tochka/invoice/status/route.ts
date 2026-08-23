@@ -4,6 +4,7 @@ import { getWorkspaceDb, WorkspaceAccessError, workspaceIdentity } from "../../.
 import { discoverTochkaIds, tochkaRequest, TochkaConfigError } from "../../../../_lib/tochka";
 import { billingDescription, type BillingPeriod } from "../../../../../billing-pricing";
 import { planRule } from "../../../../../plans";
+import { subscriptionExpiry } from "../../../../_lib/subscription";
 
 function text(value: unknown, max = 300) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -40,29 +41,24 @@ export async function POST(request: Request) {
       return Response.json({ status: paymentStatus, invoiceId: invoice.id });
     }
 
-    const activationNow = new Date().toISOString();
-    await db.update(accounts).set({
-      planId: invoice.planId,
-      generationsUsed: 0,
-      researchUsed: 0,
-      editorActionsUsed: 0,
-      generationMonth: `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, "0")}`,
-      updatedAt: activationNow,
-    }).where(eq(accounts.email, invoice.ownerEmail));
-
     if (invoice.closingDocumentId) {
       return Response.json({ status: paymentStatus, invoiceId: invoice.id, closingDocumentId: invoice.closingDocumentId, closingUrl: `/api/payments/tochka/closing/${encodeURIComponent(invoice.closingDocumentId)}` });
     }
 
     const now = new Date().toISOString();
-    await db.update(accounts).set({
-      planId: invoice.planId,
-      generationsUsed: 0,
-      researchUsed: 0,
-      editorActionsUsed: 0,
-      generationMonth: `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, "0")}`,
-      updatedAt: now,
-    }).where(eq(accounts.email, invoice.ownerEmail));
+    if (!invoice.paidAt) {
+      const [account] = await db.select().from(accounts).where(eq(accounts.email, invoice.ownerEmail)).limit(1);
+      await db.update(accounts).set({
+        planId: invoice.planId,
+        planExpiresAt: subscriptionExpiry(account?.planExpiresAt, invoice.billing as BillingPeriod, new Date(now)),
+        generationsUsed: 0,
+        researchUsed: 0,
+        editorActionsUsed: 0,
+        generationMonth: `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, "0")}`,
+        updatedAt: now,
+      }).where(eq(accounts.email, invoice.ownerEmail));
+      await db.update(invoices).set({ paymentStatus, paidAt: now, updatedAt: now }).where(eq(invoices.id, invoice.id));
+    }
 
     const amount = invoice.amountKopecks / 100;
     const subscriptionName = `Подписка КЛИО. Цифровая редакция — тариф «${planRule(invoice.planId).name}», ${billingDescription(invoice.billing as BillingPeriod)}`;

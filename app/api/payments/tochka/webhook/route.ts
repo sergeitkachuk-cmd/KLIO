@@ -2,6 +2,8 @@ import { and, eq } from "drizzle-orm";
 import { accounts, payments } from "../../../../../db/schema";
 import { getWorkspaceDb } from "../../../_lib/workspace-account";
 import { verifyTochkaWebhook } from "../../../_lib/tochka";
+import { subscriptionExpiry } from "../../../_lib/subscription";
+import type { BillingPeriod } from "../../../../billing-pricing";
 
 function stringClaim(value: unknown) {
   return typeof value === "string" ? value : undefined;
@@ -35,13 +37,16 @@ export async function POST(request: Request) {
         paidAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }).where(and(eq(payments.id, paymentLinkId), eq(payments.status, "pending")));
+      const [account] = await tx.select().from(accounts).where(eq(accounts.email, payment.ownerEmail)).limit(1);
+      const paidAt = new Date();
       await tx.update(accounts).set({
         planId: payment.planId,
+        planExpiresAt: subscriptionExpiry(account?.planExpiresAt, payment.billing as BillingPeriod, paidAt),
         generationsUsed: 0,
         researchUsed: 0,
         editorActionsUsed: 0,
         generationMonth: `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, "0")}`,
-        updatedAt: new Date().toISOString(),
+        updatedAt: paidAt.toISOString(),
       }).where(eq(accounts.email, payment.ownerEmail));
     });
     return new Response(null, { status: 200 });
