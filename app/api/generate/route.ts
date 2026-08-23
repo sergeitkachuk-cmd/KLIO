@@ -315,19 +315,8 @@ const META_LEAKAGE_PATTERNS = [
   /^условия и следующий шаг$/im,
 ];
 
-const PUBLICATION_MARKUP_PATTERNS = [
-  /\[[^\]]*\]\([^)]*\)/,
-  /(?:https?:\/\/|www\.)[^\s<>)\]]+/i,
-  /^\s{0,3}#{1,6}\s+/m,
-  /<\/?[a-z][^>]*>/i,
-];
-
 function hasMetaLeakage(value: string) {
   return META_LEAKAGE_PATTERNS.some((pattern) => pattern.test(value));
-}
-
-function hasPublicationMarkup(value: string) {
-  return PUBLICATION_MARKUP_PATTERNS.some((pattern) => pattern.test(value));
 }
 
 function sanitizePublicationText(value: string) {

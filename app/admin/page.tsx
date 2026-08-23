@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { and, desc, eq, lt, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { getCurrentUser } from "../identity";
 import { isAdminEmail } from "../api/_lib/admin";
 import type { AiOperation } from "../api/_lib/ai-config";
@@ -95,8 +95,10 @@ export default async function AdminPage() {
 
   // Unverified sign-ups are only registration attempts. Remove stale ones so
   // typos do not accumulate as permanent customer rows.
-  const staleCutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-  const staleAccounts = await db.select({ email: accounts.email }).from(accounts).where(and(eq(accounts.emailVerified, false), lt(accounts.createdAt, staleCutoff)));
+  const staleAccounts = await db.select({ email: accounts.email }).from(accounts).where(and(
+    eq(accounts.emailVerified, false),
+    sql`${accounts.createdAt}::timestamptz < now() - interval '48 hours'`,
+  ));
   for (const stale of staleAccounts) {
     await db.delete(payments).where(eq(payments.ownerEmail, stale.email));
     await db.delete(invoices).where(eq(invoices.ownerEmail, stale.email));

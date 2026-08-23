@@ -297,12 +297,6 @@ export async function POST(request: Request) {
     }
 
     const identity = await workspaceIdentity();
-    const brief = JSON.stringify({
-      comparison_topic: query,
-      brand: brand.name ? brand : null,
-      search_demand_geography: geography,
-    }, null, 2);
-
     let responseBody: unknown;
     let model = "";
     let yandexResults: Citation[] = [];

@@ -1,6 +1,7 @@
 "use client";
+/* eslint-disable @next/next/no-html-link-for-pages */
 
-import { FormEvent, Suspense, useEffect, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { BILLING_PERIODS, periodAmount, type BillingPeriod } from "@/app/billing-pricing";
 
@@ -12,13 +13,16 @@ const plans: Record<string, { name: string; monthly: number; yearly: number }> =
 
 function InvoiceForm() {
   const params = useSearchParams();
-  const [planId, setPlanId] = useState("start");
-  const [billing, setBilling] = useState<BillingPeriod>("monthly");
+  const queryPlanId = params.get("planId");
+  const queryBilling = params.get("billing");
+  const initialPlanId = queryPlanId && plans[queryPlanId] ? queryPlanId : "start";
+  const initialBilling = BILLING_PERIODS.some((item) => item.id === queryBilling) ? queryBilling as BillingPeriod : "monthly";
+  const [planId, setPlanId] = useState(initialPlanId);
+  const [billing, setBilling] = useState<BillingPeriod>(initialBilling);
   const [type, setType] = useState<"company" | "ip">("company");
   const [form, setForm] = useState({ name: "", inn: "", kpp: "", legalAddress: "", email: "" });
   const [accepted, setAccepted] = useState(false); const [busy, setBusy] = useState(false); const [error, setError] = useState("");
   const [result, setResult] = useState<{ invoiceUrl: string; amount: number } | null>(null);
-  useEffect(() => { const candidate = params.get("planId"); if (candidate && plans[candidate]) setPlanId(candidate); const period = params.get("billing"); if (BILLING_PERIODS.some((item) => item.id === period)) setBilling(period as BillingPeriod); }, [params]);
   const plan = plans[planId] || plans.start; const amount = periodAmount(plan.monthly, plan.yearly, billing);
   const update = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
   async function submit(event: FormEvent) {

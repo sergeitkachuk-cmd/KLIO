@@ -3,13 +3,8 @@
 import { useEffect, useState } from "react";
 
 export function AdminThemeToggle() {
-  const [dark, setDark] = useState(true);
-  useEffect(() => {
-    const saved = window.localStorage.getItem("klio-admin-theme");
-    const nextDark = saved !== "light";
-    setDark(nextDark);
-    document.body.dataset.adminTheme = nextDark ? "dark" : "light";
-  }, []);
+  const [dark, setDark] = useState(() => typeof window === "undefined" || window.localStorage.getItem("klio-admin-theme") !== "light");
+  useEffect(() => { document.body.dataset.adminTheme = dark ? "dark" : "light"; }, [dark]);
   function toggle() {
     const nextDark = !dark;
     setDark(nextDark);
