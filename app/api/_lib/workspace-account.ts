@@ -88,6 +88,14 @@ export async function ensureAccount(user: ChatGPTUser) {
     }).where(eq(accounts.email, user.email)).returning();
   }
 
+  if (account.planId !== "trial" && account.planExpiresAt && new Date(account.planExpiresAt).getTime() <= Date.now()) {
+    [account] = await db.update(accounts).set({
+      planId: "trial",
+      planExpiresAt: null,
+      updatedAt: sql`CURRENT_TIMESTAMP`,
+    }).where(eq(accounts.email, user.email)).returning();
+  }
+
   return account;
 }
 

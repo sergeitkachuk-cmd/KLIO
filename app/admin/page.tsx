@@ -7,6 +7,8 @@ import { getDb } from "../../db";
 import { accounts, aiUsage, brands } from "../../db/schema";
 import { planRule } from "../plans";
 import { getExternalServiceStatuses } from "../api/_lib/external-service-status";
+import { AdminThemeToggle } from "./admin-theme-toggle";
+import { AdminAccountControls } from "./admin-account-controls";
 
 export const metadata = { title: "КЛИО / Админка" };
 
@@ -122,6 +124,8 @@ export default async function AdminPage() {
       emailVerified: account.emailVerified,
       createdAt: account.createdAt,
       planName: plan.name,
+      planId: account.planId,
+      planExpiresAt: account.planExpiresAt,
       generationsUsed: account.generationsUsed,
       generationLimit: plan.generationLimit,
       researchUsed: account.researchUsed,
@@ -149,6 +153,7 @@ export default async function AdminPage() {
           <h1>Пользователи и расходы на ИИ</h1>
         </div>
         <p className="admin-note">Видно только владельцу сайта. Обновляется при каждом заходе на страницу.</p>
+        <AdminThemeToggle />
       </header>
 
       <section className="admin-cards">
@@ -255,6 +260,7 @@ export default async function AdminPage() {
           </table>
         </div>
       </section>
+      <AdminAccountControls users={users.map((item) => ({ email: item.email, displayName: item.displayName, planId: item.planId, planName: item.planName, planExpiresAt: item.planExpiresAt }))} />
     </main>
   );
 }
@@ -296,6 +302,21 @@ function AdminStyles() {
       .admin-empty-row { color: #9ca3af; white-space: normal; }
       .admin-table-scroll { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 12px; }
       .admin-table-users { min-width: 1000px; }
+      .admin-header-actions { display: flex; align-items: flex-end; gap: 12px; }
+      .admin-theme-toggle, .admin-control-actions button { border: 1px solid #cbd5e1; border-radius: 999px; padding: 9px 13px; background: #fff; color: #1c1f26; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; }
+      .admin-controls-grid { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 12px; align-items: end; }
+      .admin-controls-grid label { display: grid; gap: 6px; color: #6b7280; font-size: 12px; font-weight: 700; }
+      .admin-controls-grid select, .admin-controls-grid input { min-height: 38px; border: 1px solid #d1d5db; border-radius: 9px; padding: 0 10px; background: #fff; color: #1c1f26; font: inherit; }
+      .admin-control-actions { display: flex; gap: 8px; }
+      .admin-control-actions button:first-child { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+      .admin-danger-button { color: #b91c1c !important; }
+      .admin-muted { color: #6b7280; font-size: 12px; }
+      body[data-admin-theme="dark"] { background: #071525; color: #e5e7eb; }
+      body[data-admin-theme="light"] { background: #f8fafc; color: #1c1f26; }
+      body[data-admin-theme="dark"] .admin-page { color: #e5e7eb; }
+      body[data-admin-theme="dark"] .admin-cards article, body[data-admin-theme="dark"] .admin-integration, body[data-admin-theme="dark"] .admin-account-controls { background: #111d2d; border-color: #2c4059; }
+      body[data-admin-theme="dark"] .admin-theme-toggle, body[data-admin-theme="dark"] .admin-controls-grid select, body[data-admin-theme="dark"] .admin-controls-grid input { background: #17263a; border-color: #3a506b; color: #e5e7eb; }
+      @media (max-width: 800px) { .admin-controls-grid { grid-template-columns: 1fr; } .admin-header-actions { width: 100%; justify-content: space-between; align-items: center; } }
       @media (prefers-color-scheme: dark) {
         .admin-page { color: #e5e7eb; }
         .admin-cards article { background: #14161b; border-color: #262933; }

@@ -11,6 +11,7 @@ export const accounts = pgTable("accounts", {
   // are already vetted by OpenAI's own auth and never gate on this.
   emailVerified: boolean("email_verified").notNull().default(false),
   planId: text("plan_id").notNull().default("trial"),
+  planExpiresAt: text("plan_expires_at"),
   generationMonth: text("generation_month").notNull(),
   generationsUsed: integer("generations_used").notNull().default(0),
   researchUsed: integer("research_used").notNull().default(0),

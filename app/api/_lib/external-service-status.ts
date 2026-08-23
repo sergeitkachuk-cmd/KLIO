@@ -1,7 +1,7 @@
 type ServiceState = "connected" | "needs_setup" | "unavailable";
 
 export type ExternalServiceStatus = {
-  id: "deepseek" | "tavily" | "yandex" | "render" | "github";
+  id: "deepseek" | "tavily" | "yandex" | "render" | "github" | "timeweb";
   name: string;
   state: ServiceState;
   primary: string;
@@ -161,7 +161,36 @@ async function githubStatus(): Promise<ExternalServiceStatus> {
   }
 }
 
+async function timewebStatus(): Promise<ExternalServiceStatus> {
+  const token = process.env.TIMEWEB_CLOUD_TOKEN?.trim();
+  if (!token) return {
+    id: "timeweb", name: "Timeweb Cloud", state: "needs_setup", primary: "Токен не задан",
+    detail: "Добавьте TIMEWEB_CLOUD_TOKEN в переменные окружения админки.", href: "https://timeweb.cloud/my/balance",
+  };
+  try {
+    const response = await request("https://api.timeweb.cloud/api/v1/account/finances", {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const body = await response.json() as { finances?: { balance?: unknown; currency?: unknown } };
+    const balance = numeric(body.finances?.balance);
+    if (balance === null) throw new Error("Balance unavailable");
+    const currency = typeof body.finances?.currency === "string" ? body.finances.currency : "RUB";
+    return {
+      id: "timeweb", name: "Timeweb Cloud", state: "connected",
+      primary: `${balance.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ${currency === "RUB" ? "₽" : currency}`,
+      detail: "Текущий баланс аккаунта Timeweb Cloud по API.", href: "https://timeweb.cloud/my/balance",
+    };
+  } catch {
+    return {
+      id: "timeweb", name: "Timeweb Cloud", state: "unavailable", primary: "Не удалось проверить",
+      detail: "API Timeweb Cloud не ответил или токен не имеет доступа к финансам.", href: "https://timeweb.cloud/my/balance",
+    };
+  }
+}
+
 export async function getExternalServiceStatuses(): Promise<ExternalServiceStatus[]> {
-  const [deepseek, tavily, render, github] = await Promise.all([deepseekStatus(), tavilyStatus(), renderStatus(), githubStatus()]);
-  return [deepseek, tavily, yandexStatus(), render, github];
+  const [deepseek, tavily, render, github, timeweb] = await Promise.all([deepseekStatus(), tavilyStatus(), renderStatus(), githubStatus(), timewebStatus()]);
+  return [deepseek, tavily, yandexStatus(), render, github, timeweb];
 }
