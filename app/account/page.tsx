@@ -186,6 +186,8 @@ function AccountStyles() {
       [data-theme="light"] .account-plan-head small { color: rgba(13,27,49,0.5); }
       [data-theme="light"] .account-billing-lead, [data-theme="light"] .account-select-label, [data-theme="light"] .account-billing-consent { color: rgba(13,27,49,0.62); }
       [data-theme="light"] .account-select-trigger { border-color: rgba(15,23,42,0.16); background: rgba(255,255,255,0.7); color: #0d1b31; }
+      [data-theme="light"] .account-select-trigger.is-open { border-color: #5b4bb7; box-shadow: 0 0 0 2px rgba(91,75,183,0.16); }
+      [data-theme="light"] .account-select-chevron { color: #5b4bb7; }
       [data-theme="light"] .account-select-menu { border-color: rgba(15,23,42,0.16); background: #fff; box-shadow: 0 18px 40px rgba(15,23,42,0.18); }
       [data-theme="light"] .account-select-option { color: #0d1b31; }
       [data-theme="light"] .account-select-option:hover, [data-theme="light"] .account-select-option.is-selected { background: rgba(15,23,42,0.08); color: #3656c9; }

@@ -19989,3 +19989,30 @@ input[type="radio"] {
   background: rgba(15, 23, 42, 0.1);
   box-shadow: none;
 }
+
+/* Calm controls in the light theme. Native select arrows and consent
+   checkboxes previously inherited the acid accent, which made the invoice
+   form look disconnected from the rest of the light UI. */
+[data-theme="light"] .invoice-card select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 48px;
+  border-color: rgba(53, 104, 212, 0.24);
+  background-color: rgba(255, 255, 255, 0.78);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='m3 6 5 5 5-5' fill='none' stroke='%235b4bb7' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 16px 16px;
+  accent-color: #5b4bb7;
+}
+
+[data-theme="light"] .invoice-card select:focus {
+  border-color: #5c68aa !important;
+  box-shadow: 0 0 0 3px rgba(92, 104, 170, 0.2) !important;
+}
+
+[data-theme="light"] .invoice-consent input,
+[data-theme="light"] .payment-consents input,
+[data-theme="light"] .account-billing-consent input {
+  accent-color: #5b4bb7;
+}
