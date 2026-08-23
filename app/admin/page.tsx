@@ -268,7 +268,7 @@ export default async function AdminPage() {
 function AdminStyles() {
   return (
     <style>{`
-      .admin-page { max-width: 1180px; margin: 0 auto; padding: 40px 24px 80px; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #1c1f26; }
+      .admin-page { max-width: 1440px; margin: 0 auto; padding: 40px 28px 80px; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #1c1f26; }
       .admin-header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 28px; }
       .admin-kicker { margin: 0 0 4px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; }
       .admin-header h1 { margin: 0; font-size: 26px; }
@@ -297,11 +297,14 @@ function AdminStyles() {
       .admin-integration small { display: block; margin-top: 5px; color: #6b7280; font-size: 12px; line-height: 1.4; }
       .admin-integration a { margin-top: auto; padding-top: 12px; color: #4f46e5; font-size: 12px; font-weight: 700; text-decoration: none; }
       .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-      .admin-table th, .admin-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eef0f3; white-space: nowrap; }
+      .admin-table th, .admin-table td { text-align: left; padding: 9px 10px; border-bottom: 1px solid rgba(148, 163, 184, 0.18); white-space: nowrap; }
       .admin-table th { color: #6b7280; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
       .admin-empty-row { color: #9ca3af; white-space: normal; }
-      .admin-table-scroll { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 12px; }
-      .admin-table-users { min-width: 1000px; }
+      .admin-table-scroll { overflow-x: auto; border: 1px solid rgba(148, 163, 184, 0.24); border-radius: 16px; scrollbar-color: #64748b transparent; scrollbar-width: thin; }
+      .admin-table-scroll::-webkit-scrollbar { height: 8px; }
+      .admin-table-scroll::-webkit-scrollbar-track { background: transparent; }
+      .admin-table-scroll::-webkit-scrollbar-thumb { background: #64748b; border-radius: 999px; }
+      .admin-table-users { min-width: 0; table-layout: auto; }
       .admin-header-actions { display: flex; align-items: flex-end; gap: 12px; }
       .admin-theme-toggle, .admin-control-actions button { border: 1px solid #cbd5e1; border-radius: 999px; padding: 9px 13px; background: #fff; color: #1c1f26; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; }
       .admin-controls-grid { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 12px; align-items: end; }
@@ -326,13 +329,14 @@ function AdminStyles() {
         .admin-integration-connected i { background: #153d2a; color: #86efac; }
         .admin-integration-needs_setup i { background: #4a3610; color: #fde68a; }
         .admin-integration-unavailable i { background: #4a1d24; color: #fca5a5; }
-        .admin-table th, .admin-table td { border-color: #262933; }
-        .admin-table-scroll { border-color: #262933; }
+        .admin-table th, .admin-table td { border-color: rgba(148, 163, 184, 0.16); }
+        .admin-table-scroll { border-color: rgba(148, 163, 184, 0.26); }
       }
       body[data-admin-theme="light"] .admin-page { color: #1c1f26; }
       body[data-admin-theme="light"] .admin-cards article, body[data-admin-theme="light"] .admin-integration, body[data-admin-theme="light"] .admin-account-controls { background: #fff; border-color: #e5e7eb; }
       body[data-admin-theme="light"] .admin-block-heading p, body[data-admin-theme="light"] .admin-integration small { color: #6b7280; }
-      body[data-admin-theme="light"] .admin-table th, body[data-admin-theme="light"] .admin-table td { border-color: #eef0f3; }
+      body[data-admin-theme="light"] .admin-table th, body[data-admin-theme="light"] .admin-table td { border-color: rgba(148, 163, 184, 0.22); }
+      @media (max-width: 1100px) { .admin-table-users th:nth-child(4), .admin-table-users td:nth-child(4), .admin-table-users th:nth-child(11), .admin-table-users td:nth-child(11) { display: none; } }
     `}</style>
   );
 }
