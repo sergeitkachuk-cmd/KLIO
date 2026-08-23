@@ -3762,6 +3762,18 @@ textarea[data-autosize="true"] {
 .invoice-consent { display: flex !important; grid-template-columns: auto 1fr; grid-template-columns: none !important; flex-direction: row; align-items: flex-start; gap: 10px; font-weight: 500 !important; }
 .invoice-consent input { margin-top: 4px; accent-color: var(--acid); }
 .invoice-consent a { color: var(--accent); }
+.invoice-consent a,
+.account-billing-consent a {
+  color: var(--cobalt) !important;
+  font-weight: 750;
+  text-decoration-line: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+.invoice-consent a:hover,
+.account-billing-consent a:hover {
+  color: var(--violet) !important;
+}
 .invoice-primary { display: inline-flex; justify-content: center; align-items: center; min-height: 52px; padding: 0 24px; border: 0; border-radius: 999px; background: var(--acid); color: #08131e; font: inherit; font-weight: 800; text-decoration: none; cursor: pointer; }
 .invoice-primary:disabled { opacity: .5; cursor: not-allowed; }
 .invoice-error { margin: 0 !important; color: #f47b88 !important; font-weight: 700; }
