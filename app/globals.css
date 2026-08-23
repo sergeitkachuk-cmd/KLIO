@@ -16844,6 +16844,19 @@ footer nav a {
   color: #2452b8;
 }
 
+/* The dark overview uses a quieter accent for statistics. The primary
+   actions can stay bright; these passive counters should not compete with
+   the page content. */
+:root:not([data-theme="light"]) .workspace-start-stats-bar > span,
+:root:not([data-theme="light"]) .stat-days b,
+:root:not([data-theme="light"]) .stat-generator b,
+:root:not([data-theme="light"]) .stat-semantics b,
+:root:not([data-theme="light"]) .stat-adaptation b,
+:root:not([data-theme="light"]) .stat-content-plan b,
+:root:not([data-theme="light"]) .workspace-start-stats-bar-comment > i {
+  color: #b8c887;
+}
+
 /* "Начните здесь" overview tab, light theme - same cool-blue treatment as
    the rest of this pass rather than the dark hero's acid-green/purple. */
 [data-theme="light"] .workspace-start-hero {
