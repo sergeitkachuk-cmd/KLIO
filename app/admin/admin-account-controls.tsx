@@ -20,13 +20,22 @@ export function AdminAccountControls({ users }: { users: AdminUser[] }) {
     setMessage(clear ? "Тариф очищен" : "Тариф обновлён");
     router.refresh();
   }
+  async function deleteAccount() {
+    if (!email || !window.confirm(`Удалить аккаунт ${email}? Все его данные будут удалены без возможности восстановления.`)) return;
+    setMessage("Удаляем…");
+    const response = await fetch("/api/admin/accounts", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) { setMessage(data?.error ?? "Не удалось удалить аккаунт"); return; }
+    setMessage("Аккаунт удалён");
+    router.refresh();
+  }
   return <section className="admin-block admin-account-controls">
     <div className="admin-block-heading"><div><h2>Управление тарифами</h2><p>Назначайте план и продлевайте доступ клиенту. Нулевое количество месяцев очищает платный тариф.</p></div></div>
     {!users.length ? <p className="admin-muted">Пользователей пока нет.</p> : <div className="admin-controls-grid">
       <label>Клиент<select value={email} onChange={(event) => { setEmail(event.target.value); const next = users.find((item) => item.email === event.target.value); setPlanId(next?.planId ?? "trial"); }}>{users.map((item) => <option key={item.email} value={item.email}>{item.displayName} — {item.email}</option>)}</select></label>
       <label>Тариф<select value={planId} onChange={(event) => setPlanId(event.target.value)}><option value="trial">Пробный</option><option value="start">Старт</option><option value="pro">Профи</option><option value="agency">Агентство</option></select></label>
       <label>Добавить месяцев<input type="number" min="1" max="120" value={months} onChange={(event) => setMonths(event.target.value)} /></label>
-      <div className="admin-control-actions"><button type="button" onClick={() => void save()}>Сохранить тариф</button><button type="button" className="admin-danger-button" onClick={() => void save(true)}>Очистить</button></div>
+      <div className="admin-control-actions"><button type="button" onClick={() => void save()}>Сохранить тариф</button><button type="button" className="admin-danger-button" onClick={() => void save(true)}>Очистить</button><button type="button" className="admin-danger-button" onClick={() => void deleteAccount()}>Удалить аккаунт</button></div>
     </div>}
     {selected && <p className="admin-muted">Текущий тариф: {selected.planName}; {selected.planExpiresAt ? `до ${new Date(selected.planExpiresAt).toLocaleDateString("ru-RU")}` : selected.planId === "trial" ? "пробный период" : "срок не задан"}. {message}</p>}
   </section>;
