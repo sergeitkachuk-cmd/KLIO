@@ -45,6 +45,34 @@ export const payments = pgTable("payments", {
   index("payments_status_idx").on(table.status, table.createdAt),
 ]);
 
+// B2B invoices issued through Tochka. Keeping the source invoice and the
+// resulting closing document together makes reconciliation and re-downloads
+// idempotent after a payment has arrived.
+export const invoices = pgTable("invoices", {
+  id: text("id").primaryKey(),
+  ownerEmail: text("owner_email").notNull(),
+  planId: text("plan_id").notNull(),
+  billing: text("billing").notNull(),
+  amountKopecks: integer("amount_kopecks").notNull(),
+  tochkaDocumentId: text("tochka_document_id").notNull(),
+  buyerType: text("buyer_type").notNull(),
+  buyerName: text("buyer_name").notNull(),
+  buyerInn: text("buyer_inn").notNull(),
+  buyerKpp: text("buyer_kpp"),
+  buyerLegalAddress: text("buyer_legal_address").notNull(),
+  buyerEmail: text("buyer_email").notNull(),
+  paymentStatus: text("payment_status").notNull().default("payment_waiting"),
+  paidAt: text("paid_at"),
+  closingDocumentId: text("closing_document_id"),
+  closingStatus: text("closing_status"),
+  closingSentAt: text("closing_sent_at"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  index("invoices_owner_created_idx").on(table.ownerEmail, table.createdAt),
+  index("invoices_status_idx").on(table.paymentStatus, table.createdAt),
+]);
+
 export const sessions = pgTable("sessions", {
   // sha256 hex digest of the raw session token — the raw token only ever
   // lives in the visitor's cookie, never in the database.

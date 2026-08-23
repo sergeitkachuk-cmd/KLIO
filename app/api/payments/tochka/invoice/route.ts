@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { invoices } from "../../../../../db/schema";
 import { ensureAccount, getWorkspaceDb, WorkspaceAccessError, workspaceIdentity } from "../../../_lib/workspace-account";
 import { tochkaCustomerCode, tochkaRequest, TochkaConfigError } from "../../../_lib/tochka";
 import { isPlanId, type PlanId } from "../../../../plans";
@@ -66,12 +68,13 @@ export async function POST(request: Request) {
               totalAmount: amount,
               totalNds: 0,
               Positions: [{
-                name: `Доступ к сервису КЛИО — тариф «${price.name}»`,
-                unit: "услуга",
+                positionName: "KLIO service access",
+                unitCode: "\u0443\u0441\u043b\u0443\u0433\u0430.",
+                ndsKind: "without_nds",
                 quantity: 1,
                 price: amount,
-                amount,
-                nds: "Без НДС",
+                totalAmount: amount,
+                totalNds: 0,
               }],
             },
           },
@@ -80,6 +83,13 @@ export async function POST(request: Request) {
     });
     const documentId = findString(response, "documentId");
     if (!documentId) throw new Error("Точка не вернула идентификатор счёта.");
+    const db = await getWorkspaceDb();
+    await db.insert(invoices).values({
+      id: randomUUID(), ownerEmail: user.email, planId, billing,
+      amountKopecks: amount * 100, tochkaDocumentId: documentId,
+      buyerType: type, buyerName: name, buyerInn: inn, buyerKpp: kpp || null,
+      buyerLegalAddress: legalAddress, buyerEmail: email,
+    });
     return Response.json({ documentId, invoiceUrl: `/api/payments/tochka/invoice/${encodeURIComponent(documentId)}`, amount, planId, billing });
   } catch (error) {
     if (error instanceof WorkspaceAccessError || error instanceof TochkaConfigError) return Response.json({ error: error.message }, { status: error instanceof WorkspaceAccessError ? error.status : 503 });

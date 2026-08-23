@@ -5,6 +5,7 @@ import { getDb } from "../../db";
 import { brands } from "../../db/schema";
 import { accountSummary, ensureAccount, workspaceDatabaseAvailable } from "../api/_lib/workspace-account";
 import BillingActions from "./billing-actions";
+import InvoiceDocuments from "./invoice-documents";
 
 export const metadata = { title: "КЛИО / Личный кабинет" };
 
@@ -76,6 +77,7 @@ export default async function AccountPage() {
           <h2>Выберите тариф и способ оплаты</h2>
           <p className="account-billing-lead">Оплата открывается из личного кабинета и привязывается к вашему аккаунту. СБП — быстрый способ, карта также доступна.</p>
           <BillingActions />
+          <InvoiceDocuments />
         </section>
 
         <section className="account-card">
@@ -128,6 +130,15 @@ function AccountStyles() {
       .account-billing-buttons button + button { background: rgba(255,255,255,0.12); color: #fff; }
       .account-billing-buttons button:disabled { opacity: .5; cursor: not-allowed; }
       .account-billing-buttons a { display: inline-flex; align-items: center; border: 1px solid rgba(255,255,255,0.22); }
+      .account-documents { margin-top: 28px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,0.13); }
+      .account-documents h3 { margin: 0 0 6px; font-size: 20px; }
+      .account-documents > p { margin: 0 0 14px; color: rgba(255,255,255,0.58); }
+      .account-document { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 0; border-top: 1px solid rgba(255,255,255,0.09); }
+      .account-document > div:first-child { display: grid; gap: 4px; }
+      .account-document small { color: rgba(255,255,255,0.52); }
+      .account-document-actions { flex-shrink: 0; }
+      .account-document-actions button, .account-document-actions a { display: inline-flex; align-items: center; min-height: 38px; padding: 0 14px; border: 0; border-radius: 999px; color: var(--night); background: var(--acid); font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; }
+      .account-document-actions button:disabled { opacity: .55; cursor: wait; }
       .account-billing-error { margin: 14px 0 0; color: #ff9aa6; font-weight: 700; }
       .account-progress-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px; margin-bottom: 18px; }
       .account-progress > div { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
@@ -166,6 +177,9 @@ function AccountStyles() {
       [data-theme="light"] .account-billing-selects select { border-color: rgba(15,23,42,0.16); background: rgba(255,255,255,0.7); color: #0d1b31; }
       [data-theme="light"] .account-billing-buttons button + button { color: #0d1b31; background: rgba(15,23,42,0.1); }
       [data-theme="light"] .account-billing-buttons a { border-color: rgba(15,23,42,0.18); }
+      [data-theme="light"] .account-documents { border-top-color: rgba(15,23,42,0.12); }
+      [data-theme="light"] .account-document { border-top-color: rgba(15,23,42,0.09); }
+      [data-theme="light"] .account-documents > p, [data-theme="light"] .account-document small { color: rgba(13,27,49,0.56); }
       [data-theme="light"] .account-progress span { color: rgba(13,27,49,0.6); }
       [data-theme="light"] .account-progress b small { color: rgba(13,27,49,0.45); }
       [data-theme="light"] .account-progress i { background: rgba(15,23,42,0.1); }
@@ -173,7 +187,7 @@ function AccountStyles() {
       [data-theme="light"] .account-facts > div { border-bottom-color: rgba(15,23,42,0.08); }
       [data-theme="light"] .account-facts dt { color: rgba(13,27,49,0.5); }
       [data-theme="light"] .account-empty { color: rgba(13,27,49,0.55); }
-      @media (max-width: 640px) { .account-content { padding: 28px 16px 72px; } .account-billing-selects { grid-template-columns: 1fr; } .account-billing-buttons { align-items: stretch; flex-direction: column; } .account-billing-buttons button, .account-billing-buttons a { width: 100%; justify-content: center; } }
+      @media (max-width: 640px) { .account-content { padding: 28px 16px 72px; } .account-billing-selects { grid-template-columns: 1fr; } .account-billing-buttons { align-items: stretch; flex-direction: column; } .account-billing-buttons button, .account-billing-buttons a { width: 100%; justify-content: center; } .account-document { align-items: flex-start; flex-direction: column; } }
     `}</style>
   );
 }
