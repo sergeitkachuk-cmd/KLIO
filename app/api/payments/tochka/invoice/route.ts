@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     const documentNumber = String(Date.now()).slice(-10);
     const paymentPurpose = `Оплата по счёту № ${documentNumber} за подписку «КЛИО — Цифровая редакция», тариф «${price.name}», ${billingDescription(billing)}. Без НДС.`;
     const legalNotice = `Оплачивая настоящий счёт, Покупатель принимает условия публичной оферты ООО «Творческая мастерская „МЕДИАЛИПАС“» на оказание услуг по подписке «КЛИО — Цифровая редакция», размещённой по адресу: https://цифроваяредакция.рф/legal/offer. Оплата счёта означает акцепт оферты в соответствии с п. 3 ст. 438 ГК РФ.`;
-    const invoiceComment = `Назначение платежа:\n${paymentPurpose}\n\nВажно для оплаты:\nСкопируйте назначение платежа полностью. Номер счёта нужен для автоматической идентификации платежа; без него зачисление и активация тарифа могут задержаться.\n\nЮридическая информация:\n${legalNotice}\n\nКлиент: ${user.email}`;
+    const invoiceComment = `Назначение платежа:\n${paymentPurpose}\n\nВАЖНО ДЛЯ ОПЛАТЫ:\nСкопируйте назначение платежа полностью. Номер счёта нужен для автоматической идентификации платежа; без него зачисление и активация тарифа могут задержаться.\n\nЮридическая информация:\n${legalNotice}\n\nКлиент: ${user.email}`;
     const response = await tochkaRequest<unknown>("/invoice/v1.0/bills", {
       method: "POST",
       body: JSON.stringify({
