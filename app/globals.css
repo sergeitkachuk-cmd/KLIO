@@ -10039,6 +10039,39 @@ footer nav a {
   }
 }
 
+/* Calm field focus treatment.  The lime accent remains reserved for primary
+   actions and status markers; input focus uses the softer purple-blue accent
+   shared with the payment screen instead. */
+:root {
+  --field-focus: #8d78d6;
+  --field-focus-ring: rgba(141, 120, 214, 0.24);
+}
+
+[data-theme="light"] {
+  --field-focus: #5c68aa;
+  --field-focus-ring: rgba(92, 104, 170, 0.2);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline-color: var(--field-focus);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus,
+textarea:focus,
+select:focus {
+  border-color: var(--field-focus) !important;
+  box-shadow: 0 0 0 3px var(--field-focus-ring) !important;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--field-focus);
+}
+
 @media (max-width: 560px) {
   .workspace-header .brand small {
     display: none;
