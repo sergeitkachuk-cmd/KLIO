@@ -329,6 +329,10 @@ function AdminStyles() {
         .admin-table th, .admin-table td { border-color: #262933; }
         .admin-table-scroll { border-color: #262933; }
       }
+      body[data-admin-theme="light"] .admin-page { color: #1c1f26; }
+      body[data-admin-theme="light"] .admin-cards article, body[data-admin-theme="light"] .admin-integration, body[data-admin-theme="light"] .admin-account-controls { background: #fff; border-color: #e5e7eb; }
+      body[data-admin-theme="light"] .admin-block-heading p, body[data-admin-theme="light"] .admin-integration small { color: #6b7280; }
+      body[data-admin-theme="light"] .admin-table th, body[data-admin-theme="light"] .admin-table td { border-color: #eef0f3; }
     `}</style>
   );
 }
