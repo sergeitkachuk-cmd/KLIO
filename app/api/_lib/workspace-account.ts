@@ -88,32 +88,31 @@ export async function ensureAccount(user: ChatGPTUser) {
     }).where(eq(accounts.email, user.email)).returning();
   }
 
-  if (account.planId !== "trial" && account.planExpiresAt && new Date(account.planExpiresAt).getTime() <= Date.now()) {
-    [account] = await db.update(accounts).set({
-      planId: "trial",
-      planExpiresAt: null,
-      updatedAt: sql`CURRENT_TIMESTAMP`,
-    }).where(eq(accounts.email, user.email)).returning();
-  }
-
   return account;
+}
+
+function isPaidPlanExpired(account: typeof accounts.$inferSelect) {
+  if (account.planId === "trial" || !account.planExpiresAt) return false;
+  const expiresAt = new Date(account.planExpiresAt).getTime();
+  return Number.isFinite(expiresAt) && expiresAt <= Date.now();
 }
 
 export function accountSummary(account: typeof accounts.$inferSelect, brandCount = 0) {
   const rule = planRule(account.planId);
+  const expired = isPaidPlanExpired(account);
   const createdAtMs = new Date(account.createdAt).getTime();
   return {
     planId: rule.id,
-    planName: rule.name,
+    planName: expired ? `${rule.name} — срок истёк` : rule.name,
     generationsUsed: account.generationsUsed,
-    generationLimit: rule.generationLimit,
-    generationsRemaining: Math.max(0, rule.generationLimit - account.generationsUsed),
+    generationLimit: expired ? 0 : rule.generationLimit,
+    generationsRemaining: expired ? 0 : Math.max(0, rule.generationLimit - account.generationsUsed),
     researchUsed: account.researchUsed,
-    researchLimit: rule.researchLimit,
-    researchRemaining: Math.max(0, rule.researchLimit - account.researchUsed),
+    researchLimit: expired ? 0 : rule.researchLimit,
+    researchRemaining: expired ? 0 : Math.max(0, rule.researchLimit - account.researchUsed),
     editorActionsUsed: account.editorActionsUsed,
-    editorActionLimit: rule.editorActionLimit,
-    editorActionsRemaining: Math.max(0, rule.editorActionLimit - account.editorActionsUsed),
+    editorActionLimit: expired ? 0 : rule.editorActionLimit,
+    editorActionsRemaining: expired ? 0 : Math.max(0, rule.editorActionLimit - account.editorActionsUsed),
     // Lifetime totals for the "Ваша статистика" bar — never reset by the
     // monthly rollover in ensureAccount(), unlike the period counters
     // above (which still drive the plan quota widgets on /account and
@@ -152,12 +151,22 @@ function assertTrialActive(account: typeof accounts.$inferSelect) {
   );
 }
 
+function assertPlanActive(account: typeof accounts.$inferSelect) {
+  assertTrialActive(account);
+  if (isPaidPlanExpired(account)) {
+    throw new WorkspaceAccessError(
+      "Срок оплаченного тарифа закончился. Материалы доступны для просмотра, но генерация отключена. Продлите тариф, чтобы продолжить работу.",
+      402,
+    );
+  }
+}
+
 async function consumeSecondaryQuota(kind: "research" | "editor") {
   if (!await workspaceDatabaseAvailable()) return null;
   const user = await workspaceIdentity();
   const db = await getWorkspaceDb();
   const current = await ensureAccount(user);
-  assertTrialActive(current);
+  assertPlanActive(current);
   const rule = planRule(current.planId);
 
   const [updated] = kind === "research"
@@ -195,7 +204,7 @@ export async function assertGenerationQuotaAvailable() {
   if (!await workspaceDatabaseAvailable()) return;
   const user = await workspaceIdentity();
   const current = await ensureAccount(user);
-  assertTrialActive(current);
+  assertPlanActive(current);
   const rule = planRule(current.planId);
   if (current.generationsUsed >= rule.generationLimit) {
     throw new WorkspaceAccessError(`Лимит тарифа «${rule.name}» исчерпан: ${rule.generationLimit} материалов ${rule.periodLabel}.`, 429);
@@ -206,7 +215,7 @@ export async function assertSecondaryQuotaAvailable(kind: "research" | "editor")
   if (!await workspaceDatabaseAvailable()) return;
   const user = await workspaceIdentity();
   const current = await ensureAccount(user);
-  assertTrialActive(current);
+  assertPlanActive(current);
   const rule = planRule(current.planId);
   const used = kind === "research" ? current.researchUsed : current.editorActionsUsed;
   const limit = kind === "research" ? rule.researchLimit : rule.editorActionLimit;
@@ -244,7 +253,7 @@ export async function recordGeneration(material: ArchiveMaterial) {
   const user = await workspaceIdentity();
   const db = await getWorkspaceDb();
   const current = await ensureAccount(user);
-  assertTrialActive(current);
+  assertPlanActive(current);
   const rule = planRule(current.planId);
   const [updated] = await db.update(accounts).set({
     generationsUsed: sql`${accounts.generationsUsed} + 1`,

@@ -39,8 +39,8 @@ function formatNumber(value: number): string {
   return value.toLocaleString("ru-RU");
 }
 
-function planExpiryState(value: string | null | undefined): "soon" | "critical" | "expired" | "normal" {
-  if (!value) return "normal";
+function planExpiryState(planId: string, value: string | null | undefined): "soon" | "critical" | "expired" | "missing" | "normal" {
+  if (!value) return planId === "trial" ? "normal" : "missing";
   const time = new Date(value).getTime();
   if (!Number.isFinite(time)) return "normal";
   const days = (time - Date.now()) / 86_400_000;
@@ -48,6 +48,11 @@ function planExpiryState(value: string | null | undefined): "soon" | "critical" 
   if (days <= 1) return "critical";
   if (days <= 5) return "soon";
   return "normal";
+}
+
+function formatPlanExpiry(planId: string, value: string | null | undefined): string {
+  if (value) return formatDate(value);
+  return planId === "trial" ? "Пробный период" : "Срок не задан";
 }
 
 // Typed against AiOperation so adding a new operation to ai-config.ts
@@ -259,7 +264,7 @@ export default async function AdminPage() {
                   <td>{item.emailVerified ? "Подтверждена" : "Не подтверждена"}</td>
                   <td>{formatDate(item.createdAt)}</td>
                   <td>{item.planName}</td>
-                  <td className={`admin-plan-expiry admin-plan-expiry-${planExpiryState(item.planExpiresAt)}`}>{item.planExpiresAt ? formatDate(item.planExpiresAt) : "Без срока"}</td>
+                  <td className={`admin-plan-expiry admin-plan-expiry-${planExpiryState(item.planId, item.planExpiresAt)}`}>{formatPlanExpiry(item.planId, item.planExpiresAt)}</td>
                   <td>{item.generationsUsed} / {item.generationLimit}</td>
                   <td>{item.researchUsed} / {item.researchLimit}</td>
                   <td>{item.editorActionsUsed} / {item.editorActionLimit}</td>
@@ -314,6 +319,7 @@ function AdminStyles() {
       .admin-table th { color: #6b7280; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
       .admin-plan-expiry-soon { color: #b45309; background: rgba(251, 191, 36, 0.12); font-weight: 700; }
       .admin-plan-expiry-critical, .admin-plan-expiry-expired { color: #b91c1c; background: rgba(248, 113, 113, 0.13); font-weight: 700; }
+      .admin-plan-expiry-missing { color: #92400e; background: rgba(251, 191, 36, 0.16); font-weight: 700; }
       .admin-empty-row { color: #9ca3af; white-space: normal; }
       .admin-table-scroll { overflow-x: auto; border: 1px solid rgba(148, 163, 184, 0.24); border-radius: 16px; scrollbar-color: #64748b transparent; scrollbar-width: thin; }
       .admin-table-scroll::-webkit-scrollbar { height: 8px; }
