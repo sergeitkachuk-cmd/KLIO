@@ -16,6 +16,15 @@ function formatDate(value: string | null | undefined): string {
   return date.toLocaleDateString("ru-RU", { day: "2-digit", month: "long", year: "numeric" });
 }
 
+// Same soon/critical/expired/missing bands as /admin (see planExpiryState in
+// ../plans) — phrased for the account holder instead of a table cell. Only
+// called for non-trial plans, so `value` is only null in the "missing" case.
+function planExpiryLabel(state: string, value: string | null | undefined): string {
+  if (state === "missing") return "Срок действия не задан";
+  if (state === "expired") return `Тариф истёк ${formatDate(value)}`;
+  return `Действует до ${formatDate(value)}`;
+}
+
 function Progress({ label, used, remaining, limit }: { label: string; used: number; remaining: number; limit: number }) {
   const percent = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
   return (
@@ -61,7 +70,12 @@ export default async function AccountPage() {
 
         <section className="account-card account-plan-card">
           <div className="account-plan-head">
-            <div><span>Текущий тариф</span><h2>{summary.planName}</h2><small>1 пользователь на всех тарифах · лимиты обновляются ежемесячно</small></div>
+            <div>
+              <span>Текущий тариф</span>
+              <h2>{summary.planName}</h2>
+              <small>1 пользователь на всех тарифах · лимиты обновляются ежемесячно</small>
+              {summary.planId !== "trial" && <small className={`account-plan-expiry account-plan-expiry-${summary.planExpiryState}`}>{planExpiryLabel(summary.planExpiryState, summary.planExpiresAt)}</small>}
+            </div>
             <a className="account-upgrade" href="#billing">Выбрать тариф</a>
           </div>
           <div className="account-progress-grid">
@@ -114,6 +128,9 @@ function AccountStyles() {
       .account-plan-head span { color: #d5c9fb; font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
       .account-plan-head h2 { margin: 6px 0 6px; font-size: 30px; }
       .account-plan-head small { color: rgba(255,255,255,0.55); font-size: 14px; }
+      .account-plan-expiry { display: block; margin-top: 6px; font-weight: 700; }
+      .account-plan-expiry-soon, .account-plan-expiry-missing { color: #fbbf24; }
+      .account-plan-expiry-critical, .account-plan-expiry-expired { color: #f87171; }
       .account-upgrade { flex-shrink: 0; padding: 11px 18px; border-radius: 999px; color: var(--night); font-size: 15px; font-weight: 700; text-decoration: none; background: var(--acid); }
       .account-upgrade:hover { opacity: 0.88; }
       .account-billing-card h2 { margin: 0 0 8px; font-size: 28px; }
@@ -190,6 +207,8 @@ function AccountStyles() {
       [data-theme="light"] .account-card > span { color: #2452b8; }
       [data-theme="light"] .account-plan-head span { color: #2452b8; }
       [data-theme="light"] .account-plan-head small { color: rgba(13,27,49,0.5); }
+      [data-theme="light"] .account-plan-expiry-soon, [data-theme="light"] .account-plan-expiry-missing { color: #b45309; }
+      [data-theme="light"] .account-plan-expiry-critical, [data-theme="light"] .account-plan-expiry-expired { color: #b91c1c; }
       [data-theme="light"] .account-billing-lead, [data-theme="light"] .account-select-label, [data-theme="light"] .account-billing-consent { color: rgba(13,27,49,0.62); }
       [data-theme="light"] .account-select-trigger { border-color: rgba(15,23,42,0.16); background: rgba(255,255,255,0.7); color: #0d1b31; }
       [data-theme="light"] .account-select-trigger.is-open { border-color: #5b4bb7; box-shadow: 0 0 0 2px rgba(91,75,183,0.16); }

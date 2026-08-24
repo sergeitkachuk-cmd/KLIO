@@ -3,7 +3,7 @@ import { accounts, brands, generations } from "../../../db/schema";
 import { getDb } from "../../../db";
 import type { ChatGPTUser } from "../../chatgpt-auth";
 import { getCurrentUser } from "../../identity";
-import { planRule } from "../../plans";
+import { planRule, planExpiryState } from "../../plans";
 
 export class WorkspaceAccessError extends Error {
   status: number;
@@ -125,6 +125,11 @@ export function accountSummary(account: typeof accounts.$inferSelect, brandCount
     brandLimit: rule.brandLimit,
     seatLimit: rule.seatLimit,
     period: account.generationMonth,
+    // Null for the trial plan (see assertTrialActive for its own 48h
+    // window) and for paid plans an admin granted without an expiry —
+    // the account page flags that "missing" case too, same as /admin.
+    planExpiresAt: account.planExpiresAt,
+    planExpiryState: planExpiryState(rule.id, account.planExpiresAt),
   };
 }
 

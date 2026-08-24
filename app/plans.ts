@@ -69,3 +69,23 @@ export function isPlanId(value: unknown): value is PlanId {
 export function planRule(value: unknown): PlanRule {
   return PLAN_RULES[isPlanId(value) ? value : "start"];
 }
+
+// Shared by the admin users table and the account page's plan card so both
+// surfaces flag an approaching/expired paid plan the same way.
+export type PlanExpiryState = "soon" | "critical" | "expired" | "missing" | "normal";
+
+export function planExpiryState(planId: string, value: string | null | undefined): PlanExpiryState {
+  if (!value) return planId === "trial" ? "normal" : "missing";
+  const time = new Date(value).getTime();
+  if (!Number.isFinite(time)) return "normal";
+  const days = (time - Date.now()) / 86_400_000;
+  if (days < 0) return "expired";
+  if (days <= 1) return "critical";
+  if (days <= 5) return "soon";
+  return "normal";
+}
+
+export function formatPlanExpiry(planId: string, value: string | null | undefined, formatDate: (value: string) => string): string {
+  if (value) return formatDate(value);
+  return planId === "trial" ? "Пробный период" : "Срок не задан";
+}

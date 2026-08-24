@@ -5,7 +5,7 @@ import { isAdminEmail } from "../api/_lib/admin";
 import type { AiOperation } from "../api/_lib/ai-config";
 import { getDb } from "../../db";
 import { accounts, aiUsage, asyncJobs, brands, emailVerifications, generations, invoices, materials, passwordResets, payments, sessions } from "../../db/schema";
-import { planRule } from "../plans";
+import { planRule, planExpiryState, formatPlanExpiry } from "../plans";
 import { getExternalServiceStatuses } from "../api/_lib/external-service-status";
 import { AdminThemeToggle } from "./admin-theme-toggle";
 import { AdminAccountControls } from "./admin-account-controls";
@@ -38,22 +38,6 @@ function formatDate(value: string | null | undefined): string {
 
 function formatNumber(value: number): string {
   return value.toLocaleString("ru-RU");
-}
-
-function planExpiryState(planId: string, value: string | null | undefined): "soon" | "critical" | "expired" | "missing" | "normal" {
-  if (!value) return planId === "trial" ? "normal" : "missing";
-  const time = new Date(value).getTime();
-  if (!Number.isFinite(time)) return "normal";
-  const days = (time - Date.now()) / 86_400_000;
-  if (days < 0) return "expired";
-  if (days <= 1) return "critical";
-  if (days <= 5) return "soon";
-  return "normal";
-}
-
-function formatPlanExpiry(planId: string, value: string | null | undefined): string {
-  if (value) return formatDate(value);
-  return planId === "trial" ? "Пробный период" : "Срок не задан";
 }
 
 // Typed against AiOperation so adding a new operation to ai-config.ts
@@ -282,7 +266,7 @@ export default async function AdminPage() {
             emailStatus: item.emailVerified ? "\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0430" : "\u041d\u0435 \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0430",
             createdAt: formatDate(item.createdAt),
             planName: item.planName,
-            planExpires: formatPlanExpiry(item.planId, item.planExpiresAt),
+            planExpires: formatPlanExpiry(item.planId, item.planExpiresAt, formatDate),
             planExpiryState: planExpiryState(item.planId, item.planExpiresAt),
             generations: `${item.generationsUsed} / ${item.generationLimit}`,
             research: `${item.researchUsed} / ${item.researchLimit}`,
@@ -319,7 +303,7 @@ export default async function AdminPage() {
                   <td>{item.emailVerified ? "Подтверждена" : "Не подтверждена"}</td>
                   <td>{formatDate(item.createdAt)}</td>
                   <td>{item.planName}</td>
-                  <td className={`admin-plan-expiry admin-plan-expiry-${planExpiryState(item.planId, item.planExpiresAt)}`}>{formatPlanExpiry(item.planId, item.planExpiresAt)}</td>
+                  <td className={`admin-plan-expiry admin-plan-expiry-${planExpiryState(item.planId, item.planExpiresAt)}`}>{formatPlanExpiry(item.planId, item.planExpiresAt, formatDate)}</td>
                   <td>{item.generationsUsed} / {item.generationLimit}</td>
                   <td>{item.researchUsed} / {item.researchLimit}</td>
                   <td>{item.editorActionsUsed} / {item.editorActionLimit}</td>
