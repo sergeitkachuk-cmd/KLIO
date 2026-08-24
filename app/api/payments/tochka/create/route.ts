@@ -1,5 +1,6 @@
 ﻿import { workspaceIdentity, WorkspaceAccessError } from "../../../_lib/workspace-account";
-import { discoverTochkaIds, extractPaymentUrl, tochkaRequest, TochkaConfigError } from "../../../_lib/tochka";
+import { discoverTochkaIds, extractOperationId, extractPaymentUrl, tochkaRequest, TochkaConfigError } from "../../../_lib/tochka";
+import { eq } from "drizzle-orm";
 import { isPlanId, type PlanId } from "../../../../plans";
 import { payments } from "../../../../../db/schema";
 import { ensureAccount } from "../../../_lib/workspace-account";
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
       customerCode,
       ...(merchantId ? { merchantId } : {}),
       paymentLinkId,
-      redirectUrl: `${baseUrl}/account?payment=success`,
+      redirectUrl: `${baseUrl}/account?payment=success&paymentLinkId=${encodeURIComponent(paymentLinkId)}`,
       failRedirectUrl: `${baseUrl}/account?payment=failed`,
       callbackUrl: `${baseUrl}/api/payments/tochka/webhook`,
       ttl: 10080,
@@ -73,6 +74,8 @@ export async function POST(request: Request) {
     });
     const paymentUrl = extractPaymentUrl(response);
     if (!paymentUrl) throw new Error("Точка не вернула ссылку на оплату.");
+    const operationId = extractOperationId(response);
+    if (operationId) await db.update(payments).set({ operationId, updatedAt: new Date().toISOString() }).where(eq(payments.id, paymentLinkId));
     return Response.json({ paymentUrl, paymentLinkId, planId, amount, billing, mode });
   } catch (error) {
     if (error instanceof WorkspaceAccessError || error instanceof TochkaConfigError) return Response.json({ error: error.message }, { status: error instanceof WorkspaceAccessError ? error.status : 503 });

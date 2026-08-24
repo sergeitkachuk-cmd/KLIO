@@ -178,3 +178,19 @@ export function extractPaymentUrl(value: unknown): string | null {
   }
   return null;
 }
+
+/** Gets the bank operation id from the create-payment response. */
+export function extractOperationId(value: unknown): string | null {
+  if (!value || typeof value !== "object") return null;
+  if (Array.isArray(value)) {
+    for (const item of value) { const result = extractOperationId(item); if (result) return result; }
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  if (typeof record.operationId === "string" && record.operationId.trim()) return record.operationId;
+  for (const item of Object.values(record)) {
+    const result = extractOperationId(item);
+    if (result) return result;
+  }
+  return null;
+}

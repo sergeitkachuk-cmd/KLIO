@@ -46,17 +46,18 @@ export async function POST(request: Request) {
       if (!payment) return;
       if (payment.status === "paid" || payment.status === "refunded") { outcome = "already_processed"; return; }
       if (payment.status !== "pending" || payment.amountKopecks !== amountKopecks) throw new Error("Payment verification failed.");
-      await tx.update(payments).set({
+      const [confirmedPayment] = await tx.update(payments).set({
         status: "paid",
         operationId,
         paidAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      }).where(and(eq(payments.id, paymentLinkId), eq(payments.status, "pending")));
+      }).where(and(eq(payments.id, paymentLinkId), eq(payments.status, "pending"))).returning();
+      if (!confirmedPayment) { outcome = "already_processed"; return; }
       const [account] = await tx.select().from(accounts).where(eq(accounts.email, payment.ownerEmail)).limit(1);
       const paidAt = new Date();
       await tx.update(accounts).set({
-        planId: payment.planId,
-        planExpiresAt: subscriptionExpiry(account?.planExpiresAt, payment.billing as BillingPeriod, paidAt),
+        planId: confirmedPayment.planId,
+        planExpiresAt: subscriptionExpiry(account?.planExpiresAt, confirmedPayment.billing as BillingPeriod, paidAt),
         generationsUsed: 0,
         researchUsed: 0,
         editorActionsUsed: 0,
