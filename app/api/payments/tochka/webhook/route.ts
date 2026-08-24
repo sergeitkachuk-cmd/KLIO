@@ -14,22 +14,37 @@ function numericAmount(value: unknown) {
   return Number.isFinite(amount) ? Math.round(amount * 100) : null;
 }
 
+// The success path used to log nothing at all — after a real payment went
+// unconfirmed with zero trace of the webhook ever arriving, every branch
+// below now logs something, so "did Tochka even call us" is a log search
+// away instead of a guess next time.
 export async function POST(request: Request) {
   const raw = await request.text();
   try {
     const claims = await verifyTochkaWebhook(raw);
-    if (!claims || claims.webhookType !== "acquiringInternetPayment") return new Response(null, { status: 400 });
-    if (claims.status !== "APPROVED") return new Response(null, { status: 200 });
+    if (!claims || claims.webhookType !== "acquiringInternetPayment") {
+      console.error("Tochka webhook rejected: bad signature or unexpected type", claims?.webhookType ?? "(signature failed)");
+      return new Response(null, { status: 400 });
+    }
+    if (claims.status !== "APPROVED") {
+      console.log("Tochka webhook received, ignoring non-APPROVED status", claims.status, stringClaim(claims.paymentLinkId));
+      return new Response(null, { status: 200 });
+    }
 
     const paymentLinkId = stringClaim(claims.paymentLinkId);
     const operationId = stringClaim(claims.operationId);
     const amountKopecks = numericAmount(claims.amount);
-    if (!paymentLinkId || !operationId || amountKopecks === null) return new Response(null, { status: 400 });
+    if (!paymentLinkId || !operationId || amountKopecks === null) {
+      console.error("Tochka webhook missing required claims", { paymentLinkId, operationId, amount: claims.amount });
+      return new Response(null, { status: 400 });
+    }
 
     const db = await getWorkspaceDb();
+    let outcome: "confirmed" | "already_processed" | "unknown_payment" = "unknown_payment";
     await db.transaction(async (tx) => {
       const [payment] = await tx.select().from(payments).where(eq(payments.id, paymentLinkId)).limit(1);
-      if (!payment || payment.status === "paid" || payment.status === "refunded") return;
+      if (!payment) return;
+      if (payment.status === "paid" || payment.status === "refunded") { outcome = "already_processed"; return; }
       if (payment.status !== "pending" || payment.amountKopecks !== amountKopecks) throw new Error("Payment verification failed.");
       await tx.update(payments).set({
         status: "paid",
@@ -48,7 +63,9 @@ export async function POST(request: Request) {
         generationMonth: `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, "0")}`,
         updatedAt: paidAt.toISOString(),
       }).where(eq(accounts.email, payment.ownerEmail));
+      outcome = "confirmed";
     });
+    console.log("Tochka webhook processed", outcome, paymentLinkId, operationId);
     return new Response(null, { status: 200 });
   } catch (error) {
     console.error("Tochka webhook failed", error instanceof Error ? error.message : "unknown error");
