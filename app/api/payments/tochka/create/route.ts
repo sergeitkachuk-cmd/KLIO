@@ -6,6 +6,7 @@ import { payments } from "../../../../../db/schema";
 import { ensureAccount } from "../../../_lib/workspace-account";
 import { getWorkspaceDb } from "../../../_lib/workspace-account";
 import { isBillingPeriod, periodAmount, billingDescription } from "../../../../billing-pricing";
+import { PAYMENT_LINK_TTL_MINUTES } from "../../../../payment-link";
 
 const PRICES: Record<Exclude<PlanId, "trial">, { monthly: number; yearly: number; name: string }> = {
   start: { monthly: 1190, yearly: 950, name: "Старт" },
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
       redirectUrl: `${baseUrl}/account?payment=success&paymentLinkId=${encodeURIComponent(paymentLinkId)}`,
       failRedirectUrl: `${baseUrl}/account?payment=failed`,
       callbackUrl: `${baseUrl}/api/payments/tochka/webhook`,
-      ttl: 10080,
+      ttl: PAYMENT_LINK_TTL_MINUTES,
       // Client + Items make this the fiscalized ("with-receipt") endpoint —
       // Tochka issues an actual 54-FZ cash receipt to Client.email once the
       // payment clears. The plain /acquiring/v1.0/payments endpoint used
