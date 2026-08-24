@@ -27,7 +27,6 @@ export async function POST(request: Request) {
     const operation = await tochkaRequest<unknown>(`/acquiring/v1.0/payments/${encodeURIComponent(payment.operationId)}`);
     const providerStatus = statusOf(operation)?.toUpperCase();
     if (providerStatus === "REFUNDED" || providerStatus === "REFUNDED_PARTIALLY") {
-      const isFullRefund = providerStatus === "REFUNDED";
       const now = new Date();
       let revoked = false;
       await db.transaction(async (tx) => {
@@ -42,9 +41,9 @@ export async function POST(request: Request) {
           .where(and(eq(payments.ownerEmail, refundedPayment.ownerEmail), eq(payments.status, "paid")));
         const refundedAt = new Date(refundedPayment.paidAt || refundedPayment.createdAt).getTime();
         const hasNewerPayment = successful.some((item) => new Date(item.paidAt || 0).getTime() > refundedAt);
-        // A partial refund is a financial adjustment, not an automatic reason
-        // to remove a subscription. Only a full refund revokes access.
-        if (isFullRefund && !hasNewerPayment) {
+        // A refund, whether full or partial, closes the subscription period
+        // attached to this purchase. A later independent payment wins.
+        if (!hasNewerPayment) {
           await tx.update(accounts).set({ planId: "trial", planExpiresAt: null, updatedAt: now.toISOString() })
             .where(eq(accounts.email, refundedPayment.ownerEmail));
           revoked = true;
