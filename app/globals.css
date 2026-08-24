@@ -15065,6 +15065,165 @@ input[type="radio"] {
   background: rgba(255, 255, 255, 0.1);
 }
 
+/* Practical examples bridge the welcome message and the module catalogue:
+   each card starts with a familiar task, shows KLIO's concrete answer, and
+   opens the relevant module instead of making the user hunt for it. */
+.workspace-start-use-cases {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.76fr) minmax(0, 2.24fr);
+  gap: 22px;
+  align-items: stretch;
+  padding: 24px 26px;
+  border: 1px solid rgba(151, 190, 234, 0.16);
+  border-radius: 4px 24px 4px 4px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 0% 100%, rgba(216, 255, 101, 0.1), transparent 32%),
+    linear-gradient(135deg, #071d35, #0b2949 66%, #08233f);
+  box-shadow: 0 18px 42px rgba(3, 17, 34, 0.18), inset 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.workspace-start-use-cases-heading {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  padding: 2px 8px 2px 0;
+}
+
+.workspace-start-use-cases-heading > span,
+.workspace-start-use-case-label,
+.workspace-start-use-case > div > span {
+  color: var(--acid);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.workspace-start-use-cases-heading h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 590;
+  letter-spacing: -0.025em;
+  line-height: 1.18;
+}
+
+.workspace-start-use-cases-heading p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.workspace-start-use-cases-list {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.workspace-start-use-case {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 174px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 3px 14px 3px 3px;
+  color: inherit;
+  text-align: left;
+  background: rgba(3, 17, 34, 0.32);
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+  animation: workspace-use-case-fade 420ms ease;
+}
+
+@keyframes workspace-use-case-fade {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.workspace-start-use-case:hover {
+  border-color: rgba(216, 255, 101, 0.38);
+  background: rgba(19, 52, 84, 0.75);
+  transform: translateY(-2px);
+}
+
+.workspace-start-use-case h4 {
+  margin: 0;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 620;
+  letter-spacing: -0.015em;
+  line-height: 1.32;
+}
+
+.workspace-start-use-case > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.workspace-start-use-case > div > span { color: rgba(216, 255, 101, 0.78); font-size: 9px; }
+
+.workspace-start-use-case p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 11px;
+  line-height: 1.42;
+}
+
+.workspace-start-use-case b {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: auto;
+  padding-top: 5px;
+  color: var(--acid);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.workspace-start-use-case b svg {
+  width: 14px;
+  height: 14px;
+}
+
+.workspace-start-use-cases-progress {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: rgba(255, 255, 255, 0.54);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.workspace-start-use-cases-progress i {
+  display: block;
+  width: 56px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.workspace-start-use-cases-progress b {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--acid);
+  transform-origin: left;
+  animation: workspace-use-case-progress 9s linear;
+}
+
+@keyframes workspace-use-case-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
 .workspace-start-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -15192,6 +15351,10 @@ input[type="radio"] {
   .workspace-start-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .workspace-start-use-cases {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
@@ -15208,6 +15371,14 @@ input[type="radio"] {
   }
 
   .workspace-start-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-start-use-cases {
+    padding: 22px;
+  }
+
+  .workspace-start-use-cases-list {
     grid-template-columns: 1fr;
   }
 }
@@ -16995,6 +17166,54 @@ input[type="radio"] {
 [data-theme="light"] .workspace-start-hero-tip button:hover {
   border-color: rgba(53, 104, 212, 0.4);
   background: rgba(53, 104, 212, 0.12);
+}
+
+[data-theme="light"] .workspace-start-use-cases {
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #0d1b31;
+  background:
+    radial-gradient(circle at 0% 100%, rgba(53, 104, 212, 0.1), transparent 32%),
+    linear-gradient(135deg, #e8f0fa, #f3f7fc 66%, #ffffff);
+  box-shadow: 0 18px 42px rgba(20, 40, 80, 0.08), inset 0 1px rgba(255, 255, 255, 0.76);
+}
+
+[data-theme="light"] .workspace-start-use-cases-heading > span,
+[data-theme="light"] .workspace-start-use-case-label,
+[data-theme="light"] .workspace-start-use-case > div > span,
+[data-theme="light"] .workspace-start-use-case b {
+  color: #2452b8;
+}
+
+[data-theme="light"] .workspace-start-use-cases-heading p,
+[data-theme="light"] .workspace-start-use-case p {
+  color: rgba(13, 27, 49, 0.64);
+}
+
+[data-theme="light"] .workspace-start-use-case {
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #0d1b31;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+[data-theme="light"] .workspace-start-use-case:hover {
+  border-color: rgba(36, 82, 184, 0.38);
+  background: #fff;
+}
+
+[data-theme="light"] .workspace-start-use-case h4 {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .workspace-start-use-cases-progress {
+  color: rgba(13, 27, 49, 0.52);
+}
+
+[data-theme="light"] .workspace-start-use-cases-progress i {
+  background: rgba(36, 82, 184, 0.16);
+}
+
+[data-theme="light"] .workspace-start-use-cases-progress b {
+  background: #2452b8;
 }
 
 [data-theme="light"] .workspace-start-card {

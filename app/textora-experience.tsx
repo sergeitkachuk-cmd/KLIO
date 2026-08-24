@@ -794,6 +794,18 @@ const WORKSPACE_MODULE_GUIDE: Array<{
   { id: "competitors", step: "+", title: "Анализ конкурентов", text: "КЛИО может сама подобрать лидеров отрасли и ближайших конкурентов по вашей теме и географии. Вы также можете добавить нужные сайты вручную. Затем сервис покажет, какие темы уже раскрыты и где ваш материал может быть полезнее.", cta: "Подобрать конкурентов" },
 ];
 
+const WORKSPACE_USE_CASES = [
+  { kind: "Задача", id: "content-plan", task: "Нужно регулярно публиковаться, но темы заканчиваются", solution: "Соберёт контент-план с темами под задачи читателя — выберите любую и сразу отправьте в генератор.", cta: "Собрать план" },
+  { kind: "Задача", id: "generator", task: "Нужно быстро подготовить материал для сайта", solution: "Создаст цельный черновик с SEO-заголовком, метаописанием и структурой — от темы и ключевых слов.", cta: "Написать материал" },
+  { kind: "Задача", id: "adaptation", task: "Есть черновик, который хочется сделать сильнее", solution: "Проверит текст, настроит тон, адаптирует под площадку или пересоберёт его для SEO.", cta: "Открыть редакторы" },
+  { kind: "Задача", id: "brand", task: "Тексты должны звучать узнаваемо, как ваш бренд", solution: "Поможет описать аудиторию, сильные стороны и тон общения, чтобы учитывать их в новых материалах.", cta: "Заполнить профиль" },
+  { kind: "Задача", id: "semantics", task: "Нужно понять, что именно ищут будущие клиенты", solution: "Соберёт поисковые запросы по теме и географии, сгруппирует их по смыслу и поможет выбрать фокус статьи.", cta: "Найти запросы" },
+  { kind: "Задача", id: "competitors", task: "Хочется найти свободный угол в теме, а не повторять конкурентов", solution: "Покажет, какие темы уже раскрыты у конкурентов и где ваш материал может быть полезнее читателю.", cta: "Посмотреть конкурентов" },
+  { kind: "Совет", id: "content-plan", task: "Хотите точнее получить результат контент-плана?", solution: "Заполните поле «Тема или фокус»: например, укажите услугу, сезонную кампанию или нужную аудиторию. Так КЛИО сделает акцент именно на этом.", cta: "Уточнить фокус" },
+  { kind: "Совет", id: "generator", task: "В режиме «Новичок» достаточно описать задачу своими словами", solution: "Расскажите КЛИО, какой материал вам нужен. Нужны отдельные настройки формата, ключей и стиля — переключитесь в режим «Эксперт» и заполните поля.", cta: "Открыть генератор" },
+  { kind: "Совет", id: "brand", task: "Не хотите заполнять профиль бренда вручную?", solution: "Впишите адрес сайта и нажмите «Заполнить с помощью ИИ». КЛИО предложит основу профиля, а вам останется проверить и дополнить важные детали.", cta: "Заполнить по сайту" },
+] as const;
+
 // Rotates on the "Начните здесь" tab (see tipIndex below) — short,
 // practical notes on copywriting/SMM, in KLIO's own voice. Not tied to any
 // account data, just a changing point of interest on an otherwise static
@@ -1501,6 +1513,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   useEffect(() => {
     if (activeModule !== "start") return;
     const timer = window.setInterval(() => setTipIndex((current) => current + 1), 10000);
+    return () => window.clearInterval(timer);
+  }, [activeModule]);
+  // A different case is selected for every new visit. While the overview is
+  // open it advances on its own, so the marketing block stays useful rather
+  // than becoming a static list of features.
+  const [useCaseIndex, setUseCaseIndex] = useState(() => Math.floor(Math.random() * WORKSPACE_USE_CASES.length));
+  useEffect(() => {
+    if (activeModule !== "start") return;
+    const timer = window.setInterval(() => setUseCaseIndex((current) => current + 1), 9000);
     return () => window.clearInterval(timer);
   }, [activeModule]);
   const [brandSaved, setBrandSaved] = useState(false);
@@ -4208,6 +4229,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     const tipIsInspiration = tipIndex % 2 === 1;
     const tipPool = tipIsInspiration ? KLIO_INSPIRATION : KLIO_TIPS;
     const tipText = tipPool[Math.floor(tipIndex / 2) % tipPool.length];
+    const activeUseCase = WORKSPACE_USE_CASES[useCaseIndex % WORKSPACE_USE_CASES.length];
 
     if (workspaceDataError && !activeBrandId) {
       return <main className="workspace-shell workspace-loading is-error"><Brand/><div><h1>Кабинет временно недоступен</h1><p>{workspaceDataError}</p><button className="button primary" type="button" onClick={() => window.location.reload()}>Повторить</button></div></main>;
@@ -4393,6 +4415,23 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <button type="button" onClick={() => setTipIndex((current) => current + 1)}>Следующий совет <Icon name="arrow"/></button>
               </div>
             </div>
+
+            <section className="workspace-start-use-cases" aria-labelledby="workspace-use-cases-title">
+              <div className="workspace-start-use-cases-heading">
+                <span>КЛИО в работе</span>
+                <h3 id="workspace-use-cases-title">Задачи и советы: КЛИО подскажет следующий шаг</h3>
+                <p>Начните с того, что нужно сделать сегодня, или возьмите короткий совет для более точного результата.</p>
+              </div>
+              <div className="workspace-start-use-cases-list">
+                <button type="button" className="workspace-start-use-case" onClick={() => openModule(activeUseCase.id)} key={useCaseIndex}>
+                  <span className="workspace-start-use-case-label">{activeUseCase.kind}</span>
+                  <h4>{activeUseCase.task}</h4>
+                  <div><span>{activeUseCase.kind === "Совет" ? "Как сделать" : "Решение КЛИО"}</span><p>{activeUseCase.solution}</p></div>
+                  <b>{activeUseCase.cta} <Icon name="arrow"/></b>
+                </button>
+                <div className="workspace-start-use-cases-progress" aria-live="polite"><span>Кейс {useCaseIndex % WORKSPACE_USE_CASES.length + 1} из {WORKSPACE_USE_CASES.length}</span><i><b key={useCaseIndex}/></i></div>
+              </div>
+            </section>
 
             <div className="workspace-start-grid">
               {WORKSPACE_MODULE_GUIDE.map((item) => <button type="button" className={`workspace-start-card workspace-start-card-${item.id}`} key={item.id} onClick={() => openModule(item.id)}>
