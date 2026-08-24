@@ -35,9 +35,10 @@ export async function POST(request: Request) {
       mode,
       amountKopecks: amount * 100,
     });
+    const purpose = `КЛИО: тариф «${price.name}», ${billingDescription(billing)}`;
     const operation = {
       amount,
-      purpose: `КЛИО: тариф «${price.name}», ${billingDescription(billing)}`,
+      purpose,
       // Tochka fixes the order of mixed methods in its hosted page. Keep the
       // default checkout SBP-only so SBP is the first and primary action.
       paymentMode: mode === "card" ? ["card"] : ["sbp"],
@@ -48,8 +49,25 @@ export async function POST(request: Request) {
       failRedirectUrl: `${baseUrl}/account?payment=failed`,
       callbackUrl: `${baseUrl}/api/payments/tochka/webhook`,
       ttl: 10080,
+      // Client + Items make this the fiscalized ("with-receipt") endpoint —
+      // Tochka issues an actual 54-FZ cash receipt to Client.email once the
+      // payment clears. The plain /acquiring/v1.0/payments endpoint used
+      // before this never fiscalized anything: no chek was ever sent for a
+      // quick SBP/card payment. taxSystemCode is deliberately omitted so
+      // Tochka applies whatever tax regime is already configured on the
+      // merchant account instead of us guessing it here.
+      Client: { name: user.displayName, email: user.email },
+      Items: [{
+        name: purpose,
+        amount,
+        quantity: 1,
+        vatType: "none",
+        paymentMethod: "full_payment",
+        paymentObject: "service",
+        measure: "шт.",
+      }],
     };
-    const response = await tochkaRequest<unknown>("/acquiring/v1.0/payments", {
+    const response = await tochkaRequest<unknown>("/acquiring/v1.0/payments_with_receipt", {
       method: "POST",
       body: JSON.stringify({ Data: operation }),
     });

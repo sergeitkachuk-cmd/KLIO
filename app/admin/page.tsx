@@ -6,6 +6,7 @@ import type { AiOperation } from "../api/_lib/ai-config";
 import { getDb } from "../../db";
 import { accounts, aiUsage, asyncJobs, brands, emailVerifications, generations, invoices, materials, passwordResets, payments, sessions } from "../../db/schema";
 import { planRule, planExpiryState, formatPlanExpiry } from "../plans";
+import { billingDescription, type BillingPeriod } from "../billing-pricing";
 import { getExternalServiceStatuses } from "../api/_lib/external-service-status";
 import { AdminThemeToggle } from "./admin-theme-toggle";
 import { AdminAccountControls } from "./admin-account-controls";
@@ -62,6 +63,15 @@ const OPERATION_LABELS: Record<AiOperation, string> = {
   condense_overflow: "Сжатие переполнения (nano)",
 };
 
+// payments.status values written by /api/payments/tochka/create (pending)
+// and the webhook handler (paid) — refunded is set manually today, there is
+// no automated refund flow yet.
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  pending: "Ожидает оплаты",
+  paid: "Оплачен",
+  refunded: "Возвращён",
+};
+
 export default async function AdminPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?return_to=%2Fadmin");
@@ -98,7 +108,7 @@ export default async function AdminPage() {
     await db.delete(accounts).where(eq(accounts.email, stale.email));
   }
 
-  const [userRows, usageByUser, brandCounts, invoiceRefsByUser, transactionRefsByUser, totalsRows, last30Rows, byModelRows, byOperationRows, externalServices] = await Promise.all([
+  const [userRows, usageByUser, brandCounts, invoiceRefsByUser, transactionRefsByUser, totalsRows, last30Rows, byModelRows, byOperationRows, externalServices, paymentRows] = await Promise.all([
     db.select().from(accounts).orderBy(desc(accounts.createdAt)),
     db.select({
       ownerEmail: aiUsage.ownerEmail,
@@ -140,6 +150,12 @@ export default async function AdminPage() {
       totalCalls: sql<number>`count(*)`,
     }).from(aiUsage).groupBy(aiUsage.operation).orderBy(sql`sum(${aiUsage.estimatedCostUsd}) desc`),
     getExternalServiceStatuses(),
+    // Raw payment attempts (SBP/card quick-pay, not the invoice/УПД flow) —
+    // exists so a stuck payment (webhook never arrived, see the delivery
+    // outage around commit 160b7e6) can be found and cross-checked against
+    // Tochka's own dashboard by its id/operationId instead of guessing from
+    // the rolled-up "Операции" field on the users table.
+    db.select().from(payments).orderBy(desc(payments.createdAt)).limit(200),
   ]);
 
   const usageMap = new Map(usageByUser.map((row) => [row.ownerEmail, row]));
@@ -317,6 +333,35 @@ export default async function AdminPage() {
           </table>
         </div>
       </section>
+      <section className="admin-block">
+        <div className="admin-block-heading">
+          <div>
+            <h2>Платежи ({paymentRows.length})</h2>
+            <p>Быстрая оплата СБП/картой из личного кабинета (не счета-фактуры — те см. в «Операции» у пользователя). Последние 200, сверяйте ID операции с кабинетом Точки.</p>
+          </div>
+        </div>
+        <div className="admin-table-scroll">
+          <table className="admin-table">
+            <thead><tr><th>Email</th><th>Тариф</th><th>Период</th><th>Способ</th><th>Сумма</th><th>Статус</th><th>ID операции</th><th>Создан</th><th>Оплачен</th></tr></thead>
+            <tbody>
+              {paymentRows.map((payment) => (
+                <tr key={payment.id}>
+                  <td>{payment.ownerEmail}</td>
+                  <td>{planRule(payment.planId).name}</td>
+                  <td>{billingDescription(payment.billing as BillingPeriod)}</td>
+                  <td>{payment.mode === "sbp" ? "СБП" : "Карта"}</td>
+                  <td>{(payment.amountKopecks / 100).toLocaleString("ru-RU")} ₽</td>
+                  <td className={`admin-payment-status admin-payment-status-${payment.status}`}>{PAYMENT_STATUS_LABELS[payment.status] ?? payment.status}</td>
+                  <td className="admin-payment-id">{payment.operationId || payment.id}</td>
+                  <td>{formatDate(payment.createdAt)}</td>
+                  <td>{formatDate(payment.paidAt)}</td>
+                </tr>
+              ))}
+              {!paymentRows.length && <tr><td colSpan={9} className="admin-empty-row">Платежей пока не было.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
       {pendingUsers.length > 0 && <section className="admin-block admin-pending-registrations">
         <h2>Ожидают подтверждения ({pendingUsers.length})</h2>
         <p className="admin-note">Это ещё не клиенты: аккаунты удаляются автоматически через 48 часов без подтверждения email.</p>
@@ -369,6 +414,10 @@ function AdminStyles() {
       .admin-plan-expiry-soon { color: #b45309; background: rgba(251, 191, 36, 0.12); font-weight: 700; }
       .admin-plan-expiry-critical, .admin-plan-expiry-expired { color: #b91c1c; background: rgba(248, 113, 113, 0.13); font-weight: 700; }
       .admin-plan-expiry-missing { color: #92400e; background: rgba(251, 191, 36, 0.16); font-weight: 700; }
+      .admin-payment-status-pending { color: #b45309; background: rgba(251, 191, 36, 0.12); font-weight: 700; }
+      .admin-payment-status-paid { color: #15803d; background: rgba(74, 222, 128, 0.14); font-weight: 700; }
+      .admin-payment-status-refunded { color: #475569; background: rgba(148, 163, 184, 0.16); font-weight: 700; }
+      .admin-payment-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
       .admin-empty-row { color: #9ca3af; white-space: normal; }
       .admin-table-scroll { overflow-x: auto; border: 1px solid rgba(148, 163, 184, 0.24); border-radius: 16px; scrollbar-color: #64748b transparent; scrollbar-width: thin; }
       .admin-table-scroll::-webkit-scrollbar { height: 8px; }
