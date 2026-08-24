@@ -48,8 +48,9 @@ export async function POST(request: Request) {
     const now = new Date().toISOString();
     if (!invoice.paidAt) {
       const [account] = await db.select().from(accounts).where(eq(accounts.email, invoice.ownerEmail)).limit(1);
+      const activatedPlanId = invoice.planId === "test" ? "start" : invoice.planId;
       await db.update(accounts).set({
-        planId: invoice.planId,
+        planId: activatedPlanId,
         planExpiresAt: subscriptionExpiry(account?.planExpiresAt, invoice.billing as BillingPeriod, new Date(now)),
         generationsUsed: 0,
         researchUsed: 0,
@@ -61,7 +62,8 @@ export async function POST(request: Request) {
     }
 
     const amount = invoice.amountKopecks / 100;
-    const subscriptionName = `Подписка КЛИО. Цифровая редакция — тариф «${planRule(invoice.planId).name}», ${billingDescription(invoice.billing as BillingPeriod)}`;
+    const subscriptionPlanId = invoice.planId === "test" ? "start" : invoice.planId;
+    const subscriptionName = `Подписка КЛИО. Цифровая редакция — тариф «${planRule(subscriptionPlanId).name}», ${billingDescription(invoice.billing as BillingPeriod)}`;
     const number = `UPD-${String(Date.now()).slice(-10)}`;
     const response = await tochkaRequest<unknown>("/invoice/v1.0/closing-documents", {
       method: "POST",

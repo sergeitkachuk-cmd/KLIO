@@ -5,11 +5,12 @@
  import { useSearchParams } from "next/navigation";
  import { BILLING_PERIODS, periodAmount, type BillingPeriod } from "@/app/billing-pricing";
 
- const plans: Record<string, { name: string; monthly: number; yearly: number }> = {
-   start: { name: "Старт", monthly: 1190, yearly: 950 },
-   pro: { name: "Профи", monthly: 2750, yearly: 2200 },
-   agency: { name: "Агентство", monthly: 6590, yearly: 5290 },
- };
+const plans: Record<string, { name: string; monthly: number; yearly: number }> = {
+  start: { name: "Старт", monthly: 1190, yearly: 950 },
+  pro: { name: "Профи", monthly: 2750, yearly: 2200 },
+  agency: { name: "Агентство", monthly: 6590, yearly: 5290 },
+};
+const testPlan = { name: "Тестовый тариф", monthly: 1, yearly: 1 };
 
  type CompanySuggestion = {
    inn: string;
@@ -24,10 +25,12 @@
 
  function InvoiceForm() {
    const params = useSearchParams();
-   const queryPlanId = params.get("planId");
-   const queryBilling = params.get("billing");
-   const initialPlanId = queryPlanId && plans[queryPlanId] ? queryPlanId : "start";
-   const initialBilling = BILLING_PERIODS.some((item) => item.id === queryBilling) ? queryBilling as BillingPeriod : "monthly";
+  const queryPlanId = params.get("planId");
+  const queryBilling = params.get("billing");
+  const isTestInvoice = queryPlanId === "test" && params.get("test") === "1";
+  const availablePlans = isTestInvoice ? { ...plans, test: testPlan } : plans;
+  const initialPlanId = queryPlanId && availablePlans[queryPlanId] ? queryPlanId : "start";
+  const initialBilling = isTestInvoice ? "monthly" : (BILLING_PERIODS.some((item) => item.id === queryBilling) ? queryBilling as BillingPeriod : "monthly");
    const [planId, setPlanId] = useState(initialPlanId);
    const [billing, setBilling] = useState<BillingPeriod>(initialBilling);
    const [type, setType] = useState<"company" | "ip">("company");
@@ -43,7 +46,7 @@
    const [error, setError] = useState("");
    const [result, setResult] = useState<{ invoiceUrl: string; amount: number; invoiceNumber?: string; paymentPurpose?: string } | null>(null);
    const [copied, setCopied] = useState(false);
-   const plan = plans[planId] || plans.start;
+  const plan = availablePlans[planId] || plans.start;
    const amount = periodAmount(plan.monthly, plan.yearly, billing);
    useEffect(() => {
      document.querySelectorAll<HTMLAnchorElement>("a.invoice-back").forEach((link) => {
@@ -124,7 +127,7 @@
        const response = await fetch("/api/payments/tochka/invoice", {
          method: "POST",
          headers: { "Content-Type": "application/json" },
-         body: JSON.stringify({ planId, billing, buyer: { ...form, type } }),
+        body: JSON.stringify({ planId, billing: isTestInvoice ? "monthly" : billing, buyer: { ...form, type } }),
        });
        const payload = await response.json().catch(() => ({}));
        if (response.status === 401) {

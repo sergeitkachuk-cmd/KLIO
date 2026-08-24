@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { invoices } from "../../../../../db/schema";
 import { ensureAccount, getWorkspaceDb, WorkspaceAccessError, workspaceIdentity } from "../../../_lib/workspace-account";
 import { discoverTochkaIds, tochkaRequest, TochkaConfigError } from "../../../_lib/tochka";
+import { requireAdminUser } from "../../../_lib/admin";
 import { isPlanId, type PlanId } from "../../../../plans";
 import { isBillingPeriod, periodAmount, billingDescription } from "../../../../billing-pricing";
 
@@ -10,6 +11,8 @@ const PRICES: Record<Exclude<PlanId, "trial">, { monthly: number; yearly: number
   pro: { monthly: 2750, yearly: 2200, name: "Профи" },
   agency: { monthly: 6590, yearly: 5290, name: "Агентство" },
 };
+const TEST_PLAN_ID = "test";
+const TEST_PRICE = { monthly: 1, yearly: 1, name: "Тестовый тариф" };
 
 function text(value: unknown, max = 300) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -25,9 +28,17 @@ export async function POST(request: Request) {
     const user = await workspaceIdentity();
     await ensureAccount(user);
     const input = await request.json().catch(() => ({}));
-    const planId = input?.planId as PlanId;
+    const requestedPlanId = typeof input?.planId === "string" ? input.planId : "";
+    const isTestInvoice = requestedPlanId === TEST_PLAN_ID;
+    const planId = requestedPlanId as PlanId;
     const billing = isBillingPeriod(input?.billing) ? input.billing : "monthly";
-    if (!isPlanId(planId) || planId === "trial" || !PRICES[planId]) return Response.json({ error: "Неизвестный тариф." }, { status: 400 });
+    if (isTestInvoice) {
+      const admin = await requireAdminUser();
+      if (!admin || admin.email.toLowerCase() !== user.email.toLowerCase()) return Response.json({ error: "Тестовый тариф доступен только администратору." }, { status: 403 });
+      if (billing !== "monthly") return Response.json({ error: "Тестовый тариф доступен только на 1 месяц." }, { status: 400 });
+    } else if (!isPlanId(planId) || planId === "trial" || !PRICES[planId]) {
+      return Response.json({ error: "Неизвестный тариф." }, { status: 400 });
+    }
 
     const buyer = input?.buyer && typeof input.buyer === "object" ? input.buyer : {};
     const type = buyer.type === "ip" ? "ip" : "company";
@@ -44,8 +55,8 @@ export async function POST(request: Request) {
 
     const { customerCode } = await discoverTochkaIds();
     if (!customerCode) throw new TochkaConfigError("Для счёта не найден customerCode компании в Точке.");
-    const price = PRICES[planId];
-    const amount = periodAmount(price.monthly, price.yearly, billing);
+    const price = isTestInvoice ? TEST_PRICE : (PRICES[planId as keyof typeof PRICES] ?? PRICES.start);
+    const amount = isTestInvoice ? 1 : periodAmount(price.monthly, price.yearly, billing);
     const documentNumber = String(Date.now()).slice(-10);
     const paymentPurpose = `Оплата по счёту № ${documentNumber} за подписку «КЛИО — Цифровая редакция», тариф «${price.name}», ${billingDescription(billing)}. Без НДС.`;
     const legalNotice = `Оплачивая настоящий счёт, Покупатель принимает условия публичной оферты ООО «Творческая мастерская „МЕДИАЛИПАС“» на оказание услуг по подписке «КЛИО — Цифровая редакция», размещённой по адресу: https://цифроваяредакция.рф/legal/offer. Оплата счёта означает акцепт оферты в соответствии с п. 3 ст. 438 ГК РФ.`;
@@ -89,12 +100,12 @@ export async function POST(request: Request) {
     if (!documentId) throw new Error("Точка не вернула идентификатор счёта.");
     const db = await getWorkspaceDb();
     await db.insert(invoices).values({
-      id: randomUUID(), ownerEmail: user.email, planId, billing,
+      id: randomUUID(), ownerEmail: user.email, planId: isTestInvoice ? TEST_PLAN_ID : planId, billing,
       amountKopecks: amount * 100, tochkaDocumentId: documentId,
       buyerType: type, buyerName: name, buyerInn: inn, buyerKpp: kpp || null,
       buyerLegalAddress: legalAddress, buyerEmail: email,
     });
-    return Response.json({ documentId, invoiceNumber: documentNumber, paymentPurpose, invoiceUrl: `/api/payments/tochka/invoice/${encodeURIComponent(documentId)}`, amount, planId, billing });
+    return Response.json({ documentId, invoiceNumber: documentNumber, paymentPurpose, invoiceUrl: `/api/payments/tochka/invoice/${encodeURIComponent(documentId)}`, amount, planId: isTestInvoice ? TEST_PLAN_ID : planId, billing });
   } catch (error) {
     if (error instanceof WorkspaceAccessError || error instanceof TochkaConfigError) return Response.json({ error: error.message }, { status: error instanceof WorkspaceAccessError ? error.status : 503 });
     console.error("Tochka invoice failed", error instanceof Error ? error.message : "unknown error");
