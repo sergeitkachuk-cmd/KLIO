@@ -30,11 +30,16 @@ function formatUsd(value: number): string {
   return `$${value.toFixed(2)}`;
 }
 
+// This page is a server component, rendered in the host's own timezone —
+// Timeweb (like most containers) runs UTC, not Moscow, so every timestamp
+// here was silently 3 hours behind reality until this was pinned explicitly.
+// (Client components — e.g. invoice-documents.tsx — don't need this: they
+// format in the viewer's own browser timezone already.)
 function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  return date.toLocaleString("ru-RU", { timeZone: "Europe/Moscow", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 function formatNumber(value: number): string {

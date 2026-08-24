@@ -9,11 +9,14 @@ import InvoiceDocuments from "./invoice-documents";
 
 export const metadata = { title: "КЛИО / Личный кабинет" };
 
+// Server component — rendered in the host's UTC, not the visitor's Moscow
+// time, so pin the zone explicitly (see the matching note in admin/page.tsx)
+// or a date near midnight MSK shows the wrong day.
 function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("ru-RU", { day: "2-digit", month: "long", year: "numeric" });
+  return date.toLocaleDateString("ru-RU", { timeZone: "Europe/Moscow", day: "2-digit", month: "long", year: "numeric" });
 }
 
 // Same soon/critical/expired/missing bands as /admin (see planExpiryState in
