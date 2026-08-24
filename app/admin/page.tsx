@@ -432,6 +432,8 @@ function AdminStyles() {
       .admin-details-toggle:hover { border-color: #8b5cf6; color: #8b5cf6; }
       .admin-user-details-row td { padding-top: 0 !important; }
       .admin-user-details { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 8px 18px; padding: 12px 14px 15px; border: 1px solid rgba(148,163,184,.25); border-radius: 12px; color: #cbd5e1; font-size: 12px; line-height: 1.45; }
+      .admin-user-details > div { min-width: 0; overflow-wrap: break-word; }
+      .admin-user-details-wide { grid-column: 1 / -1; }
       .admin-user-details b { color: #94a3b8; font-weight: 600; }
       .admin-users-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0 0 10px; }
       .admin-users-toolbar label { color: #6b7280; font-size: 12px; font-weight: 700; }
