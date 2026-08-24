@@ -1,5 +1,13 @@
 export type BillingPeriod = "monthly" | "quarterly" | "halfyear" | "annual";
 
+/** Public subscription prices in rubles. Keep this as the single source of truth
+ * for the invoice form and the server-side payment endpoints. */
+export const PLAN_PRICES = {
+  start: { monthly: 1190, yearly: 950, name: "Старт" },
+  pro: { monthly: 2750, yearly: 2200, name: "Профи" },
+  agency: { monthly: 6590, yearly: 5290, name: "Агентство" },
+} as const;
+
 export const BILLING_PERIODS: Array<{
   id: BillingPeriod;
   label: string;

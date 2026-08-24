@@ -4,13 +4,7 @@ import { ensureAccount, getWorkspaceDb, WorkspaceAccessError, workspaceIdentity 
 import { discoverTochkaIds, tochkaRequest, TochkaConfigError } from "../../../_lib/tochka";
 import { requireAdminUser } from "../../../_lib/admin";
 import { isPlanId, type PlanId } from "../../../../plans";
-import { isBillingPeriod, periodAmount, billingDescription } from "../../../../billing-pricing";
-
-const PRICES: Record<Exclude<PlanId, "trial">, { monthly: number; yearly: number; name: string }> = {
-  start: { monthly: 1190, yearly: 950, name: "Старт" },
-  pro: { monthly: 2750, yearly: 2200, name: "Профи" },
-  agency: { monthly: 6590, yearly: 5290, name: "Агентство" },
-};
+import { isBillingPeriod, periodAmount, billingDescription, PLAN_PRICES } from "../../../../billing-pricing";
 const TEST_PLAN_ID = "test";
 const TEST_PRICE = { monthly: 1, yearly: 1, name: "Тестовый тариф" };
 
@@ -36,7 +30,7 @@ export async function POST(request: Request) {
       const admin = await requireAdminUser();
       if (!admin || admin.email.toLowerCase() !== user.email.toLowerCase()) return Response.json({ error: "Тестовый тариф доступен только администратору." }, { status: 403 });
       if (billing !== "monthly") return Response.json({ error: "Тестовый тариф доступен только на 1 месяц." }, { status: 400 });
-    } else if (!isPlanId(planId) || planId === "trial" || !PRICES[planId]) {
+    } else if (!isPlanId(planId) || planId === "trial" || !PLAN_PRICES[planId]) {
       return Response.json({ error: "Неизвестный тариф." }, { status: 400 });
     }
 
@@ -55,7 +49,7 @@ export async function POST(request: Request) {
 
     const { customerCode } = await discoverTochkaIds();
     if (!customerCode) throw new TochkaConfigError("Для счёта не найден customerCode компании в Точке.");
-    const price = isTestInvoice ? TEST_PRICE : (PRICES[planId as keyof typeof PRICES] ?? PRICES.start);
+    const price = isTestInvoice ? TEST_PRICE : (PLAN_PRICES[planId as keyof typeof PLAN_PRICES] ?? PLAN_PRICES.start);
     const amount = isTestInvoice ? 1 : periodAmount(price.monthly, price.yearly, billing);
     const documentNumber = String(Date.now()).slice(-10);
     const paymentPurpose = `Оплата по счёту № ${documentNumber} за подписку «КЛИО — Цифровая редакция», тариф «${price.name}», ${billingDescription(billing)}. Без НДС.`;

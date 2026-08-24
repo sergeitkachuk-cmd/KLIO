@@ -3,13 +3,9 @@
 
  import { FormEvent, Suspense, useEffect, useRef, useState } from "react";
  import { useSearchParams } from "next/navigation";
- import { BILLING_PERIODS, periodAmount, type BillingPeriod } from "@/app/billing-pricing";
+ import { BILLING_PERIODS, periodAmount, PLAN_PRICES, type BillingPeriod } from "@/app/billing-pricing";
 
-const plans: Record<string, { name: string; monthly: number; yearly: number }> = {
-  start: { name: "Старт", monthly: 1190, yearly: 950 },
-  pro: { name: "Профи", monthly: 2750, yearly: 2200 },
-  agency: { name: "Агентство", monthly: 6590, yearly: 5290 },
-};
+const plans: Record<string, { name: string; monthly: number; yearly: number }> = PLAN_PRICES;
 const testPlan = { name: "Тестовый тариф", monthly: 1, yearly: 1 };
 
  type CompanySuggestion = {
