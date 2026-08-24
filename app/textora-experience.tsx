@@ -1521,7 +1521,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [useCaseIndex, setUseCaseIndex] = useState(() => Math.floor(Math.random() * WORKSPACE_USE_CASES.length));
   useEffect(() => {
     if (activeModule !== "start") return;
-    const timer = window.setInterval(() => setUseCaseIndex((current) => current + 1), 9000);
+    const timer = window.setInterval(() => setUseCaseIndex((current) => current + 1), 16000);
     return () => window.clearInterval(timer);
   }, [activeModule]);
   const [brandSaved, setBrandSaved] = useState(false);
@@ -4423,7 +4423,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <p>Начните с того, что нужно сделать сегодня, или возьмите короткий совет для более точного результата.</p>
               </div>
               <div className="workspace-start-use-cases-list">
-                <button type="button" className="workspace-start-use-case" onClick={() => openModule(activeUseCase.id)} key={useCaseIndex}>
+                <button type="button" className={`workspace-start-use-case ${activeUseCase.kind === "Совет" ? "is-tip" : ""}`} onClick={() => openModule(activeUseCase.id)} key={useCaseIndex}>
                   <span className="workspace-start-use-case-label">{activeUseCase.kind}</span>
                   <h4>{activeUseCase.task}</h4>
                   <div><span>{activeUseCase.kind === "Совет" ? "Как сделать" : "Решение КЛИО"}</span><p>{activeUseCase.solution}</p></div>

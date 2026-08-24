@@ -15191,6 +15191,48 @@ input[type="radio"] {
   height: 14px;
 }
 
+/* Tips carry a complete micro-instruction, so they get a calmer, larger
+   reading surface than the shorter task-to-solution cards. */
+.workspace-start-use-case.is-tip {
+  min-height: 230px;
+  gap: 12px;
+  padding: 24px 26px;
+  border-color: rgba(216, 255, 101, 0.25);
+  background: linear-gradient(135deg, rgba(24, 63, 93, 0.88), rgba(7, 31, 56, 0.82));
+}
+
+.workspace-start-use-case.is-tip .workspace-start-use-case-label,
+.workspace-start-use-case.is-tip > div > span {
+  font-size: 11px;
+}
+
+.workspace-start-use-case.is-tip h4 {
+  max-width: 650px;
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.workspace-start-use-case.is-tip p {
+  max-width: 720px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.workspace-start-use-case.is-tip b {
+  padding-top: 10px;
+  font-size: 13px;
+}
+
+[data-theme="light"] .workspace-start-use-case.is-tip {
+  border-color: rgba(36, 82, 184, 0.25);
+  background: linear-gradient(135deg, #f7faff, #e8f1fc);
+}
+
+[data-theme="light"] .workspace-start-use-case.is-tip p {
+  color: rgba(13, 27, 49, 0.78);
+}
+
 .workspace-start-use-cases-progress {
   display: flex;
   align-items: center;
@@ -15216,7 +15258,7 @@ input[type="radio"] {
   border-radius: inherit;
   background: var(--acid);
   transform-origin: left;
-  animation: workspace-use-case-progress 9s linear;
+  animation: workspace-use-case-progress 16s linear;
 }
 
 @keyframes workspace-use-case-progress {
@@ -15380,6 +15422,19 @@ input[type="radio"] {
 
   .workspace-start-use-cases-list {
     grid-template-columns: 1fr;
+  }
+
+  .workspace-start-use-case.is-tip {
+    min-height: 0;
+    padding: 22px;
+  }
+
+  .workspace-start-use-case.is-tip h4 {
+    font-size: 18px;
+  }
+
+  .workspace-start-use-case.is-tip p {
+    font-size: 14px;
   }
 }
 
