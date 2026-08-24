@@ -5079,10 +5079,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     </header>
 
     <section className="hero" id="top">
-      <div className="hero-mast"><span>Независимая цифровая редакция</span><span>Выпуск 01 — 2026</span><span>Для бизнеса и агентств</span></div>
+      <div className="hero-mast"><span>Интеллектуальная платформа контента</span></div>
       <div className="hero-layout">
         <div className="hero-copy">
-          <p className="eyebrow">Интеллектуальная платформа контента</p>
           <h1>Слова,<br/><em>которые видят<span className="klio-mark-dot">.</span></em></h1>
           <p className="hero-lead">КЛИО исследует спрос, понимает голос бренда и создаёт цельные материалы — от замысла до публикации.</p>
           <div className="hero-actions"><Link className="button primary large" href="/workspace">Открыть редакцию <Icon name="arrow"/></Link><a href="#modules" className="text-link">Листать выпуск ↓</a></div>

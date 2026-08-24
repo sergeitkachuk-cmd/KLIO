@@ -545,20 +545,12 @@ select:focus-visible {
 }
 
 .hero-mast {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 18px;
   padding: 14px 0 18px;
   border-block: 1px solid rgba(255, 255, 255, 0.24);
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.17em;
   text-transform: uppercase;
-}
-
-.hero-mast span:last-child {
-  text-align: right;
 }
 
 .hero-layout {
@@ -10851,12 +10843,7 @@ input[type="radio"] {
   }
 
   .hero-mast {
-    grid-template-columns: 1fr auto;
     font-size: 10px;
-  }
-
-  .hero-mast span:last-child {
-    display: none;
   }
 
   .hero-layout {
