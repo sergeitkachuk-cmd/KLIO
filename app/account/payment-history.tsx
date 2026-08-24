@@ -27,10 +27,10 @@ export default function PaymentHistory() {
   }, []);
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
-    const latestPaid = rows.find((row) => row.status === "paid" && row.operationId && !reconciledPaymentIds.current.has(row.id));
-    if (!latestPaid) return;
-    reconciledPaymentIds.current.add(latestPaid.id);
-    void fetch("/api/payments/tochka/reconcile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paymentLinkId: latestPaid.id }) })
+    const latestSettled = rows.find((row) => (row.status === "paid" || row.status === "refunded") && row.operationId && !reconciledPaymentIds.current.has(row.id));
+    if (!latestSettled) return;
+    reconciledPaymentIds.current.add(latestSettled.id);
+    void fetch("/api/payments/tochka/reconcile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paymentLinkId: latestSettled.id }) })
       .then((response) => response.json().then((body) => ({ response, body })))
       .then(({ response, body }) => { if (response.ok && body.status === "refunded") void load(); });
   }, [rows, load]);

@@ -31,21 +31,24 @@ export async function POST(request: Request) {
       let revoked = false;
       await db.transaction(async (tx) => {
         const [current] = await tx.select().from(payments).where(eq(payments.id, paymentLinkId)).limit(1);
-        if (!current || current.status === "refunded") return;
-        const [refundedPayment] = await tx.update(payments).set({ status: "refunded", updatedAt: now.toISOString() })
-          .where(and(eq(payments.id, paymentLinkId), eq(payments.status, "paid"))).returning();
-        if (!refundedPayment) return;
+        if (!current || (current.status !== "paid" && current.status !== "refunded")) return;
+        const [updatedPayment] = current.status === "paid"
+          ? await tx.update(payments).set({ status: "refunded", updatedAt: now.toISOString() })
+            .where(and(eq(payments.id, paymentLinkId), eq(payments.status, "paid"))).returning()
+          : [current];
+        if (!updatedPayment) return;
         // A refund revokes the access granted by this purchase. Do not touch an
         // account that has a newer successful payment.
         const successful = await tx.select({ id: payments.id, paidAt: payments.paidAt }).from(payments)
-          .where(and(eq(payments.ownerEmail, refundedPayment.ownerEmail), eq(payments.status, "paid")));
-        const refundedAt = new Date(refundedPayment.paidAt || refundedPayment.createdAt).getTime();
+          .where(and(eq(payments.ownerEmail, updatedPayment.ownerEmail), eq(payments.status, "paid")));
+        const refundedAt = new Date(updatedPayment.paidAt || updatedPayment.createdAt).getTime();
         const hasNewerPayment = successful.some((item) => new Date(item.paidAt || 0).getTime() > refundedAt);
         // A refund, whether full or partial, closes the subscription period
-        // attached to this purchase. A later independent payment wins.
+        // attached to this purchase. Keep the plan id but expire it now: this
+        // blocks access without incorrectly granting a fresh trial allowance.
         if (!hasNewerPayment) {
-          await tx.update(accounts).set({ planId: "trial", planExpiresAt: null, updatedAt: now.toISOString() })
-            .where(eq(accounts.email, refundedPayment.ownerEmail));
+          await tx.update(accounts).set({ planId: updatedPayment.planId, planExpiresAt: now.toISOString(), updatedAt: now.toISOString() })
+            .where(eq(accounts.email, updatedPayment.ownerEmail));
           revoked = true;
         }
       });
