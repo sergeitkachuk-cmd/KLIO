@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PAYMENT_LINK_TTL_MS } from "../payment-link";
 
 type Payment = { id: string; planId: string; billing: string; amountKopecks: number; status: string; operationId: string | null; paidAt: string | null; createdAt: string };
@@ -17,6 +17,7 @@ function statusLabel(status: string) {
 export default function PaymentHistory() {
   const [rows, setRows] = useState<Payment[]>([]);
   const [error, setError] = useState("");
+  const reconciledPaymentIds = useRef(new Set<string>());
   const [showPending, setShowPending] = useState(false);
   const load = useCallback(async () => {
     const response = await fetch("/api/payments/tochka/list", { cache: "no-store" });
@@ -25,6 +26,14 @@ export default function PaymentHistory() {
     setRows(value.payments || []);
   }, []);
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const latestPaid = rows.find((row) => row.status === "paid" && row.operationId && !reconciledPaymentIds.current.has(row.id));
+    if (!latestPaid) return;
+    reconciledPaymentIds.current.add(latestPaid.id);
+    void fetch("/api/payments/tochka/reconcile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paymentLinkId: latestPaid.id }) })
+      .then((response) => response.json().then((body) => ({ response, body })))
+      .then(({ response, body }) => { if (response.ok && body.status === "refunded") void load(); });
+  }, [rows, load]);
   if (!rows.length && !error) return null;
   const completed = rows.filter((row) => row.status === "paid" || row.status === "refunded");
   // Retain expired rows in the database for accounting, but a payment link

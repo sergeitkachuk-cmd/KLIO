@@ -22,11 +22,35 @@ export async function POST(request: Request) {
     const db = await getWorkspaceDb();
     const [payment] = await db.select().from(payments).where(and(eq(payments.id, paymentLinkId), eq(payments.ownerEmail, user.email))).limit(1);
     if (!payment) return Response.json({ error: "Платёж не найден." }, { status: 404 });
-    if (payment.status === "paid") return Response.json({ status: "paid" });
     if (!payment.operationId) return Response.json({ status: "pending" });
 
     const operation = await tochkaRequest<unknown>(`/acquiring/v1.0/payments/${encodeURIComponent(payment.operationId)}`);
-    if (statusOf(operation) !== "APPROVED") return Response.json({ status: "pending" });
+    const providerStatus = statusOf(operation)?.toUpperCase();
+    if (providerStatus === "REFUNDED" || providerStatus === "REFUNDED_PARTIALLY") {
+      const now = new Date();
+      let revoked = false;
+      await db.transaction(async (tx) => {
+        const [current] = await tx.select().from(payments).where(eq(payments.id, paymentLinkId)).limit(1);
+        if (!current || current.status === "refunded") return;
+        const [refundedPayment] = await tx.update(payments).set({ status: "refunded", updatedAt: now.toISOString() })
+          .where(and(eq(payments.id, paymentLinkId), eq(payments.status, "paid"))).returning();
+        if (!refundedPayment) return;
+        // A refund revokes the access granted by this purchase. Do not touch an
+        // account that has a newer successful payment.
+        const successful = await tx.select({ id: payments.id, paidAt: payments.paidAt }).from(payments)
+          .where(and(eq(payments.ownerEmail, refundedPayment.ownerEmail), eq(payments.status, "paid")));
+        const refundedAt = new Date(refundedPayment.paidAt || refundedPayment.createdAt).getTime();
+        const hasNewerPayment = successful.some((item) => new Date(item.paidAt || 0).getTime() > refundedAt);
+        if (!hasNewerPayment) {
+          await tx.update(accounts).set({ planId: "trial", planExpiresAt: null, updatedAt: now.toISOString() })
+            .where(eq(accounts.email, refundedPayment.ownerEmail));
+          revoked = true;
+        }
+      });
+      return Response.json({ status: "refunded", revoked });
+    }
+    if (providerStatus !== "APPROVED") return Response.json({ status: payment.status });
+    if (payment.status === "paid") return Response.json({ status: "paid" });
 
     const now = new Date();
     await db.transaction(async (tx) => {
