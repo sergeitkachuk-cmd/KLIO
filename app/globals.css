@@ -27,6 +27,38 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Cookie notice: visible until the visitor makes a choice, then kept for a
+   year in both local storage and a first-party cookie. */
+.cookie-consent {
+  position: fixed;
+  z-index: 1000;
+  right: 24px;
+  bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  width: min(680px, calc(100vw - 32px));
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow: 0 18px 55px rgba(9, 18, 40, .22);
+}
+.cookie-consent-copy { min-width: 0; }
+.cookie-consent-copy strong { display: block; margin-bottom: 4px; font-size: 15px; }
+.cookie-consent-copy p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.cookie-consent-copy a { color: var(--violet); font-weight: 700; }
+.cookie-consent-actions { display: flex; flex: 0 0 auto; gap: 8px; }
+.cookie-consent-actions button { min-height: 38px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; font-weight: 750; cursor: pointer; }
+.cookie-consent-secondary { color: var(--ink); background: transparent; }
+.cookie-consent-primary { color: #fff; border-color: var(--violet) !important; background: var(--violet); }
+@media (max-width: 640px) {
+  .cookie-consent { right: 12px; bottom: 12px; flex-direction: column; align-items: stretch; gap: 14px; padding: 16px; border-radius: 16px; }
+  .cookie-consent-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .cookie-consent-actions button { width: 100%; }
+}
+
 /* Public use-case gallery: a visual route for business owners who start
    with a result they need, not with a name of a marketing module. */
 .examples-page { min-height: 100vh; overflow: hidden; padding: 0 5.5vw 64px; color: #f4f5fb; background: #101735; }

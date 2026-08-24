@@ -1,0 +1,44 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+
+const CONSENT_KEY = "klio-cookie-consent";
+
+export default function CookieConsent() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(CONSENT_KEY);
+      if (!saved) setVisible(true);
+    } catch {
+      setVisible(true);
+    }
+  }, []);
+
+  function choose(value: "all" | "necessary") {
+    try {
+      window.localStorage.setItem(CONSENT_KEY, value);
+    } catch {
+      // The service remains usable when storage is blocked by the browser.
+    }
+    document.cookie = `${CONSENT_KEY}=${value}; Max-Age=31536000; Path=/; SameSite=Lax`;
+    setVisible(false);
+  }
+
+  if (!visible) return null;
+
+  return (
+    <aside className="cookie-consent" role="dialog" aria-label="Настройки cookies">
+      <div className="cookie-consent-copy">
+        <strong>Настройки cookies</strong>
+        <p>КЛИО использует необходимые cookies для входа, безопасности и работы личного кабинета. Подробнее — в <Link href="/legal/privacy">политике обработки данных</Link>.</p>
+      </div>
+      <div className="cookie-consent-actions">
+        <button type="button" className="cookie-consent-secondary" onClick={() => choose("necessary")}>Только необходимые</button>
+        <button type="button" className="cookie-consent-primary" onClick={() => choose("all")}>Принять</button>
+      </div>
+    </aside>
+  );
+}

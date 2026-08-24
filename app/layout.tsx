@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
+import CookieConsent from "./cookie-consent";
 
 // Third typeface in the same side-by-side comparison (Inter, then
 // Geist, now Manrope) - all requesting subsets:["latin","cyrillic"] so
@@ -52,6 +53,7 @@ export default function RootLayout({
       </head>
       <body className={`${manrope.variable} antialiased`}>
         {children}
+        <CookieConsent />
       </body>
     </html>
   );
