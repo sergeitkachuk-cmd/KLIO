@@ -57,7 +57,10 @@ export async function POST(request: Request) {
       // quick SBP/card payment. taxSystemCode is deliberately omitted so
       // Tochka applies whatever tax regime is already configured on the
       // merchant account instead of us guessing it here.
-      Client: { name: user.displayName, email: user.email },
+      // A cabinet display name may be a nickname or a company name. It is not
+      // reliable buyer identity data, so do not print it as a customer's name
+      // in the fiscal receipt. The email is used to deliver that receipt.
+      Client: { email: user.email },
       Items: [{
         name: purpose,
         amount,

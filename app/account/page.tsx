@@ -6,6 +6,7 @@ import { brands } from "../../db/schema";
 import { accountSummary, ensureAccount, workspaceDatabaseAvailable } from "../api/_lib/workspace-account";
 import BillingActions from "./billing-actions";
 import InvoiceDocuments from "./invoice-documents";
+import PaymentHistory from "./payment-history";
 
 export const metadata = { title: "КЛИО / Личный кабинет" };
 
@@ -94,6 +95,7 @@ export default async function AccountPage() {
           <h2>Выберите тариф и способ оплаты</h2>
           <p className="account-billing-lead">Оплата открывается из личного кабинета и привязывается к вашему аккаунту. СБП — быстрый способ, карта также доступна.</p>
           <BillingActions />
+          <PaymentHistory />
           <InvoiceDocuments />
         </section>
 
@@ -171,6 +173,9 @@ function AccountStyles() {
       .account-document-actions button:disabled { opacity: .55; cursor: wait; }
       .account-document-actions button.account-document-delete { border: 1px solid rgba(255,154,166,0.4); background: transparent; color: #ff9aa6; }
       .account-document-actions button.account-document-delete:hover { background: rgba(255,154,166,0.1); }
+      .account-payment-status { flex-shrink: 0; padding: 7px 10px; border-radius: 999px; font-size: 13px; font-weight: 750; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.72); }
+      .account-payment-status-paid { color: #d9ff85; background: rgba(152, 220, 73, 0.14); }
+      .account-payment-status-refunded { color: #ffb4bd; background: rgba(255, 110, 126, 0.14); }
       .account-billing-error { margin: 14px 0 0; color: #ff9aa6; font-weight: 700; }
       .account-progress-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px; margin-bottom: 18px; }
       .account-plan-card .account-progress-grid { align-items: stretch; }
@@ -238,6 +243,9 @@ function AccountStyles() {
       [data-theme="light"] .account-documents-clear:hover { background: rgba(198,40,40,0.08); }
       [data-theme="light"] .account-document-actions button.account-document-delete { border-color: rgba(198,40,40,0.35); color: #c62828; background: transparent; box-shadow: none; }
       [data-theme="light"] .account-document-actions button.account-document-delete:hover { background: rgba(198,40,40,0.08); box-shadow: none; }
+      [data-theme="light"] .account-payment-status { color: rgba(13,27,49,0.68); background: rgba(15,23,42,0.08); }
+      [data-theme="light"] .account-payment-status-paid { color: #2f6a10; background: rgba(83, 150, 35, 0.14); }
+      [data-theme="light"] .account-payment-status-refunded { color: #b91c1c; background: rgba(198,40,40,0.1); }
       [data-theme="light"] .account-progress span { color: rgba(13,27,49,0.6); }
       [data-theme="light"] .account-progress b small { color: rgba(13,27,49,0.45); }
       [data-theme="light"] .account-progress i { background: rgba(15,23,42,0.1); }
