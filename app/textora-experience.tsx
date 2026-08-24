@@ -5177,7 +5177,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         <div className="magazine-scene" aria-hidden="true"><div className="magazine-spread"><div className="magazine-page magazine-left"><span>КЛИО / 01</span><b>Слова,<br/>которые<br/><em>видят<span className="klio-mark-dot">.</span></em></b><i>Цифровая редакция для бизнеса</i></div><div className="magazine-fold"/><div className="magazine-page magazine-right"><span>Материал номера</span><div className="magazine-photo"><u/><small>Спрос → смысл → публикация</small></div><p>Контент, собранный на основе данных и голоса вашего бренда.</p><strong>КЛИО</strong></div></div></div>
       </div>
     </section>
-    <footer><a className="wordmark" href="#top"><Brand/></a><p>КЛИО — цифровая редакция для брендов.</p><nav><a href="#legend">О КЛИО</a><a href="#modules">Возможности</a><a href="#cases">Примеры задач</a><a href="#plan">Контент‑план</a><a href="#pricing">Тарифы</a></nav><small>© 2026 <KlioMark/></small></footer>
+    <footer><a className="wordmark" href="#top"><Brand/></a><p>КЛИО — цифровая редакция для брендов.</p><nav><a href="#legend">О КЛИО</a><a href="#modules">Возможности</a><a href="#cases">Примеры задач</a><a href="#plan">Контент‑план</a><a href="#pricing">Тарифы</a></nav><nav className="legal-footer-links" aria-label="Правовая информация"><a href="/legal/offer">Оферта</a><a href="/legal/privacy">Политика обработки данных</a><a href="/legal/refunds">Правила возврата</a></nav><small>© 2026 <KlioMark/></small></footer>
     {toast && <div className="toast" role="status"><Icon name="check"/><span>{toast}</span></div>}
   </main>;
 }
