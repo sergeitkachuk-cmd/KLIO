@@ -393,6 +393,13 @@ function AdminStyles() {
       .admin-legacy-user-table { border: 0; overflow: visible; }
       .admin-table-users { min-width: 0; table-layout: auto; }
       .admin-table-users-legacy { display: none; }
+      .admin-table-users td { vertical-align: middle; }
+      .admin-user-muted { display: block; margin-top: 3px; color: #94a3b8; font-size: 11px; white-space: nowrap; }
+      .admin-details-toggle { border: 1px solid #94a3b8; border-radius: 999px; padding: 6px 11px; background: transparent; color: inherit; cursor: pointer; font: inherit; font-size: 12px; white-space: nowrap; }
+      .admin-details-toggle:hover { border-color: #8b5cf6; color: #8b5cf6; }
+      .admin-user-details-row td { padding-top: 0 !important; }
+      .admin-user-details { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 8px 18px; padding: 12px 14px 15px; border: 1px solid rgba(148,163,184,.25); border-radius: 12px; color: #cbd5e1; font-size: 12px; line-height: 1.45; }
+      .admin-user-details b { color: #94a3b8; font-weight: 600; }
       .admin-users-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0 0 10px; }
       .admin-users-toolbar label { color: #6b7280; font-size: 12px; font-weight: 700; }
       .admin-users-toolbar input { flex: 1 1 360px; min-width: 220px; min-height: 38px; border: 1px solid #d1d5db; border-radius: 999px; padding: 0 14px; background: #fff; color: #1c1f26; font: inherit; }
@@ -430,7 +437,8 @@ function AdminStyles() {
       body[data-admin-theme="light"] .admin-cards article, body[data-admin-theme="light"] .admin-integration, body[data-admin-theme="light"] .admin-account-controls { background: #fff; border-color: #e5e7eb; }
       body[data-admin-theme="light"] .admin-block-heading p, body[data-admin-theme="light"] .admin-integration small { color: #6b7280; }
       body[data-admin-theme="light"] .admin-table th, body[data-admin-theme="light"] .admin-table td { border-color: rgba(148, 163, 184, 0.22); }
-      @media (max-width: 1100px) { .admin-table-users th:nth-child(4), .admin-table-users td:nth-child(4), .admin-table-users th:nth-child(12), .admin-table-users td:nth-child(12) { display: none; } }
+      @media (max-width: 1100px) { .admin-table-users th:nth-child(4), .admin-table-users td:nth-child(4), .admin-table-users th:nth-child(12), .admin-table-users td:nth-child(12) { display: none; } .admin-user-details { grid-template-columns: repeat(2, minmax(180px, 1fr)); } }
+      @media (max-width: 700px) { .admin-user-details { grid-template-columns: 1fr; } }
     `}</style>
   );
 }
