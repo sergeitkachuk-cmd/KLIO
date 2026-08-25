@@ -1604,7 +1604,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [generationError, setGenerationError] = useState("");
   const [toast, setToast] = useState("");
   const [annual, setAnnual] = useState(false);
-  const [paymentTermsAccepted] = useState(false);
   const [metricsVisible, setMetricsVisible] = useState(workspace);
   const [metricsReplay, setMetricsReplay] = useState(0);
   const [adaptationSource, setAdaptationSource] = useState(workspace ? "" : defaultAdaptationSource);
@@ -4124,37 +4123,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     if (!adaptationResult) return;
     navigator.clipboard?.writeText(`${adaptationResult.title}\n\n${adaptationResult.body}`);
     showToast("Адаптированная версия скопирована");
-  }
-
-  function legacyChoosePlan(name: string) {
-    showToast(`Выбран тариф «${name}»`);
-    window.location.assign("/workspace");
-  }
-
-  async function choosePlan(name: string, mode: "sbp" | "card" = "sbp") {
-    const selected = pricing.find((plan) => plan.name === name);
-    if (!selected) return;
-    if (!paymentTermsAccepted) {
-      showToast("Перед оплатой подтвердите оферту и политику обработки данных.");
-      return;
-    }
-    try {
-      const response = await fetch("/api/payments/tochka/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planId: selected.planId, mode, billing: annual ? "annual" : "monthly" }),
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (response.status === 401) {
-        const returnTo = `${window.location.pathname}${window.location.search}#pricing`;
-        window.location.assign(`/login?return_to=${encodeURIComponent(returnTo)}`);
-        return;
-      }
-      if (!response.ok || !payload.paymentUrl) throw new Error(payload.error || "Не удалось создать ссылку на оплату.");
-      window.location.assign(payload.paymentUrl);
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : "Не удалось открыть оплату.");
-    }
   }
 
   function openLandingModule(number: string) {

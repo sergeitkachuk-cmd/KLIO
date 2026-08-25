@@ -19,13 +19,22 @@ export default function PaymentHistory() {
   const [error, setError] = useState("");
   const reconciledPaymentIds = useRef(new Set<string>());
   const [showPending, setShowPending] = useState(false);
+  // Snapshot once at mount rather than calling Date.now() during render
+  // (react-hooks/purity) — this only gates which already-fetched rows show
+  // as "pending", so it doesn't need to stay live within one page view.
+  const [now] = useState(() => Date.now());
   const load = useCallback(async () => {
     const response = await fetch("/api/payments/tochka/list", { cache: "no-store" });
     const value = await response.json().catch(() => ({}));
     if (!response.ok) { setError(value.error || "Не удалось загрузить историю оплат."); return; }
     setRows(value.payments || []);
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    // Deferred a tick purely to satisfy react-hooks/set-state-in-effect
+    // (see the matching note on the theme-sync effect in
+    // textora-experience.tsx) rather than reaching for eslint-disable.
+    queueMicrotask(() => void load());
+  }, [load]);
   useEffect(() => {
     const latestSettled = rows.find((row) => (row.status === "paid" || row.status === "refunded") && row.operationId && !reconciledPaymentIds.current.has(row.id));
     if (!latestSettled) return;
@@ -38,7 +47,7 @@ export default function PaymentHistory() {
   const completed = rows.filter((row) => row.status === "paid" || row.status === "refunded");
   // Retain expired rows in the database for accounting, but a payment link
   // cannot be paid after its TTL and should not clutter the customer's view.
-  const pending = rows.filter((row) => row.status !== "paid" && row.status !== "refunded" && new Date(row.createdAt).getTime() + PAYMENT_LINK_TTL_MS > Date.now());
+  const pending = rows.filter((row) => row.status !== "paid" && row.status !== "refunded" && new Date(row.createdAt).getTime() + PAYMENT_LINK_TTL_MS > now);
   const rowView = (row: Payment) => <div className="account-document" key={row.id}><div><strong>Тариф «{names[row.planId] || row.planId}» · {(row.amountKopecks / 100).toLocaleString("ru-RU")} ₽</strong><small>{periods[row.billing] || row.billing} · {new Date(row.paidAt || row.createdAt).toLocaleDateString("ru-RU")}{row.operationId ? ` · Операция ${row.operationId}` : ""}</small></div><span className={`account-payment-status account-payment-status-${row.status}`}>{statusLabel(row.status)}</span></div>;
   return <div className="account-documents account-payment-history"><div className="account-documents-heading"><div><h3>Платежи и кассовые чеки</h3><p>Фискальный чек по успешной оплате направляется на email, указанный в кабинете.</p></div></div>{error && <b className="account-billing-error">{error}</b>}{completed.length > 0 ? completed.map(rowView) : <p className="account-payment-empty">Успешных оплат пока нет.</p>}{pending.length > 0 && <div className="account-pending-wrap"><button type="button" className="account-pending-toggle" onClick={() => setShowPending((value) => !value)} aria-expanded={showPending}>{showPending ? "Скрыть" : "Показать"} незавершённые оплаты ({pending.length})</button>{showPending && <div className="account-pending-list">{pending.map(rowView)}</div>}</div>}</div>;
 }

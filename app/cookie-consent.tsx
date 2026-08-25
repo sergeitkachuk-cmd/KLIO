@@ -9,12 +9,17 @@ export default function CookieConsent() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(CONSENT_KEY);
-      if (!saved) setVisible(true);
-    } catch {
-      setVisible(true);
-    }
+    // Deferred a tick purely to satisfy react-hooks/set-state-in-effect
+    // (see the matching note on the theme-sync effect in
+    // textora-experience.tsx) rather than reaching for eslint-disable.
+    queueMicrotask(() => {
+      try {
+        const saved = window.localStorage.getItem(CONSENT_KEY);
+        if (!saved) setVisible(true);
+      } catch {
+        setVisible(true);
+      }
+    });
   }, []);
 
   function choose(value: "all" | "necessary") {
