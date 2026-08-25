@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { accounts, payments } from "../../../../../db/schema";
 import { getWorkspaceDb, workspaceIdentity, WorkspaceAccessError } from "../../../_lib/workspace-account";
 import { tochkaRequest, TochkaConfigError } from "../../../_lib/tochka";
-import { subscriptionExpiry } from "../../../_lib/subscription";
+import { subscriptionExpiry, nextQuotaPeriodEnd } from "../../../_lib/subscription";
 import type { BillingPeriod } from "../../../../billing-pricing";
 
 function statusOf(value: unknown): string | undefined {
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
       const [account] = await tx.select().from(accounts).where(eq(accounts.email, current.ownerEmail)).limit(1);
       const [confirmedPayment] = await tx.update(payments).set({ status: "paid", paidAt: now.toISOString(), updatedAt: now.toISOString() }).where(and(eq(payments.id, paymentLinkId), eq(payments.status, "pending"))).returning();
       if (!confirmedPayment) return;
-      await tx.update(accounts).set({ planId: confirmedPayment.planId, planExpiresAt: subscriptionExpiry(account?.planExpiresAt, confirmedPayment.billing as BillingPeriod, now), generationsUsed: 0, researchUsed: 0, editorActionsUsed: 0, generationMonth: `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`, updatedAt: now.toISOString() }).where(eq(accounts.email, confirmedPayment.ownerEmail));
+      await tx.update(accounts).set({ planId: confirmedPayment.planId, planExpiresAt: subscriptionExpiry(account?.planExpiresAt, confirmedPayment.billing as BillingPeriod, now), generationsUsed: 0, researchUsed: 0, editorActionsUsed: 0, generationMonth: `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`, quotaPeriodEndsAt: nextQuotaPeriodEnd(now), updatedAt: now.toISOString() }).where(eq(accounts.email, confirmedPayment.ownerEmail));
     });
     return Response.json({ status: "paid" });
   } catch (error) {

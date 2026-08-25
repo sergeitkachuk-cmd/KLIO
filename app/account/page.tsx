@@ -29,6 +29,17 @@ function planExpiryLabel(state: string, value: string | null | undefined): strin
   return `Действует до ${formatDate(value)}`;
 }
 
+// Paid plans that went through a real payment reset on that payment's own
+// date (see quotaPeriodEndsAt in db/schema.ts); a paid plan an admin
+// granted by hand falls back to a generic monthly-refresh note instead
+// since there is no payment date to anchor to. The trial never resets —
+// it just runs out after its fixed 48h window (see assertTrialActive).
+function quotaResetLabel(planId: string, quotaResetsAt: string | null | undefined): string {
+  if (planId === "trial") return "лимиты действуют один раз, на весь пробный период";
+  if (!quotaResetsAt) return "лимиты обновляются ежемесячно";
+  return `лимиты обновятся ${formatDate(quotaResetsAt)}`;
+}
+
 function Progress({ label, used, remaining, limit }: { label: string; used: number; remaining: number; limit: number }) {
   const percent = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
   return (
@@ -77,7 +88,7 @@ export default async function AccountPage() {
             <div>
               <span>Текущий тариф</span>
               <h2>{summary.planName}</h2>
-              <small>1 пользователь на всех тарифах · лимиты обновляются ежемесячно</small>
+              <small>1 пользователь на всех тарифах · {quotaResetLabel(summary.planId, summary.quotaResetsAt)}</small>
               {summary.planId !== "trial" && <small className={`account-plan-expiry account-plan-expiry-${summary.planExpiryState}`}>{planExpiryLabel(summary.planExpiryState, summary.planExpiresAt)}</small>}
             </div>
             <a className="account-upgrade" href="#billing">Выбрать тариф</a>
@@ -87,7 +98,7 @@ export default async function AccountPage() {
             <Progress label="Исследования" used={summary.researchUsed} remaining={summary.researchRemaining} limit={summary.researchLimit} />
             <Progress label="AI‑редактура" used={summary.editorActionsUsed} remaining={summary.editorActionsRemaining} limit={summary.editorActionLimit} />
           </div>
-          <small className="account-plan-note">Брендов подключено: {summary.brandCount} из {summary.brandLimit}. Нужен другой тариф или больше лимитов раньше конца месяца — напишите нам, оплата и смена тарифа пока оформляются вручную.</small>
+          <small className="account-plan-note">Брендов подключено: {summary.brandCount} из {summary.brandLimit}. Нужен другой тариф или больше лимитов раньше конца периода — <a href="#billing">оформите оплату</a>, доступ обновится автоматически.</small>
         </section>
 
         <section className="account-card account-billing-card" id="billing">

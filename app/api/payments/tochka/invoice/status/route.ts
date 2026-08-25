@@ -4,7 +4,7 @@ import { getWorkspaceDb, WorkspaceAccessError, workspaceIdentity } from "../../.
 import { discoverTochkaIds, tochkaRequest, TochkaConfigError } from "../../../../_lib/tochka";
 import { billingDescription, type BillingPeriod } from "../../../../../billing-pricing";
 import { planRule } from "../../../../../plans";
-import { subscriptionExpiry } from "../../../../_lib/subscription";
+import { subscriptionExpiry, nextQuotaPeriodEnd } from "../../../../_lib/subscription";
 
 function text(value: unknown, max = 300) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -56,6 +56,7 @@ export async function POST(request: Request) {
         researchUsed: 0,
         editorActionsUsed: 0,
         generationMonth: `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, "0")}`,
+        quotaPeriodEndsAt: nextQuotaPeriodEnd(new Date(now)),
         updatedAt: now,
       }).where(eq(accounts.email, invoice.ownerEmail));
       await db.update(invoices).set({ paymentStatus, paidAt: now, updatedAt: now }).where(eq(invoices.id, invoice.id));

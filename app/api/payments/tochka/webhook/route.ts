@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { accounts, payments } from "../../../../../db/schema";
 import { getWorkspaceDb } from "../../../_lib/workspace-account";
 import { verifyTochkaWebhook } from "../../../_lib/tochka";
-import { subscriptionExpiry } from "../../../_lib/subscription";
+import { subscriptionExpiry, nextQuotaPeriodEnd } from "../../../_lib/subscription";
 import type { BillingPeriod } from "../../../../billing-pricing";
 
 function stringClaim(value: unknown) {
@@ -62,6 +62,7 @@ export async function POST(request: Request) {
         researchUsed: 0,
         editorActionsUsed: 0,
         generationMonth: `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, "0")}`,
+        quotaPeriodEndsAt: nextQuotaPeriodEnd(paidAt),
         updatedAt: paidAt.toISOString(),
       }).where(eq(accounts.email, payment.ownerEmail));
       outcome = "confirmed";

@@ -4,6 +4,7 @@ import { getDb } from "../../../db";
 import type { ChatGPTUser } from "../../chatgpt-auth";
 import { getCurrentUser } from "../../identity";
 import { planRule, planExpiryState } from "../../plans";
+import { nextQuotaPeriodEnd } from "./subscription";
 
 export class WorkspaceAccessError extends Error {
   status: number;
@@ -36,6 +37,19 @@ function monthKey(date = new Date()) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
+// True once the current usage-quota period (generationsUsed/researchUsed/
+// editorActionsUsed) needs zeroing again. Accounts that went through a real
+// payment carry quotaPeriodEndsAt, anchored to the payment date — the trial
+// plan and any paid plan an admin granted by hand without one fall back to
+// the legacy plain calendar-month comparison instead.
+function quotaPeriodElapsed(account: typeof accounts.$inferSelect, now: Date) {
+  if (account.quotaPeriodEndsAt) {
+    const endsAt = new Date(account.quotaPeriodEndsAt).getTime();
+    return Number.isFinite(endsAt) && now.getTime() >= endsAt;
+  }
+  return account.generationMonth !== monthKey(now);
+}
+
 // Product-owner test account. Kept narrowly scoped so production limits and
 // the trial window remain unchanged for every other user.
 const TEST_ACCOUNT_EMAIL = "sergeitkachuk@gmail.com";
@@ -46,7 +60,8 @@ function isTestAccount(email: string) {
 
 export async function ensureAccount(user: ChatGPTUser) {
   const db = await getWorkspaceDb();
-  const currentMonth = monthKey();
+  const now = new Date();
+  const currentMonth = monthKey(now);
   let [account] = await db.select().from(accounts).where(eq(accounts.email, user.email)).limit(1);
 
   if (!account) {
@@ -62,13 +77,21 @@ export async function ensureAccount(user: ChatGPTUser) {
       lifetimeResearchUsed: 0,
       lifetimeEditorActionsUsed: 0,
     }).returning();
-  } else if (account.generationMonth !== currentMonth) {
-    // Only the three period counters reset here — lifetimeGenerationsUsed/
-    // lifetimeResearchUsed/lifetimeEditorActionsUsed are deliberately
-    // absent from this set() so the monthly rollover never touches them.
+  } else if (quotaPeriodElapsed(account, now)) {
+    // Payment-anchored accounts advance from their own previous anchor (not
+    // from `now`) so the reset day-of-month stays pinned to the original
+    // payment date even if nobody visits exactly on the boundary; a visit
+    // that's overdue by more than one period catches up fully on the next
+    // request after this one (each step is a harmless no-op once counters
+    // are already zero). Only the three period counters reset here —
+    // lifetimeGenerationsUsed/lifetimeResearchUsed/lifetimeEditorActionsUsed
+    // are deliberately absent from this set() so the rollover never touches
+    // them.
+    const nextAnchor = account.quotaPeriodEndsAt ? nextQuotaPeriodEnd(new Date(account.quotaPeriodEndsAt)) : null;
     [account] = await db.update(accounts).set({
       displayName: user.displayName,
       generationMonth: currentMonth,
+      quotaPeriodEndsAt: nextAnchor,
       generationsUsed: 0,
       researchUsed: 0,
       editorActionsUsed: 0,
@@ -125,6 +148,11 @@ export function accountSummary(account: typeof accounts.$inferSelect, brandCount
     brandLimit: rule.brandLimit,
     seatLimit: rule.seatLimit,
     period: account.generationMonth,
+    // Set only for accounts whose quota reset is anchored to a real
+    // payment date (see quotaPeriodElapsed) — null for the trial plan and
+    // for paid plans an admin granted by hand, which still reset on the
+    // calendar month instead.
+    quotaResetsAt: account.quotaPeriodEndsAt,
     // Null for the trial plan (see assertTrialActive for its own 48h
     // window) and for paid plans an admin granted without an expiry —
     // the account page flags that "missing" case too, same as /admin.
