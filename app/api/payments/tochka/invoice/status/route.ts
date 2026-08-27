@@ -34,7 +34,22 @@ export async function POST(request: Request) {
     const accountId = text(process.env.TOCHKA_ACCOUNT_ID, 120);
     if (!customerCode || !accountId) throw new TochkaConfigError("Не настроены идентификаторы Точки для работы со счетами.");
 
-    const statusResponse = await tochkaRequest<unknown>(`/invoice/v1.0/bills/${encodeURIComponent(customerCode)}/${encodeURIComponent(invoice.tochkaDocumentId)}/payment-status`);
+    let statusResponse: unknown;
+    try {
+      statusResponse = await tochkaRequest<unknown>(`/invoice/v1.0/bills/${encodeURIComponent(customerCode)}/${encodeURIComponent(invoice.tochkaDocumentId)}/payment-status`);
+    } catch (error) {
+      // Tochka has no record of this document any more (an old test invoice,
+      // one cleaned up on their side, etc.) — retrying can never succeed.
+      // Persist a terminal status so the account page's 30s auto-poll (see
+      // invoice-documents.tsx) stops re-checking it forever instead of
+      // hammering Tochka's API indefinitely, which is what silently
+      // happened for hours on 2026-08-24.
+      if (error instanceof Error && /API 424/.test(error.message)) {
+        await db.update(invoices).set({ paymentStatus: "not_found", updatedAt: new Date().toISOString() }).where(eq(invoices.id, invoice.id));
+        return Response.json({ status: "not_found", invoiceId: invoice.id });
+      }
+      throw error;
+    }
     const paymentStatus = findString(statusResponse, "paymentStatus") || "payment_waiting";
     if (paymentStatus !== "payment_paid") {
       await db.update(invoices).set({ paymentStatus, updatedAt: new Date().toISOString() }).where(eq(invoices.id, invoice.id));

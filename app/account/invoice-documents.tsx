@@ -33,13 +33,18 @@ export default function InvoiceDocuments() {
     catch (caught) { setError(caught instanceof Error ? caught.message : "Не удалось удалить счета."); }
     finally { setDeleting(null); }
   }, [load, removable.length]);
+  // "not_found" means Tochka has no record of this document any more (see
+  // invoice/status/route.ts) — re-checking it can never succeed, so it's
+  // excluded here to stop the poll below from hammering Tochka's API for it
+  // forever (that ran unnoticed for hours on 2026-08-24).
+  const checkable = useCallback((row: Invoice) => !row.closingDocumentId && row.paymentStatus !== "payment_paid" && row.paymentStatus !== "not_found", []);
   useEffect(() => {
-    if (!rows.some((row) => !row.closingDocumentId && row.paymentStatus !== "payment_paid")) return;
+    if (!rows.some(checkable)) return;
     const timer = window.setInterval(() => {
-      rows.filter((row) => !row.closingDocumentId && row.paymentStatus !== "payment_paid").forEach((row) => { void check(row.id); });
+      rows.filter(checkable).forEach((row) => { void check(row.id); });
     }, 30000);
     return () => window.clearInterval(timer);
-  }, [rows, check]);
+  }, [rows, check, checkable]);
   if (!rows.length) return null;
-  return <div className="account-documents"><div className="account-documents-heading"><div><h3>Счета и закрывающие документы</h3><p>После оплаты счёта КЛИО автоматически сформирует УПД ДОП без НДС.</p></div>{removable.length > 0 && <button className="account-documents-clear" type="button" onClick={() => void clearUnpaid()} disabled={deleting !== null}>{deleting === "all" ? "Удаляем…" : `Удалить неоплаченные (${removable.length})`}</button>}</div>{error && <b className="account-billing-error">{error}</b>}{rows.map((row) => <div className="account-document" key={row.id}><div><strong>Тариф «{names[row.planId] || row.planId}» · {row.amountKopecks / 100} ₽</strong><small>{row.buyerName} · {new Date(row.createdAt).toLocaleDateString("ru-RU")}</small></div><div className="account-document-actions">{row.closingDocumentId ? <a href={`/api/payments/tochka/closing/${encodeURIComponent(row.closingDocumentId)}`} target="_blank" rel="noreferrer">Скачать УПД</a> : <button type="button" onClick={() => void check(row.id)} disabled={busy === row.id || deleting !== null}>{busy === row.id ? "Проверяем…" : row.paymentStatus === "payment_paid" ? "Сформировать УПД" : "Проверить оплату"}</button>}{removable.includes(row) && <button className="account-document-delete" type="button" onClick={() => void remove(row.id)} disabled={deleting !== null}>{deleting === row.id ? "Удаляем…" : "Удалить"}</button>}</div></div>)}</div>;
+  return <div className="account-documents"><div className="account-documents-heading"><div><h3>Счета и закрывающие документы</h3><p>После оплаты счёта КЛИО автоматически сформирует УПД ДОП без НДС.</p></div>{removable.length > 0 && <button className="account-documents-clear" type="button" onClick={() => void clearUnpaid()} disabled={deleting !== null}>{deleting === "all" ? "Удаляем…" : `Удалить неоплаченные (${removable.length})`}</button>}</div>{error && <b className="account-billing-error">{error}</b>}{rows.map((row) => <div className="account-document" key={row.id}><div><strong>Тариф «{names[row.planId] || row.planId}» · {row.amountKopecks / 100} ₽</strong><small>{row.buyerName} · {new Date(row.createdAt).toLocaleDateString("ru-RU")}</small></div><div className="account-document-actions">{row.closingDocumentId ? <a href={`/api/payments/tochka/closing/${encodeURIComponent(row.closingDocumentId)}`} target="_blank" rel="noreferrer">Скачать УПД</a> : row.paymentStatus === "not_found" ? <small>Счёт аннулирован в Точке — удалите и создайте новый</small> : <button type="button" onClick={() => void check(row.id)} disabled={busy === row.id || deleting !== null}>{busy === row.id ? "Проверяем…" : row.paymentStatus === "payment_paid" ? "Сформировать УПД" : "Проверить оплату"}</button>}{removable.includes(row) && <button className="account-document-delete" type="button" onClick={() => void remove(row.id)} disabled={deleting !== null}>{deleting === row.id ? "Удаляем…" : "Удалить"}</button>}</div></div>)}</div>;
 }
