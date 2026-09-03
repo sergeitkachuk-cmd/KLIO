@@ -2035,7 +2035,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setIntro(false), 3200);
+    const timer = window.setTimeout(() => setIntro(false), 1200);
     return () => window.clearTimeout(timer);
   }, []);
 
