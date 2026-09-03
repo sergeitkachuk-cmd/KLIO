@@ -397,6 +397,29 @@ const defaultBrand: BrandProfile = {
   prohibited: "гарантированное исцеление; чудодейственный; лучший санаторий; уникальный результат; успейте любой ценой",
 };
 
+// Demo data belongs only to the public example. A brand created in a real
+// workspace must never inherit those facts or be saved as the user's data.
+function emptyBrandProfile(name = "Мой бренд"): BrandProfile {
+  return {
+    name,
+    website: "",
+    description: "",
+    positioning: "",
+    audience: "",
+    advantages: "",
+    products: "",
+    services: "",
+    proof: "",
+    geography: "",
+    vocabulary: "",
+    cta: "",
+    voice: "",
+    restrictions: "",
+    signature: "",
+    prohibited: "",
+  };
+}
+
 const defaultSemanticResult: SemanticResult = {
   primaryQuery: "",
   intent: {
@@ -2064,7 +2087,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           const createResponse = await fetch("/api/workspace", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "create_brand", profile: defaultBrand, workspace: {} }),
+            body: JSON.stringify({ action: "create_brand", profile: emptyBrandProfile(), workspace: {} }),
           });
           const createdPayload = await createResponse.json() as { error?: string; brand?: unknown; account?: WorkspaceAccount };
           const created = normalizeWorkspaceBrand(createdPayload.brand);
@@ -2508,25 +2531,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       showToast(`На тарифе «${workspaceAccount.planName}» доступно до ${workspaceAccount.brandLimit} брендов`);
       return;
     }
-    const blankProfile: BrandProfile = {
-      ...defaultBrand,
-      name,
-      website: "",
-      description: "",
-      positioning: "",
-      audience: "",
-      advantages: "",
-      products: "",
-      services: "",
-      proof: "",
-      geography: "",
-      vocabulary: "",
-      cta: "",
-      voice: "",
-      restrictions: "",
-      prohibited: "",
-      signature: `С заботой о вас, ${name}.`,
-    };
+    const blankProfile = emptyBrandProfile(name);
     setBrandSwitchBusy(true);
     try {
       await saveActiveWorkspaceBrand(false);
