@@ -2435,8 +2435,19 @@ select:focus-visible {
 
 .module-select-list {
   /* position/top/left/width are set inline — the list portals to
-     document.body and measures its trigger, see ModuleSelect. */
-  z-index: 100;
+     document.body and measures its trigger, see ModuleSelect.
+     z-index above every overlay in this file (archive-editor-overlay is
+     the highest, at 3000) — not just this component's old 100. Found
+     from a real bug report: ModuleSelect used for Публикации' "Время"
+     field inside that overlay opened (state flipped, list mounted,
+     position computed correctly) but rendered *behind* the modal's own
+     backdrop, since the portal target is document.body — a plain
+     sibling of the overlay in the DOM, not a descendant — so 100 lost
+     to 3000 regardless of correct positioning. A dropdown's whole job is
+     to float above whatever is currently on screen, modal included, so
+     this is the right general fix, not a one-off bump for this one
+     call site. */
+  z-index: 3100;
   display: grid;
   gap: 4px;
   /* Was 280px, which only fits ~6 of the 42px rows before scrolling -
