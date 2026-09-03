@@ -68,11 +68,14 @@ export async function GET(request: Request) {
     });
     if (!infoResponse.ok) throw new Error(`user info fetch failed: ${infoResponse.status}`);
     const info = await infoResponse.json() as VkUserInfo;
+    // VK answers a bad access_token with HTTP 200 and an `error` field, not
+    // a 4xx — see the matching comment in api/auth/vk/session/route.ts.
+    if (info.error) throw new Error(`user info rejected: ${info.error}`);
 
     const email = (info.user?.email || "").trim().toLowerCase();
     if (!email) return NextResponse.redirect(`${baseUrl}/login?error=oauth_no_email&provider=vk`);
 
-    const displayName = [info.user.first_name, info.user.last_name].filter(Boolean).join(" ").trim() || email.split("@")[0];
+    const displayName = [info.user?.first_name, info.user?.last_name].filter(Boolean).join(" ").trim() || email.split("@")[0];
     const account = await ensureAccount({ email, displayName, fullName: displayName });
 
     if (!account.emailVerified) {

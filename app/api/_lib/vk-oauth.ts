@@ -45,13 +45,20 @@ export function pkceChallengeFromVerifier(verifier: string): string {
   return base64UrlEncode(createHash("sha256").update(verifier).digest());
 }
 
-// https://id.vk.com/oauth2/user_info's documented response shape, per VK
-// ID's own OAuth 2.1 strategies — only the fields the callback route reads.
+// https://id.vk.com/oauth2/user_info's response shape — the `user` fields
+// match @vkid/sdk's own UserInfoResult/UserData types verbatim (checked
+// against the package's shipped .d.ts, unlike the rest of this file), and
+// `error`/`error_description` were confirmed live: VK answers an invalid
+// access_token with HTTP 200 and this shape instead of a 4xx, so callers
+// MUST check `error` before assuming a missing `user.email` means "this
+// VK account just has no email" rather than "the token itself was bad".
 export type VkUserInfo = {
-  user: {
+  user?: {
     user_id: string;
     first_name?: string;
     last_name?: string;
     email?: string;
   };
+  error?: string;
+  error_description?: string;
 };

@@ -14806,21 +14806,23 @@ input[type="radio"] {
   font-weight: 650;
 }
 
-/* Holds the OAuth provider buttons (Яндекс, VK) side by side above the
-   divider — .auth-card .button's own width:100% is overridden here so two
-   fit per row instead of stacking full-width. */
-.auth-oauth-row {
-  display: flex;
-  gap: 10px;
+/* VK's own OneTap widget (app/vk-onetap.tsx) renders itself into the inner
+   div at its own configured width (345px, matching .auth-card's ~352px
+   content area) and styling — this wrapper just gives it the same vertical
+   rhythm as the Яндекс button above it. The fallback link (shown only if
+   the widget fails to load) reuses .button ghost like every other auth
+   action here. */
+.auth-vk-onetap {
+  margin-top: 6px;
 }
 
-.auth-oauth-row .button {
-  flex: 1;
-  width: auto;
+.auth-vk-onetap .button {
+  width: 100%;
 }
 
-/* Separates the OAuth provider buttons from the email/password form below
-   them — sits between .auth-oauth-row and .auth-card form. */
+/* Separates the OAuth sign-in options (Яндекс button, VK widget) from the
+   email/password form below them — sits between .auth-vk-onetap and
+   .auth-card form. */
 .auth-divider {
   display: flex;
   align-items: center;
