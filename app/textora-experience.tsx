@@ -1795,7 +1795,17 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     });
   }
 
-  async function submitPubEditor() {
+  // publishNow only ever applies to a brand-new entry (pubEditor.id is
+  // null) — an existing one already has its own dedicated "Опубликовать
+  // сейчас" button once saved once, since editing text isn't the same
+  // intent as "post this right now". Added after a real report: creating
+  // a new post only ever offered "Сохранить", which schedules it for
+  // whatever date/time the fields happened to show (today, 12:00 by
+  // default) — it never actually published, and nothing else fires that
+  // automatically without the publish-due cron configured. This gives
+  // the same immediate path new posts get once reopened, without making
+  // someone save, close, and reopen the same entry first.
+  async function submitPubEditor(publishNow = false) {
     if (!pubEditor || !activeBrandId) return;
     if (!pubEditor.channelIds.length) {
       setPubEditor((current) => current && { ...current, error: "Выберите хотя бы один канал." });
@@ -1840,9 +1850,16 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             scheduledAt: scheduledAt.toISOString(),
           }),
         });
-        const payload = await safeJson(response) as { error?: string };
+        const payload = await safeJson(response) as { error?: string; publications?: { id: string }[] };
         if (!response.ok) throw new Error(payload.error || "Не удалось запланировать публикацию.");
-        showToast(pubEditor.channelIds.length > 1 ? "Публикация добавлена в несколько каналов" : "Публикация добавлена в календарь");
+        if (publishNow && payload.publications?.length) {
+          // One row per selected channel — publish every one of them, not
+          // just the first, so picking two channels and "опубликовать
+          // сейчас" doesn't silently skip the second.
+          await Promise.all(payload.publications.map((row) => publishPubNow(row.id)));
+        } else {
+          showToast(pubEditor.channelIds.length > 1 ? "Публикация добавлена в несколько каналов" : "Публикация добавлена в календарь");
+        }
       }
       setPubEditor(null);
       await refreshPublications();
@@ -4833,7 +4850,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <div className="publications-editor-actions">
                 {pubEditor.id && <button type="button" className="button ghost" disabled={pubEditor.busy} onClick={() => { const id = pubEditor.id as string; setPubEditor(null); void deletePubItem(id); }}>Удалить</button>}
                 {pubEditor.id && <button type="button" className="button ghost" disabled={pubEditor.busy} onClick={() => { const id = pubEditor.id as string; setPubEditor(null); void publishPubNow(id); }}>Опубликовать сейчас</button>}
-                <button type="button" className="button primary" disabled={pubEditor.busy} onClick={() => void submitPubEditor()}>{pubEditor.busy ? "Сохранение…" : "Сохранить"}</button>
+                {!pubEditor.id && <button type="button" className="button ghost" disabled={pubEditor.busy} onClick={() => void submitPubEditor(true)}>Опубликовать сейчас</button>}
+                <button type="button" className="button primary" disabled={pubEditor.busy} onClick={() => void submitPubEditor()}>{pubEditor.busy ? "Сохранение…" : pubEditor.id ? "Сохранить" : "Запланировать"}</button>
               </div>
             </section>
           </div>}
