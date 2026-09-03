@@ -21052,11 +21052,10 @@ input[type="radio"] {
   accent-color: #5b4bb7;
 }
 
-/* Publications on a phone still need to behave like a calendar: seven days
-   cannot be squeezed into a 360px screen without turning each post into an
-   unreadable coloured speck. Keep a deliberately readable day width and let
-   the calendar itself scroll horizontally; the surrounding controls remain
-   compact and do not take over the screen. */
+/* On phones the month remains a familiar full overview. Its compact markers
+   make dates and statuses scannable, while the readable post cards directly
+   below carry the title, image and time without making every calendar cell
+   excessively tall. */
 @media (max-width: 720px) {
   .publications-channels-bar {
     align-items: flex-start;
@@ -21140,29 +21139,14 @@ input[type="radio"] {
   }
 
   .publications-calendar-scroll {
-    width: calc(100% + 2px);
-    margin: 0 -1px;
-    padding: 0 1px 8px;
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(124, 58, 237, 0.78) rgba(255, 255, 255, 0.07);
-  }
-
-  .publications-calendar-scroll::-webkit-scrollbar {
-    height: 7px;
-  }
-
-  .publications-calendar-scroll::-webkit-scrollbar-thumb {
-    border-radius: 999px;
-    background: linear-gradient(90deg, #6540c4, #9b76ed);
+    overflow: visible;
   }
 
   .publications-grid {
-    width: max-content;
-    min-width: 770px;
-    grid-template-columns: repeat(7, 105px);
-    gap: 5px;
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
   }
 
   .publications-weekday {
@@ -21171,12 +21155,12 @@ input[type="radio"] {
   }
 
   .publications-day {
-    min-height: 142px;
-    padding: 7px;
+    min-height: 68px;
+    padding: 5px;
   }
 
   .publications-grid-week .publications-day {
-    min-height: 230px;
+    min-height: 100px;
   }
 
   .publications-day-head > button {
@@ -21184,17 +21168,17 @@ input[type="radio"] {
   }
 
   .publications-day-items {
-    gap: 5px;
-    overflow-y: auto;
-    scrollbar-width: thin;
+    gap: 3px;
+    overflow: hidden;
   }
 
   .publications-chip {
-    grid-template-columns: auto auto minmax(0, 1fr) auto;
-    gap: 4px;
-    min-height: 42px;
-    padding: 5px;
-    font-size: 10px;
+    grid-template-columns: auto auto;
+    justify-content: space-between;
+    gap: 2px;
+    min-height: 21px;
+    padding: 3px 4px;
+    font-size: 9px;
   }
 
   .publications-chip b {
@@ -21203,20 +21187,85 @@ input[type="radio"] {
     font-size: 9px;
   }
 
-  .publications-chip span {
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-height: 1.18;
-  }
-
+  .publications-chip span,
   .publications-chip-thumb {
-    width: 22px;
-    height: 22px;
+    display: none;
   }
 
   .publications-chip em {
+    font-size: 9px;
+  }
+
+  .publications-mobile-list {
+    display: grid;
+    gap: 7px;
+    margin-top: 13px;
+  }
+
+  .publications-mobile-list h3 {
+    margin: 0 0 1px;
+    color: rgba(255, 255, 255, 0.76);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .publications-mobile-item {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    grid-template-areas: "thumb time status" "thumb title status";
+    align-items: center;
+    column-gap: 9px;
+    min-height: 54px;
+    padding: 7px 9px 7px 7px;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-left: 3px solid var(--chip-accent, #376fa8);
+    border-radius: 10px;
+    color: #fff;
+    background: color-mix(in srgb, var(--chip-accent, #376fa8) 14%, rgba(255, 255, 255, 0.035));
+    text-align: left;
+  }
+
+  .publications-mobile-item-vk { --chip-accent: #4c75a3; }
+  .publications-mobile-item-telegram { --chip-accent: #34a1de; }
+  .publications-mobile-item-failed { --chip-accent: #c0546a; }
+
+  .publications-mobile-thumb {
+    grid-area: thumb;
+    width: 36px;
+    height: 36px;
+    border-radius: 7px;
+    background-position: center;
+    background-size: cover;
+  }
+
+  .publications-mobile-time {
+    grid-area: time;
+    color: rgba(255, 255, 255, 0.58);
     font-size: 10px;
+  }
+
+  .publications-mobile-item b {
+    grid-area: title;
+    overflow: hidden;
+    color: #fff;
+    font-size: 12px;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .publications-mobile-item em {
+    grid-area: status;
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 9px;
+    font-style: normal;
+    text-align: right;
+  }
+}
+
+@media (min-width: 721px) {
+  .publications-mobile-list {
+    display: none;
   }
 }

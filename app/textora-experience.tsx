@@ -5580,6 +5580,22 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 })}
                 </div>
               </div>
+              <div className="publications-mobile-list" aria-label="Список публикаций">
+                <h3>Публикации в этом периоде</h3>
+                {[...pubItems]
+                  .filter((item) => {
+                    if (pubView === "week") return true;
+                    const date = new Date(item.scheduledAt);
+                    return date.getFullYear() === pubCursor.getFullYear() && date.getMonth() === pubCursor.getMonth();
+                  })
+                  .sort((left, right) => Date.parse(left.scheduledAt) - Date.parse(right.scheduledAt))
+                  .map((item) => <button type="button" className={`publications-mobile-item publications-mobile-item-${item.status} publications-mobile-item-${item.channel?.platform || "unknown"}`} onClick={() => openPubEditor(new Date(item.scheduledAt), item)} key={item.id}>
+                    {item.imageUrl && <i className="publications-mobile-thumb" style={{ backgroundImage: `url(${item.imageUrl})` }} aria-hidden="true"/>}
+                    <span className="publications-mobile-time">{new Date(item.scheduledAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })} · {new Date(item.scheduledAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</span>
+                    <b>{item.title || "Без названия"}</b>
+                    <em>{item.status === "failed" ? "Ошибка" : item.status === "published" ? "✓ Опубликовано" : "Запланировано"}</em>
+                  </button>)}
+              </div>
             </>}
           </section>
         </section>
