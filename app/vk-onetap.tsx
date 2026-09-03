@@ -113,12 +113,23 @@ export default function VkOneTap({ returnTo }: { returnTo: string }) {
           scope: "",
         });
 
+        // The widget doesn't stretch to fill its container on its own — it
+        // renders at exactly the pixel width passed here (VK's own wizard
+        // suggested a hardcoded 345, which only happens to be close to
+        // .auth-card's own content width on desktop and would overflow a
+        // narrow phone, where .auth-card's padding shrinks — see the
+        // max-width:480px rule in globals.css). Measuring the container
+        // itself is what actually keeps this matching the Яндекс button
+        // above it, on any screen, without duplicating breakpoint numbers
+        // here.
+        const width = Math.round(containerRef.current.getBoundingClientRect().width) || 345;
+
         const oneTap = new vkid.OneTap();
         oneTap
           .render({
             container: containerRef.current,
             showAlternativeLogin: true,
-            styles: { borderRadius: 12, width: 345 },
+            styles: { borderRadius: 12, width },
             oauthList: ["ok_ru", "mail_ru"],
           })
           .on(vkid.WidgetEvents.ERROR, () => {
