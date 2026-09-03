@@ -185,14 +185,19 @@ export async function POST(request: Request) {
     if (action === "remove_channel") {
       const id = clean(payload.id, 100);
       if (!id) return Response.json({ error: "Не указан канал для отключения." }, { status: 400 });
-      const [deleted] = await db.delete(socialChannels).where(and(eq(socialChannels.id, id), eq(socialChannels.ownerEmail, user.email))).returning({ id: socialChannels.id });
-      if (!deleted) return Response.json({ error: "Канал не найден или недоступен." }, { status: 404 });
+      const [channel] = await db.select({ id: socialChannels.id }).from(socialChannels).where(and(eq(socialChannels.id, id), eq(socialChannels.ownerEmail, user.email))).limit(1);
+      if (!channel) return Response.json({ error: "Канал не найден или недоступен." }, { status: 404 });
       // Anything still waiting to go out through this channel can never
       // publish now — drop it rather than leave a scheduled row silently
       // pointing at nothing (attemptPublish already handles a missing
       // channel defensively, but a ghost calendar entry is worse UX than
       // just removing it here).
-      await db.delete(publications).where(and(eq(publications.channelId, id), eq(publications.status, "scheduled")));
+      await db.update(publications).set({
+        status: "failed",
+        errorMessage: "Канал отключён. Подключите канал заново или выберите другой и сохраните публикацию.",
+        updatedAt: sql`CURRENT_TIMESTAMP`,
+      }).where(and(eq(publications.channelId, id), eq(publications.status, "scheduled")));
+      const [deleted] = await db.delete(socialChannels).where(eq(socialChannels.id, id)).returning({ id: socialChannels.id });
       return Response.json({ ok: true, id: deleted.id });
     }
 

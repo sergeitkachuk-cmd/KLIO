@@ -1963,6 +1963,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }
 
   async function removePubChannel(id: string, label: string) {
+    if (!window.confirm(`Отключить канал «${label}»? Запланированные публикации останутся в календаре как требующие выбора другого канала.`)) return;
     try {
       const response = await fetch("/api/publications", {
         method: "POST",
@@ -1972,7 +1973,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       const payload = await safeJson(response) as { error?: string };
       if (!response.ok) throw new Error(payload.error || "Не удалось отключить канал.");
       setPubChannels((current) => current.filter((item) => item.id !== id));
-      setPubItems((current) => current.filter((item) => item.channelId !== id));
+      await refreshPublications();
       showToast(`Канал «${label}» отключён`);
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Не удалось отключить канал.");
