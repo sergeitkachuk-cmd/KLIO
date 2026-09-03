@@ -117,7 +117,17 @@ export default function VkOneTap({ returnTo }: { returnTo: string }) {
           redirectUrl: config.vkRedirectUrl,
           responseMode: vkid.ConfigResponseMode.Callback,
           source: vkid.ConfigSource.LOWCODE,
-          scope: "",
+          // The app wizard's generated snippet left this blank ("заполните
+          // нужными доступами по необходимости") — left that way, VK
+          // granted this specific sign-in no more than a bare user_id, so
+          // oauth2/user_info came back with no email at all (confirmed
+          // live 2026-09-03: a 422 from api/auth/vk/session, "VK не указан
+          // email", even though the account plainly has one). The app-level
+          // "Доступ к email" permission from setup only caps what a flow is
+          // *allowed* to request — each flow still has to ask for it here.
+          // Mirrors the scope already used by the plain-link fallback flow
+          // (api/auth/vk/start).
+          scope: "email vkid.personal_info",
         });
 
         // The widget doesn't stretch to fill its container on its own — it
