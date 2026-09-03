@@ -1674,6 +1674,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [pubChannelVk, setPubChannelVk] = useState({ groupId: "", accessToken: "" });
   const [pubChannelBusy, setPubChannelBusy] = useState(false);
   const [pubChannelError, setPubChannelError] = useState("");
+  const [pubImageUploadBusy, setPubImageUploadBusy] = useState(false);
   // null = closed. `id` set means editing an already-scheduled row (single
   // channel, reassignable); `id` null means composing a new one, where
   // channelIds can hold several — one `publications` row gets created per
@@ -1865,6 +1866,27 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       showToast(error instanceof Error ? error.message : "Публикация не удалась.");
     } finally {
       await refreshPublications();
+    }
+  }
+
+  // Uploads straight from the person's disk to Timeweb S3 (api/uploads ->
+  // api/_lib/storage.ts) and drops the resulting public URL into the same
+  // imageUrl field a pasted external link would fill — the rest of the
+  // editor and the publish pipeline never need to know which path a URL
+  // came from.
+  async function uploadPubImage(file: File) {
+    setPubImageUploadBusy(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch("/api/uploads", { method: "POST", body: form });
+      const payload = await safeJson(response) as { error?: string; url?: string };
+      if (!response.ok || !payload.url) throw new Error(payload.error || "Не удалось загрузить картинку.");
+      setPubEditor((current) => current && { ...current, imageUrl: payload.url as string });
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Не удалось загрузить картинку.");
+    } finally {
+      setPubImageUploadBusy(false);
     }
   }
 
@@ -4756,7 +4778,20 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </div>
               <label className="publications-editor-field"><span>Заголовок <small>необязательно</small></span><AutoTextarea rows={1} value={pubEditor.title} onChange={(event) => setPubEditor((current) => current && { ...current, title: event.target.value })}/></label>
               <label className="publications-editor-field"><span>Текст публикации</span><AutoTextarea rows={8} value={pubEditor.body} onChange={(event) => setPubEditor((current) => current && { ...current, body: event.target.value })} placeholder="Текст, который уйдёт в канал"/></label>
-              <label className="publications-editor-field"><span>Картинка <small>ссылка на изображение</small></span><input type="text" value={pubEditor.imageUrl} onChange={(event) => setPubEditor((current) => current && { ...current, imageUrl: event.target.value })} placeholder="https://…"/></label>
+              <div className="publications-editor-field">
+                <span>Картинка <small>с диска или по ссылке</small></span>
+                <div className="publications-image-row">
+                  <input type="text" value={pubEditor.imageUrl} onChange={(event) => setPubEditor((current) => current && { ...current, imageUrl: event.target.value })} placeholder="https://…"/>
+                  <label className={`publications-upload-button ${pubImageUploadBusy ? "is-busy" : ""}`}>
+                    {pubImageUploadBusy ? "Загрузка…" : "Загрузить"}
+                    <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden disabled={pubImageUploadBusy} onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      if (file) void uploadPubImage(file);
+                    }}/>
+                  </label>
+                </div>
+              </div>
               {pubEditor.imageUrl && <img className="publications-editor-preview" src={pubEditor.imageUrl} alt="Превью картинки" onError={(event) => { (event.target as HTMLImageElement).style.display = "none"; }}/>}
               <div className="publications-editor-row">
                 <label><span>Дата</span><input type="date" value={pubEditor.date} onChange={(event) => setPubEditor((current) => current && { ...current, date: event.target.value })}/></label>
