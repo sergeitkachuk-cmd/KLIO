@@ -50,6 +50,13 @@
 // config is correct — they just don't demonstrate ACL or policy at all,
 // so they don't resolve this specific question either way.
 
+// UPDATE (2026-09-03): a KLIO-uploaded image produced NoSuchBucket, not
+// AccessDenied. Its URL was https://s3.twcstorage.ru/publications/...,
+// proving that S3_PUBLIC_URL_BASE had been set to the root endpoint while
+// publicUrl() omitted the bucket. The URL construction below now handles
+// that configuration as https://s3.twcstorage.ru/<bucket>/<key>. Retest a
+// fresh KLIO upload after deployment before touching ACL or Bucket Policy.
+
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 export class StorageError extends Error {
@@ -104,10 +111,16 @@ function client(): S3Client {
 // signed call for something that's actually just string concatenation
 // once the bucket is public (confirmed for klio-media: "Публичный").
 function publicUrl(key: string): string {
-  const base = process.env.S3_PUBLIC_URL_BASE?.trim();
-  if (base) return `${base.replace(/\/+$/, "")}/${key}`;
   const endpoint = requiredEnv("S3_ENDPOINT").replace(/\/+$/, "");
   const bucket = requiredEnv("S3_BUCKET");
+  const configuredBase = process.env.S3_PUBLIC_URL_BASE?.trim()?.replace(/\/+$/, "");
+
+  // Timeweb's root S3 endpoint needs the bucket as the first path segment.
+  // A previous deployment set S3_PUBLIC_URL_BASE to that root endpoint, so
+  // the old shortcut produced /publications/... and S3 treated
+  // "publications" as a bucket (NoSuchBucket). A genuinely custom public
+  // domain/CDN may map directly to one bucket, so retain that opt-in shape.
+  if (configuredBase && configuredBase !== endpoint) return `${configuredBase}/${key}`;
   return `${endpoint}/${bucket}/${key}`;
 }
 
