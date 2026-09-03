@@ -97,8 +97,8 @@ export default function VkOneTap({ returnTo }: { returnTo: string }) {
     async function init() {
       try {
         const configResponse = await fetch("/api/public-config", { cache: "no-store" });
-        const config = await configResponse.json().catch(() => ({})) as { vkOAuthClientId?: string | null };
-        if (cancelled || !config.vkOAuthClientId) throw new Error("VK OAuth not configured");
+        const config = await configResponse.json().catch(() => ({})) as { vkOAuthClientId?: string | null; vkRedirectUrl?: string | null };
+        if (cancelled || !config.vkOAuthClientId || !config.vkRedirectUrl) throw new Error("VK OAuth not configured");
 
         await loadScript();
         if (cancelled) return;
@@ -107,7 +107,14 @@ export default function VkOneTap({ returnTo }: { returnTo: string }) {
 
         vkid.Config.init({
           app: Number(config.vkOAuthClientId),
-          redirectUrl: `${location.origin}/api/auth/vk/callback`,
+          // Server-computed (see api/public-config), not `${location.origin}/...` —
+          // for цифроваяредакция.рф, window.location.origin can come back
+          // Unicode or punycode depending on the visitor's browser and its
+          // IDN display settings, and VK compares this byte-for-byte against
+          // the punycode URL registered as the app's Redirect URL. A
+          // mismatch here made sign-in silently fail for some visitors
+          // while working for others, purely by browser luck.
+          redirectUrl: config.vkRedirectUrl,
           responseMode: vkid.ConfigResponseMode.Callback,
           source: vkid.ConfigSource.LOWCODE,
           scope: "",
