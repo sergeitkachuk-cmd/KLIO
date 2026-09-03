@@ -12172,6 +12172,7 @@ input[type="radio"] {
 .publication-platform-icon.telegram { background: #229ed9; }
 .publication-platform-icon.telegram svg { width: 13px; height: 13px; fill: currentColor; }
 .publication-platform-icon.vk { background: #0077ff; }
+.publication-platform-icon:not(.telegram):not(.vk) { background: rgba(255, 255, 255, 0.22); }
 
 .publications-editor-channels button.active {
   border-color: color-mix(in srgb, var(--module-accent) 60%, transparent);

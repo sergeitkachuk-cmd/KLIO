@@ -5569,7 +5569,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     <div className="publications-day-head"><span>{day.getDate()}</span><button type="button" onClick={() => openPubEditor(day)} aria-label="Добавить публикацию на этот день">+</button></div>
                     <div className="publications-day-items">
                       {items.map((item) => <button type="button" className={`publications-chip publications-chip-${item.status} publications-chip-${item.channel?.platform || "unknown"}`} onClick={() => openPubEditor(day, item)} key={item.id}>
-                        {item.imageUrl && <i className="publications-chip-thumb" style={{ backgroundImage: `url(${item.imageUrl})` }} aria-hidden="true"/>}
+                        {item.channel ? <PublicationPlatformIcon platform={item.channel.platform}/> : <i className="publication-platform-icon" aria-label="Канал не подключён">?</i>}
                         <b>{new Date(item.scheduledAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</b>
                         <span>{item.title || "Без названия"}</span>
                         {item.status === "failed" && <em>Ошибка</em>}
