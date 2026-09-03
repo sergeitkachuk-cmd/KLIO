@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import YandexIcon from "../yandex-icon";
-import VkOneTap from "../vk-onetap";
+import VkSignIn from "../vk-signin";
 
 function safeReturnTo(): string {
   if (typeof window === "undefined") return "/workspace";
@@ -130,7 +130,7 @@ export default function LoginPage() {
           <YandexIcon />
           Войти через Яндекс
         </a>
-        <VkOneTap returnTo={safeReturnTo()} />
+        <VkSignIn returnTo={safeReturnTo()} />
         <div className="auth-divider"><span>или по email</span></div>
         <form onSubmit={handleSubmit}>
           <label className="field">Email<input type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
