@@ -39,10 +39,18 @@ function monthKey(date = new Date()) {
 
 // True once the current usage-quota period (generationsUsed/researchUsed/
 // editorActionsUsed) needs zeroing again. Accounts that went through a real
-// payment carry quotaPeriodEndsAt, anchored to the payment date — the trial
-// plan and any paid plan an admin granted by hand without one fall back to
-// the legacy plain calendar-month comparison instead.
+// payment carry quotaPeriodEndsAt, anchored to the payment date — any paid
+// plan an admin granted by hand without one falls back to the legacy plain
+// calendar-month comparison instead. The trial plan never reaches this at
+// all: it isn't a recurring period, it's a single 48h window (see
+// isTrialExpired/assertTrialActive) — without this guard, a trial account
+// that's sat expired for weeks would have its counters silently zeroed back
+// to "fresh" on the next visit after a month boundary, while still being
+// hard-blocked by assertTrialActive underneath. Found 2026-09-03: an
+// account created 2026-08-13 (long past its 48h window) still showed full
+// quota on /account after the calendar flipped to September.
 function quotaPeriodElapsed(account: typeof accounts.$inferSelect, now: Date) {
+  if (account.planId === "trial") return false;
   if (account.quotaPeriodEndsAt) {
     const endsAt = new Date(account.quotaPeriodEndsAt).getTime();
     return Number.isFinite(endsAt) && now.getTime() >= endsAt;
@@ -120,9 +128,24 @@ function isPaidPlanExpired(account: typeof accounts.$inferSelect) {
   return Number.isFinite(expiresAt) && expiresAt <= Date.now();
 }
 
+// New accounts start on the "trial" plan (see ensureAccount) with a fixed
+// 48h window rather than a monthly reset — once it elapses, every
+// AI-costing action is blocked outright (see assertTrialActive) regardless
+// of how much of the trial's own generationLimit/researchLimit/
+// editorActionLimit was actually used. Shared by accountSummary (so
+// /account actually shows this instead of silently hiding it) and
+// assertTrialActive (the real enforcement) so the two can't drift apart.
+const TRIAL_DURATION_MS = 48 * 60 * 60 * 1000;
+
+function isTrialExpired(account: typeof accounts.$inferSelect) {
+  if (account.planId !== "trial") return false;
+  const startedAt = new Date(account.createdAt).getTime();
+  return Number.isFinite(startedAt) && Date.now() - startedAt > TRIAL_DURATION_MS;
+}
+
 export function accountSummary(account: typeof accounts.$inferSelect, brandCount = 0) {
   const rule = planRule(account.planId);
-  const expired = isPaidPlanExpired(account);
+  const expired = isPaidPlanExpired(account) || isTrialExpired(account);
   const createdAtMs = new Date(account.createdAt).getTime();
   return {
     planId: rule.id,
@@ -158,6 +181,12 @@ export function accountSummary(account: typeof accounts.$inferSelect, brandCount
     // the account page flags that "missing" case too, same as /admin.
     planExpiresAt: account.planExpiresAt,
     planExpiryState: planExpiryState(rule.id, account.planExpiresAt),
+    // planExpiryState above is always "normal" for trial (it only reasons
+    // about planExpiresAt, which trial never sets) — this is the one that
+    // actually reflects the 48h window, for /account to show a warning
+    // instead of the silently-still-full quota bars a stale trial used to
+    // display.
+    trialExpired: isTrialExpired(account),
   };
 }
 
@@ -167,17 +196,8 @@ async function currentBrandCount(email: string) {
   return Number(count);
 }
 
-// New accounts start on the "trial" plan (see ensureAccount) with a fixed
-// 48h window rather than a monthly reset — once it elapses, every
-// AI-costing action is blocked outright (see assertTrialActive) regardless
-// of how much of the trial's own generationLimit/researchLimit/
-// editorActionLimit was actually used.
-const TRIAL_DURATION_MS = 48 * 60 * 60 * 1000;
-
 function assertTrialActive(account: typeof accounts.$inferSelect) {
-  if (account.planId !== "trial") return;
-  const startedAt = new Date(account.createdAt).getTime();
-  if (Number.isNaN(startedAt) || Date.now() - startedAt <= TRIAL_DURATION_MS) return;
+  if (!isTrialExpired(account)) return;
   throw new WorkspaceAccessError(
     "Пробный период КЛИО закончился. Напишите нам, чтобы продолжить работу.",
     402,

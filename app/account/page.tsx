@@ -90,6 +90,7 @@ export default async function AccountPage() {
               <h2>{summary.planName}</h2>
               <small>1 пользователь на всех тарифах · {quotaResetLabel(summary.planId, summary.quotaResetsAt)}</small>
               {summary.planId !== "trial" && <small className={`account-plan-expiry account-plan-expiry-${summary.planExpiryState}`}>{planExpiryLabel(summary.planExpiryState, summary.planExpiresAt)}</small>}
+              {summary.planId === "trial" && summary.trialExpired && <small className="account-plan-expiry account-plan-expiry-expired">Пробный период закончился — материалы недоступны, выберите тариф ниже</small>}
             </div>
             <a className="account-upgrade" href="#billing">Выбрать тариф</a>
           </div>
