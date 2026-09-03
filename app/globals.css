@@ -2893,13 +2893,15 @@ select:focus-visible {
   min-width: 0;
   min-height: 1.25em;
   margin: 30px 0 16px;
-  padding: 0 2px 2px 0;
+  padding: 16px 18px;
   overflow: hidden;
-  border: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
   outline: 0;
   resize: none;
   color: var(--ink);
-  background: transparent;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.04);
   font-size: clamp(31px, 3.1vw, 47px);
   font-weight: 520;
   line-height: 1.08;
@@ -2953,13 +2955,15 @@ select:focus-visible {
   min-width: 0;
   height: auto;
   min-height: 270px;
-  padding: 0 8px 0 0;
+  padding: 18px;
   overflow: hidden;
-  border: 0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 16px;
   outline: 0;
   resize: none;
   color: rgba(255, 255, 255, 0.85);
-  background: transparent;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.04);
   font-size: 18px;
   line-height: 1.75;
   white-space: pre-wrap;
@@ -18338,6 +18342,13 @@ input[type="radio"] {
 
 [data-theme="light"] .result-body {
   color: rgba(13, 27, 49, 0.82);
+}
+
+[data-theme="light"] .result-title,
+[data-theme="light"] .result-body {
+  border-color: rgba(53, 104, 212, 0.28);
+  background: rgba(53, 104, 212, 0.045);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.7);
 }
 
 [data-theme="light"] .result-subtitle-field {

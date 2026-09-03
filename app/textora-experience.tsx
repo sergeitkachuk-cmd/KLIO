@@ -4412,8 +4412,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }
 
   function copyResult() {
-    navigator.clipboard?.writeText(`${title}\n\n${body}`);
-    showToast("Текст скопирован без служебного комментария");
+    const material = [title.trim(), subtitle.trim(), body.trim()].filter(Boolean).join("\n\n");
+    navigator.clipboard?.writeText(material);
+    showToast("Скопированы заголовок, зацепка и текст без служебного комментария");
   }
 
   // Bridges the generator's result straight into "Редакторы КЛИО" instead
