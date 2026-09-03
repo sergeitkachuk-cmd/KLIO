@@ -52,7 +52,14 @@ export async function POST(request: Request) {
 
     const email = (info.user?.email || "").trim().toLowerCase();
     if (!email) {
-      return Response.json({ error: "В вашем аккаунте VK не указан email — добавьте его в настройках или войдите по email и паролю." }, { status: 422 });
+      // Do not log tokens, profile payloads, or email addresses. This marker
+      // is enough to distinguish a VK ID consent/scope problem from a failed
+      // token exchange and lets the widget move to the full OAuth flow.
+      console.warn("VK OneTap user_info contained no email");
+      return Response.json({
+        code: "VK_EMAIL_REQUIRED",
+        error: "VK не передал email. Продолжаем вход на странице VK.",
+      }, { status: 422 });
     }
 
     const displayName = [info.user?.first_name, info.user?.last_name].filter(Boolean).join(" ").trim() || email.split("@")[0];
