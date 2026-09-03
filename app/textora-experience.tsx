@@ -335,6 +335,19 @@ const MATERIALS_DATE_RANGE_OPTIONS: { value: MaterialsDateRange; label: string }
   { value: "year", label: "Год" },
 ];
 
+// Публикации' time field: <input type="time">'s dropdown is the browser's
+// own native popup (a system clock-scroll widget) with no CSS hook to
+// restyle it at all — not a missed style pass, an actual platform
+// limitation (only the small icon button next to the field is themeable).
+// 30-minute steps through ModuleSelect sidesteps this entirely by using
+// a component this codebase already owns end to end, and matches how a
+// recurring publish slot ("Пн/Ср/Пт 10:00") is picked anyway — nobody is
+// scheduling a post for 14:07.
+const PUBLICATION_TIME_OPTIONS: { value: string; label: string }[] = Array.from({ length: 48 }, (_, index) => {
+  const value = `${String(Math.floor(index / 2)).padStart(2, "0")}:${index % 2 === 0 ? "00" : "30"}`;
+  return { value, label: value };
+});
+
 function isWithinMaterialsDateRange(value: string, range: MaterialsDateRange): boolean {
   if (range === "all") return true;
   const date = new Date(value);
@@ -4795,7 +4808,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               {pubEditor.imageUrl && <img className="publications-editor-preview" src={pubEditor.imageUrl} alt="Превью картинки" onError={(event) => { (event.target as HTMLImageElement).style.display = "none"; }}/>}
               <div className="publications-editor-row">
                 <label><span>Дата</span><input type="date" value={pubEditor.date} onChange={(event) => setPubEditor((current) => current && { ...current, date: event.target.value })}/></label>
-                <label><span>Время</span><input type="time" value={pubEditor.time} onChange={(event) => setPubEditor((current) => current && { ...current, time: event.target.value })}/></label>
+                <ModuleSelect label="Время" value={pubEditor.time} options={PUBLICATION_TIME_OPTIONS} onChange={(value) => setPubEditor((current) => current && { ...current, time: value })}/>
               </div>
               <div className="publications-editor-field">
                 <span>{pubEditor.id ? "Канал" : "Каналы"}</span>

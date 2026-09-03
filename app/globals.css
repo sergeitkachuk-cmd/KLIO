@@ -12073,6 +12073,15 @@ input[type="radio"] {
   color: #fff;
   background: rgba(255, 255, 255, 0.05);
   font-size: 14px;
+  /* The date field's own popup calendar is the browser's native widget —
+     no CSS reaches inside it beyond this one property. color-scheme is a
+     real, standards-track hint (not a hack) that tells the browser to
+     paint its own chrome — this popup, the little calendar-icon button —
+     in a dark palette instead of defaulting to a stark white box that
+     clashed with the modal around it (real screenshot: white calendar on
+     navy). Time's own equivalent popup is sidestepped entirely by using
+     ModuleSelect instead, further down in this same row. */
+  color-scheme: dark;
 }
 
 .publications-editor-channels {
