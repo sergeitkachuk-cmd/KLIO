@@ -32,8 +32,8 @@ export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
+    icon: "/favicon-klio.png",
+    shortcut: "/favicon-klio.png",
   },
   openGraph: {
     title: TITLE,
