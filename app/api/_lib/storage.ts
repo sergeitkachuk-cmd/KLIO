@@ -15,6 +15,40 @@
 // file uploaded through the klio-media bucket's own panel — not
 // <bucket>.s3.twcstorage.ru (virtual-hosted-style), which is what
 // S3Client defaults to without this flag.
+//
+// OPEN ISSUE (2026-09-03, unresolved): a real Telegram publish with an
+// image failed with "Bad Request: failed to get HTTP URL content" —
+// Telegram itself couldn't fetch the image URL. Confirmed by curl from
+// outside the app: the URL returns a bare 403 AccessDenied (S3 XML
+// error body), even though the klio-media bucket's own panel shows
+// "Тип бакета: Публичный". Both path-style and virtual-hosted-style
+// URLs for the same object gave the same 403 — not a URL-format issue.
+//
+// Not yet confirmed: whether this ACL: "public-read" below actually
+// works for objects uploaded through *this* code specifically. The one
+// object tested so far (klio-media/КЛИО логотип фавикон.png) was
+// uploaded through Timeweb's own web panel, not through
+// uploadPublicationImage() — the panel's own uploader may simply not
+// set a public ACL by default regardless of the bucket's declared
+// "type", which would mean this file's own ACL: "public-read" already
+// works fine and the panel-uploaded test object was just a bad test
+// case. A second real test — a file uploaded via KLIO's own "Загрузить"
+// button, then curled from outside the app — was in progress but never
+// completed (the browser showed a 502 on the follow-up POST to
+// /api/publications rather than the image URL itself, and the actual
+// response body was never captured before the debugging session ended).
+//
+// Next step whoever picks this up: get a real uploadPublicationImage()
+// URL and curl it. If it's also 403, per-object ACL isn't being honored
+// by Timeweb's implementation at all — the confirmed-working fallback
+// is an explicit bucket policy (PUT Bucket Policy — documented in
+// Timeweb's own S3 API reference, "Принципы работы S3" in the bucket's
+// panel) granting public s3:GetObject on the whole bucket, set once via
+// the S3 API rather than relying on ACL at upload time. Timeweb's own
+// official Node.js examples (github.com/timeweb-cloud/s3-examples,
+// nodejs/src/sample.js) confirm this endpoint/region/forcePathStyle
+// config is correct — they just don't demonstrate ACL or policy at all,
+// so they don't resolve this specific question either way.
 
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
