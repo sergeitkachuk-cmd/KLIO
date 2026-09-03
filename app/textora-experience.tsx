@@ -1228,6 +1228,15 @@ function sleep(ms: number) {
 // dependencies, which is only safe for react-hooks/exhaustive-deps because
 // they're free module-scope bindings, not closures recreated every render.
 type PubChannel = { id: string; brandId: string; platform: "telegram" | "vk"; label: string; avatarUrl: string; createdAt: string };
+
+function PublicationPlatformIcon({ platform }: { platform: PubChannel["platform"] }) {
+  if (platform === "telegram") {
+    return <span className="publication-platform-icon telegram" aria-label="Telegram">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.7 3.7 3.9 10.2c-1.1.4-1.1 1.1-.2 1.4l4.3 1.3 1.7 5.2c.2.6.1.8.7.8.4 0 .6-.2.9-.5l2.1-2 4.4 3.2c.8.5 1.4.3 1.6-.8l2.9-13.7c.3-1.3-.5-1.9-1.4-1.5Z"/></svg>
+    </span>;
+  }
+  return <span className="publication-platform-icon vk" aria-label="VK">VK</span>;
+}
 type PubStatus = "scheduled" | "publishing" | "published" | "failed";
 type PubItem = {
   id: string;
@@ -4842,7 +4851,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                       if (!current) return current;
                       if (current.id) return { ...current, channelIds: [channel.id] };
                       return { ...current, channelIds: active ? current.channelIds.filter((id) => id !== channel.id) : [...current.channelIds, channel.id] };
-                    })}>{channel.label}</button>;
+                    })}><PublicationPlatformIcon platform={channel.platform}/><span>{channel.label}</span></button>;
                   })}
                 </div>
               </div>

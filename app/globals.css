@@ -12119,6 +12119,9 @@ input[type="radio"] {
 }
 
 .publications-editor-channels button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   padding: 8px 14px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 999px;
@@ -12127,6 +12130,23 @@ input[type="radio"] {
   font-size: 13px;
   cursor: pointer;
 }
+
+.publication-platform-icon {
+  display: inline-grid;
+  width: 19px;
+  height: 19px;
+  place-items: center;
+  flex: 0 0 19px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.publication-platform-icon.telegram { background: #229ed9; }
+.publication-platform-icon.telegram svg { width: 13px; height: 13px; fill: currentColor; }
+.publication-platform-icon.vk { background: #0077ff; }
 
 .publications-editor-channels button.active {
   border-color: color-mix(in srgb, var(--module-accent) 60%, transparent);
