@@ -44,9 +44,11 @@ export type VkCredentials = {
   // site so every other piece of code can work with the plain, positive id
   // VK's own UI shows).
   groupId: string;
-  // Community service token, or a user token with wall+photos scope if one
-  // is ever obtained some other way — either works identically here.
+  // Community service token used for the final wall.post call.
   accessToken: string;
+  // VK rejects wall-photo uploads made with a community token (error 27).
+  // A user token with wall+photos scope is required only when a post has an image.
+  photoAccessToken?: string;
 };
 
 export type ChannelCredentials =

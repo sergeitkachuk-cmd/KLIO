@@ -94,7 +94,7 @@ async function vkCall(method: string, params: Record<string, string>): Promise<R
     // 5 = auth failed (revoked/invalid token), 15 = access denied (bot/user
     // lost admin rights on the community) — both need the owner to
     // reconnect the channel, not three more identical attempts.
-    const permanent = code === 5 || code === 15;
+    const permanent = code === 5 || code === 15 || code === 27;
     throw new PublishError(
       payload?.error ? `VK отклонил запрос: ${payload.error.error_msg}` : "VK вернул пустой ответ.",
       !permanent,
@@ -112,9 +112,13 @@ async function vkCall(method: string, params: Record<string, string>): Promise<R
 // parts, not more risk: every step here is a stable, long-documented VK
 // method.
 async function uploadPhotoForWall(creds: VkCredentials, imageUrl: string): Promise<string> {
+  const photoAccessToken = creds.photoAccessToken?.trim();
+  if (!photoAccessToken) {
+    throw new PublishError("Для публикации VK с картинкой добавьте пользовательский токен для фото с правами «Стена» и «Фотографии».", false);
+  }
   const uploadServer = await vkCall("photos.getWallUploadServer", {
     group_id: creds.groupId,
-    access_token: creds.accessToken,
+    access_token: photoAccessToken,
   });
   const uploadUrl = uploadServer.upload_url;
   if (typeof uploadUrl !== "string") throw new PublishError("VK не выдал адрес для загрузки картинки.", true);
@@ -139,7 +143,7 @@ async function uploadPhotoForWall(creds: VkCredentials, imageUrl: string): Promi
     photo: uploadResult.photo,
     server: String(uploadResult.server ?? ""),
     hash: uploadResult.hash,
-    access_token: creds.accessToken,
+    access_token: photoAccessToken,
   });
   const savedPhoto = Array.isArray(saved) ? saved[0] as Record<string, unknown> : undefined;
   if (!savedPhoto || typeof savedPhoto.id !== "number" || typeof savedPhoto.owner_id !== "number") {

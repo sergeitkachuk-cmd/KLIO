@@ -1696,7 +1696,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [pubChannelModalOpen, setPubChannelModalOpen] = useState(false);
   const [pubChannelPlatform, setPubChannelPlatform] = useState<"telegram" | "vk">("telegram");
   const [pubChannelTelegram, setPubChannelTelegram] = useState({ botToken: "", chatId: "" });
-  const [pubChannelVk, setPubChannelVk] = useState({ groupId: "", accessToken: "" });
+  const [pubChannelVk, setPubChannelVk] = useState({ groupId: "", accessToken: "", photoAccessToken: "" });
   const [pubChannelBusy, setPubChannelBusy] = useState(false);
   const [pubChannelError, setPubChannelError] = useState("");
   const [pubImageUploadBusy, setPubImageUploadBusy] = useState(false);
@@ -1800,7 +1800,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       time: `${String(base.getHours()).padStart(2, "0")}:${String(base.getMinutes()).padStart(2, "0")}`,
       channelIds: existing ? [existing.channelId] : [pubChannels[0].id],
       busy: false,
-      error: "",
+      error: existing?.errorMessage ?? "",
     });
   }
 
@@ -1953,7 +1953,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setPubChannels((current) => [payload.channel as PubChannel, ...current]);
       setPubChannelModalOpen(false);
       setPubChannelTelegram({ botToken: "", chatId: "" });
-      setPubChannelVk({ groupId: "", accessToken: "" });
+      setPubChannelVk({ groupId: "", accessToken: "", photoAccessToken: "" });
       showToast(`Канал «${payload.channel.label}» подключён`);
     } catch (error) {
       setPubChannelError(error instanceof Error ? error.message : "Не удалось подключить канал.");
@@ -4893,11 +4893,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </> : <>
                 <ol className="publications-channel-steps">
                   <li>В своём сообществе VK: «Управление» → «Дополнительно» → «Работа с API» → «Ключи доступа» → «Создать ключ».</li>
-                  <li>Обязательно отметьте права <b>«Стена»</b>, <b>«Фото»</b> и <b>«Сообщения»</b> — без них публикация с картинкой не пройдёт.</li>
+                  <li>Для ключа сообщества отметьте права <b>«Стена»</b>, <b>«Фото»</b> и <b>«Сообщения»</b>. Он публикует текст; для картинки VK дополнительно требует пользовательский токен.</li>
                   <li>Id сообщества — число из адресной строки в разделе управления (или там же, на странице «Работа с API»).</li>
+                  <li><b>Если публикуете с картинками:</b> получите пользовательский токен VK с правами <b>«Стена»</b> и <b>«Фотографии»</b> у администратора сообщества и вставьте его в поле ниже. Без него текстовые посты работают, а VK не разрешает загрузить фото ключом сообщества.</li>
                 </ol>
                 <label className="publications-editor-field"><span>Id сообщества</span><input type="text" value={pubChannelVk.groupId} onChange={(event) => setPubChannelVk((current) => ({ ...current, groupId: event.target.value }))} placeholder="123456789"/></label>
-                <label className="publications-editor-field"><span>Токен доступа</span><input type="text" value={pubChannelVk.accessToken} onChange={(event) => setPubChannelVk((current) => ({ ...current, accessToken: event.target.value }))} placeholder="vk1.a…"/></label>
+                <label className="publications-editor-field"><span>Токен сообщества — для текста</span><input type="text" value={pubChannelVk.accessToken} onChange={(event) => setPubChannelVk((current) => ({ ...current, accessToken: event.target.value }))} placeholder="vk1.a…"/></label>
+                <label className="publications-editor-field"><span>Пользовательский токен — для фото <small>необязательно для текстовых постов</small></span><input type="text" value={pubChannelVk.photoAccessToken} onChange={(event) => setPubChannelVk((current) => ({ ...current, photoAccessToken: event.target.value }))} placeholder="Токен с правами «Стена» и «Фотографии»"/></label>
               </>}
               {pubChannelError && <p className="generation-error" role="alert">{pubChannelError}</p>}
               <div className="publications-editor-actions">

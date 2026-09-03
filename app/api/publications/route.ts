@@ -69,7 +69,7 @@ function credentialsFromPayload(platform: string, payload: PublicationsPayload):
     return { platform: "telegram", telegram: { botToken: clean(source.botToken, 200), chatId: clean(source.chatId, 120) } };
   }
   const source = payload.vk && typeof payload.vk === "object" ? payload.vk as Record<string, unknown> : {};
-  return { platform: "vk", vk: { groupId: clean(source.groupId, 40), accessToken: clean(source.accessToken, 300) } };
+  return { platform: "vk", vk: { groupId: clean(source.groupId, 40), accessToken: clean(source.accessToken, 300), photoAccessToken: clean(source.photoAccessToken, 300) || undefined } };
 }
 
 function publicationResponse(row: typeof publications.$inferSelect, generation: typeof generations.$inferSelect | undefined, channel: typeof socialChannels.$inferSelect | undefined) {
