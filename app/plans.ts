@@ -8,6 +8,14 @@ export type PlanRule = {
   editorActionLimit: number;
   brandLimit: number;
   seatLimit: 1;
+  // Total VK/Telegram channels connectable across all of the account's
+  // brands (see socialChannels in db/schema.ts) — this is the "Публикации"
+  // module's own upsell lever, deliberately not folded into brandLimit or
+  // generationLimit: connecting a channel costs nothing in AI tokens, its
+  // real cost is the ongoing integration/support surface per channel, so it
+  // gets its own axis. Zero on trial keeps that period scoped to content
+  // only, same reasoning as its already-tight generation/research limits.
+  channelLimit: number;
   // Human-readable quota window for "limit exceeded" messages — plain
   // plans reset monthly; the trial's window is fixed and short instead.
   periodLabel: string;
@@ -25,6 +33,7 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
     editorActionLimit: 5,
     brandLimit: 1,
     seatLimit: 1,
+    channelLimit: 0,
     periodLabel: "за пробный период",
   },
   start: {
@@ -37,6 +46,7 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
     editorActionLimit: 100,
     brandLimit: 1,
     seatLimit: 1,
+    channelLimit: 1,
     periodLabel: "в месяц",
   },
   pro: {
@@ -48,6 +58,7 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
     editorActionLimit: 500,
     brandLimit: 5,
     seatLimit: 1,
+    channelLimit: 3,
     periodLabel: "в месяц",
   },
   agency: {
@@ -58,6 +69,7 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
     editorActionLimit: 1000,
     brandLimit: 10,
     seatLimit: 1,
+    channelLimit: 10,
     periodLabel: "в месяц",
   },
 };

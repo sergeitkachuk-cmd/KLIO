@@ -140,6 +140,13 @@ export const generations = pgTable("generations", {
   keywords: text("keywords").notNull().default(""),
   tone: text("tone").notNull().default(""),
   targetLength: integer("target_length").notNull().default(0),
+  // Populated two ways: pasted/uploaded directly on a format:"external" row
+  // added from the Публикации calendar (see app/api/publications/route.ts),
+  // or attached later to any existing generation once KLIO generates images
+  // itself. A plain URL into object storage, not the file — see
+  // publishing-config.ts for why publishToChannel() needs a fetchable URL
+  // rather than a local path.
+  imageUrl: text("image_url").notNull().default(""),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
   index("generations_owner_created_idx").on(table.ownerEmail, table.createdAt),
@@ -199,6 +206,71 @@ export const asyncJobs = pgTable("async_jobs", {
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
   index("async_jobs_owner_created_idx").on(table.ownerEmail, table.createdAt),
+]);
+
+// A brand's connected VK community or Telegram channel — see
+// app/api/_lib/social-channels.ts for how these get created (always
+// validated against the real platform first, never inserted from a bare
+// paste) and app/api/_lib/publishing-config.ts for the credentialsJson
+// shape per platform. One brand can hold several (a main community plus a
+// regional one, VK alongside Telegram, ...) — never assumed to be 1:1.
+export const socialChannels = pgTable("social_channels", {
+  id: text("id").primaryKey(),
+  ownerEmail: text("owner_email").notNull(),
+  brandId: text("brand_id").notNull(),
+  // "telegram" | "vk" — see SocialPlatform in publishing-config.ts.
+  platform: text("platform").notNull(),
+  // Fetched from the platform itself at connect time (community/channel
+  // name, avatar) so the picker in the calendar shows something recognizable
+  // instead of an id — see fetchChannelInfo in social-channels.ts.
+  label: text("label").notNull(),
+  avatarUrl: text("avatar_url").notNull().default(""),
+  // Bot token + chat id (Telegram) or community id + service token (VK).
+  // Server-only — socialChannelSummary() in social-channels.ts is the only
+  // shape ever sent to the client, and it omits this field entirely.
+  credentialsJson: text("credentials_json").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  index("social_channels_brand_idx").on(table.brandId, table.createdAt),
+  index("social_channels_owner_idx").on(table.ownerEmail, table.createdAt),
+]);
+
+// One row per (material, channel, scheduled time) — the same generation can
+// go out to several channels, each tracked separately so one platform
+// failing never blocks or hides the others. Publish target is always a
+// `generations` row (real title+body+optional image), never a
+// `materials` row — materials only ever holds semantics/competitors/
+// content-plan research, which has nothing to actually post (see the
+// schema comment on `materials` below and the "Публикации" design
+// discussion: a content-plan row is a topic, not a written piece).
+export const publications = pgTable("publications", {
+  id: text("id").primaryKey(),
+  ownerEmail: text("owner_email").notNull(),
+  brandId: text("brand_id").notNull(),
+  generationId: text("generation_id").notNull(),
+  channelId: text("channel_id").notNull(),
+  scheduledAt: text("scheduled_at").notNull(),
+  // "scheduled" | "publishing" | "published" | "failed" — see
+  // PublicationStatus in publishing-config.ts. The cron poller
+  // (api/cron/publish-due) claims a row by flipping scheduled->publishing
+  // in one conditional UPDATE, so two overlapping runs can never both pick
+  // it up.
+  status: text("status").notNull().default("scheduled"),
+  // The platform's own id for the published post (VK's post id, Telegram's
+  // message_id) — kept for future "open on VK/Telegram" links and to tell
+  // "published" states apart from each other in support conversations.
+  providerPostId: text("provider_post_id"),
+  errorMessage: text("error_message"),
+  retryCount: integer("retry_count").notNull().default(0),
+  publishedAt: text("published_at"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  // What the cron poller scans: due, not-yet-attempted rows.
+  index("publications_status_scheduled_idx").on(table.status, table.scheduledAt),
+  // What the calendar screen queries: one brand's rows in a visible range.
+  index("publications_brand_scheduled_idx").on(table.brandId, table.scheduledAt),
 ]);
 
 export const materials = pgTable("materials", {

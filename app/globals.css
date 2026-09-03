@@ -5046,6 +5046,7 @@ footer nav a {
 .workspace-sidebar nav a[href="#competitors"] { --module-accent: #7a5b91; }
 .workspace-sidebar nav a[href="#content-plan"] { --module-accent: #3f7e70; }
 .workspace-sidebar nav a[href="#adaptation"] { --module-accent: #9b536d; }
+.workspace-sidebar nav a[href="#publications"] { --module-accent: #c2703f; }
 
 .workspace-sidebar nav a.active {
   border-color: color-mix(in srgb, var(--module-accent, #7450bd) 55%, transparent);
@@ -5079,44 +5080,6 @@ footer nav a {
 .workspace-sidebar nav small {
   color: rgba(222, 234, 250, 0.62);
   font-size: 11px;
-}
-
-/* "Публикации" placeholder — same row shape as the real modules above it,
-   plus a trailing "Скоро" badge, so it reads as a preview of what's coming
-   rather than a broken link. Stays clickable (see onClick in
-   textora-experience.tsx) so a curious click still gets a toast instead of
-   nothing. */
-.workspace-sidebar nav .workspace-nav-soon {
-  grid-template-columns: 30px minmax(0, 1fr) auto;
-  align-items: center;
-  border-color: rgba(176, 202, 239, 0.14);
-  color: rgba(244, 248, 255, 0.6);
-  /* Dimmer echo of .workspace-sidebar nav a's resting card (which only
-     targets <a>, not <button> — this item is a button so it needs its
-     own, since the shared base rule above leaves plain buttons
-     transparent). */
-  background: linear-gradient(120deg, rgba(30, 62, 98, 0.5), rgba(19, 46, 76, 0.55));
-}
-
-.workspace-sidebar nav .workspace-nav-soon:hover {
-  border-color: rgba(176, 202, 239, 0.2);
-  color: rgba(244, 248, 255, 0.78);
-}
-
-.workspace-sidebar nav .workspace-nav-soon i {
-  color: rgba(222, 234, 250, 0.5);
-}
-
-.workspace-sidebar nav .workspace-nav-soon em {
-  padding: 3px 9px;
-  border: 1px solid rgba(216, 255, 101, 0.32);
-  border-radius: 999px;
-  color: rgba(216, 255, 101, 0.85);
-  font-size: 10px;
-  font-style: normal;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
 }
 
 .workspace-stage {
@@ -11677,6 +11640,469 @@ input[type="radio"] {
   scroll-margin-top: 96px;
   --module-accent: #3f7e70; --module-tint: rgba(54, 129, 109, 0.07); }
 .adaptation-module { --module-accent: #9b536d; --module-tint: rgba(155, 83, 109, 0.065); }
+.publications-module { --module-accent: #c2703f; --module-tint: rgba(194, 112, 63, 0.07); }
+
+/* ============================================================
+   Публикации — channel bar, calendar grid, chips.
+   Modal chrome (overlay/head) reuses .archive-editor-overlay/
+   .archive-editor-head as-is; only the modal box itself
+   (.publications-editor-modal/.publications-channel-modal) and its
+   form fields are new — see the JSX in textora-experience.tsx.
+   ============================================================ */
+
+.publications-empty-note {
+  padding: 22px 24px;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 14px;
+}
+
+.publications-channels-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.publications-channels-list {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.publications-channel-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 13px;
+}
+
+.publications-channel-chip img {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.publications-channel-chip > i {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  background: color-mix(in srgb, var(--module-accent) 60%, #333);
+}
+
+.publications-channel-chip b {
+  color: #fff;
+  font-weight: 600;
+}
+
+.publications-channel-chip button {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.6);
+  background: transparent;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.publications-channel-chip button:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.publications-channel-limit {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+}
+
+.publications-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.publications-view-switch {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.publications-view-switch button {
+  padding: 7px 16px;
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.62);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.publications-view-switch button.active {
+  color: #17131f;
+  background: var(--acid, #d8ff65);
+}
+
+.publications-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.publications-nav > button {
+  min-width: 32px;
+  height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.publications-nav > b {
+  min-width: 140px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 650;
+  text-align: center;
+  text-transform: capitalize;
+}
+
+.publications-today {
+  width: auto !important;
+  padding: 0 12px;
+  font-size: 12px !important;
+}
+
+.publications-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  transition: opacity 150ms ease;
+}
+
+.publications-grid.is-loading {
+  opacity: 0.55;
+}
+
+.publications-weekday {
+  padding: 4px 6px 10px;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.publications-day {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 108px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.publications-grid-week .publications-day {
+  min-height: 320px;
+}
+
+.publications-day.is-outside {
+  opacity: 0.35;
+}
+
+.publications-day.is-today {
+  border-color: color-mix(in srgb, var(--module-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--module-accent) 10%, transparent);
+}
+
+.publications-day-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.publications-day-head > span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.publications-day.is-today .publications-day-head > span {
+  color: #fff;
+  font-weight: 800;
+}
+
+.publications-day-head > button {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.4);
+  background: transparent;
+  font-size: 13px;
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 120ms ease, background 120ms ease, color 120ms ease;
+}
+
+.publications-day:hover .publications-day-head > button {
+  opacity: 1;
+}
+
+.publications-day-head > button:hover {
+  color: #17131f;
+  background: var(--acid, #d8ff65);
+}
+
+.publications-day-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.publications-chip {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-left: 3px solid var(--chip-accent, #376fa8);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.9);
+  background: color-mix(in srgb, var(--chip-accent, #376fa8) 16%, rgba(255, 255, 255, 0.04));
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.publications-chip:hover {
+  border-color: color-mix(in srgb, var(--chip-accent, #376fa8) 55%, transparent);
+}
+
+.publications-chip-vk { --chip-accent: #4c75a3; }
+.publications-chip-telegram { --chip-accent: #34a1de; }
+.publications-chip-failed { --chip-accent: #c0546a; }
+
+.publications-chip-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background-size: cover;
+  background-position: center;
+}
+
+.publications-chip b {
+  color: rgba(255, 255, 255, 0.65);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.publications-chip span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.publications-chip em {
+  color: inherit;
+  font-style: normal;
+  font-size: 10px;
+  opacity: 0.85;
+}
+
+.publications-editor-modal,
+.publications-channel-modal {
+  width: min(620px, 100%);
+  max-height: calc(100svh - 44px);
+  padding: 25px;
+  overflow: auto;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 5px 28px 5px 5px;
+  background:
+    radial-gradient(circle at 96% 0%, rgba(194, 112, 63, 0.22), transparent 30%),
+    linear-gradient(145deg, #0a2340 0%, #082b4c 55%, #061c34 100%);
+  box-shadow: 0 34px 100px rgba(0, 0, 0, 0.5), inset 0 1px rgba(255, 255, 255, 0.1);
+  display: grid;
+  gap: 14px;
+}
+
+.publications-editor-modal .archive-editor-head,
+.publications-channel-modal .archive-editor-head {
+  padding-bottom: 14px;
+}
+
+.publications-editor-modal .archive-editor-head h2,
+.publications-channel-modal .archive-editor-head h2 {
+  font-size: 24px;
+}
+
+.publications-editor-field {
+  display: grid;
+  gap: 6px;
+}
+
+.publications-editor-field > span {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
+  font-weight: 620;
+}
+
+.publications-editor-field > span > small {
+  margin-left: 4px;
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 400;
+}
+
+.publications-editor-field input {
+  padding: 11px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 14px;
+}
+
+.publications-editor-preview {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.publications-editor-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.publications-editor-row input {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 14px;
+}
+
+.publications-editor-channels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.publications-editor-channels button {
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.publications-editor-channels button.active {
+  border-color: color-mix(in srgb, var(--module-accent) 60%, transparent);
+  color: #fff;
+  background: color-mix(in srgb, var(--module-accent) 40%, transparent);
+}
+
+.publications-editor-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.publications-platform-switch {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.publications-platform-switch button {
+  padding: 9px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.publications-platform-switch button.active {
+  border-color: color-mix(in srgb, var(--module-accent) 60%, transparent);
+  color: #fff;
+  background: color-mix(in srgb, var(--module-accent) 42%, transparent);
+}
+
+.publications-channel-hint {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 720px) {
+  .publications-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .publications-day {
+    min-height: 72px;
+    padding: 5px;
+  }
+
+  .publications-weekday {
+    font-size: 9px;
+    padding: 2px 0 6px;
+  }
+
+  .publications-chip b {
+    display: none;
+  }
+
+  .publications-editor-row {
+    grid-template-columns: 1fr;
+  }
+}
 
 .workspace-module > .workspace-module-heading {
   /* Was position: sticky; top: 88px — floated over the module's own
@@ -13610,19 +14036,6 @@ input[type="radio"] {
     font-size: 10px;
   }
 
-  /* The desktop 3-column grid-template-columns on .workspace-nav-soon
-     otherwise wins on specificity even here (2 classes vs 1) — match the
-     compact icon+label shape every other mobile chip gets, badge appended
-     as a third track instead of stretching the label column. */
-  .workspace-sidebar nav .workspace-nav-soon {
-    grid-template-columns: 18px auto auto;
-  }
-
-  .workspace-sidebar nav .workspace-nav-soon em {
-    padding: 2px 7px;
-    font-size: 9px;
-  }
-
   .workspace-content {
     padding: 26px 14px 130px;
   }
@@ -15471,61 +15884,7 @@ input[type="radio"] {
 .workspace-start-card-semantics span { color: #6fa8dc; }
 .workspace-start-card-content-plan span { color: #55c2a3; }
 
-/* "Публикации" teaser — spans the full grid width and lays out as a
-   banner row (badge / title / description / cta) instead of the vertical
-   card shape the six real modules use above, so it visually reads as a
-   preview of what's coming rather than a seventh clickable module. Muted
-   accent (no --module-accent assigned) keeps it from competing with the
-   six modules' saturated colours; the small "Скоро" badge borrows the
-   same lime already used for this in the sidebar nav (see
-   .workspace-nav-soon) so the two placeholders read as one signal. */
-.workspace-start-card-soon {
-  grid-column: 1 / -1;
-  flex-direction: row;
-  align-items: center;
-  gap: 18px;
-  border-left-color: rgba(176, 202, 239, 0.3);
-  cursor: pointer;
-}
-
-.workspace-start-card-soon > i {
-  min-width: 0;
-  color: rgba(216, 255, 101, 0.9);
-  background: rgba(216, 255, 101, 0.14);
-  font-size: 11px;
-  letter-spacing: 0.02em;
-}
-
-.workspace-start-card-soon h3 {
-  flex: 0 0 auto;
-  color: rgba(255, 255, 255, 0.86);
-  white-space: nowrap;
-}
-
-.workspace-start-card-soon p {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.workspace-start-card-soon span {
-  flex: 0 0 auto;
-  margin-top: 0;
-  padding-top: 0;
-  color: rgba(216, 255, 101, 0.85);
-  white-space: nowrap;
-}
-
-@media (max-width: 960px) {
-  .workspace-start-card-soon {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .workspace-start-card-soon h3,
-  .workspace-start-card-soon span {
-    white-space: normal;
-  }
-}
+.workspace-start-card-publications { --module-accent: #c2703f; --module-tint: rgba(194, 112, 63, 0.08); }
 
 @media (max-width: 960px) {
   .workspace-start-hero {
@@ -16701,19 +17060,6 @@ input[type="radio"] {
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.7), 0 1px 2px rgba(29, 57, 104, 0.05);
 }
 
-/* .workspace-nav-soon is a <button>, not an <a>, so it falls outside the
-   card rule right above — same dimmer-echo treatment as the dark theme. */
-[data-theme="light"] .workspace-sidebar nav .workspace-nav-soon {
-  border-color: rgba(36, 82, 184, 0.16);
-  background: linear-gradient(120deg, rgba(53, 104, 212, 0.06), rgba(220, 229, 243, 0.5));
-  color: rgba(23, 36, 59, 0.6);
-}
-
-[data-theme="light"] .workspace-sidebar nav .workspace-nav-soon em {
-  border-color: rgba(120, 156, 34, 0.4);
-  color: #5c7a1e;
-}
-
 [data-theme="light"] .workspace-sidebar nav a:hover,
 [data-theme="light"] .workspace-sidebar nav button:hover {
   border-color: rgba(36, 82, 184, 0.56);
@@ -17455,19 +17801,6 @@ input[type="radio"] {
   color: rgba(13, 27, 49, 0.64);
 }
 
-/* rgba(216,255,101,*) reads fine on the dark card (see
-   .workspace-start-card-soon above) but the same bright lime turns
-   near-illegible on this theme's white card — same fix already applied to
-   the sidebar's matching badge (.workspace-nav-soon em). */
-[data-theme="light"] .workspace-start-card-soon > i {
-  color: #5c7a1e;
-  background: rgba(120, 156, 34, 0.14);
-}
-
-[data-theme="light"] .workspace-start-card-soon span {
-  color: #5c7a1e;
-}
-
 [data-theme="light"] .workspace-start-card-semantics span {
   color: #376fa8;
 }
@@ -18064,6 +18397,92 @@ input[type="radio"] {
   color: #0d1b31;
   background: rgba(255, 255, 255, 0.65);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.5);
+}
+
+/* Публикации — only the page-flow parts (channel bar, toolbar, calendar
+   grid, chips) need a light variant. The two overlay modals reuse
+   .archive-editor-modal's own dark chrome, which stays dark in both
+   themes site-wide (see .archive-editor-modal — it has no light-theme
+   override anywhere in this file), so they're already consistent as-is. */
+[data-theme="light"] .publications-empty-note {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: rgba(13, 27, 49, 0.68);
+}
+
+[data-theme="light"] .publications-channels-bar {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: rgba(15, 23, 42, 0.03);
+}
+
+[data-theme="light"] .publications-channel-chip {
+  border-color: rgba(15, 23, 42, 0.16);
+  background: rgba(15, 23, 42, 0.03);
+}
+
+[data-theme="light"] .publications-channel-chip b {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .publications-channel-chip button {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .publications-channel-chip button:hover {
+  color: #0d1b31;
+  background: rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="light"] .publications-channel-limit {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .publications-view-switch {
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(15, 23, 42, 0.03);
+}
+
+[data-theme="light"] .publications-view-switch button {
+  color: rgba(13, 27, 49, 0.6);
+}
+
+[data-theme="light"] .publications-nav > button {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: #0d1b31;
+  background: rgba(15, 23, 42, 0.03);
+}
+
+[data-theme="light"] .publications-nav > b {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .publications-weekday {
+  color: rgba(13, 27, 49, 0.45);
+}
+
+[data-theme="light"] .publications-day {
+  border-color: rgba(15, 23, 42, 0.1);
+  background: rgba(15, 23, 42, 0.02);
+}
+
+[data-theme="light"] .publications-day-head > span {
+  color: rgba(13, 27, 49, 0.68);
+}
+
+[data-theme="light"] .publications-day.is-today .publications-day-head > span {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .publications-day-head > button {
+  color: rgba(13, 27, 49, 0.4);
+}
+
+[data-theme="light"] .publications-chip {
+  color: #0d1b31;
+  background: color-mix(in srgb, var(--chip-accent, #376fa8) 12%, rgba(255, 255, 255, 0.7));
+}
+
+[data-theme="light"] .publications-chip b {
+  color: rgba(13, 27, 49, 0.6);
 }
 
 [data-theme="light"] .tool-heading > button:hover {

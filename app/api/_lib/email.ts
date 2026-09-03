@@ -107,6 +107,28 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string) {
   });
 }
 
+// Sent by the publish-due cron (api/cron/publish-due/route.ts) once a
+// publication has exhausted MAX_PUBLISH_RETRIES and is marked "failed" for
+// good — the calendar itself already flags this visually, but a person only
+// checks the calendar if they remember to; a scheduled post silently not
+// going out is the one failure mode worth interrupting them for.
+export async function sendPublicationFailedEmail(email: string, params: { channelLabel: string; materialTitle: string; reason: string; workspaceUrl: string }) {
+  const safeUrl = escapeHtml(params.workspaceUrl);
+  const safeChannel = escapeHtml(params.channelLabel);
+  const safeTitle = escapeHtml(params.materialTitle);
+  const safeReason = escapeHtml(params.reason);
+  await sendTransactionalEmail({
+    to: email,
+    subject: `Не удалось опубликовать «${params.materialTitle}»`,
+    html: emailShell("Публикация не удалась", `
+      <p>КЛИО не смог опубликовать материал «${safeTitle}» в канал «${safeChannel}» после нескольких попыток.</p>
+      <p style="color: #686879; font-size: 13px;">Причина: ${safeReason}</p>
+      <p><a href="${safeUrl}" style="display: inline-block; padding: 12px 22px; border-radius: 10px; background: #101015; color: #fff; text-decoration: none; font-weight: 650;">Открыть КЛИО</a></p>
+    `),
+    plaintext: `КЛИО не смог опубликовать материал «${params.materialTitle}» в канал «${params.channelLabel}». Причина: ${params.reason}. Открыть КЛИО: ${params.workspaceUrl}`,
+  });
+}
+
 // Sent by the trial-reminder cron job (not yet wired up — see workspace-account.ts's
 // TRIAL_DURATION_MS) once an account is approaching the end of its 48h trial window.
 export async function sendTrialEndingEmail(email: string, workspaceUrl: string) {
