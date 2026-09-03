@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   jar.delete(RETURN_TO_COOKIE);
 
   if (!yandexOAuthConfigured() || !await workspaceDatabaseAvailable()) {
-    return NextResponse.redirect(`${baseUrl}/login?error=oauth_unavailable`);
+    return NextResponse.redirect(`${baseUrl}/login?error=oauth_unavailable&provider=yandex`);
   }
 
   const url = new URL(request.url);
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
   // Also covers the visitor clicking "Отменить" on Yandex's consent screen
   // (arrives back with an `error` param and no `code`).
   if (!code || !state || !savedState || state !== savedState) {
-    return NextResponse.redirect(`${baseUrl}/login?error=oauth_failed`);
+    return NextResponse.redirect(`${baseUrl}/login?error=oauth_failed&provider=yandex`);
   }
 
   try {
@@ -54,7 +54,7 @@ export async function GET(request: Request) {
     const info = await infoResponse.json() as YandexUserInfo;
 
     const email = (info.default_email || info.emails?.[0] || "").trim().toLowerCase();
-    if (!email) return NextResponse.redirect(`${baseUrl}/login?error=oauth_no_email`);
+    if (!email) return NextResponse.redirect(`${baseUrl}/login?error=oauth_no_email&provider=yandex`);
 
     const displayName = info.real_name || info.display_name || info.login || email.split("@")[0];
     const account = await ensureAccount({ email, displayName, fullName: displayName });
@@ -72,6 +72,6 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${baseUrl}${returnTo}`);
   } catch (error) {
     console.error("Yandex OAuth sign-in failed", error instanceof Error ? error.message : "unknown error");
-    return NextResponse.redirect(`${baseUrl}/login?error=oauth_failed`);
+    return NextResponse.redirect(`${baseUrl}/login?error=oauth_failed&provider=yandex`);
   }
 }

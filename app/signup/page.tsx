@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import YandexIcon from "../yandex-icon";
+import VkIcon from "../vk-icon";
 
 function safeReturnTo(): string {
   if (typeof window === "undefined") return "/workspace";
@@ -106,10 +107,16 @@ export default function SignupPage() {
         </Link>
         <h1>Личный кабинет</h1>
         <p className="auth-subtitle">Регистрация занимает минуту — дальше доступны генератор, профиль бренда и архив материалов.</p>
-        <a className="button ghost" href={`/api/auth/yandex/start?return_to=${encodeURIComponent(safeReturnTo())}`}>
-          <YandexIcon />
-          Продолжить с Яндекс
-        </a>
+        <div className="auth-oauth-row">
+          <a className="button ghost" href={`/api/auth/yandex/start?return_to=${encodeURIComponent(safeReturnTo())}`}>
+            <YandexIcon />
+            Яндекс
+          </a>
+          <a className="button ghost" href={`/api/auth/vk/start?return_to=${encodeURIComponent(safeReturnTo())}`}>
+            <VkIcon />
+            VK
+          </a>
+        </div>
         <div className="auth-divider"><span>или по email</span></div>
         <form onSubmit={handleSubmit}>
           <label className="field">Имя<input required autoComplete="name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} /></label>

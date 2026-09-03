@@ -14806,8 +14806,21 @@ input[type="radio"] {
   font-weight: 650;
 }
 
-/* Separates the "Войти через Яндекс" button from the email/password form
-   below it — sits between .auth-subtitle and .auth-card form. */
+/* Holds the OAuth provider buttons (Яндекс, VK) side by side above the
+   divider — .auth-card .button's own width:100% is overridden here so two
+   fit per row instead of stacking full-width. */
+.auth-oauth-row {
+  display: flex;
+  gap: 10px;
+}
+
+.auth-oauth-row .button {
+  flex: 1;
+  width: auto;
+}
+
+/* Separates the OAuth provider buttons from the email/password form below
+   them — sits between .auth-oauth-row and .auth-card form. */
 .auth-divider {
   display: flex;
   align-items: center;

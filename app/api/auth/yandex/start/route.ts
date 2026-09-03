@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   const baseUrl = resolveBaseUrl(request);
 
   if (!yandexOAuthConfigured()) {
-    return NextResponse.redirect(`${baseUrl}/login?error=oauth_unavailable`);
+    return NextResponse.redirect(`${baseUrl}/login?error=oauth_unavailable&provider=yandex`);
   }
 
   const url = new URL(request.url);
