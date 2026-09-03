@@ -20,10 +20,30 @@ function formatDate(value: string | null | undefined): string {
   return date.toLocaleDateString("ru-RU", { timeZone: "Europe/Moscow", day: "2-digit", month: "long", year: "numeric" });
 }
 
+// Day-only granularity (formatDate above) is fine for a plan that runs for
+// months, but reads as ambiguous for the trial's 48h window — "до 15
+// августа" doesn't say whether that's 00:01 or 23:59. Trial's own expiry
+// line below uses this instead.
+function formatDateTime(value: string | null | undefined): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("ru-RU", { timeZone: "Europe/Moscow", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" });
+}
+
 // Same soon/critical/expired/missing bands as /admin (see planExpiryState in
-// ../plans) — phrased for the account holder instead of a table cell. Only
-// called for non-trial plans, so `value` is only null in the "missing" case.
-function planExpiryLabel(state: string, value: string | null | undefined): string {
+// ../plans) — phrased for the account holder instead of a table cell.
+// accountSummary() feeds the trial's own createdAt+48h deadline through the
+// same planExpiresAt/planExpiryState fields a paid plan's real expiry uses
+// (see the comment there), so this only needs its own wording for trial,
+// not a separate branch to detect when there's nothing to show — `value` is
+// only null for a paid plan in the "missing" state (an admin grant with no
+// expiry) or the practically-impossible case of a trial with a corrupt
+// createdAt.
+function planExpiryLabel(planId: string, state: string, value: string | null | undefined): string {
+  if (planId === "trial") {
+    return state === "expired" ? `Пробный период закончился ${formatDate(value)}` : `Пробный доступ до ${formatDateTime(value)}`;
+  }
   if (state === "missing") return "Срок действия не задан";
   if (state === "expired") return `Тариф истёк ${formatDate(value)}`;
   return `Действует до ${formatDate(value)}`;
@@ -89,8 +109,7 @@ export default async function AccountPage() {
               <span>Текущий тариф</span>
               <h2>{summary.planName}</h2>
               <small>1 пользователь на всех тарифах · {quotaResetLabel(summary.planId, summary.quotaResetsAt)}</small>
-              {summary.planId !== "trial" && <small className={`account-plan-expiry account-plan-expiry-${summary.planExpiryState}`}>{planExpiryLabel(summary.planExpiryState, summary.planExpiresAt)}</small>}
-              {summary.planId === "trial" && summary.trialExpired && <small className="account-plan-expiry account-plan-expiry-expired">Пробный период закончился — материалы недоступны, выберите тариф ниже</small>}
+              <small className={`account-plan-expiry account-plan-expiry-${summary.planExpiryState}`}>{planExpiryLabel(summary.planId, summary.planExpiryState, summary.planExpiresAt)}</small>
             </div>
             <a className="account-upgrade" href="#billing">Выбрать тариф</a>
           </div>
