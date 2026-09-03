@@ -25,12 +25,13 @@ const manrope = Manrope({
 // stable origin. See ./site-url.ts for where this comes from.
 const TITLE = "КЛИО — цифровая редакция для SEO и контента";
 const DESCRIPTION =
-  "Создавайте SEO‑статьи, публикации и рекламные материалы с анализом ключей, голосом бренда и проверкой качества.";
+  "КЛИО — цифровая редакция для брендов: помогает находить темы, готовить SEO‑статьи, посты и рекламу, учитывать голос бренда и планировать публикации.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_BASE_URL),
   title: TITLE,
   description: DESCRIPTION,
+  alternates: { canonical: "/" },
   icons: {
     icon: "/favicon-klio.png",
     shortcut: "/favicon-klio.png",

@@ -11932,6 +11932,23 @@ input[type="radio"] {
 .publications-chip-telegram { --chip-accent: #34a1de; }
 .publications-chip-failed { --chip-accent: #c0546a; }
 
+.publications-chip-platform {
+  display: grid;
+  width: 19px;
+  height: 19px;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 7px;
+  font-style: normal;
+  font-weight: 850;
+  letter-spacing: -0.04em;
+}
+
+.publications-chip-platform-telegram { background: #229ed9; }
+.publications-chip-platform-vk { background: #0077ff; }
+.publications-chip-platform-unknown { background: rgba(255, 255, 255, 0.2); }
+
 .publications-chip-thumb {
   width: 14px;
   height: 14px;
@@ -21174,12 +21191,18 @@ input[type="radio"] {
   }
 
   .publications-chip {
-    grid-template-columns: auto auto;
+    grid-template-columns: 16px minmax(0, 1fr) auto;
     justify-content: space-between;
-    gap: 2px;
+    gap: 3px;
     min-height: 21px;
     padding: 3px 4px;
     font-size: 9px;
+  }
+
+  .publications-chip-platform {
+    width: 15px;
+    height: 15px;
+    font-size: 6px;
   }
 
   .publications-chip b {
@@ -21194,7 +21217,22 @@ input[type="radio"] {
   }
 
   .publications-chip em {
-    font-size: 9px;
+    min-width: 10px;
+    color: rgba(255, 255, 255, 0.86);
+    font-size: 0;
+    text-align: right;
+  }
+
+  .publications-chip-published em::after {
+    content: "✓";
+    font-size: 10px;
+  }
+
+  .publications-chip-failed em::after {
+    content: "!";
+    color: #ff9eae;
+    font-size: 11px;
+    font-weight: 850;
   }
 
   .publications-mobile-list {

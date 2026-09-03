@@ -27,6 +27,14 @@ type CompetitorMode = "example" | "demo" | "ai";
 type CompetitorFocusSource = "manual" | "semantics" | "brand";
 type CompetitorMarketScope = "national" | "demand" | "brand";
 type ContentPlanMode = "idle" | "demo" | "ai";
+type WorkspaceModule = "start" | "brand" | "generator" | "semantics" | "competitors" | "content-plan" | "adaptation" | "history" | "publications";
+
+const WORKSPACE_MODULE_STORAGE_KEY = "klio-workspace-active-module";
+const WORKSPACE_MODULES = new Set<WorkspaceModule>(["start", "brand", "generator", "semantics", "competitors", "content-plan", "adaptation", "history", "publications"]);
+
+function isWorkspaceModule(value: string | null): value is WorkspaceModule {
+  return value !== null && WORKSPACE_MODULES.has(value as WorkspaceModule);
+}
 type ContentPlanStatus = "Запланировано" | "В работе" | "Готово";
 const CONTENT_PLAN_STATUS_OPTIONS = [
   { value: "Запланировано", label: "Запланировано" },
@@ -1458,7 +1466,7 @@ function CoverageIcon({ coverage }: { coverage: CompetitorCoverage }) {
 }
 
 function Brand() {
-  return <span className="brand"><i>К</i><b>КЛИО<span aria-hidden="true">.</span></b><small>Цифровая редакция</small></span>;
+  return <span className="brand"><i>К</i><b>ЛИО<span aria-hidden="true">.</span></b><small>Цифровая редакция</small></span>;
 }
 
 // Same "КЛИО." wordmark as Brand() (bold name + accent dot), for the few
@@ -1601,16 +1609,41 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // implicitly closes whichever was open, so the page never becomes a
   // long stacked feed of expanded sections. openModule/toggleModule below
   // are what every open/close call site in this file now goes through.
-  const [activeModule, setActiveModule] = useState<
-    "start" | "brand" | "generator" | "semantics" | "competitors" | "content-plan" | "adaptation" | "history" | "publications"
-  >("start");
+  const [activeModule, setActiveModule] = useState<WorkspaceModule>("start");
+  const [workspaceModuleRestored, setWorkspaceModuleRestored] = useState(false);
   const brandOpen = activeModule === "brand";
-  function openModule(id: typeof activeModule) {
+  function openModule(id: WorkspaceModule) {
     setActiveModule(id);
   }
-  function toggleModule(id: typeof activeModule) {
+  function toggleModule(id: WorkspaceModule) {
     setActiveModule((current) => (current === id ? "start" : id));
   }
+
+  // Keep the same workspace tool open when this browser tab is refreshed.
+  // sessionStorage intentionally resets with the tab, so a later fresh visit
+  // still starts from the calm overview rather than a stale work surface.
+  useEffect(() => {
+    if (!workspace) {
+      setWorkspaceModuleRestored(true);
+      return;
+    }
+    try {
+      const saved = window.sessionStorage.getItem(WORKSPACE_MODULE_STORAGE_KEY);
+      if (isWorkspaceModule(saved)) setActiveModule(saved);
+    } catch {
+      // Private browsing can reject storage; the default "start" is safe.
+    }
+    setWorkspaceModuleRestored(true);
+  }, [workspace]);
+
+  useEffect(() => {
+    if (!workspace || !workspaceModuleRestored) return;
+    try {
+      window.sessionStorage.setItem(WORKSPACE_MODULE_STORAGE_KEY, activeModule);
+    } catch {
+      // Keeping the workspace usable matters more than persistence.
+    }
+  }, [activeModule, workspace, workspaceModuleRestored]);
   // Starts on a tip picked by the day (so it reads as "updated" on return
   // visits without needing a backend), then just cycles forward on click.
   // Even values read from KLIO_TIPS, odd ones from KLIO_INSPIRATION — see
@@ -5569,7 +5602,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     <div className="publications-day-head"><span>{day.getDate()}</span><button type="button" onClick={() => openPubEditor(day)} aria-label="Добавить публикацию на этот день">+</button></div>
                     <div className="publications-day-items">
                       {items.map((item) => <button type="button" className={`publications-chip publications-chip-${item.status} publications-chip-${item.channel?.platform || "unknown"}`} onClick={() => openPubEditor(day, item)} key={item.id}>
-                        {item.channel ? <PublicationPlatformIcon platform={item.channel.platform}/> : <i className="publication-platform-icon" aria-label="Канал не подключён">?</i>}
+                        <i className={`publications-chip-platform publications-chip-platform-${item.channel?.platform || "unknown"}`} aria-label={item.channel?.platform === "telegram" ? "Telegram" : item.channel?.platform === "vk" ? "VK" : "Канал отключён"}>{item.channel?.platform === "telegram" ? "TG" : item.channel?.platform === "vk" ? "VK" : "—"}</i>
                         <b>{new Date(item.scheduledAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</b>
                         <span>{item.title || "Без названия"}</span>
                         {item.status === "failed" && <em>Ошибка</em>}
@@ -5591,7 +5624,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   .sort((left, right) => Date.parse(left.scheduledAt) - Date.parse(right.scheduledAt))
                   .map((item) => <button type="button" className={`publications-mobile-item publications-mobile-item-${item.status} publications-mobile-item-${item.channel?.platform || "unknown"}`} onClick={() => openPubEditor(new Date(item.scheduledAt), item)} key={item.id}>
                     {item.imageUrl && <i className="publications-mobile-thumb" style={{ backgroundImage: `url(${item.imageUrl})` }} aria-hidden="true"/>}
-                    <span className="publications-mobile-time">{new Date(item.scheduledAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })} · {new Date(item.scheduledAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</span>
+                    <span className="publications-mobile-time">{item.channel?.platform === "telegram" ? "Telegram · " : item.channel?.platform === "vk" ? "VK · " : "Канал отключён · "}{new Date(item.scheduledAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })} · {new Date(item.scheduledAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</span>
                     <b>{item.title || "Без названия"}</b>
                     <em>{item.status === "failed" ? "Ошибка" : item.status === "published" ? "✓ Опубликовано" : "Запланировано"}</em>
                   </button>)}
@@ -5613,7 +5646,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       <div className="intro-progress"><i/></div>
     </div>
 
-    <header className="site-header">
+    <header className="site-header" data-nosnippet>
       <a className="wordmark" href="#top" aria-label="КЛИО — на главную"><Brand/></a>
       <nav><a href="#legend">О КЛИО</a><a href="#audience">Для кого</a><a href="#modules">Как работает</a><a href="#cases">Примеры задач</a><a href="#plan">Контент‑план</a><a href="#pricing">Тарифы</a><a href="#faq">FAQ</a></nav>
       <div>
@@ -5627,7 +5660,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       <div className="hero-layout">
         <div className="hero-copy">
           <h1>Слова,<br/><em>которые видят<span className="klio-mark-dot">.</span></em></h1>
-          <p className="hero-lead">КЛИО исследует спрос, понимает голос бренда и создаёт цельные материалы — от замысла до публикации.</p>
+          <p className="hero-lead">КЛИО — цифровая редакция для брендов: помогает находить темы, готовить SEO‑статьи, посты и рекламу, учитывать голос бренда и планировать публикации.</p>
           <div className="hero-actions"><Link className="button primary large" href="/workspace">Открыть редакцию <Icon name="arrow"/></Link><a href="#modules" className="text-link">Листать выпуск ↓</a></div>
         </div>
         <div className="hero-visual">
