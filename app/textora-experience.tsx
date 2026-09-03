@@ -4892,7 +4892,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <label className="publications-editor-field"><span>Id канала</span><input type="text" value={pubChannelTelegram.chatId} onChange={(event) => setPubChannelTelegram((current) => ({ ...current, chatId: event.target.value }))} placeholder="@your_channel или -100…"/></label>
               </> : <>
                 <ol className="publications-channel-steps">
-                  <li>В своём сообществе VK: «Управление» → «Работа с API» → «Ключи доступа» → «Создать ключ».</li>
+                  <li>В своём сообществе VK: «Управление» → «Дополнительно» → «Работа с API» → «Ключи доступа» → «Создать ключ».</li>
                   <li>Обязательно отметьте права <b>«Стена»</b> и <b>«Фото»</b> — без них публикация с картинкой не пройдёт.</li>
                   <li>Id сообщества — число из адресной строки в разделе управления (или там же, на странице «Работа с API»).</li>
                 </ol>
