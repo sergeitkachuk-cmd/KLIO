@@ -1,6 +1,11 @@
 import type { MetadataRoute } from "next";
 import { SITE_BASE_URL } from "./site-url";
 
+// See the matching comment in robots.ts: without this, the URLs below get
+// baked in at Docker-image build time (wrong APP_BASE_URL there on Timeweb)
+// instead of read fresh from the running container's actual env.
+export const dynamic = "force-dynamic";
+
 // Only the public, indexable marketing pages — /workspace, /account, /admin
 // and /reset-password are excluded here the same way they're disallowed in
 // robots.ts (auth-gated or token-carrying, not content).

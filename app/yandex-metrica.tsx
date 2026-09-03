@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { CONSENT_CHANGE_EVENT, getConsent } from "./analytics-consent";
 
@@ -17,6 +17,16 @@ declare global {
 // not on first paint, and not for "Только необходимые". Renders nothing
 // itself; it only ever injects the vendor's own <script>.
 //
+// The counter ID comes from GET /api/public-config, not a server-passed
+// prop — this component is mounted from the root layout, which is shared by
+// statically prerendered pages (the home page among them). A prop read from
+// process.env.YANDEX_METRICA_ID there would freeze at whatever value
+// existed when `next build` ran, which on Timeweb is a separate step from
+// the running container and doesn't see its env vars (confirmed
+// 2026-09-03: the counter was silently absent in production because of
+// exactly this). The API route is a genuine per-request handler, so it
+// always reflects the live container's actual env.
+//
 // init options are the counter's own "SPA" snippet (metrika.yandex.ru,
 // counter 112265063) verbatim, plus ssr:true — every route here is actually
 // server-rendered by Next on first load, not a client-only SPA shell, and
@@ -27,7 +37,8 @@ declare global {
 // once needed, call window.ym?.(counterId, "reachGoal", "goal-name") from
 // those flows. ecommerce:"dataLayer" is likewise declared but inert until
 // something actually pushes purchase events onto window.dataLayer.
-export default function YandexMetrica({ counterId }: { counterId: string }) {
+export default function YandexMetrica() {
+  const [counterId, setCounterId] = useState<string | null>(null);
   const pathname = usePathname();
   // Tracks the URL the counter last reported a hit for, so the route-change
   // effect below can (a) supply the correct referrer and (b) skip the very
@@ -35,6 +46,20 @@ export default function YandexMetrica({ counterId }: { counterId: string }) {
   const lastTrackedUrl = useRef<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    fetch("/api/public-config", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((payload: { yandexMetricaId?: string | null }) => {
+        if (!cancelled && payload.yandexMetricaId) setCounterId(payload.yandexMetricaId);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!counterId) return;
     let injected = false;
 
     function loadIfConsented() {
@@ -83,7 +108,7 @@ export default function YandexMetrica({ counterId }: { counterId: string }) {
   // "hit" on every later route change, with the previous URL as referrer —
   // same shape Metrica's own SPA guidance describes.
   useEffect(() => {
-    if (!window.ym || lastTrackedUrl.current === null) return;
+    if (!counterId || !window.ym || lastTrackedUrl.current === null) return;
     const url = `${location.origin}${pathname}${location.search}`;
     if (lastTrackedUrl.current === url) return;
     const referrer = lastTrackedUrl.current;

@@ -5,12 +5,6 @@ import CookieConsent from "./cookie-consent";
 import YandexMetrica from "./yandex-metrica";
 import { SITE_BASE_URL } from "./site-url";
 
-// Unset locally and on any environment that shouldn't report traffic
-// (staging, previews) — YandexMetrica itself is also gated on cookie
-// consent (see yandex-metrica.tsx), this just controls whether the tag
-// exists on the page at all.
-const YANDEX_METRICA_ID = process.env.YANDEX_METRICA_ID?.trim();
-
 // Third typeface in the same side-by-side comparison (Inter, then
 // Geist, now Manrope) - all requesting subsets:["latin","cyrillic"] so
 // each one actually renders instead of silently falling through to a
@@ -84,7 +78,7 @@ export default function RootLayout({
       <body className={`${manrope.variable} antialiased`}>
         {children}
         <CookieConsent />
-        {YANDEX_METRICA_ID && <YandexMetrica counterId={YANDEX_METRICA_ID} />}
+        <YandexMetrica />
       </body>
     </html>
   );
