@@ -5557,7 +5557,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
               {pubError && <p className="generation-error" role="alert">{pubError}</p>}
 
-              <div className={`publications-grid publications-grid-${pubView} ${pubLoading ? "is-loading" : ""}`}>
+              <div className="publications-calendar-scroll">
+                <div className={`publications-grid publications-grid-${pubView} ${pubLoading ? "is-loading" : ""}`}>
                 {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((label) => <div className="publications-weekday" key={label}>{label}</div>)}
                 {pubGridDays.map((day) => {
                   const key = localDayKey(day);
@@ -5577,6 +5578,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     </div>
                   </div>;
                 })}
+                </div>
               </div>
             </>}
           </section>
