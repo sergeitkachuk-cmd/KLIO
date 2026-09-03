@@ -11971,7 +11971,7 @@ input[type="radio"] {
   display: grid;
   gap: 14px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(219, 255, 131, 0.68) rgba(3, 18, 36, 0.62);
+  scrollbar-color: rgba(124, 58, 237, 0.76) rgba(3, 18, 36, 0.62);
 }
 
 .publications-editor-modal::-webkit-scrollbar,
@@ -11987,11 +11987,11 @@ input[type="radio"] {
 .publications-channel-modal::-webkit-scrollbar-thumb {
   border: 2px solid rgba(3, 18, 36, 0.62);
   border-radius: 999px;
-  background: linear-gradient(180deg, #e7ff9b, #9fdc59);
+  background: linear-gradient(180deg, #9b76ed, #6540c4);
 }
 
 .publications-editor-modal::-webkit-scrollbar-thumb:hover,
-.publications-channel-modal::-webkit-scrollbar-thumb:hover { background: #f0ffbf; }
+.publications-channel-modal::-webkit-scrollbar-thumb:hover { background: #ad8aff; }
 
 .publications-editor-modal .archive-editor-head,
 .publications-channel-modal .archive-editor-head {
