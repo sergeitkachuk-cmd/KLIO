@@ -1723,6 +1723,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [pubLoading, setPubLoading] = useState(false);
   const [pubError, setPubError] = useState("");
   const [pubView, setPubView] = useState<"month" | "week">("month");
+  const [pubSelectedDayKey, setPubSelectedDayKey] = useState<string | null>(null);
   // Any date within the visible month/week — navigation just moves this,
   // the grid itself is always derived from it (see pubGridDays below).
   const [pubCursor, setPubCursor] = useState(() => new Date());
@@ -1766,6 +1767,18 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     for (const list of map.values()) list.sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
     return map;
   }, [pubItems]);
+
+  const pubSelectedDay = useMemo(
+    () => pubSelectedDayKey ? pubGridDays.find((day) => localDayKey(day) === pubSelectedDayKey) || null : null,
+    [pubGridDays, pubSelectedDayKey],
+  );
+  const pubSelectedItems = pubSelectedDayKey ? pubByDay.get(pubSelectedDayKey) || [] : [];
+
+  // A day selection belongs to the visible period; moving the calendar starts
+  // a new selection instead of leaving a stale list from the previous month.
+  useEffect(() => {
+    setPubSelectedDayKey(null);
+  }, [pubCursor, pubView]);
 
   // Auto-loads whenever the calendar's visible range or brand changes. Not
   // extracted into a named async function the effect calls (see the
@@ -5598,10 +5611,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   const items = pubByDay.get(key) || [];
                   const isToday = key === localDayKey(new Date());
                   const inMonth = pubView === "week" || day.getMonth() === pubCursor.getMonth();
-                  return <div className={`publications-day ${isToday ? "is-today" : ""} ${inMonth ? "" : "is-outside"}`} key={key}>
-                    <div className="publications-day-head"><span>{day.getDate()}</span><button type="button" onClick={() => openPubEditor(day)} aria-label="Добавить публикацию на этот день">+</button></div>
+                  return <div className={`publications-day ${isToday ? "is-today" : ""} ${inMonth ? "" : "is-outside"} ${pubSelectedDayKey === key ? "is-selected" : ""}`} onClick={() => setPubSelectedDayKey(key)} key={key}>
+                    <div className="publications-day-head"><span>{day.getDate()}</span><button type="button" onClick={(event) => { event.stopPropagation(); openPubEditor(day); }} aria-label="Добавить публикацию на этот день">+</button></div>
                     <div className="publications-day-items">
-                      {items.map((item) => <button type="button" className={`publications-chip publications-chip-${item.status} publications-chip-${item.channel?.platform || "unknown"}`} onClick={() => openPubEditor(day, item)} key={item.id}>
+                      {items.map((item) => <button type="button" className={`publications-chip publications-chip-${item.status} publications-chip-${item.channel?.platform || "unknown"}`} onClick={(event) => { event.stopPropagation(); if (window.matchMedia("(max-width: 720px)").matches) { setPubSelectedDayKey(key); return; } openPubEditor(day, item); }} key={item.id}>
                         <i className={`publications-chip-platform publications-chip-platform-${item.channel?.platform || "unknown"}`} aria-label={item.channel?.platform === "telegram" ? "Telegram" : item.channel?.platform === "vk" ? "VK" : "Канал отключён"}>{item.channel?.platform === "telegram" ? "TG" : item.channel?.platform === "vk" ? "VK" : "—"}</i>
                         <b>{new Date(item.scheduledAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</b>
                         <span>{item.title || "Без названия"}</span>
@@ -5614,16 +5627,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </div>
               </div>
               <div className="publications-mobile-list" aria-label="Список публикаций">
-                <h3>Публикации в этом периоде</h3>
-                {[...pubItems]
-                  .filter((item) => {
-                    if (pubView === "week") return true;
-                    const date = new Date(item.scheduledAt);
-                    return date.getFullYear() === pubCursor.getFullYear() && date.getMonth() === pubCursor.getMonth();
-                  })
-                  .sort((left, right) => Date.parse(left.scheduledAt) - Date.parse(right.scheduledAt))
-                  .map((item) => <button type="button" className={`publications-mobile-item publications-mobile-item-${item.status} publications-mobile-item-${item.channel?.platform || "unknown"}`} onClick={() => openPubEditor(new Date(item.scheduledAt), item)} key={item.id}>
+                <h3>{pubSelectedDay ? `Публикации · ${pubSelectedDay.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}` : "Выберите день"}</h3>
+                {!pubSelectedDay ? <p className="publications-mobile-empty">Нажмите на дату в календаре, чтобы посмотреть её публикации.</p> : !pubSelectedItems.length ? <p className="publications-mobile-empty">На этот день публикаций нет.</p> : pubSelectedItems.map((item) => <button type="button" className={`publications-mobile-item publications-mobile-item-${item.status} publications-mobile-item-${item.channel?.platform || "unknown"}`} onClick={() => openPubEditor(new Date(item.scheduledAt), item)} key={item.id}>
                     {item.imageUrl && <i className="publications-mobile-thumb" style={{ backgroundImage: `url(${item.imageUrl})` }} aria-hidden="true"/>}
+                    <i className={`publications-mobile-platform publications-mobile-platform-${item.channel?.platform || "unknown"}`} aria-label={item.channel?.platform === "telegram" ? "Telegram" : item.channel?.platform === "vk" ? "VK" : "Канал отключён"}>{item.channel?.platform === "telegram" ? "TG" : item.channel?.platform === "vk" ? "VK" : "—"}</i>
                     <span className="publications-mobile-time">{item.channel?.platform === "telegram" ? "Telegram · " : item.channel?.platform === "vk" ? "VK · " : "Канал отключён · "}{new Date(item.scheduledAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })} · {new Date(item.scheduledAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</span>
                     <b>{item.title || "Без названия"}</b>
                     <em>{item.status === "failed" ? "Ошибка" : item.status === "published" ? "✓ Опубликовано" : "Запланировано"}</em>

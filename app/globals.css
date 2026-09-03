@@ -11861,6 +11861,12 @@ input[type="radio"] {
   background: color-mix(in srgb, var(--module-accent) 10%, transparent);
 }
 
+.publications-day.is-selected {
+  border-color: rgba(154, 118, 237, 0.82);
+  background: linear-gradient(145deg, rgba(124, 58, 237, 0.2), rgba(255, 255, 255, 0.035));
+  box-shadow: inset 0 0 0 1px rgba(190, 164, 255, 0.14), 0 6px 18px rgba(20, 10, 58, 0.16);
+}
+
 .publications-day-head {
   display: flex;
   align-items: center;
@@ -21249,7 +21255,18 @@ input[type="radio"] {
     text-transform: uppercase;
   }
 
+  .publications-mobile-empty {
+    margin: 0;
+    padding: 12px 13px;
+    border: 1px dashed rgba(255, 255, 255, 0.17);
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
   .publications-mobile-item {
+    position: relative;
     display: grid;
     grid-template-columns: 36px minmax(0, 1fr) auto;
     grid-template-areas: "thumb time status" "thumb title status";
@@ -21277,6 +21294,27 @@ input[type="radio"] {
     background-position: center;
     background-size: cover;
   }
+
+  .publications-mobile-platform {
+    position: absolute;
+    left: 30px;
+    bottom: 5px;
+    display: grid;
+    width: 18px;
+    height: 18px;
+    place-items: center;
+    border: 2px solid #0b2947;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 6px;
+    font-style: normal;
+    font-weight: 850;
+    letter-spacing: -0.04em;
+  }
+
+  .publications-mobile-platform-telegram { background: #229ed9; }
+  .publications-mobile-platform-vk { background: #0077ff; }
+  .publications-mobile-platform-unknown { background: #687385; }
 
   .publications-mobile-time {
     grid-area: time;
