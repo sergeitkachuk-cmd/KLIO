@@ -11988,13 +11988,28 @@ input[type="radio"] {
   font-weight: 400;
 }
 
-.publications-editor-field input {
+.publications-editor-field input,
+.publications-editor-field textarea {
   padding: 11px 13px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 10px;
   color: #fff;
   background: rgba(255, 255, 255, 0.05);
   font-size: 14px;
+  font-family: inherit;
+}
+
+/* AutoTextarea (title/body) renders a plain <textarea> — without this it
+   fell outside the `input` rule above entirely and rendered with zero
+   border/background, reading as unfilled placeholder text floating on
+   the modal instead of a field (found from a real screenshot: the URL/
+   date/time <input>s had a visible box, title/body didn't). */
+.publications-editor-field textarea {
+  resize: none;
+}
+
+.publications-editor-field textarea::placeholder {
+  color: rgba(255, 255, 255, 0.35);
 }
 
 .publications-editor-preview {
