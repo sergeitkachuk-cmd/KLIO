@@ -5081,6 +5081,44 @@ footer nav a {
   font-size: 11px;
 }
 
+/* "Публикации" placeholder — same row shape as the real modules above it,
+   plus a trailing "Скоро" badge, so it reads as a preview of what's coming
+   rather than a broken link. Stays clickable (see onClick in
+   textora-experience.tsx) so a curious click still gets a toast instead of
+   nothing. */
+.workspace-sidebar nav .workspace-nav-soon {
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  border-color: rgba(176, 202, 239, 0.14);
+  color: rgba(244, 248, 255, 0.6);
+  /* Dimmer echo of .workspace-sidebar nav a's resting card (which only
+     targets <a>, not <button> — this item is a button so it needs its
+     own, since the shared base rule above leaves plain buttons
+     transparent). */
+  background: linear-gradient(120deg, rgba(30, 62, 98, 0.5), rgba(19, 46, 76, 0.55));
+}
+
+.workspace-sidebar nav .workspace-nav-soon:hover {
+  border-color: rgba(176, 202, 239, 0.2);
+  color: rgba(244, 248, 255, 0.78);
+}
+
+.workspace-sidebar nav .workspace-nav-soon i {
+  color: rgba(222, 234, 250, 0.5);
+}
+
+.workspace-sidebar nav .workspace-nav-soon em {
+  padding: 3px 9px;
+  border: 1px solid rgba(216, 255, 101, 0.32);
+  border-radius: 999px;
+  color: rgba(216, 255, 101, 0.85);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
 .workspace-stage {
   margin-top: auto;
   padding: 18px;
@@ -13572,6 +13610,19 @@ input[type="radio"] {
     font-size: 10px;
   }
 
+  /* The desktop 3-column grid-template-columns on .workspace-nav-soon
+     otherwise wins on specificity even here (2 classes vs 1) — match the
+     compact icon+label shape every other mobile chip gets, badge appended
+     as a third track instead of stretching the label column. */
+  .workspace-sidebar nav .workspace-nav-soon {
+    grid-template-columns: 18px auto auto;
+  }
+
+  .workspace-sidebar nav .workspace-nav-soon em {
+    padding: 2px 7px;
+    font-size: 9px;
+  }
+
   .workspace-content {
     padding: 26px 14px 130px;
   }
@@ -16592,6 +16643,19 @@ input[type="radio"] {
   border-color: rgba(36, 82, 184, 0.28);
   background: linear-gradient(120deg, rgba(53, 104, 212, 0.12), rgba(220, 229, 243, 0.82));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.7), 0 1px 2px rgba(29, 57, 104, 0.05);
+}
+
+/* .workspace-nav-soon is a <button>, not an <a>, so it falls outside the
+   card rule right above — same dimmer-echo treatment as the dark theme. */
+[data-theme="light"] .workspace-sidebar nav .workspace-nav-soon {
+  border-color: rgba(36, 82, 184, 0.16);
+  background: linear-gradient(120deg, rgba(53, 104, 212, 0.06), rgba(220, 229, 243, 0.5));
+  color: rgba(23, 36, 59, 0.6);
+}
+
+[data-theme="light"] .workspace-sidebar nav .workspace-nav-soon em {
+  border-color: rgba(120, 156, 34, 0.4);
+  color: #5c7a1e;
 }
 
 [data-theme="light"] .workspace-sidebar nav a:hover,
