@@ -1466,7 +1466,9 @@ function CoverageIcon({ coverage }: { coverage: CompetitorCoverage }) {
 }
 
 function Brand() {
-  return <span className="brand"><i>К</i><b>ЛИО<span aria-hidden="true">.</span></b><small>Цифровая редакция</small></span>;
+  // The circle's K is drawn by CSS, not a second text character. This keeps
+  // the visual lockup intact while crawlers read one name: «КЛИО».
+  return <span className="brand" role="img" aria-label="КЛИО — цифровая редакция"><i aria-hidden="true"/><b>КЛИО<span aria-hidden="true">.</span></b><small>Цифровая редакция</small></span>;
 }
 
 // Same "КЛИО." wordmark as Brand() (bold name + accent dot), for the few

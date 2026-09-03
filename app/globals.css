@@ -424,6 +424,10 @@ select:focus-visible {
   letter-spacing: -0.08em;
 }
 
+.brand i::before {
+  content: "К";
+}
+
 .brand b {
   font-size: 24px;
   font-weight: 900;
