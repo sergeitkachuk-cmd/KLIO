@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored third-party scripts served as static assets (see
+    // app/vk-onetap.tsx) — not project source, and minified besides.
+    "public/*.js",
   ]),
 ]);
 

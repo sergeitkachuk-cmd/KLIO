@@ -2,14 +2,22 @@
 
 import { useEffect, useRef, useState } from "react";
 
-// @vkid/sdk is loaded from unpkg at runtime, not installed as an npm
-// dependency — same reasoning as Yandex Metrica's dynamic <script>
-// injection (app/yandex-metrica.tsx): it's only needed on /login and
-// /signup, and only once this component actually mounts, not bundled into
-// every page's JS. Version pinned to the exact release verified against
-// the SDK's own published TypeScript types (github.com/VKCOM/vkid-web-sdk)
-// while building this — bump deliberately, not by dropping the pin.
-const SDK_SCRIPT_URL = "https://unpkg.com/@vkid/sdk@2.6.1/dist-sdk/umd/index.js";
+// @vkid/sdk's UMD build, served from our own /public instead of unpkg.com —
+// injected at runtime, not installed as an npm dependency, for the same
+// reason as Yandex Metrica's dynamic <script> (app/yandex-metrica.tsx):
+// only needed on /login and /signup, only once this component mounts, not
+// bundled into every page's JS. Originally pointed at unpkg.com directly;
+// switched after a live report (2026-09-03) of Edge's Tracking Prevention
+// blocking the SDK's own storage access specifically "for" that unpkg.com
+// URL — plausible given unpkg is a large, widely-used CDN that legitimate
+// trackers also ride on, landing it on some browsers' tracker-classification
+// lists regardless of what any one script on it actually does. Self-hosting
+// makes the SDK first-party (цифроваяредакция.рф serving its own script),
+// which such lists have no reason to flag. File is the unmodified UMD
+// bundle from https://unpkg.com/@vkid/sdk@2.6.1/dist-sdk/umd/index.js —
+// bump the version in the filename (and re-download) deliberately, not by
+// editing this constant alone.
+const SDK_SCRIPT_URL = "/vkid-sdk-2.6.1.js";
 
 // Minimal shape of the pieces of window.VKIDSDK this component actually
 // calls — the real SDK surface is much larger. See auth/types.d.ts in the
