@@ -15471,6 +15471,62 @@ input[type="radio"] {
 .workspace-start-card-semantics span { color: #6fa8dc; }
 .workspace-start-card-content-plan span { color: #55c2a3; }
 
+/* "Публикации" teaser — spans the full grid width and lays out as a
+   banner row (badge / title / description / cta) instead of the vertical
+   card shape the six real modules use above, so it visually reads as a
+   preview of what's coming rather than a seventh clickable module. Muted
+   accent (no --module-accent assigned) keeps it from competing with the
+   six modules' saturated colours; the small "Скоро" badge borrows the
+   same lime already used for this in the sidebar nav (see
+   .workspace-nav-soon) so the two placeholders read as one signal. */
+.workspace-start-card-soon {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  align-items: center;
+  gap: 18px;
+  border-left-color: rgba(176, 202, 239, 0.3);
+  cursor: pointer;
+}
+
+.workspace-start-card-soon > i {
+  min-width: 0;
+  color: rgba(216, 255, 101, 0.9);
+  background: rgba(216, 255, 101, 0.14);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.workspace-start-card-soon h3 {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.86);
+  white-space: nowrap;
+}
+
+.workspace-start-card-soon p {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.workspace-start-card-soon span {
+  flex: 0 0 auto;
+  margin-top: 0;
+  padding-top: 0;
+  color: rgba(216, 255, 101, 0.85);
+  white-space: nowrap;
+}
+
+@media (max-width: 960px) {
+  .workspace-start-card-soon {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .workspace-start-card-soon h3,
+  .workspace-start-card-soon span {
+    white-space: normal;
+  }
+}
+
 @media (max-width: 960px) {
   .workspace-start-hero {
     grid-template-columns: 1fr;
@@ -17397,6 +17453,19 @@ input[type="radio"] {
 
 [data-theme="light"] .workspace-start-card p {
   color: rgba(13, 27, 49, 0.64);
+}
+
+/* rgba(216,255,101,*) reads fine on the dark card (see
+   .workspace-start-card-soon above) but the same bright lime turns
+   near-illegible on this theme's white card — same fix already applied to
+   the sidebar's matching badge (.workspace-nav-soon em). */
+[data-theme="light"] .workspace-start-card-soon > i {
+  color: #5c7a1e;
+  background: rgba(120, 156, 34, 0.14);
+}
+
+[data-theme="light"] .workspace-start-card-soon span {
+  color: #5c7a1e;
 }
 
 [data-theme="light"] .workspace-start-card-semantics span {

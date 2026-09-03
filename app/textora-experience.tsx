@@ -4414,6 +4414,18 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <p>{item.text}</p>
                 <span>{item.cta} <Icon name="arrow"/></span>
               </button>)}
+              {/* Not a WORKSPACE_MODULE_GUIDE entry: that array's every card
+                  opens a real module via openModule (see the comment above
+                  it), and this one doesn't have one yet. Kept as its own
+                  wide teaser row instead of a same-size seventh card so it
+                  reads as "coming soon", not as a seventh working module
+                  people can click into like the rest. */}
+              <button type="button" className="workspace-start-card workspace-start-card-soon" onClick={() => showToast("Публикации уже в разработке — календарь выхода и автопостинг в VK и Telegram появятся в одном из ближайших обновлений")}>
+                <i>Скоро</i>
+                <h3>Публикации</h3>
+                <p>Ставьте готовый материал в календарь на нужную дату и время и публикуйте в VK и Telegram прямо из КЛИО — без переноса вручную.</p>
+                <span>Что войдёт <Icon name="arrow"/></span>
+              </button>
             </div>
           </section>}
 
