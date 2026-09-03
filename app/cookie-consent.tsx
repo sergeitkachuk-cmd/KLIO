@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-
-const CONSENT_KEY = "klio-cookie-consent";
+import { CONSENT_KEY, broadcastConsentChange } from "./analytics-consent";
 
 export default function CookieConsent() {
   const [visible, setVisible] = useState(false);
@@ -29,6 +28,7 @@ export default function CookieConsent() {
       // The service remains usable when storage is blocked by the browser.
     }
     document.cookie = `${CONSENT_KEY}=${value}; Max-Age=31536000; Path=/; SameSite=Lax`;
+    broadcastConsentChange();
     setVisible(false);
   }
 

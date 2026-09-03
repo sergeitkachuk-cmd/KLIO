@@ -14806,6 +14806,28 @@ input[type="radio"] {
   font-weight: 650;
 }
 
+/* Separates the "Войти через Яндекс" button from the email/password form
+   below it — sits between .auth-subtitle and .auth-card form. */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
 @media (max-width: 480px) {
   .auth-shell {
     padding: 16px;

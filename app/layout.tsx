@@ -2,6 +2,14 @@ import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
 import CookieConsent from "./cookie-consent";
+import YandexMetrica from "./yandex-metrica";
+import { SITE_BASE_URL } from "./site-url";
+
+// Unset locally and on any environment that shouldn't report traffic
+// (staging, previews) — YandexMetrica itself is also gated on cookie
+// consent (see yandex-metrica.tsx), this just controls whether the tag
+// exists on the page at all.
+const YANDEX_METRICA_ID = process.env.YANDEX_METRICA_ID?.trim();
 
 // Third typeface in the same side-by-side comparison (Inter, then
 // Geist, now Manrope) - all requesting subsets:["latin","cyrillic"] so
@@ -16,13 +24,35 @@ const manrope = Manrope({
   subsets: ["latin", "cyrillic"],
 });
 
+// Without metadataBase, Next resolves any relative OG/Twitter image URL
+// against the request origin at render time instead of a fixed canonical
+// domain — fine for the page itself, but link-preview crawlers (Telegram,
+// VK, ad-network scrapers) that fetch the page directly need one absolute,
+// stable origin. See ./site-url.ts for where this comes from.
+const TITLE = "КЛИО — цифровая редакция для SEO и контента";
+const DESCRIPTION =
+  "Создавайте SEO‑статьи, публикации и рекламные материалы с анализом ключей, голосом бренда и проверкой качества.";
+
 export const metadata: Metadata = {
-  title: "КЛИО — цифровая редакция для SEO и контента",
-  description:
-    "Создавайте SEO‑статьи, публикации и рекламные материалы с анализом ключей, голосом бренда и проверкой качества.",
+  metadataBase: new URL(SITE_BASE_URL),
+  title: TITLE,
+  description: DESCRIPTION,
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
+  },
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    url: "/",
+    siteName: "КЛИО",
+    locale: "ru_RU",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: TITLE,
+    description: DESCRIPTION,
   },
 };
 
@@ -54,6 +84,7 @@ export default function RootLayout({
       <body className={`${manrope.variable} antialiased`}>
         {children}
         <CookieConsent />
+        {YANDEX_METRICA_ID && <YandexMetrica counterId={YANDEX_METRICA_ID} />}
       </body>
     </html>
   );

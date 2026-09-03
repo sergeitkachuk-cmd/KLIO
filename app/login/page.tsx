@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
+import YandexIcon from "../yandex-icon";
 
 function safeReturnTo(): string {
   if (typeof window === "undefined") return "/workspace";
@@ -12,9 +13,15 @@ function safeReturnTo(): string {
 
 function initialVerifyError(): string {
   if (typeof window === "undefined") return "";
-  const verifyStatus = new URLSearchParams(window.location.search).get("verify");
+  const params = new URLSearchParams(window.location.search);
+  const verifyStatus = params.get("verify");
   if (verifyStatus === "expired") return "Ссылка подтверждения устарела или уже использована. Войдите — мы предложим отправить новую.";
   if (verifyStatus === "failed") return "Не удалось подтвердить email. Попробуйте войти ещё раз.";
+
+  const oauthError = params.get("error");
+  if (oauthError === "oauth_unavailable") return "Вход через Яндекс временно недоступен. Войдите по email и паролю.";
+  if (oauthError === "oauth_no_email") return "В вашем Яндекс ID не указан email — добавьте его в настройках Яндекса или войдите по email и паролю.";
+  if (oauthError === "oauth_failed") return "Не удалось войти через Яндекс. Попробуйте ещё раз.";
   return "";
 }
 
@@ -117,6 +124,11 @@ export default function LoginPage() {
         </Link>
         <h1>Вход в кабинет</h1>
         <p className="auth-subtitle">Личный кабинет с генератором материалов, профилями брендов и архивом.</p>
+        <a className="button ghost" href={`/api/auth/yandex/start?return_to=${encodeURIComponent(safeReturnTo())}`}>
+          <YandexIcon />
+          Войти через Яндекс
+        </a>
+        <div className="auth-divider"><span>или по email</span></div>
         <form onSubmit={handleSubmit}>
           <label className="field">Email<input type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
           <label className="field">Пароль<input type="password" required autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>

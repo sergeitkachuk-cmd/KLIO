@@ -15,6 +15,21 @@ const nextConfig: NextConfig = {
           { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
         ],
       },
+      {
+        // Applies site-wide. X-Frame-Options/frame-ancestors is deliberately
+        // NOT set here: KLIO is embedded inside ChatGPT via the Apps SDK (see
+        // oai-authenticated-user-* headers in chatgpt-auth.ts), which requires
+        // the page to be frameable from chatgpt.com. Blocking framing outright
+        // would break that integration — it needs a frame-ancestors allowlist
+        // scoped to OpenAI's actual embed origin(s) instead, added deliberately
+        // once that origin is confirmed, not as a blanket deny.
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), usb=()" },
+        ],
+      },
     ];
   },
 };
