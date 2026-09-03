@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { BILLING_PERIODS, periodAmount, type BillingPeriod } from "@/app/billing-pricing";
+import { trackMetricaGoal } from "@/app/analytics-consent";
 
 const plans = [
   { id: "start", name: "Старт", monthly: 1190, yearly: 950 },
@@ -30,7 +31,10 @@ export default function BillingActions() {
       .then((response) => response.json().then((body) => ({ response, body })))
       .then(({ response, body }) => {
         if (!response.ok) throw new Error(body.error || "Не удалось проверить оплату.");
-        if (body.status === "paid") window.location.replace("/account?payment=confirmed");
+        if (body.status === "paid") {
+          trackMetricaGoal("payment_completed");
+          window.location.replace("/account?payment=confirmed");
+        }
         else setError("Оплата ещё подтверждается банком. Тариф обновится автоматически после подтверждения.");
       })
       .catch((caught) => setError(caught instanceof Error ? caught.message : "Не удалось проверить оплату."));

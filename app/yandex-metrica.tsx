@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { CONSENT_CHANGE_EVENT, getConsent } from "./analytics-consent";
+import { CONSENT_CHANGE_EVENT, METRICA_GOAL_EVENT, getConsent, type MetricaGoal } from "./analytics-consent";
 
 type YmFunction = ((...args: unknown[]) => void) & { a?: unknown[][]; l?: number };
 
@@ -115,6 +115,19 @@ export default function YandexMetrica() {
     lastTrackedUrl.current = url;
     window.ym(Number(counterId), "hit", url, { referrer });
   }, [pathname, counterId]);
+
+  useEffect(() => {
+    if (!counterId) return;
+    const trackGoal = (event: Event) => {
+      if (getConsent() !== "all") return;
+      const goal = (event as CustomEvent<MetricaGoal>).detail;
+      if (goal === "signup_completed" || goal === "payment_completed") {
+        window.ym?.(Number(counterId), "reachGoal", goal);
+      }
+    };
+    window.addEventListener(METRICA_GOAL_EVENT, trackGoal);
+    return () => window.removeEventListener(METRICA_GOAL_EVENT, trackGoal);
+  }, [counterId]);
 
   return null;
 }

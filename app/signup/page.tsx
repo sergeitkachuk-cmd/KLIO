@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
+import { trackMetricaGoal } from "../analytics-consent";
 import YandexIcon from "../yandex-icon";
 import VkSignIn from "../vk-signin";
 
@@ -56,6 +57,7 @@ export default function SignupPage() {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "Не удалось зарегистрироваться.");
+      trackMetricaGoal("signup_completed");
       setSentTo(email);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось зарегистрироваться.");
