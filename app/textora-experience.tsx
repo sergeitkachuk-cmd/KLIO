@@ -4830,13 +4830,28 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <button type="button" className={pubChannelPlatform === "vk" ? "active" : ""} onClick={() => setPubChannelPlatform("vk")}>VK</button>
               </div>
               {pubChannelPlatform === "telegram" ? <>
+                {/* Two genuinely separate values from two different places —
+                    the earlier one-line hint said "токен и id канала будут
+                    там же", which is simply wrong: BotFather only ever gives
+                    the token. The channel id needs its own step (and a
+                    different one depending on whether the channel is public
+                    or private), so this is a real numbered walkthrough, not
+                    a single reassuring sentence. */}
+                <ol className="publications-channel-steps">
+                  <li>В Telegram откройте <b>@BotFather</b> → отправьте <code>/newbot</code> → получите токен вида <code>123456789:ABC…</code>.</li>
+                  <li>В своём канале: «Управление каналом» → «Администраторы» → «Добавить администратора» → найдите бота по имени.</li>
+                  <li>Id канала: если канал <b>публичный</b> — впишите ниже его <code>@username</code>. Если <b>приватный</b> — перешлите любое сообщение из канала боту <b>@userinfobot</b>, он пришлёт числовой id вида <code>-100…</code>.</li>
+                </ol>
                 <label className="publications-editor-field"><span>Токен бота</span><input type="text" value={pubChannelTelegram.botToken} onChange={(event) => setPubChannelTelegram((current) => ({ ...current, botToken: event.target.value }))} placeholder="123456789:AA…"/></label>
                 <label className="publications-editor-field"><span>Id канала</span><input type="text" value={pubChannelTelegram.chatId} onChange={(event) => setPubChannelTelegram((current) => ({ ...current, chatId: event.target.value }))} placeholder="@your_channel или -100…"/></label>
-                <p className="publications-channel-hint">Создайте бота через @BotFather в Telegram и добавьте его администратором в канал — токен и id канала будут там же.</p>
               </> : <>
+                <ol className="publications-channel-steps">
+                  <li>В своём сообществе VK: «Управление» → «Работа с API» → «Ключи доступа» → «Создать ключ».</li>
+                  <li>Обязательно отметьте права <b>«Стена»</b> и <b>«Фото»</b> — без них публикация с картинкой не пройдёт.</li>
+                  <li>Id сообщества — число из адресной строки в разделе управления (или там же, на странице «Работа с API»).</li>
+                </ol>
                 <label className="publications-editor-field"><span>Id сообщества</span><input type="text" value={pubChannelVk.groupId} onChange={(event) => setPubChannelVk((current) => ({ ...current, groupId: event.target.value }))} placeholder="123456789"/></label>
                 <label className="publications-editor-field"><span>Токен доступа</span><input type="text" value={pubChannelVk.accessToken} onChange={(event) => setPubChannelVk((current) => ({ ...current, accessToken: event.target.value }))} placeholder="vk1.a…"/></label>
-                <p className="publications-channel-hint">В сообществе VK: «Управление» → «Работа с API» → «Ключи доступа» — создайте ключ с правами «Стена» и «Фото».</p>
               </>}
               {pubChannelError && <p className="generation-error" role="alert">{pubChannelError}</p>}
               <div className="publications-editor-actions">

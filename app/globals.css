@@ -12112,11 +12112,34 @@ input[type="radio"] {
   background: color-mix(in srgb, var(--module-accent) 42%, transparent);
 }
 
-.publications-channel-hint {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 12px;
-  line-height: 1.5;
+.publications-channel-steps {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 4px;
+  padding: 14px 16px 14px 34px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.publications-channel-steps li::marker {
+  color: var(--module-accent);
+  font-weight: 700;
+}
+
+.publications-channel-steps b {
+  color: #fff;
+}
+
+.publications-channel-steps code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  color: #d8ff65;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 11.5px;
 }
 
 @media (max-width: 720px) {
