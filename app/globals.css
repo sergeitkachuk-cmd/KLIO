@@ -12091,8 +12091,25 @@ input[type="radio"] {
      in a dark palette instead of defaulting to a stark white box that
      clashed with the modal around it (real screenshot: white calendar on
      navy). Time's own equivalent popup is sidestepped entirely by using
-     ModuleSelect instead, further down in this same row. */
+     two ModuleSelects (hour, minute) instead — see
+     .publications-time-fields below. */
   color-scheme: dark;
+}
+
+.publications-time-fields {
+  display: flex;
+  gap: 8px;
+}
+
+/* ModuleSelect's shared .field carries a site-wide 21px bottom margin
+   (spacing for a normal page form flow) that doesn't belong in this
+   compact modal, where .publications-editor-modal already spaces every
+   field via its own 14px grid gap — left in, the hour/minute pair would
+   sit visibly lower than the date field beside it. */
+.publications-time-fields .field {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
 }
 
 .publications-editor-channels {

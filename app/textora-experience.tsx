@@ -335,16 +335,19 @@ const MATERIALS_DATE_RANGE_OPTIONS: { value: MaterialsDateRange; label: string }
   { value: "year", label: "Год" },
 ];
 
-// Публикации' time field: <input type="time">'s dropdown is the browser's
-// own native popup (a system clock-scroll widget) with no CSS hook to
-// restyle it at all — not a missed style pass, an actual platform
-// limitation (only the small icon button next to the field is themeable).
-// 30-minute steps through ModuleSelect sidesteps this entirely by using
-// a component this codebase already owns end to end, and matches how a
-// recurring publish slot ("Пн/Ср/Пт 10:00") is picked anyway — nobody is
-// scheduling a post for 14:07.
-const PUBLICATION_TIME_OPTIONS: { value: string; label: string }[] = Array.from({ length: 48 }, (_, index) => {
-  const value = `${String(Math.floor(index / 2)).padStart(2, "0")}:${index % 2 === 0 ? "00" : "30"}`;
+// Публикации' time field: <input type="time">'s own dropdown is a native
+// system widget with no CSS hook at all, but a single flat ModuleSelect
+// covering every minute (or even a 30-minute-step compromise, tried and
+// rejected — real feedback: too restrictive, 14:07 needs to be pickable)
+// isn't the fix either. Two small ModuleSelects side by side — hour,
+// minute — give every exact time while staying fully our own styled
+// dropdown, same component already used for Стиль/Объём.
+const PUBLICATION_HOUR_OPTIONS: { value: string; label: string }[] = Array.from({ length: 24 }, (_, hour) => {
+  const value = String(hour).padStart(2, "0");
+  return { value, label: value };
+});
+const PUBLICATION_MINUTE_OPTIONS: { value: string; label: string }[] = Array.from({ length: 60 }, (_, minute) => {
+  const value = String(minute).padStart(2, "0");
   return { value, label: value };
 });
 
@@ -4808,7 +4811,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               {pubEditor.imageUrl && <img className="publications-editor-preview" src={pubEditor.imageUrl} alt="Превью картинки" onError={(event) => { (event.target as HTMLImageElement).style.display = "none"; }}/>}
               <div className="publications-editor-row">
                 <label><span>Дата</span><input type="date" value={pubEditor.date} onChange={(event) => setPubEditor((current) => current && { ...current, date: event.target.value })}/></label>
-                <ModuleSelect label="Время" value={pubEditor.time} options={PUBLICATION_TIME_OPTIONS} onChange={(value) => setPubEditor((current) => current && { ...current, time: value })}/>
+                <div className="publications-time-fields">
+                  <ModuleSelect label="Час" value={pubEditor.time.slice(0, 2) || "12"} options={PUBLICATION_HOUR_OPTIONS} onChange={(hour) => setPubEditor((current) => current && { ...current, time: `${hour}:${current.time.slice(3, 5) || "00"}` })}/>
+                  <ModuleSelect label="Минуты" value={pubEditor.time.slice(3, 5) || "00"} options={PUBLICATION_MINUTE_OPTIONS} onChange={(minute) => setPubEditor((current) => current && { ...current, time: `${current.time.slice(0, 2) || "12"}:${minute}` })}/>
+                </div>
               </div>
               <div className="publications-editor-field">
                 <span>{pubEditor.id ? "Канал" : "Каналы"}</span>
