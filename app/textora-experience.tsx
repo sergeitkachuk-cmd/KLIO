@@ -4893,7 +4893,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </> : <>
                 <ol className="publications-channel-steps">
                   <li>В своём сообществе VK: «Управление» → «Дополнительно» → «Работа с API» → «Ключи доступа» → «Создать ключ».</li>
-                  <li>Обязательно отметьте права <b>«Стена»</b> и <b>«Фото»</b> — без них публикация с картинкой не пройдёт.</li>
+                  <li>Обязательно отметьте права <b>«Стена»</b>, <b>«Фото»</b> и <b>«Сообщения»</b> — без них публикация с картинкой не пройдёт.</li>
                   <li>Id сообщества — число из адресной строки в разделе управления (или там же, на странице «Работа с API»).</li>
                 </ol>
                 <label className="publications-editor-field"><span>Id сообщества</span><input type="text" value={pubChannelVk.groupId} onChange={(event) => setPubChannelVk((current) => ({ ...current, groupId: event.target.value }))} placeholder="123456789"/></label>
