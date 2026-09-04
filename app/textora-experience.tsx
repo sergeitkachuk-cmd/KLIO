@@ -3246,14 +3246,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setBrand((current) => ({
         ...current,
         name: result.name || current.name,
-        description: result.description,
-        positioning: result.positioning,
-        audience: result.audience,
-        advantages: result.advantages,
-        products: result.products,
-        services: result.services,
-        proof: result.proof,
-        geography: result.geography,
+        // A sparse source must never erase facts the user already entered.
+        description: result.description || current.description,
+        positioning: result.positioning || current.positioning,
+        audience: result.audience || current.audience,
+        advantages: result.advantages || current.advantages,
+        products: result.products || current.products,
+        services: result.services || current.services,
+        proof: result.proof || current.proof,
+        geography: result.geography || current.geography,
       }));
       setBrandSaved(false);
       setSemanticNeedsRefresh(true);

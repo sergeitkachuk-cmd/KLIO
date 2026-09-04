@@ -321,10 +321,16 @@ function hasMetaLeakage(value: string) {
 
 function sanitizePublicationText(value: string) {
   return value
-    .replace(/\[[^\]]*\]\([^)]*\)/g, "")
+    // Text is edited and copied from plain textarea fields, not rendered as
+    // Markdown. Keep the wording, but never leak Markdown punctuation to a
+    // client-facing material.
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
     .replace(/(?:https?:\/\/|www\.)[^\s<>)\]]+/gi, "")
     .replace(/<\/?[a-z][^>]*>/gi, "")
     .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+    .replace(/^\s*>\s?/gm, "")
+    .replace(/^\s*(?:[-*+] |\d+[.)] )/gm, "")
+    .replace(/\*\*|__|~~/g, "")
     .replace(/\(\s*\)/g, "")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
@@ -707,7 +713,7 @@ export async function POST(request: Request) {
         schema: MATERIAL_SCHEMA,
         instructions: [
           "Ты — старший русскоязычный редактор и контент‑маркетолог платформы КЛИО.",
-          "Создай готовый к публикации материал по брифу и верни только валидный JSON без Markdown-ограждений.",
+          "Создай готовый к публикации материал по брифу и верни только валидный JSON. Текст для читателя пиши обычными абзацами: без Markdown-разметки, символов **, __, ##, > и маркеров списков. Если нужен акцент, сформулируй его отдельным коротким предложением, а не разметкой.",
           ...CORE_SYSTEM_RULES,
           ...GENERATION_RESEARCH_RULES,
           "Веб-исследование, если оно нужно, уже выполнено сервером и передано в поле web_research. Не запускай собственный поиск и не выдумывай факты: используй только переданные источники, профиль и снимок сайта.",

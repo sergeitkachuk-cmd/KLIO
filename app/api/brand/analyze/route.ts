@@ -130,9 +130,12 @@ export async function POST(request: Request) {
       input: JSON.stringify({
         requested_website: input.website,
         website_status: website.status,
+        // A profile is a compact factual extraction, not a long-form
+        // research task. A bounded first-page digest keeps latency stable
+        // and leaves enough output room for all structured fields.
         website_snapshot: website.status === "loaded"
-          ? { url: website.resolvedUrl, text: website.text }
-          : tavilyWebsite ? { url: tavilyWebsite.url, text: tavilyWebsite.content } : null,
+          ? { url: website.resolvedUrl, text: website.text.slice(0, 7_000) }
+          : tavilyWebsite ? { url: tavilyWebsite.url, text: tavilyWebsite.content.slice(0, 7_000) } : null,
         existing_profile_draft: {
           name: input.name || null,
           description: input.description || null,

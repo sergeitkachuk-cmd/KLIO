@@ -21,6 +21,20 @@ function cleanQuickField(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
 
+function plainPublicationText(value: unknown, maxLength: number) {
+  return cleanQuickField(value, maxLength)
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/(?:https?:\/\/|www\.)[^\s<>)\]]+/gi, "")
+    .replace(/<\/?[a-z][^>]*>/gi, "")
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+    .replace(/^\s*>\s?/gm, "")
+    .replace(/^\s*(?:[-*+] |\d+[.)] )/gm, "")
+    .replace(/\*\*|__|~~/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 // Quick mode previously never received the brand profile at all, even with
 // "Использовать бренд" switched on in the workspace — every generation
 // came out generic, with no way for a visitor to tell why. Same anti-
@@ -171,6 +185,7 @@ export async function POST(request: Request) {
           "Любой факт из веб‑поиска обязательно отметь в editorial_comment вместе со ссылкой на источник и пометкой «найдено в вебе, требует проверки».",
           "Не ограничивайся сайтом бренда. Для экспертного, информационного или маркетингового материала выполни веб‑поиск и по самой теме: добавь проверяемые объяснения, нюансы, критерии выбора, безопасные советы или примеры сценариев, которые делают текст полезным читателю. Общую отраслевую фактуру не выдавай за свойства бренда. Для медицинских, правовых и финансовых тем используй только авторитетные источники, не давай персональных назначений и не обещай результат.",
           "Материал должен быть готов к публикации сразу: конкретный, без воды, без пересказа задачи и без служебных пометок внутри текста.",
+          "Пиши обычным чистым текстом для редактора: без Markdown-разметки и символов **, __, ##, >, без маркеров списков. Смысловые акценты делай короткими самостоятельными предложениями.",
           "Список, вопрос или эмодзи используй только при реальной пользе для конкретного формата и интонации — не как украшение. По умолчанию пиши без эмодзи; если формат явно предполагает лёгкий разговорный тон (например, пост для соцсетей), уместен максимум один-два по смыслу, не в каждом абзаце.",
           "Для медицинской, юридической и финансовой тематики избегай гарантий результата, диагнозов и персональных рекомендаций.",
           "Структура JSON: title, subtitle, body, meta_title, meta_description, editorial_comment, format, tone. subtitle — зацепка под заголовком, 1–2 предложения без повтора title. Все значения — строки.",
@@ -191,11 +206,11 @@ export async function POST(request: Request) {
     }
 
     const material = {
-      title: typeof parsed.title === "string" ? parsed.title : "",
-      body: typeof parsed.body === "string" ? parsed.body : "",
-      subtitle: typeof parsed.subtitle === "string" ? parsed.subtitle : "",
-      metaTitle: typeof parsed.meta_title === "string" ? parsed.meta_title : "",
-      metaDescription: typeof parsed.meta_description === "string" ? parsed.meta_description : "",
+      title: plainPublicationText(parsed.title, 500),
+      body: plainPublicationText(parsed.body, 60_000),
+      subtitle: plainPublicationText(parsed.subtitle, 600),
+      metaTitle: plainPublicationText(parsed.meta_title, 500),
+      metaDescription: plainPublicationText(parsed.meta_description, 1_000),
       editorialComment: typeof parsed.editorial_comment === "string" ? parsed.editorial_comment : "",
     };
     if (!material.title || !material.body) {

@@ -94,6 +94,20 @@ function clean(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
 
+function plainPublicationText(value: unknown, maxLength: number) {
+  return clean(value, maxLength)
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/(?:https?:\/\/|www\.)[^\s<>)\]]+/gi, "")
+    .replace(/<\/?[a-z][^>]*>/gi, "")
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+    .replace(/^\s*>\s?/gm, "")
+    .replace(/^\s*(?:[-*+] |\d+[.)] )/gm, "")
+    .replace(/\*\*|__|~~/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function wordCount(value: string) {
   return value.trim().split(/\s+/).filter(Boolean).length;
 }
@@ -131,15 +145,15 @@ function similarity(left: string, right: string) {
 }
 
 function materialFromRecord(parsed: Record<string, unknown>): AdaptedMaterial | null {
-  const title = clean(parsed.title, 500);
-  const body = clean(parsed.body, 60000);
+  const title = plainPublicationText(parsed.title, 500);
+  const body = plainPublicationText(parsed.body, 60000);
   if (!title || !body) return null;
   return {
     title,
     body,
-    subtitle: clean(parsed.subtitle, 600),
-    metaTitle: clean(parsed.meta_title, 500) || title.slice(0, 70),
-    metaDescription: clean(parsed.meta_description, 1000),
+    subtitle: plainPublicationText(parsed.subtitle, 600),
+    metaTitle: plainPublicationText(parsed.meta_title, 500) || title.slice(0, 70),
+    metaDescription: plainPublicationText(parsed.meta_description, 1000),
     editorialComment: clean(parsed.editorial_comment, 1600),
     changes: Array.isArray(parsed.changes)
       ? parsed.changes.map((item) => clean(item, 240)).filter(Boolean).slice(0, 6)
@@ -231,7 +245,7 @@ export async function POST(request: Request) {
         schema: ADAPTED_MATERIAL_SCHEMA,
         instructions: [
           "Ты — старший русскоязычный редактор и контент‑маркетолог платформы КЛИО.",
-          "Переработай готовый текст пользователя под указанную задачу и верни только валидный JSON без Markdown-ограждений.",
+          "Переработай готовый текст пользователя под указанную задачу и верни только валидный JSON. В полях материала пиши чистый текст без Markdown-разметки и символов **, __, ##, > или маркеров списков; акцент выражай словами, а не знаками.",
           ...CORE_SYSTEM_RULES,
           ...coreRulesFor(input.goal),
           transformationDirective,

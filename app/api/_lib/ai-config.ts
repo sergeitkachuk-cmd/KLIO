@@ -220,7 +220,7 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // nano. web_search stays on as a fallback for when the fetched page is
   // thin or unreadable (SPA, blocked, etc.) — the model can still ground
   // itself in public information about the company instead of guessing.
-  analyze_brand_website: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 3_500, structuredOutput: true, retryable: false, useWebSearch: false },
+  analyze_brand_website: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 1_800, structuredOutput: true, retryable: true, useWebSearch: false },
 
   normalize_quick_brief: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 800, structuredOutput: true, retryable: true, useWebSearch: false },
   validate_content: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 1_500, structuredOutput: true, retryable: true, useWebSearch: false },
