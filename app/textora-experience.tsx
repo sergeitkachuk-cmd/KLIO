@@ -5759,7 +5759,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       <div className="publishing-landing-preview" aria-label="Пример календаря публикаций">
         <header><span>Публикации</span><b>Сентябрь</b><i>Сегодня</i></header>
         <div className="publishing-preview-days"><span>Пн</span><span>Вт</span><span>Ср</span><span className="active">Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>
-        <div className="publishing-preview-grid">{[1, 2, 3, 4, 5, 6, 7].map((day) => <div className={day === 4 ? "active" : ""} key={day}><b>{day}</b>{day === 4 && <><i className="tg">TG</i><small>10:00 · Новости бренда</small><i className="vk">VK</i><small>16:30 · Анонс</small></>}</div>)}</div>
+        <div className="publishing-preview-grid">{Array.from({ length: 35 }, (_, index) => index + 1).map((day) => <div className={`${day === 4 ? "active" : ""} ${day > 30 ? "outside" : ""}`} key={day}><b>{day > 30 ? day - 30 : day}</b>{day === 4 && <><i className="tg">TG</i><small>10:00 · Новости бренда</small><i className="vk">VK</i><small>16:30 · Анонс</small></>}</div>)}</div>
         <footer><span><i className="tg">TG</i> Telegram</span><span><i className="vk">VK</i> VK</span></footer>
       </div>
     </section>
