@@ -1945,6 +1945,37 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     }
   }
 
+  async function adaptPubForTelegram() {
+    if (!pubEditor) return;
+    const sourceText = `${pubEditor.title}\n\n${pubEditor.body}`.trim();
+    setPubEditor((current) => current && { ...current, busy: true, error: "" });
+    try {
+      const response = await fetch("/api/adapt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceText,
+          goal: "social",
+          tone: adaptationTone,
+          keywords: "",
+          authorPosition: "brand",
+          brand: effectiveBrand,
+          useBrand: true,
+          instructions: "Адаптируй текст для Telegram без потери смысла, фактов и интонации. Итог вместе с заголовком — не более 950 символов. Не используй Markdown-символы, не добавляй новых фактов и не пиши служебных пояснений.",
+        }),
+      });
+      const payload = await safeJson(response) as { error?: string; material?: AdaptedMaterial; usage?: { account?: WorkspaceAccount } | null };
+      if (!response.ok || !payload.material) throw new Error(payload.error || "Не удалось подготовить короткую версию.");
+      const length = `${payload.material.title}\n\n${payload.material.body}`.trim().length;
+      if (length > 1024) throw new Error("Короткая версия всё ещё слишком длинная. Попробуйте сократить текст вручную.");
+      if (payload.usage?.account) setWorkspaceAccount(payload.usage.account);
+      setPubEditor((current) => current && { ...current, title: payload.material!.title, body: payload.material!.body, telegramDeliveryMode: "photo_continue", busy: false });
+      showToast("Подготовлена короткая версия для Telegram. Проверьте текст перед сохранением.");
+    } catch (error) {
+      setPubEditor((current) => current && { ...current, busy: false, error: error instanceof Error ? error.message : "Не удалось подготовить короткую версию." });
+    }
+  }
+
   async function deletePubItem(id: string) {
     try {
       const response = await fetch("/api/publications", {
@@ -5026,6 +5057,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <p>Выберите, как отправить пост в Telegram. Текст не будет потерян.</p>
                 <div>
                   <button type="button" className={pubEditor.telegramDeliveryMode === "photo_continue" ? "is-active" : ""} onClick={() => setPubEditor((current) => current && { ...current, telegramDeliveryMode: "photo_continue" })}>С картинкой и продолжением</button>
+                  <button type="button" disabled={pubEditor.busy} onClick={() => void adaptPubForTelegram()}>{pubEditor.busy ? "Готовим короткую версию…" : "Адаптировать текст для Telegram"}</button>
                   <button type="button" className={pubEditor.telegramDeliveryMode === "text_only" ? "is-active" : ""} onClick={() => setPubEditor((current) => current && { ...current, telegramDeliveryMode: "text_only" })}>Без картинки — одним текстом</button>
                 </div>
                 <small>{pubEditor.telegramDeliveryMode === "photo_continue" ? "Картинка будет с началом текста, а оставшаяся часть придёт следующим сообщением." : "Картинка не будет отправлена. Если текст слишком длинный для одного сообщения, он будет продолжен следующим."}</small>
