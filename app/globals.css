@@ -13809,6 +13809,18 @@ input[type="radio"] {
   text-underline-offset: 3px;
 }
 
+.publications-retry-note {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(109, 181, 255, 0.28);
+  border-radius: 13px;
+  color: #c8e5ff;
+  background: rgba(48, 128, 202, 0.13);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
 .editor-tone-picker button.active,
 .archive-tone-picker button.active {
   border-color: rgba(124, 58, 237, 0.34);

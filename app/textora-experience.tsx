@@ -1750,6 +1750,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     generationId: string | null;
     status: PubStatus | null;
     providerPostUrl: string | null;
+    retryCount: number;
     title: string;
     body: string;
     imageUrl: string;
@@ -1854,6 +1855,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       generationId: existing?.generationId ?? null,
       status: existing?.status ?? null,
       providerPostUrl: existing?.providerPostUrl ?? null,
+      retryCount: existing?.retryCount ?? 0,
       title: existing?.title ?? "",
       body: existing?.body ?? "",
       imageUrl: existing?.imageUrl ?? "",
@@ -2024,6 +2026,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           generationId: pubPendingDraft.generationId,
           status: null,
           providerPostUrl: null,
+          retryCount: 0,
           title: pubPendingDraft.title,
           body: pubPendingDraft.body,
           imageUrl: "",
@@ -4540,6 +4543,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       generationId: source.generationId ?? null,
       status: null,
       providerPostUrl: null,
+      retryCount: 0,
       title: source.title.trim(),
       body: source.body.trim(),
       imageUrl: "",
@@ -4992,6 +4996,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <div className="archive-editor-head-actions"><button type="button" onClick={() => setPubEditor(null)} aria-label="Закрыть">×</button></div>
               </div>
               {pubEditor.status === "published" && <p className="publications-published-note">✓ Telegram подтвердил публикацию{pubEditor.providerPostUrl ? <>. <a href={pubEditor.providerPostUrl} target="_blank" rel="noreferrer">Открыть сообщение ↗</a></> : "."}</p>}
+              {pubEditor.status === "scheduled" && pubEditor.retryCount > 0 && <p className="publications-retry-note">Отправка временно не удалась. Публикация остаётся в очереди: следующая попытка будет автоматически выполнена в течение минуты.</p>}
               <label className="publications-editor-field"><span>Заголовок <small>необязательно</small></span><AutoTextarea rows={1} value={pubEditor.title} onChange={(event) => setPubEditor((current) => current && { ...current, title: event.target.value })}/></label>
               <label className="publications-editor-field"><span>Текст публикации</span><AutoTextarea rows={8} value={pubEditor.body} onChange={(event) => setPubEditor((current) => current && { ...current, body: event.target.value })} placeholder="Текст, который уйдёт в канал"/></label>
               <div className="publications-editor-field">
@@ -5746,6 +5751,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                         <b>{new Date(item.scheduledAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</b>
                         <span>{item.title || "Без названия"}</span>
                         {item.status === "failed" && <em>Ошибка</em>}
+                        {item.status === "scheduled" && item.retryCount > 0 && <em>Повтор</em>}
                         {item.status === "published" && <em>✓</em>}
                       </button>)}
                     </div>
@@ -5760,7 +5766,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     <i className={`publications-mobile-platform publications-mobile-platform-${item.channel?.platform || "unknown"}`} aria-label={item.channel?.platform === "telegram" ? "Telegram" : item.channel?.platform === "vk" ? "VK" : "Канал отключён"}>{item.channel?.platform === "telegram" ? "TG" : item.channel?.platform === "vk" ? "VK" : "—"}</i>
                     <span className="publications-mobile-time">{item.channel?.platform === "telegram" ? "Telegram · " : item.channel?.platform === "vk" ? "VK · " : "Канал отключён · "}{new Date(item.scheduledAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })} · {new Date(item.scheduledAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</span>
                     <b>{item.title || "Без названия"}</b>
-                    <em>{item.status === "failed" ? "Ошибка" : item.status === "published" ? "✓ Опубликовано" : "Запланировано"}</em>
+                    <em>{item.status === "failed" ? "Ошибка" : item.status === "published" ? "✓ Опубликовано" : item.retryCount > 0 ? "Повторяем" : "Запланировано"}</em>
                   </button>)}
               </div>
             </>}
