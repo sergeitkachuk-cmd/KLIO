@@ -4860,11 +4860,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   {archiveEditorChanges.length > 0 && <div className="archive-editor-change-log"><span>Что изменил режим КЛИО</span><div>{archiveEditorChanges.map((item) => <p key={item}><i>✓</i>{item}</p>)}</div></div>}
                   {archiveEditorError && <p className="generation-error" role="alert">{archiveEditorError}</p>}
                   <div className="archive-editor-actions">
-                    <button type="button" onClick={copyArchiveItem}><Icon name="copy"/> Копировать текст</button>
+                    <button type="button" onClick={copyArchiveItem}><Icon name="copy"/> Копировать</button>
                     <button type="button" onClick={() => void openPublicationDraft({ title: archiveEditorItem.title, body: archiveEditorItem.body, generationId: archiveEditorItem.id })}>В публикацию</button>
-                    <button type="button" onClick={restoreArchiveOriginal} disabled={!archiveEditorDirty || archiveEditorSaving || archiveEditorBusy}>Вернуть сохранённую</button>
-                    <button className="button ghost" type="button" onClick={() => void saveArchiveItem("copy")} disabled={archiveEditorSaving || archiveEditorBusy}>{archiveEditorSaving ? "Сохраняем…" : "Сохранить как копию"}</button>
-                    <button className="button primary" type="button" onClick={() => void saveArchiveItem("update")} disabled={archiveEditorSaving || archiveEditorBusy || !archiveEditorDirty}>{archiveEditorSaving ? "Сохраняем…" : "Пересохранить"}</button>
+                    <button type="button" onClick={restoreArchiveOriginal} disabled={!archiveEditorDirty || archiveEditorSaving || archiveEditorBusy}>Вернуть</button>
+                    <button className="button ghost" type="button" onClick={() => void saveArchiveItem("copy")} disabled={archiveEditorSaving || archiveEditorBusy}>{archiveEditorSaving ? "Сохраняем…" : "Сохранить копию"}</button>
+                    <button className="button primary" type="button" onClick={() => void saveArchiveItem("update")} disabled={archiveEditorSaving || archiveEditorBusy || !archiveEditorDirty}>{archiveEditorSaving ? "Сохраняем…" : "Сохранить"}</button>
                   </div>
                 </article>
                 <aside className="archive-transform-panel">

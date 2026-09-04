@@ -13291,7 +13291,7 @@ input[type="radio"] {
   z-index: 3;
   bottom: -21px;
   display: grid;
-  grid-template-columns: auto auto minmax(155px, auto) minmax(140px, auto);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
   justify-content: end;
   padding: 14px 0 0;
@@ -13299,15 +13299,30 @@ input[type="radio"] {
 }
 
 .archive-editor-actions > button {
-  min-height: 44px;
-  padding: 0 13px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid rgba(190, 178, 255, 0.32);
+  border-radius: 999px;
   color: #fff;
-  background: rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, rgba(73, 92, 139, 0.58), rgba(33, 60, 94, 0.72));
   font-size: 11px;
   font-weight: 680;
   cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.archive-editor-actions > button:not(:disabled):hover {
+  border-color: rgba(202, 190, 255, 0.7);
+  background: linear-gradient(135deg, rgba(104, 86, 175, 0.68), rgba(48, 78, 122, 0.8));
+  transform: translateY(-1px);
+}
+
+.archive-editor-actions > button:first-child,
+.archive-editor-actions > .button.ghost {
+  min-height: 42px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(73, 92, 139, 0.58), rgba(33, 60, 94, 0.72));
 }
 
 .archive-editor-actions > button:disabled {
@@ -13773,7 +13788,8 @@ input[type="radio"] {
 
 .archive-editor-actions > .button.primary {
   color: #fff;
-  background: linear-gradient(135deg, #051b33, #0d3a61);
+  border-color: rgba(193, 170, 255, 0.78);
+  background: linear-gradient(135deg, #6f3dd6, #8b5cf6);
 }
 
 .editor-tone-picker button.active,
