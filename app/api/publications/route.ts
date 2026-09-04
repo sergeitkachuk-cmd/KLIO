@@ -222,6 +222,14 @@ export async function POST(request: Request) {
           eq(generations.brandId, brandId),
         )).limit(1);
         if (!existing) return Response.json({ error: "Материал не найден или недоступен." }, { status: 404 });
+        // A generator result already has its own Materials row.  The
+        // publication editor can attach an image to it before the first
+        // schedule, so persist that field here as well (the old path only
+        // did this for manually created posts).  Otherwise the preview was
+        // visible until closing the editor and then silently came back empty.
+        if (payload.imageUrl !== undefined) {
+          await db.update(generations).set({ imageUrl: clean(payload.imageUrl, 2000) }).where(eq(generations.id, existing.id));
+        }
       } else {
         // Добавлено вручную прямо из календаря — created outside the
         // generator, so it never touches recordGeneration()/the AI
