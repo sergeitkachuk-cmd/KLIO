@@ -21583,3 +21583,141 @@ input[type="radio"] {
 
 [data-theme="light"] .publications-vk-note b,
 [data-theme="light"] .publishing-landing-note b { color: #8f421c; }
+
+/* -----------------------------------------------------------------------
+   Public landing: one palette per theme.
+
+   The landing originally combined a dark hero and plan section with cards
+   that always used the light-paper formula.  That made the theme switch look
+   like several unrelated pages.  Keep the editorial variety, but make the
+   surfaces, borders and secondary text belong to the selected palette. */
+
+html:not([data-theme="light"]) .site-shell {
+  color: #f5f7ff;
+  background:
+    radial-gradient(820px 620px at 88% 18%, rgba(100, 74, 204, 0.2), transparent 68%),
+    radial-gradient(650px 520px at 8% 62%, rgba(28, 126, 168, 0.13), transparent 70%),
+    linear-gradient(180deg, #071426 0%, #09203a 52%, #061525 100%);
+}
+
+html:not([data-theme="light"]) .section-heading h2,
+html:not([data-theme="light"]) .legend-body p,
+html:not([data-theme="light"]) .audience-grid h3,
+html:not([data-theme="light"]) .module-grid h3,
+html:not([data-theme="light"]) .price-card h3,
+html:not([data-theme="light"]) .faq-list summary b,
+html:not([data-theme="light"]) .closing h2 {
+  color: #f5f7ff;
+}
+
+html:not([data-theme="light"]) .section-heading > p,
+html:not([data-theme="light"]) .audience-grid p,
+html:not([data-theme="light"]) .module-grid p,
+html:not([data-theme="light"]) .price-description,
+html:not([data-theme="light"]) .payment-consents,
+html:not([data-theme="light"]) .faq-list details > p,
+html:not([data-theme="light"]) .use-cases-hint {
+  color: rgba(226, 235, 251, 0.7);
+}
+
+html:not([data-theme="light"]) .audience-grid article,
+html:not([data-theme="light"]) .module-grid article:not(:nth-child(3n)),
+html:not([data-theme="light"]) .price-card:not(.popular) {
+  border-color: rgba(177, 203, 239, 0.16);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(124, 103, 236, 0.2), transparent 40%),
+    linear-gradient(145deg, rgba(17, 49, 80, 0.96), rgba(10, 32, 57, 0.94));
+  box-shadow: 0 26px 72px rgba(0, 9, 24, 0.28), inset 0 1px rgba(255, 255, 255, 0.1);
+}
+
+html:not([data-theme="light"]) .audience-grid article:hover,
+html:not([data-theme="light"]) .module-grid article:hover {
+  border-color: rgba(181, 155, 255, 0.42);
+  box-shadow: 0 32px 84px rgba(0, 9, 24, 0.35), inset 0 1px rgba(255, 255, 255, 0.12);
+}
+
+html:not([data-theme="light"]) .audience-number,
+html:not([data-theme="light"]) .module-state,
+html:not([data-theme="light"]) .faq-list summary i {
+  border-color: rgba(188, 170, 255, 0.28);
+  color: #d8ccff;
+  background: rgba(124, 103, 236, 0.12);
+}
+
+html:not([data-theme="light"]) .audience-grid strong,
+html:not([data-theme="light"]) .plan-limit,
+html:not([data-theme="light"]) .faq-list,
+html:not([data-theme="light"]) .faq-list details {
+  border-color: rgba(180, 205, 239, 0.15);
+}
+
+html:not([data-theme="light"]) .price-index,
+html:not([data-theme="light"]) .price span,
+html:not([data-theme="light"]) .price-card > small,
+html:not([data-theme="light"]) .price-card li {
+  color: rgba(226, 235, 251, 0.63);
+}
+
+html:not([data-theme="light"]) .module-grid article:not(:nth-child(3n)) > span {
+  color: rgba(216, 226, 247, 0.52);
+}
+
+[data-theme="light"] .publishing-landing {
+  border-color: rgba(53, 104, 212, 0.2);
+  background:
+    radial-gradient(circle at 90% 8%, rgba(112, 84, 209, 0.18), transparent 30%),
+    linear-gradient(135deg, #e5edf8, #f7f9fd 59%, #ffffff);
+  box-shadow: 0 25px 65px rgba(31, 61, 110, 0.1), inset 0 1px rgba(255, 255, 255, 0.94);
+}
+
+[data-theme="light"] .publishing-landing-copy h2,
+[data-theme="light"] .publishing-landing-preview header > b {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .publishing-landing-copy > p:not(.kicker):not(.publishing-landing-note),
+[data-theme="light"] .publishing-landing-copy ul {
+  color: rgba(13, 27, 49, 0.72);
+}
+
+[data-theme="light"] .publishing-landing-copy li svg {
+  color: #6b56c8;
+}
+
+[data-theme="light"] .publishing-landing-preview {
+  border-color: rgba(53, 104, 212, 0.19);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(112, 84, 209, 0.12), transparent 38%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(226, 235, 248, 0.88));
+  box-shadow: 0 20px 44px rgba(31, 61, 110, 0.11), inset 0 1px rgba(255, 255, 255, 0.95);
+}
+
+[data-theme="light"] .publishing-landing-preview header > span {
+  color: #6650bd;
+}
+
+[data-theme="light"] .publishing-landing-preview header > i {
+  border-color: rgba(13, 27, 49, 0.14);
+  color: rgba(13, 27, 49, 0.62);
+}
+
+[data-theme="light"] .publishing-preview-days > span,
+[data-theme="light"] .publishing-preview-grid b,
+[data-theme="light"] .publishing-preview-grid small,
+[data-theme="light"] .publishing-landing-preview footer {
+  color: rgba(13, 27, 49, 0.62);
+}
+
+[data-theme="light"] .publishing-preview-days > .active {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .publishing-preview-grid > div {
+  border-color: rgba(53, 104, 212, 0.15);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="light"] .publishing-preview-grid > div.active {
+  border-color: rgba(104, 80, 190, 0.52);
+  background: linear-gradient(145deg, rgba(112, 84, 209, 0.16), rgba(53, 104, 212, 0.08));
+}
