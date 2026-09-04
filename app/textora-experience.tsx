@@ -845,7 +845,7 @@ const WORKSPACE_MODULE_GUIDE: Array<{
   { id: "adaptation", step: "+", title: "Редакторы КЛИО", text: "Улучшайте готовый текст: проверьте ошибки, измените тон, адаптируйте под площадку или пересоберите материал для SEO. Подойдёт новый текст или материал из архива.", cta: "Открыть редакторы" },
   { id: "semantics", step: "+", title: "Семантика", text: "Введите тему и географию — КЛИО найдёт реальные поисковые запросы и сгруппирует их по смыслу. Так каждая статья будет отвечать на один понятный запрос читателя.", cta: "Найти запросы" },
   { id: "competitors", step: "+", title: "Анализ конкурентов", text: "КЛИО может сама подобрать лидеров отрасли и ближайших конкурентов по вашей теме и географии. Вы также можете добавить нужные сайты вручную. Затем сервис покажет, какие темы уже раскрыты и где ваш материал может быть полезнее.", cta: "Подобрать конкурентов" },
-  { id: "publications", step: "+", title: "Публикации", text: "Ставьте готовый материал в календарь на нужную дату и время и публикуйте в VK и Telegram прямо из КЛИО — без переноса вручную.", cta: "Открыть календарь" },
+  { id: "publications", step: "+", title: "Публикации", text: "Ставьте готовый материал в календарь на нужную дату и время. Telegram публикует текст и изображения; VK временно публикует только текст.", cta: "Открыть календарь" },
 ];
 
 const WORKSPACE_USE_CASES = [
@@ -2595,6 +2595,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       if (window.location.hash === "#competitors") setActiveModule("competitors");
       if (window.location.hash === "#content-plan") setActiveModule("content-plan");
       if (window.location.hash === "#adaptation") setActiveModule("adaptation");
+      if (window.location.hash === "#publications") setActiveModule("publications");
     };
     openFromHash();
     window.addEventListener("hashchange", openFromHash);
@@ -4941,15 +4942,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <label className="publications-editor-field"><span>Токен бота</span><input type="text" value={pubChannelTelegram.botToken} onChange={(event) => setPubChannelTelegram((current) => ({ ...current, botToken: event.target.value }))} placeholder="123456789:AA…"/></label>
                 <label className="publications-editor-field"><span>Id канала</span><input type="text" value={pubChannelTelegram.chatId} onChange={(event) => setPubChannelTelegram((current) => ({ ...current, chatId: event.target.value }))} placeholder="@your_channel или -100…"/></label>
               </> : <>
+                <p className="publications-vk-note"><b>Временно:</b> в VK из КЛИО публикуются только текстовые посты. Для Telegram доступны текст и изображения.</p>
                 <ol className="publications-channel-steps">
                   <li>В своём сообществе VK: «Управление» → «Дополнительно» → «Работа с API» → «Ключи доступа» → «Создать ключ».</li>
-                  <li>Для ключа сообщества отметьте права <b>«Стена»</b>, <b>«Фото»</b> и <b>«Сообщения»</b>. Он публикует текст; для картинки VK дополнительно требует пользовательский токен.</li>
+                  <li>Для ключа сообщества отметьте права <b>«Стена»</b> и <b>«Сообщения»</b>.</li>
                   <li>Id сообщества — число из адресной строки в разделе управления (или там же, на странице «Работа с API»).</li>
-                  <li><b>Важно про картинки:</b> ключ сообщества не может загружать фото на стену — это ограничение VK. Дополнительный пользовательский токен подойдёт, только если он уже выдан для отдельного VK-приложения с правами <b>«Стена»</b> и <b>«Фотографии»</b>; в настройках сообщества его создать нельзя. Без такого токена КЛИО публикует в VK только текст.</li>
+                  <li><b>Изображения для VK временно не поддерживаются</b>: ключ сообщества публикует текстовые посты.</li>
                 </ol>
                 <label className="publications-editor-field"><span>Id сообщества</span><input type="text" value={pubChannelVk.groupId} onChange={(event) => setPubChannelVk((current) => ({ ...current, groupId: event.target.value }))} placeholder="123456789"/></label>
                 <label className="publications-editor-field"><span>Токен сообщества — для текста</span><input type="text" value={pubChannelVk.accessToken} onChange={(event) => setPubChannelVk((current) => ({ ...current, accessToken: event.target.value }))} placeholder="vk1.a…"/></label>
-                <label className="publications-editor-field"><span>Пользовательский токен — для фото <small>необязательно для текстовых постов</small></span><input type="text" value={pubChannelVk.photoAccessToken} onChange={(event) => setPubChannelVk((current) => ({ ...current, photoAccessToken: event.target.value }))} placeholder="Токен с правами «Стена» и «Фотографии»"/></label>
               </>}
               {pubChannelError && <p className="generation-error" role="alert">{pubChannelError}</p>}
               <div className="publications-editor-actions">
@@ -5577,6 +5578,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </div>
 
             {!activeBrandId ? <p className="publications-empty-note">Сначала выберите или создайте бренд слева — каналы и календарь публикаций привязаны к нему.</p> : <>
+              <p className="publications-vk-note"><b>Пока в тестовом режиме:</b> Telegram публикует текст и изображения; VK — только текстовые посты.</p>
               <div className="publications-channels-bar">
                 <div className="publications-channels-list">
                   {pubChannels.map((channel) => <span className={`publications-channel-chip publications-channel-chip-${channel.platform}`} key={channel.id}>
@@ -5744,6 +5746,23 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     </section>
 
     <section className="plan-section" id="plan"><div className="plan-inner"><div className="plan-copy"><p className="kicker">Глава 03 / Контент‑план</p><h2>25 тем, которые<br/>работают на спрос<span className="klio-mark-dot">.</span></h2><p>Если подключить семантику, КЛИО строит план на подтверждённом поисковом спросе; без неё — на теме и профиле бренда. Добавьте анализ конкурентов — и в план попадут ещё и смысловые пробелы в их контенте. На выходе — дорожная карта публикаций, а не список случайных идей.</p><ul><li><Icon name="check"/> SEO‑заголовок и метаописание</li><li><Icon name="check"/> Основной запрос и поддерживающая семантика</li><li><Icon name="check"/> Цель, аудитория, фактура и структура</li><li><Icon name="check"/> Статусы, передача в генератор и CSV</li></ul><button className="button light" type="button" onClick={() => openLandingModule("05")}>Собрать контент‑план <Icon name="arrow"/></button></div><div className="plan-table"><div className="table-head"><b>Контент‑план / Август</b><span>Интент и приоритет</span></div>{[["01","Санаторное лечение в Карелии","Высокий","В работе"],["02","Как выбрать программу восстановления","Высокий","Готово"],["03","Минеральная вода: польза и показания","Средний","Запланировано"],["04","Лечебные грязи в санатории","Средний","Запланировано"],["05","Что взять с собой в санаторий","Доп.","Запланировано"]].map((row) => <div className="table-row" key={row[0]}><span>{row[0]}</span><b>{row[1]}</b><small>{row[2]}</small><i className={row[3] === "Готово" ? "done" : ""}>{row[3]}</i></div>)}</div></div></section>
+
+    <section className="publishing-landing section" id="publishing">
+      <div className="publishing-landing-copy">
+        <p className="kicker">Новый модуль / Публикации</p>
+        <h2>Готовый контент<br/><em>выходит вовремя<span className="klio-mark-dot">.</span></em></h2>
+        <p>Поставьте пост в календарь, выберите канал и время — КЛИО отправит его без ручного копирования. Вся история и статус публикации остаются в одном рабочем пространстве.</p>
+        <ul><li><Icon name="check"/> Календарь публикаций по дням и неделям</li><li><Icon name="check"/> Отложенный постинг в Telegram и VK</li><li><Icon name="check"/> Статус каждой отправки прямо в календаре</li></ul>
+        <p className="publishing-landing-note"><b>Пока в тестовом режиме:</b> Telegram публикует текст и изображения; VK — только текстовые посты.</p>
+        <Link className="button primary" href="/workspace#publications">Открыть календарь <Icon name="arrow"/></Link>
+      </div>
+      <div className="publishing-landing-preview" aria-label="Пример календаря публикаций">
+        <header><span>Публикации</span><b>Сентябрь</b><i>Сегодня</i></header>
+        <div className="publishing-preview-days"><span>Пн</span><span>Вт</span><span>Ср</span><span className="active">Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>
+        <div className="publishing-preview-grid">{[1, 2, 3, 4, 5, 6, 7].map((day) => <div className={day === 4 ? "active" : ""} key={day}><b>{day}</b>{day === 4 && <><i className="tg">TG</i><small>10:00 · Новости бренда</small><i className="vk">VK</i><small>16:30 · Анонс</small></>}</div>)}</div>
+        <footer><span><i className="tg">TG</i> Telegram</span><span><i className="vk">VK</i> VK</span></footer>
+      </div>
+    </section>
 
     <section className="pricing section" id="pricing">
       <div className="section-heading pricing-heading"><div><p className="kicker">Глава 04 / Тарифы</p><h2>Выберите объём<br/><em>редакционной работы<span className="klio-mark-dot">.</span></em></h2></div><div className="billing-toggle" role="group" aria-label="Период оплаты"><button type="button" className={!annual ? "active" : ""} onClick={() => setAnnual(false)}>Ежемесячно</button><button type="button" className={annual ? "active" : ""} onClick={() => setAnnual(true)}>За год <span>−20%</span></button></div></div>
