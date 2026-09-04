@@ -8837,6 +8837,27 @@ footer nav a {
   color: #fff;
 }
 
+/* Topic-count choices are a primary planning decision, not muted utility
+   controls: keep them readable in both themes and give the same purple
+   interaction language as the rest of the workspace. */
+.content-plan-controls > div button {
+  border-color: rgba(203, 184, 255, 0.52);
+  background: rgba(124, 58, 237, 0.13);
+  color: #f5f1ff;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.content-plan-controls > div button:hover,
+.content-plan-controls > div button:focus-visible,
+.content-plan-controls > div button.active {
+  border-color: #b99bff;
+  background: linear-gradient(135deg, #6d35df, #9b62f2);
+  color: #fff;
+  box-shadow: 0 7px 18px rgba(109, 53, 223, 0.26);
+}
+
+.content-plan-controls > div button:active { transform: scale(0.96); }
+
 .content-plan-note > i {
   display: grid;
   place-items: center;
@@ -20866,6 +20887,30 @@ input[type="radio"] {
   cursor: not-allowed;
 }
 
+.brand-menu-delete {
+  width: calc(100% - 16px);
+  margin: 6px 8px 8px;
+  min-height: 38px;
+  border: 1px solid rgba(255, 129, 157, 0.34);
+  border-radius: 12px;
+  background: rgba(255, 91, 125, 0.08);
+  color: #ffd0da;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.brand-menu-delete:hover:not(:disabled),
+.brand-menu-delete:focus-visible {
+  border-color: rgba(255, 129, 157, 0.7);
+  background: rgba(255, 91, 125, 0.18);
+}
+
+.brand-menu-delete:active:not(:disabled) { transform: scale(0.98); }
+.brand-menu-delete:disabled { cursor: wait; opacity: 0.55; }
+
 .workspace-brand-pill {
   gap: 12px;
   padding: 4px 0 4px 8px;
@@ -21461,6 +21506,12 @@ input[type="radio"] {
 .publications-vk-note b,
 .publishing-landing-note b {
   color: #ffd1b0;
+}
+
+.publishing-landing-note a {
+  color: #e3d6ff;
+  font-weight: 700;
+  text-decoration-color: rgba(227, 214, 255, 0.5);
 }
 
 .publishing-landing {

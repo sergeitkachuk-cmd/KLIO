@@ -2603,19 +2603,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         let records = (payload.brands ?? []).map(normalizeWorkspaceBrand).filter((item): item is WorkspaceBrand => Boolean(item));
         let account = payload.account;
 
-        if (!records.length) {
-          const createResponse = await fetch("/api/workspace", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "create_brand", profile: emptyBrandProfile(), workspace: {} }),
-          });
-          const createdPayload = await createResponse.json() as { error?: string; brand?: unknown; account?: WorkspaceAccount };
-          const created = normalizeWorkspaceBrand(createdPayload.brand);
-          if (!createResponse.ok || !created) throw new Error(createdPayload.error || "Не удалось создать первый профиль бренда.");
-          records = [created];
-          account = createdPayload.account ?? account;
-        }
-
         if (cancelled) return;
         setWorkspaceUserName(payload.user?.displayName || "Пользователь");
         setWorkspaceAccount(account);
@@ -2624,7 +2611,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         setWorkspaceMaterials(Array.isArray(payload.materials) ? payload.materials : []);
         const remembered = window.localStorage.getItem("clio-active-brand-id-v1");
         const selected = records.find((item) => item.id === remembered) ?? records[0];
-        applyWorkspaceBrand(selected);
+        if (selected) applyWorkspaceBrand(selected);
+        else {
+          setActiveBrandId("");
+          window.localStorage.removeItem("clio-active-brand-id-v1");
+          setBrand(emptyBrandProfile());
+          setWorkspaceReady(true);
+        }
       } catch (error) {
         if (cancelled) return;
         setWorkspaceDataError(error instanceof Error ? error.message : "Не удалось загрузить кабинет.");
@@ -3599,6 +3592,42 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     if (payload.usage?.archive) setWorkspaceHistory((current) => [payload.usage!.archive!, ...current.filter((item) => item.id !== payload.usage!.archive!.id)].slice(0, 60));
     if (payload.mode !== "ai") throw new Error("Материал не получен от AI‑редакции.");
     return { material: payload.material, mode: "ai" as const, coverage: payload.coverage ?? null, archiveId: payload.usage?.archive?.id ?? null };
+  }
+
+  async function deleteWorkspaceBrand() {
+    const current = activeWorkspaceBrand;
+    if (!current || brandSwitchBusy) return;
+    const confirmed = window.confirm(`Удалить кабинет «${current.name}»?\n\nБудут удалены его профиль, материалы, подключённые каналы и все запланированные публикации. Аккаунт и тариф останутся.`);
+    if (!confirmed) return;
+    setBrandSwitchBusy(true);
+    try {
+      const response = await fetch("/api/workspace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete_brand", brandId: current.id }),
+      });
+      const payload = await safeJson(response) as { error?: string; account?: WorkspaceAccount };
+      if (!response.ok) throw new Error(payload.error || "Не удалось удалить кабинет бренда.");
+      const remaining = workspaceBrands.filter((item) => item.id !== current.id);
+      setWorkspaceBrands(remaining);
+      setWorkspaceHistory((items) => items.filter((item) => item.brandId !== current.id));
+      setWorkspaceMaterials((items) => items.filter((item) => item.brandId !== current.id));
+      if (payload.account) setWorkspaceAccount(payload.account);
+      const next = remaining[0];
+      if (next) applyWorkspaceBrand(next);
+      else {
+        setActiveBrandId("");
+        window.localStorage.removeItem("clio-active-brand-id-v1");
+        setBrand(emptyBrandProfile());
+        setBrandCreatorOpen(true);
+        setWorkspaceReady(true);
+      }
+      showToast(`Кабинет «${current.name}» удалён`);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Не удалось удалить кабинет бренда.");
+    } finally {
+      setBrandSwitchBusy(false);
+    }
   }
 
   function applyGeneratedMaterial(material: GeneratedMaterial, mode: "demo" | "ai", coverage: GenerationCoverage | null = null, archiveId: string | null = null) {
@@ -4857,6 +4886,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <button type="button" className="brand-menu-add" onClick={() => { setBrandMenuOpen(false); setBrandCreatorOpen(true); }} disabled={workspaceBrands.length >= workspaceAccount.brandLimit || brandSwitchBusy}>
                   <i>+</i><span><b>Добавить бренд</b><small>{workspaceBrands.length} из {workspaceAccount.brandLimit} доступно</small></span><em>→</em>
                 </button>
+                {activeWorkspaceBrand && <button type="button" className="brand-menu-delete" onClick={() => void deleteWorkspaceBrand()} disabled={brandSwitchBusy}>Удалить кабинет бренда</button>}
               </div>}
             </div>
             <small>{workspaceBrands.length} из {workspaceAccount.brandLimit} брендов · данные раздельны</small>
@@ -5645,7 +5675,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <div><span>Количество тем</span><div>{[10, 15, 25].map((value) => <button type="button" className={contentPlanCount === value ? "active" : ""} onClick={() => { setContentPlanCount(value); setContentPlanNeedsRefresh(true); persistContentPlan({ count: value, needsRefresh: true }); }} key={value}>{value}</button>)}</div></div>
                   <button className={`button primary large ${contentPlanBusy ? "is-busy" : ""}`} type="button" onClick={buildContentPlan} disabled={contentPlanBusy || aiConnection !== "connected" || workspaceAccount.researchRemaining <= 0}><Icon name="spark"/>{contentPlanBusy ? "Собираем систему…" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.researchRemaining <= 0 ? "Лимит исследований исчерпан" : contentPlanResult.items.length ? "Обновить контент‑план" : "Собрать контент‑план"}</button>
                 </div>
-                {contentPlanBusy && <small className="generation-wait-note">План из {contentPlanCount} тем с веб‑исследованием обычно занимает 1–3 минуты — окно можно не держать открытым, план дособерётся в фоне</small>}
+                {contentPlanBusy && <small className="generation-wait-note">План собирается в фоне. Можно продолжать работу — результат появится здесь автоматически.</small>}
                 {contentPlanError && <p className="generation-error" role="alert">{contentPlanError}</p>}
               </article>
 
@@ -5938,7 +5968,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         <h2>Готовый контент<br/><em>выходит вовремя<span className="klio-mark-dot">.</span></em></h2>
         <p>Поставьте пост в календарь, выберите канал и время — КЛИО отправит его без ручного копирования. Вся история и статус публикации остаются в одном рабочем пространстве.</p>
         <ul><li><Icon name="check"/> Календарь публикаций по дням и неделям</li><li><Icon name="check"/> Отложенный постинг в Telegram и VK</li><li><Icon name="check"/> Статус каждой отправки прямо в календаре</li></ul>
-        <p className="publishing-landing-note"><b>Пока в тестовом режиме:</b> Telegram публикует текст и изображения; VK — только текстовые посты.</p>
+        <p className="publishing-landing-note"><b>Пока в тестовом режиме:</b> Telegram публикует текст и изображения; VK — только текстовые посты. <a href="https://t.me/kliopress" target="_blank" rel="noreferrer">Новости и примеры — в Telegram-канале КЛИО</a>.</p>
         <Link className="button primary" href="/workspace#publications">Открыть календарь <Icon name="arrow"/></Link>
       </div>
       <div className="publishing-landing-preview" aria-label="Пример календаря публикаций">
@@ -5966,7 +5996,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         <div className="magazine-scene" aria-hidden="true"><div className="magazine-spread"><div className="magazine-page magazine-left"><span>КЛИО / 01</span><b>Слова,<br/>которые<br/><em>видят<span className="klio-mark-dot">.</span></em></b><i>Цифровая редакция для бизнеса</i></div><div className="magazine-fold"/><div className="magazine-page magazine-right"><span>Материал номера</span><div className="magazine-photo"><u/><small>Спрос → смысл → публикация</small></div><p>Контент, собранный на основе данных и голоса вашего бренда.</p><strong>КЛИО</strong></div></div></div>
       </div>
     </section>
-    <footer><a className="wordmark" href="#top"><Brand/></a><p>КЛИО — цифровая редакция для брендов.</p><nav><a href="#legend">О КЛИО</a><a href="#modules">Возможности</a><a href="#cases">Примеры задач</a><a href="#plan">Контент‑план</a><a href="#pricing">Тарифы</a></nav><nav className="legal-footer-links" aria-label="Правовая информация"><a href="/legal/offer">Оферта</a><a href="/legal/privacy">Политика обработки данных</a><a href="/legal/refunds">Правила возврата</a></nav><small>© 2026 <KlioMark/></small></footer>
+    <footer><a className="wordmark" href="#top"><Brand/></a><p>КЛИО — цифровая редакция для брендов.</p><nav><a href="#legend">О КЛИО</a><a href="#modules">Возможности</a><a href="#cases">Примеры задач</a><a href="#plan">Контент‑план</a><a href="#pricing">Тарифы</a><a href="https://t.me/kliopress" target="_blank" rel="noreferrer">Telegram-канал</a></nav><nav className="legal-footer-links" aria-label="Правовая информация"><a href="/legal/offer">Оферта</a><a href="/legal/privacy">Политика обработки данных</a><a href="/legal/refunds">Правила возврата</a></nav><small>© 2026 <KlioMark/></small></footer>
     {toast && <div className="toast" role="status"><Icon name="check"/><span>{toast}</span></div>}
   </main>;
 }

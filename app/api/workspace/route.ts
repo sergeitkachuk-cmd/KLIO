@@ -1,5 +1,5 @@
 import { and, desc, eq, sql } from "drizzle-orm";
-import { brands, generations, materials } from "../../../db/schema";
+import { brands, generations, materials, publications, socialChannels } from "../../../db/schema";
 import { planRule } from "../../plans";
 import {
   accountSummary,
@@ -190,6 +190,24 @@ export async function POST(request: Request) {
       }).where(and(eq(brands.id, brandId), eq(brands.ownerEmail, user.email))).returning();
       if (!saved) return Response.json({ error: "Бренд не найден или недоступен." }, { status: 404 });
       return Response.json({ brand: { ...saved, profile, workspace }, account: accountSummary(account, brandCount) });
+    }
+
+    if (action === "delete_brand") {
+      const brandId = clean(payload.brandId, 100);
+      const [ownedBrand] = await db.select({ id: brands.id }).from(brands).where(and(
+        eq(brands.id, brandId),
+        eq(brands.ownerEmail, user.email),
+      )).limit(1);
+      if (!ownedBrand) return Response.json({ error: "Бренд не найден или недоступен." }, { status: 404 });
+
+      // A brand is an isolated cabinet. Delete its dependent workspace data
+      // first, but never the user's account or billing history.
+      await db.delete(publications).where(and(eq(publications.brandId, brandId), eq(publications.ownerEmail, user.email)));
+      await db.delete(socialChannels).where(and(eq(socialChannels.brandId, brandId), eq(socialChannels.ownerEmail, user.email)));
+      await db.delete(materials).where(and(eq(materials.brandId, brandId), eq(materials.ownerEmail, user.email)));
+      await db.delete(generations).where(and(eq(generations.brandId, brandId), eq(generations.ownerEmail, user.email)));
+      await db.delete(brands).where(and(eq(brands.id, brandId), eq(brands.ownerEmail, user.email)));
+      return Response.json({ account: accountSummary(account, Math.max(0, brandCount - 1)) });
     }
 
     if (action === "update_generation") {
