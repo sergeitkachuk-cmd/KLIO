@@ -5888,7 +5888,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       <nav><a href="#legend">О КЛИО</a><a href="#audience">Для кого</a><a href="#modules">Как работает</a><a href="#cases">Примеры задач</a><a href="#plan">Контент‑план</a><a href="#pricing">Тарифы</a><a href="#faq">FAQ</a></nav>
       <div>
         <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"} title={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"}><Icon name={theme === "dark" ? "sun" : "moon"}/></button>
-        <Link className="button ghost" href="/login">Войти</Link><Link className="button primary" href="/signup">Попробовать</Link>
+        <a className="telegram-header-link" href="https://t.me/kliopress" target="_blank" rel="noreferrer">Telegram КЛИО</a><Link className="button ghost" href="/login">Войти</Link><Link className="button primary" href="/signup">Попробовать</Link>
       </div>
     </header>
 
@@ -5898,7 +5898,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         <div className="hero-copy">
           <h1>Слова,<br/><em>которые видят<span className="klio-mark-dot">.</span></em></h1>
           <p className="hero-lead">КЛИО — цифровая редакция для брендов: помогает находить темы, готовить SEO‑статьи, посты и рекламу, учитывать голос бренда и планировать публикации.</p>
-          <div className="hero-actions"><Link className="button primary large" href="/workspace">Открыть редакцию <Icon name="arrow"/></Link><a href="#modules" className="text-link">Листать выпуск ↓</a></div>
+          <div className="hero-actions"><Link className="button primary large" href="/workspace">Открыть редакцию <Icon name="arrow"/></Link><a className="telegram-cta" href="https://t.me/kliopress" target="_blank" rel="noreferrer">Подписаться на Telegram КЛИО ↗</a><a href="#modules" className="text-link">Листать выпуск ↓</a></div>
         </div>
         <div className="hero-visual">
           <div className="visual-orbit"/>
@@ -5980,7 +5980,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         <p>Поставьте пост в календарь, выберите канал и время — КЛИО отправит его без ручного копирования. Вся история и статус публикации остаются в одном рабочем пространстве.</p>
         <ul><li><Icon name="check"/> Календарь публикаций по дням и неделям</li><li><Icon name="check"/> Отложенный постинг в Telegram и VK</li><li><Icon name="check"/> Статус каждой отправки прямо в календаре</li></ul>
         <p className="publishing-landing-note"><b>Пока в тестовом режиме:</b> Telegram публикует текст и изображения; VK — только текстовые посты. <a href="https://t.me/kliopress" target="_blank" rel="noreferrer">Новости и примеры — в Telegram-канале КЛИО</a>.</p>
-        <Link className="button primary" href="/workspace#publications">Открыть календарь <Icon name="arrow"/></Link>
+        <div className="publishing-landing-actions"><Link className="button primary" href="/workspace#publications">Открыть календарь <Icon name="arrow"/></Link><a className="telegram-cta" href="https://t.me/kliopress" target="_blank" rel="noreferrer">Подписаться на канал КЛИО ↗</a></div>
       </div>
       <div className="publishing-landing-preview" aria-label="Пример календаря публикаций">
         <header><span>Публикации</span><b>Сентябрь</b><i>Сегодня</i></header>

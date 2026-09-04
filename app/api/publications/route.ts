@@ -94,6 +94,31 @@ async function publicationResponse(row: typeof publications.$inferSelect, genera
   };
 }
 
+// Calendar loading must never wait for Telegram. A public @username already
+// gives us a direct post link; numeric/private channels can still resolve a
+// link in the action response, but the calendar deliberately skips that
+// network round-trip for every saved post.
+function fastPublicationResponse(row: typeof publications.$inferSelect, generation: typeof generations.$inferSelect | undefined, channel: typeof socialChannels.$inferSelect | undefined) {
+  let providerPostUrl: string | null = null;
+  if (channel?.platform === "telegram" && row.providerPostId && /^\d+$/.test(row.providerPostId)) {
+    try {
+      const credentials = JSON.parse(channel.credentialsJson) as ChannelCredentials;
+      const chatId = credentials.platform === "telegram" ? credentials.telegram.chatId.trim() : "";
+      if (/^@[A-Za-z0-9_]{5,}$/.test(chatId)) providerPostUrl = `https://t.me/${chatId.slice(1)}/${row.providerPostId}`;
+    } catch {
+      // A malformed credential is handled when sending, not while rendering.
+    }
+  }
+  return {
+    id: row.id, brandId: row.brandId, generationId: row.generationId, channelId: row.channelId,
+    scheduledAt: row.scheduledAt, telegramDeliveryMode: row.telegramDeliveryMode, status: row.status,
+    providerPostId: row.providerPostId, providerPostUrl, errorMessage: row.errorMessage,
+    retryCount: row.retryCount, publishedAt: row.publishedAt, title: generation?.title ?? "",
+    body: generation?.body ?? "", imageUrl: generation?.imageUrl ?? "",
+    channel: channel ? socialChannelSummary(channel) : null,
+  };
+}
+
 export async function GET(request: Request) {
   try {
     if (!await workspaceDatabaseAvailable()) return Response.json({ error: "Хранилище кабинета недоступно." }, { status: 503 });
@@ -133,7 +158,7 @@ export async function GET(request: Request) {
 
     return Response.json({
       channels: channelRows.map(socialChannelSummary),
-      publications: await Promise.all(publicationRows.map((row) => publicationResponse(row, generationById.get(row.generationId), channelById.get(row.channelId)))),
+      publications: publicationRows.map((row) => fastPublicationResponse(row, generationById.get(row.generationId), channelById.get(row.channelId))),
       channelLimit: planRule((await ensureAccount(user)).planId).channelLimit,
     });
   } catch (error) {

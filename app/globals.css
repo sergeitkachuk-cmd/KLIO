@@ -4247,6 +4247,39 @@ footer nav a {
   text-decoration: none;
 }
 
+/* Visible, self-contained Telegram calls to action. They intentionally use
+   the purple brand accent rather than looking like another quiet nav link. */
+.telegram-header-link,
+.telegram-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 15px;
+  border: 1px solid rgba(190, 168, 255, 0.68);
+  border-radius: 999px;
+  color: #fff;
+  background: linear-gradient(135deg, rgba(104, 55, 216, 0.96), rgba(151, 93, 237, 0.92));
+  box-shadow: 0 9px 23px rgba(83, 43, 184, 0.25);
+  font-size: 12px;
+  font-weight: 760;
+  text-decoration: none;
+  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+}
+
+.telegram-header-link:hover,
+.telegram-cta:hover,
+.telegram-header-link:focus-visible,
+.telegram-cta:focus-visible {
+  color: #fff;
+  filter: brightness(1.1);
+  box-shadow: 0 13px 28px rgba(83, 43, 184, 0.4);
+  transform: translateY(-1px);
+}
+
+.telegram-header-link:active,
+.telegram-cta:active { transform: scale(0.97); }
+
 .toast svg {
   color: var(--acid);
 }
@@ -21941,4 +21974,39 @@ html:not([data-theme="light"]) .payment-note p {
 [data-theme="light"] .publishing-preview-grid > div.active {
   border-color: rgba(104, 80, 190, 0.52);
   background: linear-gradient(145deg, rgba(112, 84, 209, 0.16), rgba(53, 104, 212, 0.08));
+}
+
+.publishing-landing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+html:not([data-theme="light"]) .site-shell > footer {
+  border-top-color: rgba(194, 210, 238, 0.2);
+  color: rgba(232, 240, 255, 0.72);
+}
+
+html:not([data-theme="light"]) .site-shell > footer .brand,
+html:not([data-theme="light"]) .site-shell > footer nav a,
+html:not([data-theme="light"]) .site-shell > footer small {
+  color: rgba(245, 248, 255, 0.92);
+}
+
+html:not([data-theme="light"]) .site-shell > footer p {
+  color: rgba(225, 234, 250, 0.78);
+}
+
+html:not([data-theme="light"]) .site-shell > footer nav a:hover {
+  color: #cdb7ff;
+}
+
+@media (max-width: 860px) {
+  .telegram-header-link { display: none; }
+}
+
+@media (max-width: 560px) {
+  .publishing-landing-actions { align-items: stretch; }
+  .publishing-landing-actions > * { width: 100%; }
 }
