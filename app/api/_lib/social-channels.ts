@@ -10,6 +10,9 @@ import { socialChannels } from "../../../db/schema";
 
 export class ChannelValidationError extends Error {}
 
+const telegramLinkPrefixCache = new Map<string, { prefix: string | null; expiresAt: number }>();
+const telegramLinkPrefixPending = new Map<string, Promise<string | null>>();
+
 // getChat does not change anything in Telegram, so one short retry is safe:
 // it smooths over a transient DNS/TLS failure without risking duplicate posts.
 async function telegramGetChat(botToken: string, chatId: string): Promise<Response> {
@@ -126,14 +129,35 @@ export function socialChannelSummary(row: typeof socialChannels.$inferSelect) {
 // A publication stores Telegram's message_id after a successful send.  Turn
 // it into a safe, credential-free link for the owner so "published" can be
 // verified in Telegram itself, not inferred from a calendar tick.
-export function telegramPublicationUrl(row: typeof socialChannels.$inferSelect | undefined, providerPostId: string | null) {
+export async function telegramPublicationUrl(row: typeof socialChannels.$inferSelect | undefined, providerPostId: string | null) {
   if (!row || row.platform !== "telegram" || !providerPostId || !/^\d+$/.test(providerPostId)) return null;
   try {
     const credentials = JSON.parse(row.credentialsJson) as ChannelCredentials;
     if (credentials.platform !== "telegram") return null;
     const chatId = credentials.telegram.chatId.trim();
     if (/^@[A-Za-z0-9_]{5,}$/.test(chatId)) return `https://t.me/${chatId.slice(1)}/${providerPostId}`;
-    if (/^-100\d+$/.test(chatId)) return `https://t.me/c/${chatId.slice(4)}/${providerPostId}`;
+    // A person often connects a public channel by its numeric -100… id.
+    // t.me/c works only for private channels; ask Telegram for the current
+    // public username before falling back to that private-channel form.
+    const cached = telegramLinkPrefixCache.get(row.id);
+    if (cached && cached.expiresAt > Date.now()) return cached.prefix ? `${cached.prefix}/${providerPostId}` : null;
+    let pending = telegramLinkPrefixPending.get(row.id);
+    if (!pending) {
+      pending = (async () => {
+        const response = await telegramGetChat(credentials.telegram.botToken, chatId);
+        const payload = await response.json().catch(() => null) as { ok?: boolean; result?: { username?: string } } | null;
+        const username = payload?.ok ? payload.result?.username?.trim() : "";
+        const prefix = username && /^[A-Za-z0-9_]{5,}$/.test(username)
+          ? `https://t.me/${username}`
+          : /^-100\d+$/.test(chatId) ? `https://t.me/c/${chatId.slice(4)}` : null;
+        telegramLinkPrefixCache.set(row.id, { prefix, expiresAt: Date.now() + 5 * 60_000 });
+        return prefix;
+      })();
+      telegramLinkPrefixPending.set(row.id, pending);
+      void pending.finally(() => telegramLinkPrefixPending.delete(row.id));
+    }
+    const prefix = await pending;
+    return prefix ? `${prefix}/${providerPostId}` : null;
   } catch {
     // Corrupted credentials are handled by the publish flow; they simply
     // cannot yield an inspectable Telegram URL here.

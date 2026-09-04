@@ -72,7 +72,7 @@ function credentialsFromPayload(platform: string, payload: PublicationsPayload):
   return { platform: "vk", vk: { groupId: clean(source.groupId, 40), accessToken: clean(source.accessToken, 300), photoAccessToken: clean(source.photoAccessToken, 300) || undefined } };
 }
 
-function publicationResponse(row: typeof publications.$inferSelect, generation: typeof generations.$inferSelect | undefined, channel: typeof socialChannels.$inferSelect | undefined) {
+async function publicationResponse(row: typeof publications.$inferSelect, generation: typeof generations.$inferSelect | undefined, channel: typeof socialChannels.$inferSelect | undefined) {
   return {
     id: row.id,
     brandId: row.brandId,
@@ -81,7 +81,7 @@ function publicationResponse(row: typeof publications.$inferSelect, generation: 
     scheduledAt: row.scheduledAt,
     status: row.status,
     providerPostId: row.providerPostId,
-    providerPostUrl: telegramPublicationUrl(channel, row.providerPostId),
+    providerPostUrl: await telegramPublicationUrl(channel, row.providerPostId),
     errorMessage: row.errorMessage,
     retryCount: row.retryCount,
     publishedAt: row.publishedAt,
@@ -131,7 +131,7 @@ export async function GET(request: Request) {
 
     return Response.json({
       channels: channelRows.map(socialChannelSummary),
-      publications: publicationRows.map((row) => publicationResponse(row, generationById.get(row.generationId), channelById.get(row.channelId))),
+      publications: await Promise.all(publicationRows.map((row) => publicationResponse(row, generationById.get(row.generationId), channelById.get(row.channelId)))),
       channelLimit: planRule((await ensureAccount(user)).planId).channelLimit,
     });
   } catch (error) {
@@ -265,7 +265,7 @@ export async function POST(request: Request) {
 
       const generationRow = (await db.select().from(generations).where(eq(generations.id, generationId)).limit(1))[0];
       const channelByIdLocal = new Map(ownedChannels.map((row) => [row.id, row]));
-      return Response.json({ publications: rows.map((row) => publicationResponse(row, generationRow, channelByIdLocal.get(row.channelId))) }, { status: 201 });
+      return Response.json({ publications: await Promise.all(rows.map((row) => publicationResponse(row, generationRow, channelByIdLocal.get(row.channelId)))) }, { status: 201 });
     }
 
     if (action === "update") {
@@ -307,7 +307,7 @@ export async function POST(request: Request) {
       const [updated] = await db.select().from(publications).where(eq(publications.id, id)).limit(1);
       const [generation] = await db.select().from(generations).where(eq(generations.id, updated.generationId)).limit(1);
       const [channel] = await db.select().from(socialChannels).where(eq(socialChannels.id, updated.channelId)).limit(1);
-      return Response.json({ publication: publicationResponse(updated, generation, channel) });
+      return Response.json({ publication: await publicationResponse(updated, generation, channel) });
     }
 
     if (action === "delete") {
