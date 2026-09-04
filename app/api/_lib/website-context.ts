@@ -91,6 +91,32 @@ function extractWebsiteText(html: string) {
   return [...new Set([...title, ...description, ...headings, ...content])].join("\n").slice(0, 14_000);
 }
 
+// A profile normally points at the home page, while the useful facts often
+// live on «О компании», services or contacts. Follow only a few ordinary
+// same-site HTML links: this makes the analysis site-wide enough to be useful
+// without turning a profile save into an unbounded crawler.
+function extractInternalPageLinks(html: string, baseUrl: string) {
+  const base = normalizePublicUrl(baseUrl);
+  if (!base) return [] as URL[];
+  const ignoredPath = /\/(?:login|signin|sign-in|register|cart|checkout|wp-admin)(?:\/|$)/i;
+  const ignoredFile = /\.(?:pdf|zip|rar|docx?|xlsx?|png|jpe?g|gif|webp|svg|mp4|mp3)$/i;
+  const seen = new Set<string>();
+  const links: URL[] = [];
+  for (const match of html.slice(0, 600_000).matchAll(/<a\b[^>]*\bhref\s*=\s*["']([^"']+)["'][^>]*>/gi)) {
+    if (links.length >= 3) break;
+    const href = decodeHtml(match[1]).trim();
+    if (!href || href.startsWith("#") || /^(?:mailto:|tel:|javascript:)/i.test(href)) continue;
+    const candidate = normalizePublicUrl(new URL(href, base).toString());
+    if (!candidate || candidate.origin !== base.origin || ignoredPath.test(candidate.pathname) || ignoredFile.test(candidate.pathname)) continue;
+    candidate.hash = "";
+    const key = candidate.toString();
+    if (key === base.toString() || seen.has(key)) continue;
+    seen.add(key);
+    links.push(candidate);
+  }
+  return links;
+}
+
 const MAX_REDIRECTS = 5;
 
 // Follows redirects manually (redirect: "manual") so every hop — not just
@@ -139,10 +165,24 @@ export async function readWebsiteContext(value: string): Promise<WebsiteContext>
       return { ...EMPTY_CONTEXT, requestedUrl, resolvedUrl: response.url || url.toString(), status: "unavailable" };
     }
 
-    const text = extractWebsiteText(await response.text());
+    const html = await response.text();
+    const resolvedUrl = response.url || url.toString();
+    const initialText = extractWebsiteText(html);
+    const links = extractInternalPageLinks(html, resolvedUrl);
+    const extraPages = await Promise.all(links.map(async (link) => {
+      try {
+        const page = await fetchPublicHtml(link);
+        const pageType = page?.headers.get("content-type") || "";
+        if (!page?.ok || !/text\/html|application\/xhtml\+xml/i.test(pageType)) return "";
+        return extractWebsiteText(await page.text());
+      } catch {
+        return "";
+      }
+    }));
+    const text = [...new Set([initialText, ...extraPages].filter(Boolean))].join("\n\n").slice(0, 24_000);
     return {
       requestedUrl,
-      resolvedUrl: response.url || url.toString(),
+      resolvedUrl,
       status: text ? "loaded" : "unavailable",
       text,
     };
@@ -152,7 +192,7 @@ export async function readWebsiteContext(value: string): Promise<WebsiteContext>
 }
 
 export function websiteSourceLabel(context: WebsiteContext) {
-  if (context.status === "loaded") return `открытая страница ${context.resolvedUrl || context.requestedUrl} прочитана`;
+  if (context.status === "loaded") return `прочитаны открытые страницы сайта ${context.resolvedUrl || context.requestedUrl}`;
   if (context.status === "blocked") return "адрес сайта отклонён проверкой безопасности";
   if (context.status === "unavailable") return "страница сайта недоступна — использованы заполненные поля профиля";
   return "сайт не указан — использованы заполненные поля профиля";
