@@ -22010,3 +22010,33 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
   .publishing-landing-actions { align-items: stretch; }
   .publishing-landing-actions > * { width: 100%; }
 }
+
+/* The selected-day list sits directly below the calendar. In light mode it
+   should not turn into one large grey slab: keep the page background open
+   and use the individual post cards for grouping instead. */
+[data-theme="light"] .publications-mobile-list {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+[data-theme="light"] .publications-mobile-list h3 {
+  color: rgba(20, 43, 75, 0.72);
+}
+
+[data-theme="light"] .publications-mobile-item {
+  border-color: rgba(53, 104, 212, 0.18);
+  color: #13243b;
+  background: color-mix(in srgb, var(--chip-accent, #376fa8) 8%, #fff);
+  box-shadow: 0 8px 18px rgba(31, 61, 110, 0.06);
+}
+
+[data-theme="light"] .publications-mobile-item:hover,
+[data-theme="light"] .publications-mobile-item:focus-visible {
+  border-color: rgba(104, 80, 190, 0.48);
+  background: color-mix(in srgb, var(--chip-accent, #376fa8) 13%, #fff);
+}
+
+[data-theme="light"] .publications-mobile-time,
+[data-theme="light"] .publications-mobile-item em { color: rgba(20, 43, 75, 0.62); }
+[data-theme="light"] .publications-mobile-item b { color: #13243b; }
