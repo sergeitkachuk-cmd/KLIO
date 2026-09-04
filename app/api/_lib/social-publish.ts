@@ -78,46 +78,61 @@ async function fetchImageBytes(imageUrl: string): Promise<Blob> {
   return response.blob();
 }
 
+type TelegramMessagePayload = { ok: boolean; result?: { message_id: number }; description?: string; error_code?: number };
+
+function splitTelegramText(text: string, limit: number): string[] {
+  const result: string[] = [];
+  let remaining = text.trim();
+  while (remaining.length > limit) {
+    const window = remaining.slice(0, limit + 1);
+    const splitAt = Math.max(window.lastIndexOf("\n\n"), window.lastIndexOf("\n"), window.lastIndexOf(" "));
+    const end = splitAt > Math.floor(limit * 0.55) ? splitAt : limit;
+    result.push(remaining.slice(0, end).trimEnd());
+    remaining = remaining.slice(end).trimStart();
+  }
+  if (remaining) result.push(remaining);
+  return result;
+}
+
 async function publishToTelegram(creds: TelegramCredentials, text: string, imageUrl: string | null): Promise<{ providerPostId: string }> {
   const base = `https://api.telegram.org/bot${creds.botToken}`;
-  const hasImage = Boolean(imageUrl);
-  const body = hasImage
-    ? { chat_id: creds.chatId, photo: imageUrl, caption: truncateForPlatform("telegram", text, true) }
-    : { chat_id: creds.chatId, text: truncateForPlatform("telegram", text, false) };
-
-  let response: TelegramApiResponse;
-  try {
-    response = await postToTelegramApi(`${base}/${hasImage ? "sendPhoto" : "sendMessage"}`, body);
-  } catch (error) {
-    const cause = error instanceof Error ? error.cause : undefined;
-    // Credentials and post text never enter logs. The network error itself
-    // does: it is the only way to distinguish a Timeweb egress/DNS issue
-    // from Telegram returning an explicit API refusal.
-    console.error("Telegram publish request failed", {
-      message: error instanceof Error ? error.message : String(error),
-      cause: cause instanceof Error ? cause.message : undefined,
-    });
-    throw new PublishError("Telegram не ответил на запрос публикации.", true);
+  async function send(method: "sendPhoto" | "sendMessage", body: object): Promise<TelegramMessagePayload> {
+    let response: TelegramApiResponse;
+    try {
+      response = await postToTelegramApi(`${base}/${method}`, body);
+    } catch (error) {
+      const cause = error instanceof Error ? error.cause : undefined;
+      console.error("Telegram publish request failed", {
+        message: error instanceof Error ? error.message : String(error),
+        cause: cause instanceof Error ? cause.message : undefined,
+      });
+      throw new PublishError("Telegram не ответил на запрос публикации.", true);
+    }
+    const payload = (() => {
+      try { return JSON.parse(response.body); } catch { return null; }
+    })() as TelegramMessagePayload | null;
+    if (!payload?.ok || !payload.result?.message_id) {
+      const permanent = response.status === 401 || response.status === 403 || response.status === 400;
+      throw new PublishError(
+        payload?.description ? `Telegram отклонил публикацию: ${payload.description}` : `Telegram отклонил публикацию (HTTP ${response.status}).`,
+        !permanent,
+      );
+    }
+    return payload;
   }
 
-  const payload = (() => {
-    try { return JSON.parse(response.body); } catch { return null; }
-  })() as
-    | { ok: boolean; result?: { message_id: number }; description?: string; error_code?: number }
-    | null;
-
-  if (!payload?.ok) {
-    // 401/403 = bad/revoked bot token, 400 with "chat not found" = bot isn't
-    // an admin of the channel (or chatId is wrong) — neither clears up on
-    // its own, so these don't get the automatic cron retries a rate limit
-    // or a momentary Telegram outage would.
-    const permanent = response.status === 401 || response.status === 403 || response.status === 400;
-    throw new PublishError(
-      payload?.description ? `Telegram отклонил публикацию: ${payload.description}` : `Telegram отклонил публикацию (HTTP ${response.status}).`,
-      !permanent,
-    );
-  }
-  return { providerPostId: String(payload.result?.message_id ?? "") };
+  // Telegram allows only 1,024 characters in a photo caption, while a
+  // normal message holds 4,096. Keep the photo as the first message and
+  // continue the full text below it instead of silently cutting the ending.
+  const captionParts = imageUrl ? splitTelegramText(text, PLATFORM_TEXT_LIMITS.telegram.withImage) : [];
+  const first = imageUrl
+    ? await send("sendPhoto", { chat_id: creds.chatId, photo: imageUrl, caption: captionParts[0] ?? "" })
+    : await send("sendMessage", { chat_id: creds.chatId, text: splitTelegramText(text, PLATFORM_TEXT_LIMITS.telegram.textOnly)[0] ?? "" });
+  const remaining = imageUrl
+    ? captionParts.slice(1).flatMap((part) => splitTelegramText(part, PLATFORM_TEXT_LIMITS.telegram.textOnly))
+    : splitTelegramText(text, PLATFORM_TEXT_LIMITS.telegram.textOnly).slice(1);
+  for (const part of remaining) await send("sendMessage", { chat_id: creds.chatId, text: part });
+  return { providerPostId: String(first.result?.message_id) };
 }
 
 async function vkCall(method: string, params: Record<string, string>): Promise<Record<string, unknown>> {
