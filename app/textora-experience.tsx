@@ -1252,6 +1252,7 @@ type PubItem = {
   generationId: string;
   channelId: string;
   scheduledAt: string;
+  telegramDeliveryMode: "photo_continue" | "text_only";
   status: PubStatus;
   providerPostId: string | null;
   providerPostUrl: string | null;
@@ -1751,6 +1752,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     status: PubStatus | null;
     providerPostUrl: string | null;
     retryCount: number;
+    telegramDeliveryMode: "photo_continue" | "text_only";
     title: string;
     body: string;
     imageUrl: string;
@@ -1856,6 +1858,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       status: existing?.status ?? null,
       providerPostUrl: existing?.providerPostUrl ?? null,
       retryCount: existing?.retryCount ?? 0,
+      telegramDeliveryMode: existing?.telegramDeliveryMode ?? "photo_continue",
       title: existing?.title ?? "",
       body: existing?.body ?? "",
       imageUrl: existing?.imageUrl ?? "",
@@ -1902,6 +1905,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             title: pubEditor.title,
             body: pubEditor.body,
             imageUrl: pubEditor.imageUrl,
+            telegramDeliveryMode: pubEditor.telegramDeliveryMode,
           }),
         });
         const payload = await safeJson(response) as { error?: string; forkedFromPublicationId?: string };
@@ -1918,6 +1922,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             title: pubEditor.title,
             body: pubEditor.body,
             imageUrl: pubEditor.imageUrl,
+            telegramDeliveryMode: pubEditor.telegramDeliveryMode,
             channelIds: pubEditor.channelIds,
             scheduledAt: scheduledAt.toISOString(),
           }),
@@ -2027,6 +2032,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           status: null,
           providerPostUrl: null,
           retryCount: 0,
+          telegramDeliveryMode: "photo_continue",
           title: pubPendingDraft.title,
           body: pubPendingDraft.body,
           imageUrl: "",
@@ -4544,6 +4550,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       status: null,
       providerPostUrl: null,
       retryCount: 0,
+      telegramDeliveryMode: "photo_continue",
       title: source.title.trim(),
       body: source.body.trim(),
       imageUrl: "",
@@ -5014,6 +5021,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </div>
               </div>
               {pubEditor.imageUrl && <img className="publications-editor-preview" src={pubEditor.imageUrl} alt="Превью картинки" onError={(event) => { (event.target as HTMLImageElement).style.display = "none"; }}/>}
+              {pubEditor.imageUrl && pubEditor.channelIds.some((id) => pubChannels.find((channel) => channel.id === id)?.platform === "telegram") && `${pubEditor.title}\n\n${pubEditor.body}`.trim().length > 1024 && <div className="publications-telegram-length-choice">
+                <strong>Текст длинный для публикации вместе с картинкой</strong>
+                <p>Выберите, как отправить пост в Telegram. Текст не будет потерян.</p>
+                <div>
+                  <button type="button" className={pubEditor.telegramDeliveryMode === "photo_continue" ? "is-active" : ""} onClick={() => setPubEditor((current) => current && { ...current, telegramDeliveryMode: "photo_continue" })}>С картинкой и продолжением</button>
+                  <button type="button" className={pubEditor.telegramDeliveryMode === "text_only" ? "is-active" : ""} onClick={() => setPubEditor((current) => current && { ...current, telegramDeliveryMode: "text_only" })}>Без картинки — одним текстом</button>
+                </div>
+                <small>{pubEditor.telegramDeliveryMode === "photo_continue" ? "Картинка будет с началом текста, а оставшаяся часть придёт следующим сообщением." : "Картинка не будет отправлена. Если текст слишком длинный для одного сообщения, он будет продолжен следующим."}</small>
+              </div>}
               <div className="publications-editor-row">
                 <label><span>Дата</span><input type="date" value={pubEditor.date} onChange={(event) => setPubEditor((current) => current && { ...current, date: event.target.value })}/></label>
                 <div className="publications-time-fields">

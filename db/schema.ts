@@ -251,6 +251,9 @@ export const publications = pgTable("publications", {
   generationId: text("generation_id").notNull(),
   channelId: text("channel_id").notNull(),
   scheduledAt: text("scheduled_at").notNull(),
+  // "photo_continue" keeps an image with the beginning of a long Telegram
+  // post and sends the rest below it; "text_only" deliberately skips it.
+  telegramDeliveryMode: text("telegram_delivery_mode").notNull().default("photo_continue"),
   // "scheduled" | "publishing" | "published" | "failed" — see
   // PublicationStatus in publishing-config.ts. The cron poller
   // (api/cron/publish-due) claims a row by flipping scheduled->publishing

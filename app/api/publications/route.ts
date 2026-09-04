@@ -41,6 +41,7 @@ type PublicationsPayload = {
   channelIds?: unknown;
   channelId?: unknown;
   scheduledAt?: unknown;
+  telegramDeliveryMode?: unknown;
 };
 
 function clean(value: unknown, maxLength: number) {
@@ -79,6 +80,7 @@ async function publicationResponse(row: typeof publications.$inferSelect, genera
     generationId: row.generationId,
     channelId: row.channelId,
     scheduledAt: row.scheduledAt,
+    telegramDeliveryMode: row.telegramDeliveryMode,
     status: row.status,
     providerPostId: row.providerPostId,
     providerPostUrl: await telegramPublicationUrl(channel, row.providerPostId),
@@ -260,6 +262,7 @@ export async function POST(request: Request) {
         generationId,
         channelId,
         scheduledAt,
+        telegramDeliveryMode: clean(payload.telegramDeliveryMode, 40) === "text_only" ? "text_only" : "photo_continue",
         status: "scheduled" as const,
       }))).returning();
 
@@ -276,6 +279,7 @@ export async function POST(request: Request) {
       const nextScheduledAt = payload.scheduledAt !== undefined ? parseIsoDate(payload.scheduledAt) : publication.scheduledAt;
       if (payload.scheduledAt !== undefined && !nextScheduledAt) return Response.json({ error: "Укажите корректные дату и время публикации." }, { status: 400 });
       const nextChannelId = clean(payload.channelId, 100) || publication.channelId;
+      const nextTelegramDeliveryMode = clean(payload.telegramDeliveryMode, 40) === "text_only" ? "text_only" : "photo_continue";
       if (nextChannelId !== publication.channelId) {
         const [channel] = await db.select({ id: socialChannels.id }).from(socialChannels).where(and(eq(socialChannels.id, nextChannelId), eq(socialChannels.brandId, publication.brandId))).limit(1);
         if (!channel) return Response.json({ error: "Канал не найден или недоступен." }, { status: 404 });
@@ -291,6 +295,7 @@ export async function POST(request: Request) {
       const shouldForkPublished = publication.status === "published" && Boolean(currentGeneration) && (
         nextScheduledAt !== publication.scheduledAt ||
         nextChannelId !== publication.channelId ||
+        nextTelegramDeliveryMode !== publication.telegramDeliveryMode ||
         nextTitle !== currentGeneration.title ||
         nextBody !== currentGeneration.body ||
         nextImageUrl !== currentGeneration.imageUrl
@@ -320,6 +325,7 @@ export async function POST(request: Request) {
           generationId: forkedGeneration.id,
           channelId: nextChannelId,
           scheduledAt: nextScheduledAt ?? publication.scheduledAt,
+          telegramDeliveryMode: nextTelegramDeliveryMode,
           status: "scheduled",
         }).returning();
         const [forkedChannel] = await db.select().from(socialChannels).where(eq(socialChannels.id, forkedPublication.channelId)).limit(1);
@@ -334,6 +340,7 @@ export async function POST(request: Request) {
       await db.update(publications).set({
         scheduledAt: nextScheduledAt ?? publication.scheduledAt,
         channelId: nextChannelId,
+        telegramDeliveryMode: nextTelegramDeliveryMode,
         ...(reQueue ? { status: "scheduled" as const, retryCount: 0, errorMessage: null } : {}),
         updatedAt: sql`CURRENT_TIMESTAMP`,
       }).where(eq(publications.id, id));

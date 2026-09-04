@@ -53,7 +53,7 @@ export async function attemptPublish(publicationId: string, ownerEmail: string, 
       platform: channel.platform,
       credentialsJson: channel.credentialsJson,
       text: `${generation.title}\n\n${generation.body}`.trim(),
-      imageUrl: generation.imageUrl || null,
+      imageUrl: publication.telegramDeliveryMode === "text_only" ? null : generation.imageUrl || null,
     });
     await db.update(publications).set({
       status: "published",
