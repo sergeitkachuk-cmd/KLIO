@@ -1735,6 +1735,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [pubChannelVk, setPubChannelVk] = useState({ groupId: "", accessToken: "", photoAccessToken: "" });
   const [pubChannelBusy, setPubChannelBusy] = useState(false);
   const [pubChannelError, setPubChannelError] = useState("");
+  // A generated text can start the publishing flow before any channel exists.
+  // Keep it here while the person connects the first channel, then reopen the
+  // prepared post instead of dropping them back onto an empty calendar.
+  const [pubPendingDraft, setPubPendingDraft] = useState<{ title: string; body: string; generationId: string | null } | null>(null);
   const [pubImageUploadBusy, setPubImageUploadBusy] = useState(false);
   // null = closed. `id` set means editing an already-scheduled row (single
   // channel, reassignable); `id` null means composing a new one, where
@@ -2002,11 +2006,31 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       });
       const payload = await safeJson(response) as { error?: string; channel?: PubChannel };
       if (!response.ok || !payload.channel) throw new Error(payload.error || "Не удалось подключить канал.");
-      setPubChannels((current) => [payload.channel as PubChannel, ...current]);
+      const channel = payload.channel as PubChannel;
+      setPubChannels((current) => [channel, ...current]);
       setPubChannelModalOpen(false);
       setPubChannelTelegram({ botToken: "", chatId: "" });
       setPubChannelVk({ groupId: "", accessToken: "", photoAccessToken: "" });
-      showToast(`Канал «${payload.channel.label}» подключён`);
+      if (pubPendingDraft) {
+        const now = new Date();
+        now.setMinutes(Math.ceil(now.getMinutes() / 5) * 5, 0, 0);
+        setPubEditor({
+          id: null,
+          generationId: pubPendingDraft.generationId,
+          title: pubPendingDraft.title,
+          body: pubPendingDraft.body,
+          imageUrl: "",
+          date: localDayKey(now),
+          time: `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`,
+          channelIds: [channel.id],
+          busy: false,
+          error: "",
+        });
+        setPubPendingDraft(null);
+        showToast(`Канал «${channel.label}» подключён — текст уже в редакторе публикации`);
+      } else {
+        showToast(`Канал «${channel.label}» подключён`);
+      }
     } catch (error) {
       setPubChannelError(error instanceof Error ? error.message : "Не удалось подключить канал.");
     } finally {
@@ -4493,6 +4517,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     }
     openModule("publications");
     if (!channels.length) {
+      setPubPendingDraft({
+        title: source.title.trim(),
+        body: source.body.trim(),
+        generationId: source.generationId ?? null,
+      });
       setPubChannelModalOpen(true);
       showToast("Сначала подключите канал VK или Telegram");
       return;
