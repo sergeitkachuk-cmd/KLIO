@@ -122,3 +122,21 @@ export function socialChannelSummary(row: typeof socialChannels.$inferSelect) {
     createdAt: row.createdAt,
   };
 }
+
+// A publication stores Telegram's message_id after a successful send.  Turn
+// it into a safe, credential-free link for the owner so "published" can be
+// verified in Telegram itself, not inferred from a calendar tick.
+export function telegramPublicationUrl(row: typeof socialChannels.$inferSelect | undefined, providerPostId: string | null) {
+  if (!row || row.platform !== "telegram" || !providerPostId || !/^\d+$/.test(providerPostId)) return null;
+  try {
+    const credentials = JSON.parse(row.credentialsJson) as ChannelCredentials;
+    if (credentials.platform !== "telegram") return null;
+    const chatId = credentials.telegram.chatId.trim();
+    if (/^@[A-Za-z0-9_]{5,}$/.test(chatId)) return `https://t.me/${chatId.slice(1)}/${providerPostId}`;
+    if (/^-100\d+$/.test(chatId)) return `https://t.me/c/${chatId.slice(4)}/${providerPostId}`;
+  } catch {
+    // Corrupted credentials are handled by the publish flow; they simply
+    // cannot yield an inspectable Telegram URL here.
+  }
+  return null;
+}

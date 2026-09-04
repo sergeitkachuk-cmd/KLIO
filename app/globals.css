@@ -13792,6 +13792,23 @@ input[type="radio"] {
   background: linear-gradient(135deg, #6f3dd6, #8b5cf6);
 }
 
+.publications-published-note {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(107, 210, 157, 0.28);
+  border-radius: 13px;
+  color: #c9f2d8;
+  background: rgba(52, 157, 100, 0.13);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.publications-published-note a {
+  color: #e2caff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .editor-tone-picker button.active,
 .archive-tone-picker button.active {
   border-color: rgba(124, 58, 237, 0.34);

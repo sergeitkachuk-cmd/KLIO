@@ -1254,6 +1254,7 @@ type PubItem = {
   scheduledAt: string;
   status: PubStatus;
   providerPostId: string | null;
+  providerPostUrl: string | null;
   errorMessage: string | null;
   retryCount: number;
   publishedAt: string | null;
@@ -1747,6 +1748,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [pubEditor, setPubEditor] = useState<{
     id: string | null;
     generationId: string | null;
+    status: PubStatus | null;
+    providerPostUrl: string | null;
     title: string;
     body: string;
     imageUrl: string;
@@ -1849,6 +1852,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setPubEditor({
       id: existing?.id ?? null,
       generationId: existing?.generationId ?? null,
+      status: existing?.status ?? null,
+      providerPostUrl: existing?.providerPostUrl ?? null,
       title: existing?.title ?? "",
       body: existing?.body ?? "",
       imageUrl: existing?.imageUrl ?? "",
@@ -2017,6 +2022,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         setPubEditor({
           id: null,
           generationId: pubPendingDraft.generationId,
+          status: null,
+          providerPostUrl: null,
           title: pubPendingDraft.title,
           body: pubPendingDraft.body,
           imageUrl: "",
@@ -4531,6 +4538,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setPubEditor({
       id: null,
       generationId: source.generationId ?? null,
+      status: null,
+      providerPostUrl: null,
       title: source.title.trim(),
       body: source.body.trim(),
       imageUrl: "",
@@ -4982,6 +4991,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <div><span>Публикации / {pubEditor.id ? "изменить" : "новая запись"}</span><h2 id="publications-editor-title">{pubEditor.id ? "Публикация" : "Новая публикация"}</h2><p>Текст можно править прямо здесь — правки касаются только этой публикации.</p></div>
                 <div className="archive-editor-head-actions"><button type="button" onClick={() => setPubEditor(null)} aria-label="Закрыть">×</button></div>
               </div>
+              {pubEditor.status === "published" && <p className="publications-published-note">✓ Telegram подтвердил публикацию{pubEditor.providerPostUrl ? <>. <a href={pubEditor.providerPostUrl} target="_blank" rel="noreferrer">Открыть сообщение ↗</a></> : "."}</p>}
               <label className="publications-editor-field"><span>Заголовок <small>необязательно</small></span><AutoTextarea rows={1} value={pubEditor.title} onChange={(event) => setPubEditor((current) => current && { ...current, title: event.target.value })}/></label>
               <label className="publications-editor-field"><span>Текст публикации</span><AutoTextarea rows={8} value={pubEditor.body} onChange={(event) => setPubEditor((current) => current && { ...current, body: event.target.value })} placeholder="Текст, который уйдёт в канал"/></label>
               <div className="publications-editor-field">

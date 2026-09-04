@@ -16,7 +16,7 @@ import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { brands, generations, publications, socialChannels } from "../../../db/schema";
 import { planRule } from "../../plans";
 import { isSocialPlatform, type ChannelCredentials } from "../_lib/publishing-config";
-import { describeChannel, socialChannelSummary, ChannelValidationError } from "../_lib/social-channels";
+import { describeChannel, socialChannelSummary, telegramPublicationUrl, ChannelValidationError } from "../_lib/social-channels";
 import { attemptPublish } from "../_lib/publish-attempt";
 import { resolveBaseUrl } from "../_lib/base-url";
 import {
@@ -81,6 +81,7 @@ function publicationResponse(row: typeof publications.$inferSelect, generation: 
     scheduledAt: row.scheduledAt,
     status: row.status,
     providerPostId: row.providerPostId,
+    providerPostUrl: telegramPublicationUrl(channel, row.providerPostId),
     errorMessage: row.errorMessage,
     retryCount: row.retryCount,
     publishedAt: row.publishedAt,
