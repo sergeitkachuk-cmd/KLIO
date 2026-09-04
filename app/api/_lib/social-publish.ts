@@ -6,6 +6,7 @@
 // rewrite. See publishing-config.ts for the credential shapes and limits
 // this reads.
 
+import { request as httpsRequest } from "node:https";
 import {
   PLATFORM_TEXT_LIMITS,
   VK_API_VERSION,
@@ -28,6 +29,44 @@ export class PublishError extends Error {
   }
 }
 
+type TelegramApiResponse = {
+  status: number;
+  body: string;
+};
+
+// The production log recorded a TCP connect timeout to api.telegram.org.
+// Timeweb hosts can prefer an unusable IPv6 route for this hostname, while
+// Telegram's IPv4 endpoint is available. Node's global fetch gives us no
+// portable way to pin just this request family, so use the native client for
+// Telegram only. This is still one request: no hidden resend that could
+// duplicate a post when Telegram received it but its response was lost.
+function postToTelegramApi(url: string, body: object): Promise<TelegramApiResponse> {
+  const endpoint = new URL(url);
+  const payload = JSON.stringify(body);
+  return new Promise((resolve, reject) => {
+    const request = httpsRequest({
+      protocol: endpoint.protocol,
+      hostname: endpoint.hostname,
+      port: endpoint.port || 443,
+      path: `${endpoint.pathname}${endpoint.search}`,
+      method: "POST",
+      family: 4,
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(payload),
+      },
+    }, (response) => {
+      const chunks: Buffer[] = [];
+      response.on("data", (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
+      response.on("end", () => resolve({ status: response.statusCode ?? 0, body: Buffer.concat(chunks).toString("utf8") }));
+      response.on("error", reject);
+    });
+    request.setTimeout(25_000, () => request.destroy(new Error("Telegram API connection timed out after 25 seconds.")));
+    request.on("error", reject);
+    request.end(payload);
+  });
+}
+
 async function fetchImageBytes(imageUrl: string): Promise<Blob> {
   let response: Response;
   try {
@@ -46,13 +85,9 @@ async function publishToTelegram(creds: TelegramCredentials, text: string, image
     ? { chat_id: creds.chatId, photo: imageUrl, caption: truncateForPlatform("telegram", text, true) }
     : { chat_id: creds.chatId, text: truncateForPlatform("telegram", text, false) };
 
-  let response: Response;
+  let response: TelegramApiResponse;
   try {
-    response = await fetch(`${base}/${hasImage ? "sendPhoto" : "sendMessage"}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    response = await postToTelegramApi(`${base}/${hasImage ? "sendPhoto" : "sendMessage"}`, body);
   } catch (error) {
     const cause = error instanceof Error ? error.cause : undefined;
     // Credentials and post text never enter logs. The network error itself
@@ -65,7 +100,9 @@ async function publishToTelegram(creds: TelegramCredentials, text: string, image
     throw new PublishError("Telegram не ответил на запрос публикации.", true);
   }
 
-  const payload = await response.json().catch(() => null) as
+  const payload = (() => {
+    try { return JSON.parse(response.body); } catch { return null; }
+  })() as
     | { ok: boolean; result?: { message_id: number }; description?: string; error_code?: number }
     | null;
 
