@@ -27,6 +27,7 @@ type AdaptPayload = {
   tone?: unknown;
   useBrand?: unknown;
   authorPosition?: unknown;
+  maxCharacters?: unknown;
   brand?: Record<string, unknown>;
 };
 
@@ -122,6 +123,7 @@ function normalizePayload(payload: AdaptPayload) {
     tone: normalizeTone(payload.tone),
     useBrand: payload.useBrand !== false,
     authorPosition: normalizeAuthorPosition(payload.authorPosition, payload.useBrand !== false ? "brand" : "neutral"),
+    maxCharacters: typeof payload.maxCharacters === "number" && Number.isInteger(payload.maxCharacters) && payload.maxCharacters >= 400 && payload.maxCharacters <= 4000 ? payload.maxCharacters : null,
     brand: payload.brand ?? {},
   };
 }
@@ -167,6 +169,8 @@ function adaptationViolationReason(
 ) {
   const sourceWords = Math.max(1, wordCount(input.sourceText));
   const resultWords = wordCount(material.body);
+  const completeLength = `${material.title}\n\n${material.body}`.trim().length;
+  if (input.maxCharacters && completeLength > input.maxCharacters) return `Текст должен занимать не более ${input.maxCharacters} символов вместе с заголовком, сейчас ${completeLength}.`;
   if (deepRewriteGoals.has(input.goal) && similarity(input.sourceText, material.body) > 0.82) return "Версия слишком похожа на исходник для выбранного сценария.";
   if (/^(?:Что получает читатель|Условия и следующий шаг)$/im.test(material.body)) return "В тексте появился служебный шаблонный заголовок.";
   if (input.goal === "social" && (resultWords < 60 || resultWords > 220)) return "Длина публикации для социальных сетей должна быть от 60 до 220 слов.";
@@ -213,6 +217,9 @@ export async function POST(request: Request) {
     const shortenLengthDirective = input.goal === "shorten"
       ? `В режиме «Коротко» длина поля body обязательна: от ${Math.ceil(wordCount(input.sourceText) * 0.45)} до ${Math.floor(wordCount(input.sourceText) * 0.6)} слов (45–60% от ${wordCount(input.sourceText)} слов исходника). Проверь число слов перед ответом.`
       : "";
+    const maxCharactersDirective = input.maxCharacters
+      ? `ЖЁСТКОЕ ОГРАНИЧЕНИЕ: title и body вместе, включая пробелы и переносы, должны занимать не более ${input.maxCharacters} символов. Сначала сократи материал до этого размера без потери главной мысли и фактов, затем проверь число символов перед ответом.`
+      : "";
     const adaptationBrief = {
       target: goalLabels[input.goal],
       adaptation_contract: {
@@ -250,6 +257,7 @@ export async function POST(request: Request) {
           ...coreRulesFor(input.goal),
           transformationDirective,
           shortenLengthDirective,
+          maxCharactersDirective,
           `Соблюдай выбранную интонацию «${input.tone}»:`,
           ...toneRules,
           ...TONE_SYSTEM_RULES,
@@ -292,6 +300,7 @@ export async function POST(request: Request) {
             ...authorPositionRules(input.authorPosition),
             transformationDirective,
             shortenLengthDirective,
+            maxCharactersDirective,
             ...FINAL_QA_RULES,
             "Запрещены заголовки «Что получает читатель» и «Условия и следующий шаг».",
           ].join("\n"),

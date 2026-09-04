@@ -1956,6 +1956,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         body: JSON.stringify({
           sourceText,
           goal: "social",
+          maxCharacters: 950,
           tone: adaptationTone,
           keywords: "",
           authorPosition: "brand",
