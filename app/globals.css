@@ -5098,7 +5098,7 @@ footer nav a {
 .workspace-sidebar nav a[href="#competitors"] { --module-accent: #7a5b91; }
 .workspace-sidebar nav a[href="#content-plan"] { --module-accent: #3f7e70; }
 .workspace-sidebar nav a[href="#adaptation"] { --module-accent: #9b536d; }
-.workspace-sidebar nav a[href="#publications"] { --module-accent: #c4ff63; }
+.workspace-sidebar nav a[href="#publications"] { --module-accent: #9bcf4b; }
 
 .workspace-sidebar nav a.active {
   border-color: color-mix(in srgb, var(--module-accent, #7450bd) 55%, transparent);
@@ -11729,7 +11729,7 @@ input[type="radio"] {
   scroll-margin-top: 96px;
   --module-accent: #3f7e70; --module-tint: rgba(54, 129, 109, 0.07); }
 .adaptation-module { --module-accent: #9b536d; --module-tint: rgba(155, 83, 109, 0.065); }
-.publications-module { --module-accent: #c4ff63; --module-tint: rgba(196, 255, 99, 0.09); }
+.publications-module { --module-accent: #9bcf4b; --module-tint: rgba(155, 207, 75, 0.1); }
 
 /* ============================================================
    Публикации — channel bar, calendar grid, chips.
@@ -12066,7 +12066,7 @@ input[type="radio"] {
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 5px 28px 5px 5px;
   background:
-    radial-gradient(circle at 96% 0%, rgba(196, 255, 99, 0.16), transparent 30%),
+    radial-gradient(circle at 96% 0%, rgba(155, 207, 75, 0.16), transparent 30%),
     linear-gradient(145deg, #0a2340 0%, #082b4c 55%, #061c34 100%);
   box-shadow: 0 34px 100px rgba(0, 0, 0, 0.5), inset 0 1px rgba(255, 255, 255, 0.1);
   display: grid;
@@ -16219,7 +16219,7 @@ input[type="radio"] {
 .workspace-start-card-semantics span { color: #6fa8dc; }
 .workspace-start-card-content-plan span { color: #55c2a3; }
 
-.workspace-start-card-publications { --module-accent: #c4ff63; --module-tint: rgba(196, 255, 99, 0.1); }
+.workspace-start-card-publications { --module-accent: #9bcf4b; --module-tint: rgba(155, 207, 75, 0.11); }
 
 @media (max-width: 960px) {
   .workspace-start-hero {
@@ -21589,17 +21589,17 @@ input[type="radio"] {
 .publishing-landing-note {
   margin: 0 0 14px;
   padding: 10px 12px;
-  border: 1px solid rgba(196, 255, 99, 0.36);
+  border: 1px solid rgba(155, 207, 75, 0.4);
   border-radius: 10px;
   color: rgba(239, 255, 215, 0.86);
-  background: rgba(196, 255, 99, 0.09);
+  background: rgba(155, 207, 75, 0.1);
   font-size: 12px;
   line-height: 1.45;
 }
 
 .publications-vk-note b,
 .publishing-landing-note b {
-  color: #dcff9d;
+  color: #bfe97b;
 }
 
 .publishing-landing-note a {
@@ -21658,7 +21658,7 @@ input[type="radio"] {
 .publishing-landing-copy li svg {
   width: 17px;
   height: 17px;
-  color: #c4ff63;
+  color: #9bcf4b;
 }
 
 .publishing-landing-note {
@@ -21816,7 +21816,7 @@ input[type="radio"] {
 [data-theme="light"] .publishing-landing-note {
   border-color: rgba(99, 140, 32, 0.3);
   color: rgba(35, 71, 18, 0.82);
-  background: rgba(196, 255, 99, 0.17);
+  background: rgba(155, 207, 75, 0.17);
 }
 
 [data-theme="light"] .publications-vk-note b,
