@@ -89,7 +89,7 @@ export default function SignupPage() {
       <main className="auth-shell">
         <div className="auth-card">
           <Link className="wordmark" href="/" aria-label="КЛИО — на главную">
-            <span className="brand"><i>К</i><b>КЛИО<span aria-hidden="true">.</span></b><small>Цифровая редакция</small></span>
+            <span className="brand"><i aria-hidden="true"/><b>КЛИО<span aria-hidden="true">.</span></b><small>Цифровая редакция</small></span>
           </Link>
           <h1>Проверьте почту</h1>
           <p className="auth-subtitle">Мы отправили письмо со ссылкой подтверждения на <b>{sentTo}</b>. Перейдите по ней, чтобы открыть кабинет — ссылка действует 24 часа.</p>
@@ -105,7 +105,7 @@ export default function SignupPage() {
     <main className="auth-shell">
       <div className="auth-card">
         <Link className="wordmark" href="/" aria-label="КЛИО — на главную">
-          <span className="brand"><i>К</i><b>КЛИО<span aria-hidden="true">.</span></b><small>Цифровая редакция</small></span>
+          <span className="brand"><i aria-hidden="true"/><b>КЛИО<span aria-hidden="true">.</span></b><small>Цифровая редакция</small></span>
         </Link>
         <h1>Личный кабинет</h1>
         <p className="auth-subtitle">Регистрация занимает минуту — дальше доступны генератор, профиль бренда и архив материалов.</p>

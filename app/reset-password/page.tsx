@@ -30,7 +30,7 @@ export default function ResetPasswordPage() {
   }
 
   return <main className="auth-shell"><div className="auth-card">
-    <Link className="wordmark" href="/" aria-label="КЛИО — на главную"><span className="brand"><i>К</i><b>КЛИО<span aria-hidden="true">.</span></b><small>ЦИФРОВАЯ РЕДАКЦИЯ</small></span></Link>
+    <Link className="wordmark" href="/" aria-label="КЛИО — на главную"><span className="brand"><i aria-hidden="true"/><b>КЛИО<span aria-hidden="true">.</span></b><small>ЦИФРОВАЯ РЕДАКЦИЯ</small></span></Link>
     <h1>Новый пароль</h1>
     {done ? <><p className="auth-subtitle">Пароль изменён. Теперь можно войти в кабинет.</p><Link className="button primary large" href="/login">Войти</Link></> : <><p className="auth-subtitle">Ссылка действует один раз в течение часа.</p><form onSubmit={submit}><label className="field">Новый пароль<input type="password" required minLength={8} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} /></label><label className="field">Повторите пароль<input type="password" required minLength={8} autoComplete="new-password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} /></label>{error && <p className="auth-error">{error}</p>}<button className="button primary large" type="submit" disabled={busy}>{busy ? "Сохраняем…" : "Сохранить новый пароль"}</button></form></>}
   </div></main>;
