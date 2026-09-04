@@ -2120,6 +2120,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [contentPlanQuery, setContentPlanQuery] = useState("");
   const [contentPlanGoal, setContentPlanGoal] = useState<ContentPlanGoal>("social");
   const [contentPlanCount, setContentPlanCount] = useState(25);
+  const [manualLengthInput, setManualLengthInput] = useState("8400");
   const [contentPlanResult, setContentPlanResult] = useState<ContentPlanResult>(emptyContentPlanResult);
   const [contentPlanMode, setContentPlanMode] = useState<ContentPlanMode>("idle");
   const [contentPlanBusy, setContentPlanBusy] = useState(false);
@@ -3241,6 +3242,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   function changeLength(value: string) {
     if (value === "custom") {
       setCustomLength(true);
+      setManualLengthInput(String(length));
       return;
     }
 
@@ -3249,9 +3251,18 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }
 
   function setManualLength(value: string) {
+    setManualLengthInput(value);
+    if (!value.trim()) return;
     const nextLength = Number(value);
     if (!Number.isFinite(nextLength)) return;
     setLength(Math.min(30000, Math.max(300, Math.round(nextLength))));
+  }
+
+  function commitManualLength() {
+    const parsed = Number(manualLengthInput);
+    const next = Number.isFinite(parsed) ? Math.min(30000, Math.max(300, Math.round(parsed))) : length;
+    setLength(next);
+    setManualLengthInput(String(next));
   }
 
   async function saveBrand() {
@@ -5604,7 +5615,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <ModuleSelect label="Объём" value={customLength ? "custom" : String(length)} options={[...lengthPresets[format].map((item) => ({ value: String(item.value), label: item.label })), { value: "custom", label: "Свой объём…" }]} onChange={changeLength}/>
                 </div>
                 <p className={`tone-contract-note ${generatorAdvanced ? "" : "generator-advanced-hidden"}`}><i>Стиль: {tone}</i> меняет лексику и ритм, но не превращает выбранный формат в другой тип материала.</p>
-                {customLength && <label className={`field custom-length ${generatorAdvanced ? "" : "generator-advanced-hidden"}`}>Свой объём<div><input type="number" min="300" max="30000" step="100" value={length} onChange={(event) => setManualLength(event.target.value)} inputMode="numeric"/><span>знаков</span></div><small>Укажите от 300 до 30 000 знаков с пробелами</small></label>}
+                {customLength && <label className={`field custom-length ${generatorAdvanced ? "" : "generator-advanced-hidden"}`}>Свой объём<div><input type="number" min="300" max="30000" step="100" value={manualLengthInput} onChange={(event) => setManualLength(event.target.value)} onBlur={commitManualLength} inputMode="numeric"/><span>знаков</span></div><small>Укажите от 300 до 30 000 знаков с пробелами</small></label>}
                 {generationError && <p className="generation-error" role="alert">{generationError}</p>}
                 <button className={`button primary generate ${busy ? "is-busy" : ""}`} type="button" onClick={generate} disabled={!activeBrandId || busy || aiConnection !== "connected" || workspaceAccount.generationsRemaining <= 0}><Icon name="spark"/>{busy ? busySteps[busyStep] : !activeBrandId ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
                 {busy && <>
