@@ -21485,8 +21485,69 @@ input[type="radio"] {
 
 @media (min-width: 721px) {
   .publications-mobile-list {
-    display: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 10px;
+    margin-top: 18px;
+    padding: 17px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    background: rgba(8, 35, 64, 0.52);
   }
+
+  .publications-mobile-list h3,
+  .publications-mobile-empty {
+    grid-column: 1 / -1;
+  }
+
+  .publications-mobile-list h3 {
+    margin: 0 0 2px;
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .publications-mobile-empty {
+    margin: 0;
+    padding: 13px;
+    border: 1px dashed rgba(255, 255, 255, 0.17);
+    border-radius: 11px;
+    color: rgba(255, 255, 255, 0.62);
+  }
+
+  .publications-mobile-item {
+    position: relative;
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    grid-template-areas: "thumb time status" "thumb title status";
+    align-items: center;
+    column-gap: 10px;
+    min-height: 62px;
+    padding: 9px 11px 9px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-left: 3px solid var(--chip-accent, #376fa8);
+    border-radius: 12px;
+    color: #fff;
+    background: color-mix(in srgb, var(--chip-accent, #376fa8) 14%, rgba(255, 255, 255, 0.035));
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+  }
+
+  .publications-mobile-item:hover,
+  .publications-mobile-item:focus-visible {
+    transform: translateY(-1px);
+    border-color: rgba(185, 155, 255, 0.7);
+    background: color-mix(in srgb, var(--chip-accent, #376fa8) 22%, rgba(124, 58, 237, 0.14));
+  }
+
+  .publications-mobile-thumb { grid-area: thumb; width: 42px; height: 42px; border-radius: 8px; background-position: center; background-size: cover; }
+  .publications-mobile-platform { position: absolute; left: 35px; bottom: 7px; display: grid; width: 18px; height: 18px; place-items: center; border: 2px solid #0b2947; border-radius: 50%; color: #fff; font-size: 6px; font-style: normal; font-weight: 850; }
+  .publications-mobile-time { grid-area: time; color: rgba(255, 255, 255, 0.6); font-size: 11px; }
+  .publications-mobile-item b { grid-area: title; overflow: hidden; color: #fff; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+  .publications-mobile-item em { grid-area: status; color: rgba(255, 255, 255, 0.72); font-size: 10px; font-style: normal; text-align: right; }
 }
 
 /* Publishing is a standalone outcome, not merely a footnote to the editor:
