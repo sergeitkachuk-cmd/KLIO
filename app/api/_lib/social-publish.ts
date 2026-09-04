@@ -53,7 +53,15 @@ async function publishToTelegram(creds: TelegramCredentials, text: string, image
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-  } catch {
+  } catch (error) {
+    const cause = error instanceof Error ? error.cause : undefined;
+    // Credentials and post text never enter logs. The network error itself
+    // does: it is the only way to distinguish a Timeweb egress/DNS issue
+    // from Telegram returning an explicit API refusal.
+    console.error("Telegram publish request failed", {
+      message: error instanceof Error ? error.message : String(error),
+      cause: cause instanceof Error ? cause.message : undefined,
+    });
     throw new PublishError("Telegram не ответил на запрос публикации.", true);
   }
 
