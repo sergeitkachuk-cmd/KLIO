@@ -10122,18 +10122,23 @@ footer nav a {
 }
 
 button:focus-visible,
-a:focus-visible,
+a:focus-visible {
+  outline-color: var(--field-focus);
+}
+
+/* Inputs already communicate focus through their border.  The old generic
+   outline plus a 3px glow made a large double frame around every field. */
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline-color: var(--field-focus);
+  outline: none;
 }
 
 input:not([type="checkbox"]):not([type="radio"]):focus,
 textarea:focus,
 select:focus {
   border-color: var(--field-focus) !important;
-  box-shadow: 0 0 0 3px var(--field-focus-ring) !important;
+  box-shadow: none !important;
 }
 
 input[type="checkbox"],
