@@ -1752,6 +1752,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     busy: boolean;
     error: string;
   } | null>(null);
+  // The latest generator result already has a row in Materials. Keep its id
+  // so an editor result can be saved as a real next version, not merely
+  // offered for copying.
+  const [generatedArchiveId, setGeneratedArchiveId] = useState<string | null>(null);
 
   const pubGridDays = useMemo(() => {
     const start = pubView === "month" ? startOfWeek(startOfMonth(pubCursor)) : startOfWeek(pubCursor);
@@ -3517,10 +3521,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     if (payload.usage?.account) setWorkspaceAccount(payload.usage.account);
     if (payload.usage?.archive) setWorkspaceHistory((current) => [payload.usage!.archive!, ...current.filter((item) => item.id !== payload.usage!.archive!.id)].slice(0, 60));
     if (payload.mode !== "ai") throw new Error("Материал не получен от AI‑редакции.");
-    return { material: payload.material, mode: "ai" as const, coverage: payload.coverage ?? null };
+    return { material: payload.material, mode: "ai" as const, coverage: payload.coverage ?? null, archiveId: payload.usage?.archive?.id ?? null };
   }
 
-  function applyGeneratedMaterial(material: GeneratedMaterial, mode: "demo" | "ai", coverage: GenerationCoverage | null = null) {
+  function applyGeneratedMaterial(material: GeneratedMaterial, mode: "demo" | "ai", coverage: GenerationCoverage | null = null, archiveId: string | null = null) {
     setTitle(material.title);
     setBody(material.body);
     setSubtitle(material.subtitle);
@@ -3529,6 +3533,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setEditorNote(material.editorialComment);
     setGenerationMode(mode);
     setGenerationCoverage(coverage);
+    setGeneratedArchiveId(archiveId);
     setMetricsVisible(true);
     setMetricsReplay((value) => value + 1);
   }
@@ -3569,7 +3574,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         useSemantics: true,
         useCompetitors: generatorUseCompetitors,
       });
-      applyGeneratedMaterial(response.material, response.mode, response.coverage);
+      applyGeneratedMaterial(response.material, response.mode, response.coverage, response.archiveId);
       openModule("generator");
       showToast(useBrand && generatorUseBrand ? "Статья создана по семантике и профилю бренда" : "Статья создана только по семантике — модуль 01 пропущен");
     } catch (error) {
@@ -4395,7 +4400,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         authorPosition,
         editorialBrief,
       });
-      applyGeneratedMaterial(response.material, response.mode, response.coverage);
+      applyGeneratedMaterial(response.material, response.mode, response.coverage, response.archiveId);
       showToast("Материал создан КЛИО и сохранён в «Материалы»");
     } catch (error) {
       setGenerationError(error instanceof Error ? error.message : "Не удалось сформировать материал.");
@@ -4452,7 +4457,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       }
       setKeywords("");
       if (payload.mode !== "ai") throw new Error("Материал не получен от AI‑редакции.");
-      applyGeneratedMaterial(payload.material, "ai", null);
+      applyGeneratedMaterial(payload.material, "ai", null, payload.usage?.archive?.id ?? null);
       showToast("Материал создан КЛИО и сохранён в «Материалы»");
     } catch (error) {
       setQuickError(error instanceof Error ? error.message : "Не удалось сформировать материал.");
@@ -4465,6 +4470,48 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     const material = [title.trim(), subtitle.trim(), body.trim()].filter(Boolean).join("\n\n");
     navigator.clipboard?.writeText(material);
     showToast("Скопированы заголовок, зацепка и текст без служебного комментария");
+  }
+
+  async function openPublicationDraft(source: { title: string; body: string; generationId?: string | null }) {
+    if (!activeBrandId) {
+      showToast("Сначала выберите бренд для публикации");
+      return;
+    }
+    let channels = pubChannels;
+    if (!channels.length) {
+      try {
+        const start = startOfWeek(startOfMonth(new Date()));
+        const data = await requestPublications(activeBrandId, start.toISOString(), addDays(start, 42).toISOString());
+        setPubChannels(data.channels);
+        setPubItems(data.publications);
+        setPubChannelLimit(data.channelLimit);
+        channels = data.channels;
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : "Не удалось загрузить каналы публикаций");
+        return;
+      }
+    }
+    openModule("publications");
+    if (!channels.length) {
+      setPubChannelModalOpen(true);
+      showToast("Сначала подключите канал VK или Telegram");
+      return;
+    }
+    const now = new Date();
+    now.setMinutes(Math.ceil(now.getMinutes() / 5) * 5, 0, 0);
+    setPubEditor({
+      id: null,
+      generationId: source.generationId ?? null,
+      title: source.title.trim(),
+      body: source.body.trim(),
+      imageUrl: "",
+      date: localDayKey(now),
+      time: `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`,
+      channelIds: [channels[0].id],
+      busy: false,
+      error: "",
+    });
+    showToast("Текст перенесён в новую публикацию");
   }
 
   // Bridges the generator's result straight into "Редакторы КЛИО" instead
@@ -4493,6 +4540,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setEditorNote("");
     setGenerationMode("example");
     setGenerationCoverage(null);
+    setGeneratedArchiveId(null);
     setMetricsVisible(false);
   }
 
@@ -4558,6 +4606,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       if (payload.mode !== "ai") throw new Error("Материал не получен от редактора КЛИО.");
       if (payload.usage?.account) setWorkspaceAccount(payload.usage.account);
       setAdaptationMode("ai");
+      await saveAdaptationResult(payload.material);
       showToast(`${activeAdaptationPlan.title} завершил редактуру`);
     } catch (error) {
       setAdaptationError(error instanceof Error ? error.message : "Не удалось адаптировать текст.");
@@ -4570,6 +4619,39 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     if (!adaptationResult) return;
     navigator.clipboard?.writeText(`${adaptationResult.title}\n\n${adaptationResult.body}`);
     showToast("Адаптированная версия скопирована");
+  }
+
+  async function saveAdaptationResult(material: AdaptedMaterial) {
+    // Adaptation works from a previously generated material when it is sent
+    // here from the generator. Persist that result as its own version so the
+    // user never has to copy text just to keep it in Materials.
+    if (!generatedArchiveId) return;
+    try {
+      const response = await fetch("/api/workspace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "copy_generation",
+          generation: {
+            id: generatedArchiveId,
+            title: material.title,
+            body: material.body,
+            subtitle: material.subtitle,
+            metaTitle: material.metaTitle,
+            metaDescription: material.metaDescription,
+            editorialComment: material.editorialComment,
+            tone: adaptationTone,
+          },
+        }),
+      });
+      const payload = await safeJson(response) as { error?: string; generation?: GenerationArchiveItem };
+      if (!response.ok || !payload.generation) throw new Error(payload.error || "Не удалось сохранить новую версию материала.");
+      setWorkspaceHistory((current) => [payload.generation!, ...current.filter((item) => item.id !== payload.generation!.id)].slice(0, 60));
+      setGeneratedArchiveId(payload.generation.id);
+      showToast("Новая версия сохранена в «Материалы»");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Не удалось сохранить новую версию материала.");
+    }
   }
 
   function openLandingModule(number: string) {
@@ -4779,6 +4861,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   {archiveEditorError && <p className="generation-error" role="alert">{archiveEditorError}</p>}
                   <div className="archive-editor-actions">
                     <button type="button" onClick={copyArchiveItem}><Icon name="copy"/> Копировать текст</button>
+                    <button type="button" onClick={() => void openPublicationDraft({ title: archiveEditorItem.title, body: archiveEditorItem.body, generationId: archiveEditorItem.id })}>В публикацию</button>
                     <button type="button" onClick={restoreArchiveOriginal} disabled={!archiveEditorDirty || archiveEditorSaving || archiveEditorBusy}>Вернуть сохранённую</button>
                     <button className="button ghost" type="button" onClick={() => void saveArchiveItem("copy")} disabled={archiveEditorSaving || archiveEditorBusy}>{archiveEditorSaving ? "Сохраняем…" : "Сохранить как копию"}</button>
                     <button className="button primary" type="button" onClick={() => void saveArchiveItem("update")} disabled={archiveEditorSaving || archiveEditorBusy || !archiveEditorDirty}>{archiveEditorSaving ? "Сохраняем…" : "Пересохранить"}</button>
@@ -5407,7 +5490,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </>}
               </aside>
               <article className="result-panel">
-                <div className="result-head"><div><span className={`status status-${generationMode}`}><i/>{generationMode === "ai" ? "Создано КЛИО" : generationMode === "demo" ? "Сохранённая версия" : aiConnection === "connected" ? "Ожидает генерацию" : "ИИ не подключён"}</span><small>{characters.toLocaleString("ru-RU")} / {length.toLocaleString("ru-RU")} знаков с пробелами · {tone}</small></div><div className="result-head-actions"><button type="button" className="result-clear" onClick={clearGeneratedResult} disabled={!title && !body}><Icon name="erase"/> Очистить</button><button type="button" onClick={copyResult}><Icon name="copy"/> Копировать текст</button></div></div>
+                <div className="result-head"><div><span className={`status status-${generationMode}`}><i/>{generationMode === "ai" ? "Создано КЛИО" : generationMode === "demo" ? "Сохранённая версия" : aiConnection === "connected" ? "Ожидает генерацию" : "ИИ не подключён"}</span><small>{characters.toLocaleString("ru-RU")} / {length.toLocaleString("ru-RU")} знаков с пробелами · {tone}</small></div><div className="result-head-actions"><button type="button" className="result-clear" onClick={clearGeneratedResult} disabled={!title && !body}><Icon name="erase"/> Очистить</button><button type="button" onClick={copyResult}><Icon name="copy"/> Копировать текст</button><button type="button" onClick={() => void openPublicationDraft({ title, body: [subtitle, body].filter(Boolean).join("\n\n"), generationId: generatedArchiveId })} disabled={!title && !body}>В публикацию</button></div></div>
                 <div className={`length-control ${targetChecked ? (withinTarget ? "is-ok" : "is-warning") : "is-idle"}`}><span><i/>{targetChecked ? (withinTarget ? "Объём в цели" : "Объём отличается от заданного") : "Контроль включится после генерации"}</span><b>{targetChecked ? `${Math.round((characters / Math.max(length, 1)) * 100)}%` : "—"}</b><u><i style={{ width: `${targetChecked ? Math.min(100, (characters / Math.max(length, 1)) * 100) : 0}%` }}/></u><small>{targetChecked && !withinTarget ? "Это ориентир, а не жёсткое правило — при желании сократите или дополните текст ниже." : `Ориентир: от ${Math.floor(length * 0.85).toLocaleString("ru-RU")} до ${Math.ceil(length * 1.15).toLocaleString("ru-RU")} знаков с пробелами`}</small></div>
                 <AutoTextarea className="result-title" rows={1} value={title} onChange={(event) => setTitle(event.target.value)} aria-label="Заголовок результата"/>
                 <label className="result-subtitle-field"><span>Зацепка статьи</span><AutoTextarea className="result-subtitle" rows={2} value={subtitle} onChange={(event) => setSubtitle(event.target.value)} placeholder="Здесь появится зацепка статьи" aria-label="Подзаголовок или зацепка статьи"/></label>
@@ -5427,7 +5510,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     <div className={`quality-card ${hasQualityMaterial ? "" : "is-empty"}`} key={`keys-${metricsReplay}`}><small>Ключи</small><b>{hasQualityMaterial ? <><MetricNumber value={quality.keysFound} replay={metricsReplay}/><em>/{keyList.length}</em></> : "—"}</b><span>{hasQualityMaterial ? "с учётом словоформ" : "Появится после создания материала"}</span>{hasQualityMaterial && <i><u style={{ "--score": `${keyList.length ? (quality.keysFound / keyList.length) * 100 : 0}%` } as CSSProperties}/></i>}</div>
                   </div>
                 </div>
-                <div className="result-footer"><span>Материал уже сохранён в «Материалы» — вернуться к нему и продолжить редактирование можно в любой момент</span><div className="result-footer-actions"><button type="button" className="button ghost" onClick={copyResult}>Скопировать материал ↗</button><button type="button" className="button primary" onClick={sendResultToAdaptation} disabled={!title && !body}>Адаптировать под площадку <Icon name="arrow"/></button></div></div>
+                <div className="result-footer"><span>Материал уже сохранён в «Материалы» — вернуться к нему и продолжить редактирование можно в любой момент</span><div className="result-footer-actions"><button type="button" className="button ghost" onClick={copyResult}>Скопировать материал ↗</button><button type="button" className="button ghost" onClick={() => void openPublicationDraft({ title, body: [subtitle, body].filter(Boolean).join("\n\n"), generationId: generatedArchiveId })} disabled={!title && !body}>В публикацию</button><button type="button" className="button primary" onClick={sendResultToAdaptation} disabled={!title && !body}>Адаптировать под площадку <Icon name="arrow"/></button></div></div>
               </article>
             </div>
           </section>
@@ -5560,13 +5643,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </article>
 
               <article className={`adaptation-result-card ${adaptationResult ? "has-result" : "is-empty"}`}>
-                <div className="adaptation-result-head"><div><span className={`status status-${adaptationMode}`}><i/>{adaptationMode === "ai" ? activeAdaptationPlan.title : adaptationMode === "demo" ? "Сохранённая версия" : aiConnection === "connected" ? "Ожидает исходник" : "ИИ не подключён"}</span><small>{adaptationResult ? `${adaptationResult.body.trim().split(/\s+/).filter(Boolean).length.toLocaleString("ru-RU")} слов · ${adaptationTone}` : "результат появится здесь"}</small></div>{adaptationResult && <button type="button" onClick={copyAdaptation}><Icon name="copy"/> Копировать</button>}</div>
+                <div className="adaptation-result-head"><div><span className={`status status-${adaptationMode}`}><i/>{adaptationMode === "ai" ? activeAdaptationPlan.title : adaptationMode === "demo" ? "Сохранённая версия" : aiConnection === "connected" ? "Ожидает исходник" : "ИИ не подключён"}</span><small>{adaptationResult ? `${adaptationResult.body.trim().split(/\s+/).filter(Boolean).length.toLocaleString("ru-RU")} слов · ${adaptationTone}` : "результат появится здесь"}</small></div>{adaptationResult && <><button type="button" onClick={copyAdaptation}><Icon name="copy"/> Копировать</button><button type="button" onClick={() => void openPublicationDraft({ title: adaptationResult.title, body: [adaptationResult.subtitle, adaptationResult.body].filter(Boolean).join("\n\n"), generationId: generatedArchiveId })}>В публикацию</button></>}</div>
                 {adaptationResult ? <>
                   <AutoTextarea className="adaptation-result-title" rows={1} value={adaptationResult.title} onChange={(event) => setAdaptationResult((current) => current ? { ...current, title: event.target.value } : current)} aria-label="Заголовок адаптированного текста"/>
                   <AutoTextarea className="adaptation-result-body" value={adaptationResult.body} onChange={(event) => setAdaptationResult((current) => current ? { ...current, body: event.target.value } : current)} aria-label="Адаптированный текст"/>
                   <div className="adaptation-seo-fields"><label><span className="seo-field-label"><b>SEO‑заголовок</b><button type="button" onClick={() => copyPlainText(adaptationResult.metaTitle, "SEO‑заголовок")}><Icon name="copy"/> Копировать</button></span><AutoTextarea rows={1} value={adaptationResult.metaTitle} onChange={(event) => setAdaptationResult((current) => current ? { ...current, metaTitle: event.target.value } : current)}/></label><label><span className="seo-field-label"><b>Метаописание</b><button type="button" onClick={() => copyPlainText(adaptationResult.metaDescription, "Метаописание")}><Icon name="copy"/> Копировать</button></span><AutoTextarea rows={2} value={adaptationResult.metaDescription} onChange={(event) => setAdaptationResult((current) => current ? { ...current, metaDescription: event.target.value } : current)}/></label></div>
                   <aside className="adaptation-changes"><span>Что изменено</span><div>{adaptationResult.changes.map((item) => <p key={item}><i>✓</i>{item}</p>)}</div><small>{adaptationResult.editorialComment}</small></aside>
-                  <div className="adaptation-result-footer"><span>Исходник остаётся слева для сравнения</span><button type="button" onClick={copyAdaptation}>Скопировать адаптированную версию ↗</button></div>
+                  <div className="adaptation-result-footer"><span>Новая версия автоматически сохранена в «Материалы»</span><div><button type="button" onClick={copyAdaptation}>Скопировать адаптированную версию ↗</button><button type="button" onClick={() => void openPublicationDraft({ title: adaptationResult.title, body: [adaptationResult.subtitle, adaptationResult.body].filter(Boolean).join("\n\n"), generationId: generatedArchiveId })}>В публикацию</button></div></div>
                 </> : <div className="adaptation-empty-state"><i>Аа</i><h3>Вторая версия без потери фактов</h3><p>Выберите задачу и запустите редактуру. КЛИО не будет придумывать сведения, которых нет в исходном тексте или профиле бренда.</p><div><span>Исходник</span><b>→</b><span>Нужный формат</span></div></div>}
               </article>
             </div>

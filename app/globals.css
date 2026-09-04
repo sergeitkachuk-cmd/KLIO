@@ -9840,6 +9840,13 @@ footer nav a {
   font-size: 11px;
 }
 
+.adaptation-result-footer > div {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 15px;
+}
+
 .adaptation-empty-state {
   display: grid;
   place-items: center;
@@ -10586,6 +10593,10 @@ input[type="radio"] {
   .adaptation-result-footer {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .adaptation-result-footer > div {
+    flex-wrap: wrap;
   }
 }
 
