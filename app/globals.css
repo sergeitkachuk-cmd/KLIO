@@ -12021,6 +12021,20 @@ input[type="radio"] {
   scrollbar-color: rgba(124, 58, 237, 0.76) rgba(3, 18, 36, 0.62);
 }
 
+.publications-chip-more {
+  padding: 3px 5px;
+  border: 0;
+  border-radius: 6px;
+  color: rgba(233, 220, 255, .9);
+  background: rgba(121, 82, 206, .2);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 750;
+  text-align: left;
+  cursor: pointer;
+}
+.publications-chip-more:hover { background: rgba(133, 87, 232, .42); color: #fff; }
+
 .publications-editor-modal::-webkit-scrollbar,
 .publications-channel-modal::-webkit-scrollbar { width: 10px; }
 

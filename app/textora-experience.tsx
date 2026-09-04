@@ -2208,7 +2208,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const brandPickerRef = useRef<HTMLDivElement>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
 
-  const characters = useMemo(() => body.trim().length, [body]);
+  // The generator's target is the ready-to-publish text, not merely the
+  // body: Telegram and other channels receive the headline and hook too.
+  const characters = useMemo(() => [title, subtitle, body].filter(Boolean).join("\n\n").trim().length, [body, subtitle, title]);
   const words = useMemo(() => body.trim().split(/\s+/).filter(Boolean).length, [body]);
   const keyList = useMemo(() => keywords.split(",").map((item) => item.trim()).filter(Boolean), [keywords]);
   const hasQualityMaterial = generationMode === "ai" || (words >= 80 && !/^Результат появится после генерации/i.test(body.trim()));
@@ -5799,7 +5801,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   return <div className={`publications-day ${isToday ? "is-today" : ""} ${inMonth ? "" : "is-outside"} ${pubSelectedDayKey === key ? "is-selected" : ""}`} onClick={() => setPubSelectedDayKey(key)} key={key}>
                     <div className="publications-day-head"><span>{day.getDate()}</span><button type="button" onClick={(event) => { event.stopPropagation(); openPubEditor(day); }} aria-label="Добавить публикацию на этот день">+</button></div>
                     <div className="publications-day-items">
-                      {items.map((item) => <button type="button" className={`publications-chip publications-chip-${item.status} publications-chip-${item.channel?.platform || "unknown"}`} onClick={(event) => { event.stopPropagation(); if (window.matchMedia("(max-width: 720px)").matches) { setPubSelectedDayKey(key); return; } openPubEditor(day, item); }} key={item.id}>
+                      {items.slice(0, 3).map((item) => <button type="button" className={`publications-chip publications-chip-${item.status} publications-chip-${item.channel?.platform || "unknown"}`} onClick={(event) => { event.stopPropagation(); if (window.matchMedia("(max-width: 720px)").matches) { setPubSelectedDayKey(key); return; } openPubEditor(day, item); }} key={item.id}>
                         <i className={`publications-chip-platform publications-chip-platform-${item.channel?.platform || "unknown"}`} aria-label={item.channel?.platform === "telegram" ? "Telegram" : item.channel?.platform === "vk" ? "VK" : "Канал отключён"}>{item.channel?.platform === "telegram" ? "TG" : item.channel?.platform === "vk" ? "VK" : "—"}</i>
                         <b>{new Date(item.scheduledAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</b>
                         <span>{item.title || "Без названия"}</span>
@@ -5807,6 +5809,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                         {item.status === "scheduled" && item.retryCount > 0 && <em>Повтор</em>}
                         {item.status === "published" && <em>✓</em>}
                       </button>)}
+                      {items.length > 3 && <button type="button" className="publications-chip-more" onClick={(event) => { event.stopPropagation(); setPubSelectedDayKey(key); }}>+ ещё {items.length - 3}</button>}
                     </div>
                   </div>;
                 })}

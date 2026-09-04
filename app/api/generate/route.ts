@@ -274,6 +274,14 @@ function countCharacters(value: string) {
   return value.trim().length;
 }
 
+function publicationCharacters(material: Pick<GeneratedMaterial, "title" | "subtitle" | "body">) {
+  return [material.title, material.subtitle, material.body].filter(Boolean).join("\n\n").trim().length;
+}
+
+function bodyBudget(material: Pick<GeneratedMaterial, "title" | "subtitle">, totalTarget: number) {
+  return Math.max(80, totalTarget - [material.title, material.subtitle].filter(Boolean).join("\n\n").trim().length);
+}
+
 function trimToCharacterTarget(value: string, target: number) {
   const trimmed = value.trim().slice(0, target).trim();
   const lastStop = Math.max(trimmed.lastIndexOf("."), trimmed.lastIndexOf("!"), trimmed.lastIndexOf("?"));
@@ -748,8 +756,8 @@ export async function POST(request: Request) {
           "Не используй мета-фразы «материал адресован», «текст говорит», «профиль бренда», «выбранный стиль», «ключевые темы» и подобные редакционные пояснения.",
           "Факты и преимущества вплетай в тему естественно. Позиционирование можно переформулировать; не копируй его отдельным рекламным абзацем.",
           keywordMatchStrict
-            ? "Выполни keyword_contract: каждая required_phrases должна присутствовать в body хотя бы один раз в точной или грамматически корректной форме. Не выдавай ключи списком и не комментируй SEO‑настройки. Целевой объём указан в знаках с пробелами; отклонение до 15% допустимо."
-            : "Выполни keyword_contract: required_topics задают тему и смысл материала, но это не поисковый формат — не цитируй фразу дословно и не встраивай её как поисковый оборот. Не выдавай ключи списком и не комментируй SEO‑настройки. Целевой объём указан в знаках с пробелами; отклонение до 15% допустимо.",
+            ? "Выполни keyword_contract: каждая required_phrases должна присутствовать в body хотя бы один раз в точной или грамматически корректной форме. Не выдавай ключи списком и не комментируй SEO‑настройки. Целевой объём считается в знаках с пробелами по title, subtitle и body вместе; отклонение до 15% допустимо."
+            : "Выполни keyword_contract: required_topics задают тему и смысл материала, но это не поисковый формат — не цитируй фразу дословно и не встраивай её как поисковый оборот. Не выдавай ключи списком и не комментируй SEO‑настройки. Целевой объём считается в знаках с пробелами по title, subtitle и body вместе; отклонение до 15% допустимо.",
           keywordMatchStrict
             ? "Не добивай текст вариациями одного ключа. Поисковые формулировки нужны для ясного соответствия интенту, а не для плотности: при конфликте с естественностью используй грамматически корректную форму и сохрани смысл."
             : "Ключевые фразы здесь — внутренний ориентир по теме, а не текст для вставки. Раскрывай их идею своими словами в интонации формата; не создавай предложение-определение вроде «когда говорят/ищут X, имеют в виду...» и не подписывай текст под конкретный поисковый запрос.",
@@ -787,7 +795,7 @@ export async function POST(request: Request) {
     // length drift was the main source of two-minute "small" generations.
     // Repair only a genuinely unusable draft; formatting is sanitized below
     // and an overshoot is handled by the deterministic trim backstop.
-    const needsModelCorrection = countCharacters(material.body) < Math.floor(minimumCharacters * 0.55) || !subjectCheck.passes;
+    const needsModelCorrection = publicationCharacters(material) < Math.floor(minimumCharacters * 0.55) || !subjectCheck.passes;
     if (needsModelCorrection) {
       try {
         const correctionCall = await callAiModel<Record<string, unknown>>({
@@ -800,7 +808,7 @@ export async function POST(request: Request) {
             "Ты — выпускающий редактор платформы КЛИО.",
             "Приведи материал к заданному объёму, сохранив тему, факты, ключевые фразы, структуру и голос бренда.",
             ...CORE_SYSTEM_RULES,
-            `Требуемый объём: ${input.length} знаков с пробелами. Допустимый диапазон: ${minimumCharacters}–${maximumCharacters} знаков с пробелами.`,
+            `Требуемый объём всего материала — title, subtitle и body вместе: ${input.length} знаков с пробелами. Допустимый диапазон: ${minimumCharacters}–${maximumCharacters}.`,
             "Не добавляй неподтверждённые факты и не повторяй абзацы ради объёма.",
             `Сохрани контракт формата «${formatPlan.title}»:`,
             ...formatPlan.aiRules,
@@ -852,7 +860,7 @@ export async function POST(request: Request) {
     // of a thought" and "a sentence boundary"). A purely mechanical trim
     // is only the fallback if that call itself fails — always leave the
     // client with *something* rather than an error.
-    if (countCharacters(material.body) > maximumCharacters) {
+    if (publicationCharacters(material) > maximumCharacters) {
       try {
         const condenseCall = await callAiModel<Record<string, unknown>>({
           operation: "condense_overflow",
@@ -862,7 +870,7 @@ export async function POST(request: Request) {
           schema: MATERIAL_SCHEMA,
           instructions: [
             "Ты сокращаешь уже готовую статью до целевого объёма, не переписывая её заново.",
-            `Целевой объём: ${input.length} знаков с пробелами, допустимо от ${minimumCharacters} до ${maximumCharacters}.`,
+            `Целевой объём всего материала — title, subtitle и body вместе: ${input.length} знаков с пробелами, допустимо от ${minimumCharacters} до ${maximumCharacters}.`,
             "Сокращай за счёт наименее важного: повторов, избыточных примеров, лишних деталей. Не обрывай мысль или аргумент на середине — если предложение продолжает мысль из предыдущего, сокращай их вместе или не трогай.",
             "Не добавляй новые факты, не меняй заголовок, тему, ключевые фразы и структуру подзаголовков без необходимости.",
             "Сохрани subtitle, meta_title, meta_description и editorial_comment по смыслу как есть (можно чуть скорректировать под новый объём).",
@@ -874,7 +882,7 @@ export async function POST(request: Request) {
         usedModel = condenseCall.model;
       } catch (error) {
         console.error("Nano condense pass failed, falling back to mechanical trim", error);
-        material = { ...material, body: trimOverflowBody(material.body, input.length) };
+        material = { ...material, body: trimOverflowBody(material.body, bodyBudget(material, input.length)) };
       }
       missingGeo = missingGeography(material, input);
       subjectCheck = topicCoverage(material, input);
