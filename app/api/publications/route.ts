@@ -281,6 +281,51 @@ export async function POST(request: Request) {
         if (!channel) return Response.json({ error: "Канал не найден или недоступен." }, { status: 404 });
       }
 
+      const [currentGeneration] = await db.select().from(generations).where(and(eq(generations.id, publication.generationId), eq(generations.ownerEmail, user.email))).limit(1);
+      const nextTitle = payload.title !== undefined ? clean(payload.title, 500) || "Без названия" : currentGeneration?.title;
+      const nextBody = payload.body !== undefined ? clean(payload.body, 20_000) : currentGeneration?.body;
+      const nextImageUrl = payload.imageUrl !== undefined ? clean(payload.imageUrl, 2000) : currentGeneration?.imageUrl;
+
+      // Published entries are history. Rescheduling or editing one creates a
+      // new scheduled copy, so the original remains on its real past date.
+      const shouldForkPublished = publication.status === "published" && Boolean(currentGeneration) && (
+        nextScheduledAt !== publication.scheduledAt ||
+        nextChannelId !== publication.channelId ||
+        nextTitle !== currentGeneration.title ||
+        nextBody !== currentGeneration.body ||
+        nextImageUrl !== currentGeneration.imageUrl
+      );
+      if (shouldForkPublished && currentGeneration) {
+        const [forkedGeneration] = await db.insert(generations).values({
+          id: crypto.randomUUID(),
+          ownerEmail: user.email,
+          brandId: currentGeneration.brandId,
+          format: currentGeneration.format,
+          topic: currentGeneration.topic,
+          title: nextTitle ?? currentGeneration.title,
+          body: nextBody ?? currentGeneration.body,
+          subtitle: currentGeneration.subtitle,
+          metaTitle: currentGeneration.metaTitle,
+          metaDescription: currentGeneration.metaDescription,
+          editorialComment: currentGeneration.editorialComment,
+          keywords: currentGeneration.keywords,
+          tone: currentGeneration.tone,
+          targetLength: currentGeneration.targetLength,
+          imageUrl: nextImageUrl ?? currentGeneration.imageUrl,
+        }).returning();
+        const [forkedPublication] = await db.insert(publications).values({
+          id: crypto.randomUUID(),
+          ownerEmail: user.email,
+          brandId: publication.brandId,
+          generationId: forkedGeneration.id,
+          channelId: nextChannelId,
+          scheduledAt: nextScheduledAt ?? publication.scheduledAt,
+          status: "scheduled",
+        }).returning();
+        const [forkedChannel] = await db.select().from(socialChannels).where(eq(socialChannels.id, forkedPublication.channelId)).limit(1);
+        return Response.json({ publication: await publicationResponse(forkedPublication, forkedGeneration, forkedChannel), forkedFromPublicationId: publication.id });
+      }
+
       // Touching the schedule on a "failed" row re-queues it for the cron
       // instead of leaving it stuck failed forever — the natural way a
       // person actually retries is "fix the thing, then move it", not a
@@ -294,13 +339,12 @@ export async function POST(request: Request) {
       }).where(eq(publications.id, id));
 
       if (payload.title !== undefined || payload.body !== undefined || payload.imageUrl !== undefined) {
-        const [generation] = await db.select().from(generations).where(and(eq(generations.id, publication.generationId), eq(generations.ownerEmail, user.email))).limit(1);
-        if (generation) {
+        if (currentGeneration) {
           await db.update(generations).set({
             ...(payload.title !== undefined ? { title: clean(payload.title, 500) || "Без названия" } : {}),
             ...(payload.body !== undefined ? { body: clean(payload.body, 20_000) } : {}),
             ...(payload.imageUrl !== undefined ? { imageUrl: clean(payload.imageUrl, 2000) } : {}),
-          }).where(eq(generations.id, generation.id));
+          }).where(eq(generations.id, currentGeneration.id));
         }
       }
 

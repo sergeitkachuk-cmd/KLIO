@@ -1902,9 +1902,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             imageUrl: pubEditor.imageUrl,
           }),
         });
-        const payload = await safeJson(response) as { error?: string };
+        const payload = await safeJson(response) as { error?: string; forkedFromPublicationId?: string };
         if (!response.ok) throw new Error(payload.error || "Не удалось сохранить публикацию.");
-        showToast("Публикация обновлена");
+        showToast(payload.forkedFromPublicationId ? "Создана новая запланированная публикация. Исходная осталась в истории." : "Публикация обновлена");
       } else {
         const response = await fetch("/api/publications", {
           method: "POST",
