@@ -126,7 +126,10 @@ select:focus-visible {
   min-height: 46px;
   padding: 0 20px;
   border: 1px solid transparent;
-  border-radius: 13px;
+  /* Fully rounded, iOS-style capsule — the shared shape every .button
+     variant (primary/ghost/outline/light/large) and everything built on
+     top of it should carry, so a CTA looks the same wherever it appears. */
+  border-radius: 999px;
   background: transparent;
   font-weight: 650;
   cursor: pointer;
@@ -173,7 +176,6 @@ select:focus-visible {
 .button.large {
   min-height: 58px;
   padding: 0 28px;
-  border-radius: 16px;
 }
 
 /* Intro cover */
@@ -1620,7 +1622,7 @@ select:focus-visible {
   flex: 0 0 auto;
   padding: 0 14px;
   border: 1px solid rgba(124, 58, 237, 0.23);
-  border-radius: 12px;
+  border-radius: 999px;
   color: var(--cobalt);
   background: rgba(255, 255, 255, 0.68);
   font-size: 12px;
@@ -20217,12 +20219,16 @@ input[type="radio"] {
   box-shadow: 0 3px 11px rgba(29, 57, 104, 0.09), inset 0 1px #fff;
 }
 
-/* On phones the two result actions ("Копировать текст" / "Очистить") stay
-   on one row: labelled pills, copying takes the spare width, clearing
-   stays compact and reads as the destructive one. This used to be three
-   separate, mutually-contradicting mobile blocks (one even stacked them
-   into their own rows) accumulated across earlier passes — consolidated
-   into the single rule that actually wins. */
+/* On phones the result actions ("Копировать текст" / "В публикацию" /
+   "Очистить") wrap as labelled pills: the two content actions share a row
+   and grow to fill it, clearing drops to its own row underneath when it
+   doesn't fit — reads as the compact, destructive one. This used to force
+   all three onto one nowrap row (fine back when there were only two
+   buttons here); with a third added since, that forced row had nowhere
+   left to shrink and the button labels visually ran into each other.
+   overflow/text-overflow stay on as a backstop so a future fourth button
+   or a long translated label truncates instead of bleeding into the next
+   pill again. */
 @media (max-width: 720px) {
   .result-head {
     flex-wrap: wrap;
@@ -20230,7 +20236,7 @@ input[type="radio"] {
 
   .result-head-actions {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     width: 100%;
     gap: 8px;
     margin-top: 8px;
@@ -20246,11 +20252,13 @@ input[type="radio"] {
     background: rgba(255, 255, 255, 0.08);
     font-size: 13px !important;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .result-head-actions button:not(.result-clear) {
     order: 1;
-    flex: 1 1 auto;
+    flex: 1 1 140px;
     min-width: 0;
   }
 

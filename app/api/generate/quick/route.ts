@@ -1,6 +1,7 @@
 import { assertGenerationQuotaAvailable, recordGeneration, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../../_lib/workspace-account";
 import { AiCallError, callAiModel } from "../../_lib/ai-router";
 import { aiConfigured } from "../../_lib/ai-config";
+import { publicationCharacters, bodyBudget, trimOverflowBody } from "../../_lib/text-length";
 
 type QuickPayload = { prompt?: unknown; brandId?: unknown; brand?: unknown; lengthHint?: unknown };
 
@@ -19,10 +20,6 @@ type QuickBrandInput = {
 
 function cleanQuickField(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
-}
-
-function publicationCharacters(material: { title: string; subtitle: string; body: string }) {
-  return [material.title, material.subtitle, material.body].filter(Boolean).join("\n\n").trim().length;
 }
 
 function plainPublicationText(value: unknown, maxLength: number) {
@@ -278,9 +275,19 @@ export async function POST(request: Request) {
         }
       } catch (error) {
         // Best-effort — ship the original (too-long) material rather than
-        // fail a generation the user is already waiting on.
+        // fail a generation the user is already waiting on. The
+        // unconditional check right below still catches this case.
         console.error("Quick generation condense pass failed", error);
       }
+    }
+
+    // Absolute, non-AI ceiling: covers both the condense call above
+    // failing outright and it succeeding but still landing over budget
+    // (an LLM asked to shorten text isn't guaranteed to land in range
+    // either). A generation can never reach the user over maximumCharacters
+    // purely because both AI passes missed the same target.
+    if (publicationCharacters(material) > maximumCharacters) {
+      material = { ...material, body: trimOverflowBody(material.body, bodyBudget(material, brief.targetLength)) };
     }
 
     const targetLength = material.body.trim().length;

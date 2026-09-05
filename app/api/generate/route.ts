@@ -17,6 +17,7 @@ import { AiCallError, callAiModel } from "../_lib/ai-router";
 import { aiConfigured } from "../_lib/ai-config";
 import type { AiOperation } from "../_lib/ai-config";
 import { isAiRateLimited } from "../_lib/rate-limit";
+import { publicationCharacters, bodyBudget, trimOverflowBody } from "../_lib/text-length";
 
 type Format = ContentFormat;
 
@@ -268,44 +269,6 @@ function normalizePayload(raw: GeneratePayload) {
       cta: cleanText(sourceBrand.cta, 500),
     } satisfies BrandProfile,
   };
-}
-
-function countCharacters(value: string) {
-  return value.trim().length;
-}
-
-function publicationCharacters(material: Pick<GeneratedMaterial, "title" | "subtitle" | "body">) {
-  return [material.title, material.subtitle, material.body].filter(Boolean).join("\n\n").trim().length;
-}
-
-function bodyBudget(material: Pick<GeneratedMaterial, "title" | "subtitle">, totalTarget: number) {
-  return Math.max(80, totalTarget - [material.title, material.subtitle].filter(Boolean).join("\n\n").trim().length);
-}
-
-function trimToCharacterTarget(value: string, target: number) {
-  const trimmed = value.trim().slice(0, target).trim();
-  const lastStop = Math.max(trimmed.lastIndexOf("."), trimmed.lastIndexOf("!"), trimmed.lastIndexOf("?"));
-  const stopped = lastStop >= trimmed.length * 0.96 ? trimmed.slice(0, lastStop + 1) : trimmed;
-  return /[.!?]$/.test(stopped) ? stopped : `${stopped}.`;
-}
-
-// Deterministic overshoot backstop for a real AI-written body (see the
-// mechanical-trim step in POST below). Splits on blank lines (the model
-// always writes section breaks this way per the prompt's "уместными
-// подзаголовками" instruction) and, when there's more than one section,
-// keeps the last one — almost always the conclusion/CTA — untouched,
-// trimming only the sections before it. That avoids the one thing a flat
-// word-count cut risks: lopping off the ending entirely.
-function trimOverflowBody(body: string, target: number) {
-  const sections = body.split(/\n\s*\n/).map((item) => item.trim()).filter(Boolean);
-  if (sections.length <= 1) return trimToCharacterTarget(body, target);
-
-  const conclusion = sections.at(-1) || "";
-  const conclusionLength = countCharacters(conclusion);
-  if (conclusionLength >= target) return trimToCharacterTarget(body, target);
-
-  const core = trimToCharacterTarget(sections.slice(0, -1).join("\n\n"), target - conclusionLength);
-  return `${core}\n\n${conclusion}`;
 }
 
 const META_LEAKAGE_PATTERNS = [
