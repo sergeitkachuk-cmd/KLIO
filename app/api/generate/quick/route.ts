@@ -2,7 +2,7 @@ import { assertGenerationQuotaAvailable, recordGeneration, workspaceIdentity, Wo
 import { AiCallError, callAiModel } from "../../_lib/ai-router";
 import { aiConfigured } from "../../_lib/ai-config";
 
-type QuickPayload = { prompt?: unknown; brandId?: unknown; brand?: unknown };
+type QuickPayload = { prompt?: unknown; brandId?: unknown; brand?: unknown; lengthHint?: unknown };
 
 type QuickBrandInput = {
   name: string;
@@ -19,6 +19,10 @@ type QuickBrandInput = {
 
 function cleanQuickField(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+}
+
+function publicationCharacters(material: { title: string; subtitle: string; body: string }) {
+  return [material.title, material.subtitle, material.body].filter(Boolean).join("\n\n").trim().length;
 }
 
 function plainPublicationText(value: unknown, maxLength: number) {
@@ -135,6 +139,13 @@ export async function POST(request: Request) {
     // (the client omits `brand` entirely otherwise) — Quick mode stays just
     // as usable for one-off topics unrelated to any brand.
     const brand = cleanQuickBrand(payload.brand);
+    // Optional explicit override from the "Объём" picker next to the quick
+    // prompt. Left undefined ("Автоматически"), KLIO keeps guessing length
+    // from the brief below — same as before this control existed.
+    const lengthHint = typeof payload.lengthHint === "number" && Number.isFinite(payload.lengthHint)
+      && payload.lengthHint >= 300 && payload.lengthHint <= 30000
+      ? Math.round(payload.lengthHint)
+      : undefined;
 
     let brief: QuickBrief;
     try {
@@ -155,12 +166,18 @@ export async function POST(request: Request) {
         input: `Задача пользователя: ${prompt}`,
       });
       brief = normalizeBrief(briefCall.result);
+      if (lengthHint) brief = { ...brief, targetLength: lengthHint };
     } catch (error) {
       if (error instanceof AiCallError) {
         return Response.json({ error: error.message }, { status: error.status });
       }
       throw error;
     }
+
+    // ±15%, matching the Advanced generator's tolerance (see generate/route.ts) —
+    // LLMs land "close" to a target reliably, not exact.
+    const minimumCharacters = Math.floor(brief.targetLength * 0.85);
+    const maximumCharacters = Math.ceil(brief.targetLength * 1.15);
 
     let parsed: Record<string, unknown>;
     let usedModel = "";
@@ -174,7 +191,8 @@ export async function POST(request: Request) {
         instructions: [
           "Ты — старший русскоязычный редактор и контент‑маркетолог платформы КЛИО.",
           "Пользователь описал задачу свободным текстом в одном окне — как в чате с ассистентом, без отдельных полей темы, формата и ключей.",
-          "Разбор задачи уже выполнен (см. inferred_brief): используй его формат, интонацию, тему и целевой объём в знаках с пробелами как основу, но не копируй их в текст статьи и не упоминай сам факт разбора.",
+          "Разбор задачи уже выполнен (см. inferred_brief): используй его формат, интонацию и тему как основу, но не копируй их в текст статьи и не упоминай сам факт разбора.",
+          `Требуемый объём всего материала — title, subtitle и body вместе: ${brief.targetLength} знаков с пробелами. Допустимый диапазон: ${minimumCharacters}–${maximumCharacters}. Это жёсткое требование, а не ориентир — не пиши заметно короче или длиннее диапазона, даже если тема кажется шире или уже.`,
           "Поле format в ответе должно совпадать с inferred_brief.format, поле tone — с inferred_brief.tone, если только сам текст задачи явно не требует иного.",
           ...(brand ? [
             "В brand_profile передан профиль бренда пользователя (кнопка «Использовать бренд» включена) — учитывай его только там, где задача реально про этот бренд. Если задача про другую компанию или тему, не связанную с брендом, profile не подставляй насильно — пиши по задаче.",
@@ -205,7 +223,7 @@ export async function POST(request: Request) {
       throw error;
     }
 
-    const material = {
+    let material = {
       title: plainPublicationText(parsed.title, 500),
       body: plainPublicationText(parsed.body, 60_000),
       subtitle: plainPublicationText(parsed.subtitle, 600),
@@ -219,6 +237,52 @@ export async function POST(request: Request) {
 
     const format = typeof parsed.format === "string" && ALLOWED_FORMATS.has(parsed.format) ? parsed.format : brief.format;
     const tone = typeof parsed.tone === "string" && parsed.tone.trim() ? parsed.tone.trim().slice(0, 60) : brief.tone;
+
+    // Backstop for the case the hard range above still misses: a genuine
+    // overshoot delivered straight to the user reads as KLIO ignoring "пост
+    // для ТГ" and writing a full article instead. Condense once rather than
+    // ship it, mirroring generate/route.ts's condense_overflow pass.
+    if (publicationCharacters(material) > maximumCharacters) {
+      try {
+        const condenseCall = await callAiModel<Record<string, unknown>>({
+          operation: "condense_overflow",
+          ownerEmail: identity.email,
+          brandId,
+          schemaName: "klio_quick_material",
+          schema: QUICK_MATERIAL_SCHEMA,
+          instructions: [
+            "Ты сокращаешь уже готовую публикацию до целевого объёма, не переписывая её заново.",
+            `Целевой объём всего материала — title, subtitle и body вместе: ${brief.targetLength} знаков с пробелами, допустимо от ${minimumCharacters} до ${maximumCharacters}.`,
+            "Сокращай за счёт наименее важного: повторов, избыточных примеров, лишних деталей. Не обрывай мысль или аргумент на середине.",
+            "Не добавляй новые факты, не меняй заголовок, тему и формат без необходимости.",
+            "Сохрани subtitle, meta_title, meta_description и editorial_comment по смыслу как есть (можно чуть скорректировать под новый объём).",
+            "Верни только валидный JSON со всеми полями схемы; format и tone оставь как в исходном материале.",
+          ].join("\n"),
+          input: JSON.stringify({
+            target_characters_with_spaces: brief.targetLength,
+            current_material: { ...material, format, tone },
+          }),
+        });
+        const condensed = condenseCall.result;
+        const condensedMaterial = {
+          title: plainPublicationText(condensed.title, 500) || material.title,
+          body: plainPublicationText(condensed.body, 60_000) || material.body,
+          subtitle: plainPublicationText(condensed.subtitle, 600) || material.subtitle,
+          metaTitle: plainPublicationText(condensed.meta_title, 500) || material.metaTitle,
+          metaDescription: plainPublicationText(condensed.meta_description, 1_000) || material.metaDescription,
+          editorialComment: typeof condensed.editorial_comment === "string" ? condensed.editorial_comment : material.editorialComment,
+        };
+        if (condensedMaterial.title && condensedMaterial.body) {
+          material = condensedMaterial;
+          usedModel = condenseCall.model;
+        }
+      } catch (error) {
+        // Best-effort — ship the original (too-long) material rather than
+        // fail a generation the user is already waiting on.
+        console.error("Quick generation condense pass failed", error);
+      }
+    }
+
     const targetLength = material.body.trim().length;
 
     const usage = await recordGeneration({

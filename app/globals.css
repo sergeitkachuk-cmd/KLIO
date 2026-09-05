@@ -22230,13 +22230,19 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
    interaction language as the brand-profile field help above, but under
    its own classes so it can sit next to any label or heading across the
    app, not just inside the brand-profile field grid. */
+/* The label-text+trigger row, not the trigger itself, is the popover's
+   positioning root - it's as wide as the field below it (a plain block
+   span, matching how .profile-field-heading works for the brand-profile
+   version above), so the popover can never be wider than its own field
+   regardless of how far into the row the "?" trigger sits. */
 .field-label-help {
-  display: inline-flex;
+  position: relative;
+  display: flex;
   align-items: center;
   gap: 4px;
+  width: 100%;
 }
 .help-tip {
-  position: relative;
   display: inline-flex;
   align-items: center;
 }
@@ -22279,7 +22285,8 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
   top: 100%;
   left: 0;
   margin-top: 6px;
-  width: min(340px, 80vw);
+  width: min(340px, 100%);
+  min-width: min(240px, 100%);
   padding: 12px 14px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 12px;

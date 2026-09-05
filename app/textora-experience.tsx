@@ -751,6 +751,20 @@ const lengthPresets: Record<Format, { value: number; label: string }[]> = {
   ],
 };
 
+// Quick mode doesn't ask for a format up front (KLIO infers it from the
+// free-text task), so its length picker can't key off lengthPresets[format]
+// the way Advanced's "Объём" select does. A small format-agnostic scale
+// covers the same range instead — "Автоматически" keeps today's behavior
+// (server infers a target from the task) unchanged.
+const QUICK_LENGTH_OPTIONS = [
+  { value: "auto", label: "Автоматически" },
+  { value: "600", label: "≈ 600 · короткий пост" },
+  { value: "1500", label: "≈ 1 500 · пост или тезисы" },
+  { value: "3500", label: "≈ 3 500 · статья" },
+  { value: "6000", label: "≈ 6 000 · подробная статья" },
+  { value: "10000", label: "≈ 10 000 · лонгрид" },
+];
+
 const defaultLengthByFormat: Record<Format, number> = {
   seo: 8400,
   social: 1050,
@@ -2108,6 +2122,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [generatorAdvanced, setGeneratorAdvanced] = useState(true);
   const [generatorMode, setGeneratorMode] = useState<"quick" | "advanced">("quick");
   const [quickPrompt, setQuickPrompt] = useState("");
+  const [quickLength, setQuickLength] = useState("auto");
   const [quickBusy, setQuickBusy] = useState(false);
   const [quickError, setQuickError] = useState("");
   const [generatorUseBrand, setGeneratorUseBrand] = useState(true);
@@ -2978,6 +2993,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setGeneratorUseSemantics(false);
     setGeneratorUseCompetitors(false);
     setQuickPrompt("");
+    setQuickLength("auto");
     setQuickError("");
     setGenerationError("");
 
@@ -4503,6 +4519,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           // Same "Использовать бренд" switch the Advanced tab reads —
           // Quick mode now applies it too instead of always writing generic.
           brand: generatorBrandReady ? effectiveBrand : undefined,
+          // "Автоматически" (default) omits this — KLIO keeps inferring a
+          // target length from the task, same as before this control existed.
+          lengthHint: quickLength === "auto" ? undefined : Number(quickLength),
         }),
       });
       const payload = await safeJson(response) as {
@@ -4646,6 +4665,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setLength(defaultLengthByFormat[format]);
     setCustomLength(false);
     setQuickPrompt("");
+    setQuickLength("auto");
     setQuickError("");
     setGenerationError("");
     clearGenerationResultFields();
@@ -5511,7 +5531,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <button type="button" className={generatorMode === "advanced" ? "active" : ""} onClick={() => setGeneratorMode("advanced")} role="radio" aria-checked={generatorMode === "advanced"}><i>≡</i><span><b>Эксперт</b><small>формат, ключи, стиль отдельно</small></span></button>
                 </div>
                 {generatorMode === "quick" && <div className="generator-quick">
-                  <label className="field"><span className="field-label-help">Опишите задачу<HelpTip label="Опишите задачу" text="Опишите бренд, сайт или тему и что нужно написать — формат, тон и объём КЛИО определит сама. Если назван реальный бренд или сайт, КЛИО проверит факты в вебе, а не будет их выдумывать."/></span><AutoTextarea rows={6} value={quickPrompt} onChange={(event) => setQuickPrompt(event.target.value)} placeholder="Например: напиши SEO-статью про ORCA (сайт theorca.pro) — платформа для трейдеров с no-code сканерами и стратегиями. Аудитория — активные трейдеры."/><small>{generatorBrandReady ? <>Профиль бренда «{effectiveBrand.name}» включён — КЛИО учтёт его факты и голос, если задача с ним связана.</> : "Профиль бренда сейчас не используется — включите его выше и заполните основу, если хотите писать в голосе бренда без пересказа задачи."}</small></label>
+                  <label className="field"><span className="field-label-help">Опишите задачу для КЛИО<HelpTip label="Опишите задачу для КЛИО" text="Опишите бренд, сайт или тему и что нужно написать — формат, тон и объём КЛИО определит сама. Если назван реальный бренд или сайт, КЛИО проверит факты в вебе, а не будет их выдумывать."/></span><AutoTextarea rows={6} value={quickPrompt} onChange={(event) => setQuickPrompt(event.target.value)} placeholder="Например: напиши SEO-статью про ORCA (сайт theorca.pro) — платформа для трейдеров с no-code сканерами и стратегиями. Аудитория — активные трейдеры."/><small>{generatorBrandReady ? <>Профиль бренда «{effectiveBrand.name}» включён — КЛИО учтёт его факты и голос, если задача с ним связана.</> : "Профиль бренда сейчас не используется — включите его выше и заполните основу, если хотите писать в голосе бренда без пересказа задачи."}</small></label>
+                  <ModuleSelect label="Объём" value={quickLength} help="Если оставить «Автоматически», КЛИО сама оценит объём по формату и задаче — например, короткий пост для соцсетей или полноценную статью. Если результат обычно выходит не того размера, выберите объём вручную." options={QUICK_LENGTH_OPTIONS} onChange={setQuickLength}/>
                   {quickError && <p className="generation-error" role="alert">{quickError}</p>}
                   <button className={`button primary generate ${quickBusy ? "is-busy" : ""}`} type="button" onClick={() => void generateQuick()} disabled={!activeBrandId || quickBusy || aiConnection !== "connected" || workspaceAccount.generationsRemaining <= 0}><Icon name="spark"/>{quickBusy ? "КЛИО пишет…" : !activeBrandId ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
                 </div>}
