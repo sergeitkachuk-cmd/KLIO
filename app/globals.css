@@ -10348,8 +10348,12 @@ input[type="radio"] {
     padding-left: 13px;
   }
 
+  /* City labels already truncate with an ellipsis at any width (see the
+     base rule's overflow/text-overflow/white-space on the button's own
+     span), so unlike a text card this one never needed the full row to
+     avoid wrapping - collapsing to 1 column just doubled a long city
+     list's height for nothing. */
   .semantic-geo-cities {
-    grid-template-columns: 1fr;
     padding-left: 28px;
   }
 
@@ -11171,9 +11175,10 @@ input[type="radio"] {
     padding: 23px;
   }
 
-  .field.two {
-    grid-template-columns: 1fr;
-  }
+  /* .field.two (Стиль/Объём) used to collapse to 1 column here, but
+     .module-select-trigger's own label already truncates with an
+     ellipsis at any width - same reasoning as .semantic-geo-cities
+     above, so the 2-column base rule is left as-is for mobile too. */
 
   .result-head {
     align-items: flex-start;
