@@ -20219,16 +20219,14 @@ input[type="radio"] {
   box-shadow: 0 3px 11px rgba(29, 57, 104, 0.09), inset 0 1px #fff;
 }
 
-/* On phones the result actions ("Копировать текст" / "В публикацию" /
-   "Очистить") wrap as labelled pills: the two content actions share a row
-   and grow to fill it, clearing drops to its own row underneath when it
-   doesn't fit — reads as the compact, destructive one. This used to force
-   all three onto one nowrap row (fine back when there were only two
-   buttons here); with a third added since, that forced row had nowhere
-   left to shrink and the button labels visually ran into each other.
-   overflow/text-overflow stay on as a backstop so a future fourth button
-   or a long translated label truncates instead of bleeding into the next
-   pill again. */
+/* On phones the result actions ("Копировать" / "В публикацию" /
+   "Очистить") are compact pills sized to stay on one row on real devices
+   (shortened labels + tight padding, not the same 46px desktop touch
+   target) rather than wrapping to a second row — wrapping fixed the
+   earlier text-overflow bug but cost a full extra row on an already
+   scroll-heavy screen. flex-wrap stays on and overflow/text-overflow
+   stay as a backstop for a narrower device or a future fourth button,
+   not as the primary layout. */
 @media (max-width: 720px) {
   .result-head {
     flex-wrap: wrap;
@@ -20238,19 +20236,19 @@ input[type="radio"] {
     display: flex;
     flex-wrap: wrap;
     width: 100%;
-    gap: 8px;
+    gap: 6px;
     margin-top: 8px;
   }
 
   .result-head-actions button {
     justify-content: center;
-    min-height: 46px;
-    padding: 0 14px;
+    min-height: 38px;
+    padding: 0 11px;
     border: 1px solid rgba(190, 213, 244, 0.26);
     border-radius: 999px;
     color: #e7effc;
     background: rgba(255, 255, 255, 0.08);
-    font-size: 13px !important;
+    font-size: 12px !important;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -20258,7 +20256,7 @@ input[type="radio"] {
 
   .result-head-actions button:not(.result-clear) {
     order: 1;
-    flex: 1 1 140px;
+    flex: 1 1 auto;
     min-width: 0;
   }
 
