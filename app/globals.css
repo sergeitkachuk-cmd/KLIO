@@ -10616,7 +10616,6 @@ input[type="radio"] {
     padding: 21px 18px;
   }
 
-  .adaptation-goals,
   .adaptation-changes > div {
     grid-template-columns: 1fr;
   }
@@ -13647,9 +13646,33 @@ input[type="radio"] {
   .archive-editor-modal .archive-editor-meta,
   .archive-editor-modal .archive-editor-seo,
   .archive-transform-tools,
-  .archive-editor-change-log > div,
-  .adaptation-goals {
+  .archive-editor-change-log > div {
     grid-template-columns: 1fr;
+  }
+
+  /* Was 1 column - 15 mode buttons stacked full-width, one per row, on a
+     screen that already has to scroll past the brief above them. Desktop
+     already runs these 2-up at the same ~72px min-height per button;
+     mobile only needs a bit less padding/text to fit the same 2 columns
+     in a narrower track instead of dropping to 1 and doubling the list's
+     height. */
+  .adaptation-goals {
+    gap: 6px;
+  }
+
+  .adaptation-goals button {
+    min-height: 64px;
+    padding: 10px 11px;
+    gap: 7px;
+  }
+
+  .adaptation-goals button b {
+    font-size: 13px;
+  }
+
+  .adaptation-goals button small {
+    font-size: 11px;
+    line-height: 1.35;
   }
 
   .archive-editor-modal .archive-editor-actions {

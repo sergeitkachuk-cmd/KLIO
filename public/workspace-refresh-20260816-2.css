@@ -19,20 +19,27 @@ html {
      sets flex-direction: column there. flex-direction has no !important
      in that stale rule, so this alone would already win on importance,
      but stating it explicitly keeps this override readable on its own
-     rather than relying on that fact staying true forever. */
+     rather than relying on that fact staying true forever.
+     flex-wrap is wrap, not nowrap - three compact pills ("Копировать" /
+     "В публикацию" / "Очистить") are meant to fit one row on real
+     devices at the sizing below, but wrap is the safety net if a
+     narrower device or a longer future label doesn't fit, instead of
+     the pre-2026-09-05 nowrap forcing their text to visibly overlap. */
   .result-head-actions {
     display: flex !important;
     flex-direction: row !important;
-    flex-wrap: nowrap !important;
+    flex-wrap: wrap !important;
     align-items: stretch !important;
     width: 100% !important;
-    gap: 8px !important;
+    gap: 6px !important;
   }
 
   .result-head-actions button {
-    min-height: 42px !important;
+    min-height: 38px !important;
     border-radius: 999px !important;
     white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 
   .result-head-actions button:not(.result-clear) {
