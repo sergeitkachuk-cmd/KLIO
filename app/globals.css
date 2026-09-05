@@ -5002,6 +5002,20 @@ footer nav a {
   margin-bottom: 34px;
 }
 
+/* Every module but Начните здесь renders .workspace-heading with only
+   the brand-profile status pill inside (the eyebrow/title/description
+   block is start-only - see the workspace-heading JSX and
+   .workspace-heading-status:only-child below, which repositions this
+   same lone pill horizontally). The 34px margin below was tuned for
+   when a tall h1 always filled this row; collapsed to just the pill, it
+   reads as a stray empty gap before the module card starts (site owner
+   screenshot: visible dead space between the pill and "План статей").
+   Tighter for that case only - Начните здесь keeps its own gap
+   unaffected. */
+.workspace-heading:has(> .workspace-heading-status:only-child) {
+  margin-bottom: 14px;
+}
+
 .workspace-heading p {
   margin: 0 0 10px;
   /* var(--violet), not --cobalt - brighter, reads better against the
@@ -9850,6 +9864,10 @@ input[type="radio"] {
     margin-bottom: 24px;
   }
 
+  .workspace-heading:has(> .workspace-heading-status:only-child) {
+    margin-bottom: 10px;
+  }
+
   .workspace-heading > div:first-child > span {
     font-size: 15px;
   }
@@ -13930,6 +13948,10 @@ input[type="radio"] {
   .workspace-heading {
     gap: 15px;
     margin-bottom: 20px;
+  }
+
+  .workspace-heading:has(> .workspace-heading-status:only-child) {
+    margin-bottom: 10px;
   }
 
   .workspace-heading p {
