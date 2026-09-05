@@ -16260,8 +16260,44 @@ input[type="radio"] {
     margin-left: 0;
   }
 
+  /* Was 1 column full-width cards with a 2-3 line description each - on a
+     390px phone that's ~200px per card, ~1400px for all seven before
+     reaching any actual tool. The sidebar bottom bar already lists every
+     module by name one tap away, so the description here only needs to
+     read as a hint, not the full pitch: 2 columns + a 2-line clamp cuts
+     this section to roughly a third of its previous height. */
   .workspace-start-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .workspace-start-card {
+    padding: 14px 14px 12px;
+    gap: 6px;
+  }
+
+  .workspace-start-card > i {
+    min-width: 24px;
+    height: 24px;
+    font-size: 11px;
+  }
+
+  .workspace-start-card h3 {
+    font-size: 14px;
+  }
+
+  .workspace-start-card p {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 12px;
+    line-height: 1.4;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .workspace-start-card span {
+    padding-top: 6px;
+    font-size: 12px;
   }
 
   .workspace-start-use-cases {
