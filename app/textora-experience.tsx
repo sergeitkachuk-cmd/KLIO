@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
 import { ProfileField } from "./profile-field";
+import { HelpTip } from "./help-tip";
 import { FOUNDATION_FIELDS, VOICE_FIELDS, mergeProfileFill, missingVoiceFoundation } from "./brand-profile-fill";
 import { russianGeoTree } from "./geo-data";
 import { ADAPTATION_PLANS, FORMAT_PLANS, TONE_PLANS } from "./content-plans";
@@ -1357,11 +1358,12 @@ function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" | 
 // rect — several of this component's homes (e.g. the generator's brief
 // panel) have overflow:hidden ancestors for their own rounded-corner/
 // background clipping, which would otherwise cut the open list off.
-function ModuleSelect({ label, value, options, onChange }: {
+function ModuleSelect({ label, value, options, onChange, help }: {
   label: string;
   value: string;
   options: { value: string; label: string }[];
   onChange: (value: string) => void;
+  help?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [menuRect, setMenuRect] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
@@ -1433,7 +1435,7 @@ function ModuleSelect({ label, value, options, onChange }: {
   const activeOption = options.find((item) => item.value === value);
 
   return <div className={`field module-select ${open ? "is-open" : ""}`} ref={containerRef}>
-    <span>{label}</span>
+    <span className="field-label-help">{label}{help && <HelpTip label={label} text={help}/>}</span>
     <button type="button" ref={triggerRef} className="module-select-trigger" onClick={toggleOpen} aria-haspopup="listbox" aria-expanded={open}>
       <b>{activeOption?.label || value}</b>
       <em>⌄</em>
@@ -5509,7 +5511,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <button type="button" className={generatorMode === "advanced" ? "active" : ""} onClick={() => setGeneratorMode("advanced")} role="radio" aria-checked={generatorMode === "advanced"}><i>≡</i><span><b>Эксперт</b><small>формат, ключи, стиль отдельно</small></span></button>
                 </div>
                 {generatorMode === "quick" && <div className="generator-quick">
-                  <label className="field">Опишите задачу<AutoTextarea rows={6} value={quickPrompt} onChange={(event) => setQuickPrompt(event.target.value)} placeholder="Например: напиши SEO-статью про ORCA (сайт theorca.pro) — платформа для трейдеров с no-code сканерами и стратегиями. Аудитория — активные трейдеры."/><small>Опишите бренд, сайт или тему и что нужно написать — формат, тон и объём КЛИО определит сама. Если назван реальный бренд или сайт, КЛИО проверит факты в вебе, а не будет их выдумывать. {generatorBrandReady ? <>Профиль бренда «{effectiveBrand.name}» включён — КЛИО учтёт его факты и голос, если задача с ним связана.</> : "Профиль бренда сейчас не используется — включите его выше и заполните основу, если хотите писать в голосе бренда без пересказа задачи."}</small></label>
+                  <label className="field"><span className="field-label-help">Опишите задачу<HelpTip label="Опишите задачу" text="Опишите бренд, сайт или тему и что нужно написать — формат, тон и объём КЛИО определит сама. Если назван реальный бренд или сайт, КЛИО проверит факты в вебе, а не будет их выдумывать."/></span><AutoTextarea rows={6} value={quickPrompt} onChange={(event) => setQuickPrompt(event.target.value)} placeholder="Например: напиши SEO-статью про ORCA (сайт theorca.pro) — платформа для трейдеров с no-code сканерами и стратегиями. Аудитория — активные трейдеры."/><small>{generatorBrandReady ? <>Профиль бренда «{effectiveBrand.name}» включён — КЛИО учтёт его факты и голос, если задача с ним связана.</> : "Профиль бренда сейчас не используется — включите его выше и заполните основу, если хотите писать в голосе бренда без пересказа задачи."}</small></label>
                   {quickError && <p className="generation-error" role="alert">{quickError}</p>}
                   <button className={`button primary generate ${quickBusy ? "is-busy" : ""}`} type="button" onClick={() => void generateQuick()} disabled={!activeBrandId || quickBusy || aiConnection !== "connected" || workspaceAccount.generationsRemaining <= 0}><Icon name="spark"/>{quickBusy ? "КЛИО пишет…" : !activeBrandId ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
                 </div>}
@@ -5521,13 +5523,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <p><i>Итог</i>{activeFormatPlan.result}</p>
                 </div>
                 <label className="field">Тема материала<AutoTextarea rows={2} value={topic} onChange={(event) => { setTopic(event.target.value); setGenerationCoverage(null); }} /></label>
-                <div className="field"><ModuleSelect label="Авторская позиция" value={authorPosition} options={[
+                <div className="field"><ModuleSelect label="Авторская позиция" value={authorPosition} help="Позиция задаёт местоимения и дистанцию: тон меняет подачу, но не заменяет голос автора." options={[
                   { value: "brand", label: "От лица бренда" }, { value: "expert", label: "Эксперт" }, { value: "journalist", label: "Журналист" }, { value: "customer", label: "Клиент" }, { value: "neutral", label: "Нейтральная" },
-                ]} onChange={setAuthorPosition}/><small>Позиция задаёт местоимения и дистанцию: тон меняет подачу, но не заменяет голос автора.</small></div>
-                <label className="field">Ключевые слова<AutoTextarea value={keywords} onChange={(event) => { setKeywords(event.target.value); setGenerationCoverage(null); }} /><small>Разделяйте запросы запятыми или получите их после анализа выдачи</small></label>
-                <label className="field generator-accent-field">Дополнительный акцент<AutoTextarea rows={3} value={accent} onChange={(event) => { setAccent(event.target.value); setGenerationCoverage(null); }} placeholder="Например: раскрыть питание, ограничения и порядок консультации"/><small>{(accent.match(/^\s*[•*\-–—]\s+/gm) ?? []).length ? `Распознано обязательных редакционных ориентиров: ${(accent.match(/^\s*[•*\-–—]\s+/gm) ?? []).length}` : "Можно ввести вручную или передать выводы из матрицы. Ориентиры влияют на разделы статьи, а не остаются служебной заметкой."}</small></label>
+                ]} onChange={setAuthorPosition}/></div>
+                <label className="field"><span className="field-label-help">Ключевые слова<HelpTip label="Ключевые слова" text="Разделяйте запросы запятыми или получите их после анализа выдачи."/></span><AutoTextarea value={keywords} onChange={(event) => { setKeywords(event.target.value); setGenerationCoverage(null); }} /></label>
+                <label className="field generator-accent-field"><span className="field-label-help">Дополнительный акцент<HelpTip label="Дополнительный акцент" text="Можно ввести вручную или передать выводы из матрицы. Ориентиры влияют на разделы статьи, а не остаются служебной заметкой."/></span><AutoTextarea rows={3} value={accent} onChange={(event) => { setAccent(event.target.value); setGenerationCoverage(null); }} placeholder="Например: раскрыть питание, ограничения и порядок консультации"/>{Boolean((accent.match(/^\s*[•*\-–—]\s+/gm) ?? []).length) && <small>Распознано обязательных редакционных ориентиров: {(accent.match(/^\s*[•*\-–—]\s+/gm) ?? []).length}</small>}</label>
                 <div className="generator-context-card">
-                  <div className="generator-context-head"><span>Контекст КЛИО</span><small>Выберите источники для материала. Если модуль ещё не подготовлен, КЛИО сохранит выбор и покажет, что нужно сделать перед его подключением.</small></div>
+                  <div className="generator-context-head"><span className="field-label-help">Контекст КЛИО<HelpTip label="Контекст КЛИО" text="Выберите источники для материала. Если модуль ещё не подготовлен, КЛИО сохранит выбор и покажет, что нужно сделать перед его подключением."/></span></div>
                   <div className="generator-context-options">
                     <label className={`${generatorBrandReady ? "is-ready" : "is-pending"} ${generatorUseBrand ? "is-checked" : ""}`}>
                       <input type="checkbox" checked={generatorUseBrand} onChange={(event) => {
@@ -5560,10 +5562,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </div>
                 <button className="generator-advanced-toggle" type="button" onClick={() => setGeneratorAdvanced((value) => !value)} aria-expanded={generatorAdvanced}><span><b>{generatorAdvanced ? "Скрыть профессиональные настройки" : "Профессиональные настройки"}</b><small>Стиль, объём и редакционный план формата</small></span><i>{generatorAdvanced ? "−" : "+"}</i></button>
                 <div className={`field two ${generatorAdvanced ? "" : "generator-advanced-hidden"}`}>
-                  <ModuleSelect label="Стиль" value={tone} options={styles.map((item) => ({ value: item, label: item }))} onChange={setTone}/>
+                  <ModuleSelect label="Стиль" value={tone} help="Стиль меняет лексику и ритм, но не превращает выбранный формат в другой тип материала." options={styles.map((item) => ({ value: item, label: item }))} onChange={setTone}/>
                   <ModuleSelect label="Объём" value={customLength ? "custom" : String(length)} options={[...lengthPresets[format].map((item) => ({ value: String(item.value), label: item.label })), { value: "custom", label: "Свой объём…" }]} onChange={changeLength}/>
                 </div>
-                <p className={`tone-contract-note ${generatorAdvanced ? "" : "generator-advanced-hidden"}`}><i>Стиль: {tone}</i> меняет лексику и ритм, но не превращает выбранный формат в другой тип материала.</p>
                 {customLength && <label className={`field custom-length ${generatorAdvanced ? "" : "generator-advanced-hidden"}`}>Свой объём<div><input type="number" min="300" max="30000" step="100" value={manualLengthInput} onChange={(event) => setManualLength(event.target.value)} onBlur={commitManualLength} inputMode="numeric"/><span>знаков</span></div><small>Укажите от 300 до 30 000 знаков с пробелами</small></label>}
                 {generationError && <p className="generation-error" role="alert">{generationError}</p>}
                 <button className={`button primary generate ${busy ? "is-busy" : ""}`} type="button" onClick={generate} disabled={!activeBrandId || busy || aiConnection !== "connected" || workspaceAccount.generationsRemaining <= 0}><Icon name="spark"/>{busy ? busySteps[busyStep] : !activeBrandId ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>

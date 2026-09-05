@@ -2663,19 +2663,6 @@ select:focus-visible {
   text-transform: uppercase;
 }
 
-.tone-contract-note {
-  margin: -6px 0 17px;
-  color: rgba(255, 255, 255, 0.58);
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.tone-contract-note i {
-  color: #fff;
-  font-style: normal;
-  font-weight: 660;
-}
-
 .generate {
   width: 100%;
   min-height: 54px;
@@ -13987,6 +13974,22 @@ input[type="radio"] {
   line-height: 1.48;
 }
 
+/* The eyebrow label here is tiny (10px uppercase) - shrink the "?"
+   trigger to match on precise-pointer devices; touch devices keep the
+   standard 40px tap target from the shared mobile rule. */
+@media (hover: hover) and (pointer: fine) {
+  .generator-context-head .help-tip-trigger {
+    flex-basis: 20px;
+    width: 20px;
+    height: 20px;
+  }
+  .generator-context-head .help-tip-trigger span {
+    width: 13px;
+    height: 13px;
+    font-size: 9px;
+  }
+}
+
 .generator-context-options {
   display: grid;
   gap: 7px;
@@ -18409,14 +18412,6 @@ input[type="radio"] {
   color: #2452b8;
 }
 
-[data-theme="light"] .tone-contract-note {
-  color: rgba(13, 27, 49, 0.6);
-}
-
-[data-theme="light"] .tone-contract-note i {
-  color: #0d1b31;
-}
-
 [data-theme="light"] .generator-context-card {
   border-color: rgba(15, 23, 42, 0.16);
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.75), rgba(53, 104, 212, 0.08));
@@ -22229,4 +22224,85 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 @media (max-width: 600px) {
   .brand-tab-shell .profile-voice-fill > button { width: 100%; }
   .brand-tab-shell .profile-fill-replace { min-height: 44px; }
+}
+
+/* Site-wide "?" help tooltip (see app/help-tip.tsx) - same visual and
+   interaction language as the brand-profile field help above, but under
+   its own classes so it can sit next to any label or heading across the
+   app, not just inside the brand-profile field grid. */
+.field-label-help {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.help-tip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.help-tip-trigger {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #b9b6ca;
+  background: transparent;
+  cursor: pointer;
+}
+[data-theme="light"] .help-tip-trigger { color: #605d73; }
+.help-tip-trigger span {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+.help-tip-trigger:hover,
+.help-tip-trigger[aria-expanded="true"] { color: #c4a5ff; }
+[data-theme="light"] .help-tip-trigger:hover,
+[data-theme="light"] .help-tip-trigger[aria-expanded="true"] { color: #6d28d9; }
+.help-tip-trigger:focus-visible {
+  outline: 2px solid #c4a5ff;
+  outline-offset: 2px;
+}
+.help-tip-panel {
+  position: absolute;
+  z-index: 10;
+  top: 100%;
+  left: 0;
+  margin-top: 6px;
+  width: min(340px, 80vw);
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  color: #e9e5f5;
+  background: #202d47;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .28);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.5;
+}
+[data-theme="light"] .help-tip-panel {
+  border-color: rgba(61, 50, 102, 0.18);
+  color: #25233b;
+  background: #fff;
+}
+.help-tip-panel[hidden] { display: none; }
+@media (max-width: 700px), (hover: none), (pointer: coarse) {
+  .help-tip-trigger { flex-basis: 40px; width: 40px; height: 40px; }
+  .help-tip-panel {
+    position: static;
+    margin-top: 8px;
+    width: 100%;
+    box-shadow: none;
+  }
 }
