@@ -1053,28 +1053,6 @@ function uniqueText(values: string[]) {
   });
 }
 
-function stemSearchWord(value: string) {
-  const endings = ["иями", "ями", "ами", "его", "ого", "ему", "ому", "ими", "ыми", "иях", "ах", "ях", "ов", "ев", "ий", "ый", "ой", "ая", "яя", "ое", "ее", "ые", "ие", "ых", "их", "ую", "юю", "ом", "ем", "ам", "ям", "ы", "и", "а", "я", "у", "ю", "е", "о"];
-  const ending = endings.find((candidate) => value.endsWith(candidate) && value.length - candidate.length >= 4);
-  return ending ? value.slice(0, -ending.length) : value;
-}
-
-function searchTokens(value: string) {
-  return normalizeForSearch(value)
-    .replace(/[^a-zа-я0-9]+/gi, " ")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map(stemSearchWord);
-}
-
-function containsKeyword(value: string, keyword: string) {
-  const haystack = searchTokens(value);
-  const needle = searchTokens(keyword);
-  if (!needle.length || needle.length > haystack.length) return false;
-  return haystack.some((_, index) => needle.every((token, offset) => haystack[index + offset] === token));
-}
-
 function compactUrl(value: string) {
   if (!/^https?:/i.test(value)) return value;
   try {
@@ -1339,19 +1317,6 @@ function nameInitials(value: string) {
   return (parts.slice(0, 2).map((item) => item[0]?.toLocaleUpperCase("ru-RU") || "").join("") || "К").slice(0, 2);
 }
 
-function readabilityDiagnostics(value: string) {
-  const words = value.trim().split(/\s+/).filter(Boolean);
-  const sentences = value.split(/[.!?]+/).map((item) => item.trim()).filter(Boolean);
-  const paragraphs = value.split(/\n\s*\n/).map((item) => item.trim()).filter(Boolean);
-  if (!words.length) return { score: 0, sentenceLength: 0, paragraphLength: 0 };
-  const sentenceLength = words.length / Math.max(sentences.length, 1);
-  const paragraphLength = words.length / Math.max(paragraphs.length, 1);
-  const sentencePenalty = Math.min(34, Math.abs(sentenceLength - 14) * 1.55);
-  const paragraphPenalty = paragraphLength > 95 ? Math.min(18, (paragraphLength - 95) / 5) : 0;
-  const score = Math.max(45, Math.min(98, Math.round(96 - sentencePenalty - paragraphPenalty)));
-  return { score, sentenceLength, paragraphLength };
-}
-
 function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" | "erase" | "sun" | "moon" }) {
   const paths = {
     arrow: <><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></>,
@@ -1488,11 +1453,6 @@ function Brand() {
 // punctuation bug, not a stylistic touch.
 function KlioMark() {
   return <>КЛИО<span className="klio-mark-dot" aria-hidden="true">.</span></>;
-}
-
-function MetricNumber({ value, replay }: { value: number; replay: number }) {
-  const safeValue = Number.isFinite(value) ? Math.round(value) : 0;
-  return <span className="metric-number" key={`${replay}-${safeValue}`}>{safeValue}</span>;
 }
 
 type AutoTextareaProps = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "value"> & {
@@ -2169,8 +2129,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [generationError, setGenerationError] = useState("");
   const [toast, setToast] = useState("");
   const [annual, setAnnual] = useState(false);
-  const [metricsVisible, setMetricsVisible] = useState(workspace);
-  const [metricsReplay, setMetricsReplay] = useState(0);
+  // Bumped on every completed generation (quick, advanced, or from
+  // semantics/competitors) so the result-panel scroll effect below can
+  // tell "a fresh result just landed" apart from every other re-render.
+  const [resultRevealTick, setResultRevealTick] = useState(0);
   const [adaptationSource, setAdaptationSource] = useState(workspace ? "" : defaultAdaptationSource);
   const [adaptationGoal, setAdaptationGoal] = useState<AdaptationGoal>("proofread");
   const [adaptationTone, setAdaptationTone] = useState("Экспертный");
@@ -2226,7 +2188,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [newBrandName, setNewBrandName] = useState("");
   const [brandSwitchBusy, setBrandSwitchBusy] = useState(false);
-  const metricsRef = useRef<HTMLDivElement>(null);
+  // Scroll target for resultRevealTick below - the top of the result
+  // panel, so a fresh generation on mobile (where the brief and result
+  // stack vertically) scrolls the result into view instead of finishing
+  // off-screen below the fold.
+  const resultPanelRef = useRef<HTMLDivElement>(null);
   const geoPickerRef = useRef<HTMLDivElement>(null);
   const brandPickerRef = useRef<HTMLDivElement>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
@@ -2234,45 +2200,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // The generator's target is the ready-to-publish text, not merely the
   // body: Telegram and other channels receive the headline and hook too.
   const characters = useMemo(() => [title, subtitle, body].filter(Boolean).join("\n\n").trim().length, [body, subtitle, title]);
-  const words = useMemo(() => body.trim().split(/\s+/).filter(Boolean).length, [body]);
-  const keyList = useMemo(() => keywords.split(",").map((item) => item.trim()).filter(Boolean), [keywords]);
-  const hasQualityMaterial = generationMode === "ai" || (words >= 80 && !/^Результат появится после генерации/i.test(body.trim()));
-  const quality = useMemo(() => {
-    const fullText = `${title} ${body}`;
-    const keysFound = keyList.filter((key) => containsKeyword(fullText, key)).length;
-    const coverage = keyList.length ? keysFound / keyList.length : 0;
-    const primaryInTitle = keyList[0] ? containsKeyword(title, keyList[0]) : false;
-    const lengthProgress = Math.min(characters / Math.max(length * 0.72, 1), 1);
-    const structureCount = body.split(/\n\s*\n/).filter(Boolean).length;
-    const structure = Math.min(structureCount / 5, 1);
-    // Keyword coverage and "primary keyword in title" only mean anything
-    // when keywords were actually set — otherwise these two factors (52 of
-    // 100 points) were structurally impossible to earn, capping every
-    // keyword-free result (e.g. the "Новичок" quick-generate flow, which
-    // never sets keywords) at 48 regardless of how good the text was.
-    // Score purely on what's actually measurable when there are none.
-    const hasKeywords = keyList.length > 0;
-    const seo = hasKeywords
-      ? Math.min(100, Math.round(28 + coverage * 37 + (primaryInTitle ? 15 : 0) + lengthProgress * 12 + structure * 8))
-      : Math.min(100, Math.round(40 + lengthProgress * 30 + structure * 30));
-    const readabilityInfo = readabilityDiagnostics(body);
-
-    // Concrete, actionable notes instead of a bare "есть точки роста" —
-    // each one names exactly what to change and, where relevant, by how
-    // much. Capped so the card stays a quick glance, not a checklist wall.
-    const seoTips: string[] = [];
-    if (hasKeywords && keyList[0] && !primaryInTitle) seoTips.push(`Добавьте основной запрос «${keyList[0]}» в заголовок`);
-    if (hasKeywords && keysFound < keyList.length) seoTips.push(`Используйте ещё ${keyList.length - keysFound} из ${keyList.length} ключевых фраз в тексте`);
-    if (structureCount < 4) seoTips.push("Добавьте ещё один-два смысловых раздела с подзаголовком");
-    if (!hasKeywords) seoTips.push("Ключевые слова не заданы — добавьте их в брифе для более точной SEO‑оценки");
-
-    const readabilityTips: string[] = [];
-    if (readabilityInfo.sentenceLength > 20) readabilityTips.push("Сократите самые длинные предложения");
-    else if (readabilityInfo.sentenceLength > 0 && readabilityInfo.sentenceLength < 7) readabilityTips.push("Часть коротких предложений можно объединить");
-    if (readabilityInfo.paragraphLength > 95) readabilityTips.push("Разбейте длинные абзацы на более короткие");
-
-    return { seo, readability: readabilityInfo.score, keysFound, seoTips: seoTips.slice(0, 2), readabilityTips: readabilityTips.slice(0, 1) };
-  }, [body, characters, keyList, length, title]);
   const foundationReady = Boolean(
     brand.name.trim()
     && brand.description.trim()
@@ -2900,16 +2827,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     };
   }, [archiveEditorBusy, archiveEditorDirty, archiveEditorItem, archiveEditorSaving]);
 
+  // Scrolls the result panel into view on a fresh generation - mainly for
+  // mobile, where the brief and result stack vertically and a generation
+  // used to finish with the new text sitting below the fold, unseen.
   useEffect(() => {
-    if (workspace) return;
-    const node = metricsRef.current;
-    if (!node) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) setMetricsVisible(true);
-    }, { threshold: 0.35 });
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [workspace]);
+    if (resultRevealTick === 0) return;
+    resultPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [resultRevealTick]);
 
   function showToast(message: string) {
     setToast(message);
@@ -3631,8 +3555,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setGenerationMode(mode);
     setGenerationCoverage(coverage);
     setGeneratedArchiveId(archiveId);
-    setMetricsVisible(true);
-    setMetricsReplay((value) => value + 1);
+    setResultRevealTick((value) => value + 1);
   }
 
   async function generateFromSemantics() {
@@ -4651,7 +4574,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setGenerationMode("example");
     setGenerationCoverage(null);
     setGeneratedArchiveId(null);
-    setMetricsVisible(false);
   }
 
   function clearGeneratedResult() {
@@ -5607,9 +5529,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </>}
                 </>}
               </aside>
-              <article className="result-panel">
-                <div className="result-head"><div><span className={`status status-${generationMode}`}><i/>{generationMode === "ai" ? "Создано КЛИО" : generationMode === "demo" ? "Сохранённая версия" : aiConnection === "connected" ? "Ожидает генерацию" : "ИИ не подключён"}</span><small>{characters.toLocaleString("ru-RU")} / {length.toLocaleString("ru-RU")} знаков с пробелами · {tone}</small></div><div className="result-head-actions"><button type="button" className="result-clear" onClick={clearGeneratedResult} disabled={!title && !body}><Icon name="erase"/> Очистить</button><button type="button" onClick={copyResult} disabled={!title && !body}><Icon name="copy"/> Копировать</button><button type="button" onClick={() => void openPublicationDraft({ title, body: [subtitle, body].filter(Boolean).join("\n\n"), generationId: generatedArchiveId })} disabled={!title && !body}>В публикацию</button></div></div>
-                <div className={`length-control ${targetChecked ? (withinTarget ? "is-ok" : "is-warning") : "is-idle"}`}><span><i/>{targetChecked ? (withinTarget ? "Объём в цели" : "Объём отличается от заданного") : "Контроль включится после генерации"}</span><b>{targetChecked ? `${Math.round((characters / Math.max(length, 1)) * 100)}%` : "—"}</b><u><i style={{ width: `${targetChecked ? Math.min(100, (characters / Math.max(length, 1)) * 100) : 0}%` }}/></u><small>{targetChecked && !withinTarget ? "Это ориентир, а не жёсткое правило — при желании сократите или дополните текст ниже." : `Ориентир: от ${Math.floor(length * 0.85).toLocaleString("ru-RU")} до ${Math.ceil(length * 1.15).toLocaleString("ru-RU")} знаков с пробелами`}</small></div>
+              <article className="result-panel" ref={resultPanelRef}>
+                <div className="result-head"><div><span className={`status status-${generationMode}`}><i/>{generationMode === "ai" ? "Создано КЛИО" : generationMode === "demo" ? "Сохранённая версия" : aiConnection === "connected" ? "Ожидает генерацию" : "ИИ не подключён"}</span><small>{generatorMode === "quick" && generationMode === "example" ? `${characters.toLocaleString("ru-RU")} знаков с пробелами` : `${characters.toLocaleString("ru-RU")} / ${length.toLocaleString("ru-RU")} знаков с пробелами · ${tone}`}</small></div></div>
+                <div className={`length-control ${targetChecked ? (withinTarget ? "is-ok" : "is-warning") : "is-idle"}`}><span><i/>{targetChecked ? (withinTarget ? "Объём в цели" : "Объём отличается от заданного") : "Контроль включится после генерации"}</span><b>{targetChecked ? `${Math.round((characters / Math.max(length, 1)) * 100)}%` : "—"}</b><u><i style={{ width: `${targetChecked ? Math.min(100, (characters / Math.max(length, 1)) * 100) : 0}%` }}/></u><small>{targetChecked && !withinTarget ? "Это ориентир, а не жёсткое правило — при желании сократите или дополните текст ниже." : generatorMode === "quick" && generationMode === "example" ? "КЛИО сама подберёт подходящий объём по задаче" : `Ориентир: от ${Math.floor(length * 0.85).toLocaleString("ru-RU")} до ${Math.ceil(length * 1.15).toLocaleString("ru-RU")} знаков с пробелами`}</small></div>
                 <AutoTextarea className="result-title" rows={1} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Здесь появится заголовок материала" aria-label="Заголовок результата"/>
                 <label className="result-subtitle-field"><span>Зацепка статьи</span><AutoTextarea className="result-subtitle" rows={2} value={subtitle} onChange={(event) => setSubtitle(event.target.value)} placeholder="Здесь появится зацепка статьи" aria-label="Подзаголовок или зацепка статьи"/></label>
                 <AutoTextarea className={`result-body ${body.trim() ? "" : "is-empty"}`} value={body} onChange={(event) => setBody(event.target.value)} placeholder="Результат появится после генерации. Начните с темы и ключевых слов — дополнительные инструменты можно открыть позже." aria-label="Текст результата"/>
@@ -5620,15 +5542,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <label><span className="seo-field-label"><b>SEO‑заголовок</b><small>{metaTitle.length} знаков</small></span><AutoTextarea rows={1} value={metaTitle} onChange={(event) => setMetaTitle(event.target.value)} aria-label="SEO‑заголовок"/><button type="button" className="seo-field-copy" onClick={() => copyPlainText(metaTitle, "SEO‑заголовок")}><Icon name="copy"/> Копировать</button></label>
                   <label><span className="seo-field-label"><b>Описание страницы для поиска</b><small>{metaDescription.length} знаков</small></span><AutoTextarea rows={2} value={metaDescription} onChange={(event) => setMetaDescription(event.target.value)} aria-label="Описание страницы для поиска"/><button type="button" className="seo-field-copy" onClick={() => copyPlainText(metaDescription, "Описание страницы для поиска")}><Icon name="copy"/> Копировать</button></label>
                 </div>
-                <div ref={metricsRef} className={`quality-zone ${metricsVisible ? "is-visible" : ""}`} aria-live="polite" aria-atomic="true">
-                  <div className="quality-head"><span>Идеи для полировки</span><small><i/> Необязательно — материал уже готов к публикации</small></div>
-                  <div className="quality-grid">
-                    <div className={`quality-card ${hasQualityMaterial ? "" : "is-empty"}`} key={`seo-${metricsReplay}`}><small>SEO</small><b>{hasQualityMaterial ? <><MetricNumber value={quality.seo} replay={metricsReplay}/><em>/100</em></> : "—"}</b><span>{hasQualityMaterial ? quality.seo >= 80 ? "сильное соответствие" : "можно улучшить" : "Появится после создания материала"}</span>{hasQualityMaterial && <i><u style={{ "--score": `${quality.seo}%` } as CSSProperties}/></i>}{hasQualityMaterial && quality.seoTips.length > 0 && quality.seo < 80 && <ul className="quality-tips">{quality.seoTips.map((tip) => <li key={tip}>{tip}</li>)}</ul>}</div>
-                    <div className={`quality-card ${hasQualityMaterial ? "" : "is-empty"}`} key={`read-${metricsReplay}`}><small>Читаемость</small><b>{hasQualityMaterial ? <><MetricNumber value={quality.readability} replay={metricsReplay}/><em>/100</em></> : "—"}</b><span>{hasQualityMaterial ? quality.readability >= 80 ? "комфортный ритм" : "можно улучшить" : "Появится после создания материала"}</span>{hasQualityMaterial && <i><u style={{ "--score": `${quality.readability}%` } as CSSProperties}/></i>}{hasQualityMaterial && quality.readabilityTips.length > 0 && quality.readability < 80 && <ul className="quality-tips">{quality.readabilityTips.map((tip) => <li key={tip}>{tip}</li>)}</ul>}</div>
-                    <div className={`quality-card ${hasQualityMaterial ? "" : "is-empty"}`} key={`keys-${metricsReplay}`}><small>Ключи</small><b>{hasQualityMaterial ? <><MetricNumber value={quality.keysFound} replay={metricsReplay}/><em>/{keyList.length}</em></> : "—"}</b><span>{hasQualityMaterial ? "с учётом словоформ" : "Появится после создания материала"}</span>{hasQualityMaterial && <i><u style={{ "--score": `${keyList.length ? (quality.keysFound / keyList.length) * 100 : 0}%` } as CSSProperties}/></i>}</div>
-                  </div>
-                </div>
-                <div className="result-footer"><span>Материал уже сохранён в «Материалы» — вернуться к нему и продолжить редактирование можно в любой момент</span><div className="result-footer-actions"><button type="button" className="button ghost" onClick={copyResult}>Скопировать материал ↗</button><button type="button" className="button ghost" onClick={() => void openPublicationDraft({ title, body: [subtitle, body].filter(Boolean).join("\n\n"), generationId: generatedArchiveId })} disabled={!title && !body}>В публикацию</button><button type="button" className="button primary" onClick={sendResultToAdaptation} disabled={!title && !body}>Адаптировать под площадку <Icon name="arrow"/></button></div></div>
+                <div className="result-footer"><span>Материал уже сохранён в «Материалы» — вернуться к нему и продолжить редактирование можно в любой момент</span><div className="result-footer-actions"><button type="button" className="button ghost" onClick={clearGeneratedResult} disabled={!title && !body}><Icon name="erase"/> Очистить</button><button type="button" className="button ghost" onClick={copyResult} disabled={!title && !body}><Icon name="copy"/> Копировать</button><button type="button" className="button ghost" onClick={() => void openPublicationDraft({ title, body: [subtitle, body].filter(Boolean).join("\n\n"), generationId: generatedArchiveId })} disabled={!title && !body}>В публикацию</button><button type="button" className="button primary" onClick={sendResultToAdaptation} disabled={!title && !body}>Адаптировать под площадку <Icon name="arrow"/></button></div></div>
               </article>
             </div>
           </section>
