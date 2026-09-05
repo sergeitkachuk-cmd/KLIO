@@ -79,6 +79,21 @@ export async function researchContentPlanWeb(topic: string, geography: Geography
   return tavilySearch(query, 5, `content-plan:${cacheKey(topic, geography)}`);
 }
 
+// For "КЛИО Глубина" (deepen) specifically: researchContentPlanWeb's query
+// ("актуальная информация, вопросы аудитории и критерии выбора") is tuned
+// for discovering new content-plan topics, not for finding the concrete
+// numbers, criteria or standards an already-written draft is missing. A
+// generic marketing-style query kept surfacing generic marketing-style
+// pages, so the model had nothing specific to add and fell back to noting
+// a gap in editorial_comment instead of actually filling it (site owner:
+// asked for lab-marker specifics, got "not in the sources provided" even
+// though a real search should have found them). This query is deliberately
+// biased toward pages that carry citable specifics.
+export async function researchAdaptationFacts(topic: string): Promise<TavilyResearch | null> {
+  const query = `${topic} конкретные цифры, показатели, критерии, нормы и подтверждённые факты`;
+  return tavilySearch(query, 6, `adaptation-deepen:${cacheKey(topic, [])}`);
+}
+
 export async function discoverTavilyWeb(query: string): Promise<TavilyResearch | null> {
   return tavilySearch(query, 12, "competitors");
 }

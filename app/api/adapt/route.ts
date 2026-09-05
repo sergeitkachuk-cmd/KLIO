@@ -11,7 +11,7 @@ import {
   type ContentTone,
 } from "../../content-plans";
 import { readWebsiteContext } from "../_lib/website-context";
-import { researchContentPlanWeb } from "../_lib/tavily";
+import { researchAdaptationFacts } from "../_lib/tavily";
 import { assertSecondaryQuotaAvailable, recordEditorialAction, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 import { AiCallError, callAiModel } from "../_lib/ai-router";
 import { adaptationReasoningEffort, aiConfigured } from "../_lib/ai-config";
@@ -206,7 +206,7 @@ export async function POST(request: Request) {
     const researchTopic = input.keywords || input.instructions || input.sourceText.slice(0, 420);
     const [website, webResearch] = await Promise.all([
       readWebsiteContext(brandWebsite),
-      input.goal === "deepen" ? researchContentPlanWeb(researchTopic, []) : Promise.resolve(null),
+      input.goal === "deepen" ? researchAdaptationFacts(researchTopic) : Promise.resolve(null),
     ]);
     const reasoningEffort = adaptationReasoningEffort(input.goal);
     const plan = ADAPTATION_PLANS[input.goal];
@@ -237,8 +237,12 @@ export async function POST(request: Request) {
       website_snapshot: input.useBrand && website.status === "loaded"
         ? { url: website.resolvedUrl, text: website.text }
         : null,
+      // Was slice(0, 3) against a 5-result search — researchAdaptationFacts
+      // now returns up to 6, and all of them go through: the model, not
+      // this route, is in the best position to judge which are actually
+      // relevant to the gap it's trying to fill.
       web_research: input.goal === "deepen" && webResearch
-        ? webResearch.results.slice(0, 3).map(({ title, url, content }) => ({ title, url, fact: content }))
+        ? webResearch.results.map(({ title, url, content }) => ({ title, url, fact: content }))
         : null,
     };
     let material: AdaptedMaterial | null = null;

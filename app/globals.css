@@ -9517,16 +9517,6 @@ footer nav a {
   font-weight: 760;
 }
 
-.adaptation-changes > small {
-  display: block;
-  margin-top: 13px;
-  padding-top: 11px;
-  border-top: 1px solid rgba(124, 58, 237, 0.24);
-  color: rgba(255, 255, 255, 0.58);
-  font-size: 10px;
-  line-height: 1.5;
-}
-
 .adaptation-result-footer {
   display: flex;
   align-items: center;
@@ -19010,11 +19000,6 @@ input[type="radio"] {
 
 [data-theme="light"] .adaptation-changes p i {
   color: #2452b8;
-}
-
-[data-theme="light"] .adaptation-changes > small {
-  border-top-color: rgba(53, 104, 212, 0.22);
-  color: rgba(13, 27, 49, 0.55);
 }
 
 [data-theme="light"] .adaptation-result-footer > span {
