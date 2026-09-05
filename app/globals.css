@@ -5511,6 +5511,7 @@ footer nav a {
 }
 
 .semantic-primary-label {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -22258,19 +22259,18 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
   outline: 2px solid var(--profile-accent);
   outline-offset: 3px;
 }
+/* Trigger only grows for a touch target here - the panel itself stays the
+   same floating overlay as desktop (position:absolute from the base rule
+   above), just opened by tap instead of hover. Matches .help-tip-panel's
+   mobile behavior (see globals.css's other "?" component) - it used to
+   switch to position:static and push the field open instead of floating
+   over it. */
 @media (max-width: 700px), (hover: none), (pointer: coarse) {
   .profile-field-heading { flex-wrap: wrap; }
   .brand-tab-shell .profile-help-trigger {
     flex-basis: 44px;
     width: 44px;
     height: 44px;
-  }
-  .profile-field-help {
-    position: static;
-    flex: 0 0 100%;
-    width: 100%;
-    margin: 0 0 8px;
-    box-shadow: none;
   }
 }
 @media (max-width: 600px) {
@@ -22400,12 +22400,12 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
   background: #fff;
 }
 .help-tip-panel[hidden] { display: none; }
+/* Trigger only grows for a touch target here - the panel itself stays the
+   same floating overlay as desktop (position:absolute from the base rule
+   above), just opened by tap instead of hover. It used to switch to
+   position:static and push the rest of the field down instead, which
+   read as the tooltip elbowing the form open rather than floating over
+   it - not what "?" popovers look like anywhere else on the site. */
 @media (max-width: 700px), (hover: none), (pointer: coarse) {
   .help-tip-trigger { flex-basis: 40px; width: 40px; height: 40px; }
-  .help-tip-panel {
-    position: static;
-    margin-top: 8px;
-    width: 100%;
-    box-shadow: none;
-  }
 }

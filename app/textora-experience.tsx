@@ -5250,9 +5250,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </div>
                 <div className="semantic-primary-query">
                   <label>
-                    <span className="semantic-primary-label"><i>Начните здесь</i><b>Тема, услуга или вопрос клиента</b></span>
+                    <span className="semantic-primary-label"><i>Начните здесь</i><b>Тема, услуга или вопрос клиента</b><HelpTip label="Тема, услуга или вопрос клиента" text="Например, услуга, проблема клиента или направление бизнеса. Этого достаточно — специальные SEO-знания не нужны."/></span>
                     <AutoTextarea rows={1} value={semanticQuery} onChange={(event) => updateSemanticQuery(event.target.value)} placeholder="Например: санаторий для лечения остеохондроза" autoComplete="off" />
-                    <small>Например, услуга, проблема клиента или направление бизнеса. Этого достаточно — специальные SEO-знания не нужны.</small>
                   </label>
                 </div>
 
@@ -5346,7 +5345,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
               <div className="semantic-workbench">
                 <aside className="semantic-clusters">
-                  <div><span>Смысловые группы</span><small>Переключайте, чтобы не смешивать разные задачи читателя.</small></div>
+                  <div><span className="field-label-help">Смысловые группы<HelpTip label="Смысловые группы" text="Переключайте, чтобы не смешивать разные задачи читателя."/></span></div>
                   <nav aria-label="Группы ключевых запросов">
                     {semanticClusters.map((cluster) => {
                       const count = cluster === "Все группы" ? semanticResult.keywords.length : semanticResult.keywords.filter((item) => item.cluster === cluster).length;
@@ -5385,7 +5384,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </div>
 
               <div className="semantic-actionbar">
-                <div className="semantic-actionbar-copy"><span>Что сделать дальше</span><b>{selectedSemanticKeywords.length ? `${selectedSemanticKeywords.length} близких запросов выбраны для одной статьи` : "Выберите одну группу близких запросов"}</b><small>Одна статья отвечает на один вопрос читателя. Для раздела со статьями нажмите «Получить план статей» — КЛИО сама разложит все найденные темы по отдельным публикациям.</small></div>
+                <div className="semantic-actionbar-copy"><span className="field-label-help">Что сделать дальше<HelpTip label="Что сделать дальше" text="Одна статья отвечает на один вопрос читателя. Для раздела со статьями нажмите «Получить план статей» — КЛИО сама разложит все найденные темы по отдельным публикациям."/></span><b>{selectedSemanticKeywords.length ? `${selectedSemanticKeywords.length} близких запросов выбраны для одной статьи` : "Выберите одну группу близких запросов"}</b></div>
                 <label className="semantic-brand-route"><input type="checkbox" checked={useBrand} onChange={(event) => { setUseBrand(event.target.checked); setSemanticNeedsRefresh(true); setContentPlanNeedsRefresh(true); persistSemantics(semanticResult, selectedSemanticIds, semanticMode, semanticQuery, semanticRegion, semanticGeo, true); }}/><i/><span><b>Учесть профиль бренда</b><small>{useBrand ? "Модуль 01, включая открытые данные сайта, усилит факты и голос" : "Выключено — статья создаётся только по модулю 02"}</small></span></label>
                 <div className="semantic-action-buttons">
                   <button className="button ghost" type="button" onClick={openSemanticContentPlan} disabled={semanticNeedsRefresh}>Получить план статей</button>
@@ -5393,7 +5392,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <button className={`button primary large ${semanticArticleBusy ? "is-busy" : ""}`} type="button" onClick={generateFromSemantics} disabled={!activeBrandId || !selectedSemanticKeywords.length || semanticNeedsRefresh || semanticArticleBusy || aiConnection !== "connected" || workspaceAccount.generationsRemaining <= 0}><Icon name="spark"/>{semanticArticleBusy ? "Создаём статью…" : !activeBrandId ? "Загружаем кабинет" : aiConnection !== "connected" ? "ИИ не подключён" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : semanticNeedsRefresh ? "Сначала обновите семантику" : "Сгенерировать материал"}</button>
                 </div>
                 <div className="module-material-bar"><span><b>{moduleMaterialSources.semantics ? "Продолжаете сохранённую версию" : "Зафиксировать исследование"}</b><small>Сохранение и экспорт не расходуют лимиты.</small></span><div><button type="button" onClick={() => void saveModuleMaterial("semantics")} disabled={materialSavingType === "semantics"}>{materialSavingType === "semantics" ? "Сохраняем…" : moduleMaterialSources.semantics ? "Сохранить новую версию" : "Сохранить в материалы"}</button>{moduleMaterialSources.semantics && <button type="button" onClick={() => void saveModuleMaterial("semantics", "copy")} disabled={materialSavingType === "semantics"}>Сохранить копию</button>}</div></div>
-                <div className="semantic-optional-route"><span><i>+</i><b>Нужен более глубокий SEO‑разбор?</b><small>Только тогда откройте анализ конкурентов. Он сравнит сайты прямых конкурентов и передаст выбранные выводы в дополнительный акцент, не создавая новую семантику.</small></span><button type="button" onClick={openCompetitorAnalysis}>Сравнить конкурентов</button></div>
+                <div className="semantic-optional-route"><span><i>+</i><b className="field-label-help">Нужен более глубокий SEO‑разбор?<HelpTip label="Нужен более глубокий SEO‑разбор?" text="Только тогда откройте анализ конкурентов. Он сравнит сайты прямых конкурентов и передаст выбранные выводы в дополнительный акцент, не создавая новую семантику."/></b></span><button type="button" onClick={openCompetitorAnalysis}>Сравнить конкурентов</button></div>
               </div>
               </> : <div className="semantic-waiting-state">
                 <div className="semantic-waiting-mark"><span>02</span><i>→</i></div>
@@ -5415,7 +5414,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
             <div className="competitor-setup-card">
               <div className="competitor-setup-head">
-                <div><span>Контур анализа</span><h3>Задайте предмет сравнения</h3><p>КЛИО не оценивает позиции сайтов, посещаемость или то, кто «лучше как компания». Он показывает, какие вопросы по запросу раскрыты на конкретных страницах. Метка «лидер отрасли» означает заметный сайт в общей выдаче, а «конкурент в выбранной географии» — релевантность вашей аудитории.</p></div>
+                <div><span>Контур анализа</span><h3 className="field-label-help">Задайте предмет сравнения<HelpTip label="Задайте предмет сравнения" text="КЛИО не оценивает позиции сайтов, посещаемость или то, кто «лучше как компания». Он показывает, какие вопросы по запросу раскрыты на конкретных страницах. Метка «лидер отрасли» означает заметный сайт в общей выдаче, а «конкурент в выбранной географии» — релевантность вашей аудитории."/></h3></div>
                 <span className={`competitor-mode competitor-mode-${competitorMode}`}><i/>{competitorMode === "ai" ? "AI‑анализ" : competitorMode === "demo" ? "Структурный анализ" : "Демонстрация"}</span>
               </div>
 
@@ -5444,7 +5443,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </div></details></>}
 
                 <div className="competitor-source-list">
-                <div className="competitor-source-head"><div><span>Сайты прямых конкурентов</span><small>Добавьте сайты компаний с сопоставимой услугой или используйте автоматический подбор. Агрегаторы, СМИ и страницы с упоминаниями бренда не подходят.</small></div><div className="competitor-source-actions"><button type="button" className="competitor-reset" onClick={resetCompetitorSearch} disabled={competitorDiscoveryBusy}>Очистить список</button><button type="button" className={`competitor-discover ${competitorDiscoveryBusy ? "is-busy" : ""}`} onClick={discoverCompetitors} disabled={competitorDiscoveryBusy || aiConnection !== "connected"}><Icon name="spark"/>{competitorDiscoveryBusy ? "Ищем в интернете…" : aiConnection === "connected" ? "Подобрать автоматически" : aiConnection === "checking" ? "Проверяем подключение…" : "Автопоиск не подключён"}</button></div></div>
+                <div className="competitor-source-head"><div><span className="field-label-help">Сайты прямых конкурентов<HelpTip label="Сайты прямых конкурентов" text="Добавьте сайты компаний с сопоставимой услугой или используйте автоматический подбор. Агрегаторы, СМИ и страницы с упоминаниями бренда не подходят."/></span></div><div className="competitor-source-actions"><button type="button" className="competitor-reset" onClick={resetCompetitorSearch} disabled={competitorDiscoveryBusy}>Очистить список</button><button type="button" className={`competitor-discover ${competitorDiscoveryBusy ? "is-busy" : ""}`} onClick={discoverCompetitors} disabled={competitorDiscoveryBusy || aiConnection !== "connected"}><Icon name="spark"/>{competitorDiscoveryBusy ? "Ищем в интернете…" : aiConnection === "connected" ? "Подобрать автоматически" : aiConnection === "checking" ? "Проверяем подключение…" : "Автопоиск не подключён"}</button></div></div>
                 {aiConnection === "disconnected" && <p className="competitor-search-status"><i>i</i><span><b>Почему ссылки не подставляются автоматически</b><small>В текущей версии не подключён реальный AI‑доступ к веб‑поиску. Поэтому КЛИО не имитирует поиск и не придумывает адреса: пока используйте ручные ссылки.</small></span></p>}
                 {competitorDiscoveryNote && <p className="competitor-discovery-note"><Icon name="check"/>{competitorDiscoveryNote}</p>}
                 {competitors.map((competitor, index) => <div className="competitor-source-row" key={competitor.id}>
@@ -5475,7 +5474,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
             <div className="competitor-matrix-card">
               <div className="competitor-matrix-head">
-                <div><span>Сравнительная матрица</span><h3>Какие темы раскрывают страницы</h3><p>Ячейка показывает наличие смыслового блока. Это не оценка качества компании, не проверка посещаемости и не сравнение SEO-позиций.</p></div>
+                <div><span>Сравнительная матрица</span><h3 className="field-label-help">Какие темы раскрывают страницы<HelpTip label="Какие темы раскрывают страницы" text="Ячейка показывает наличие смыслового блока. Это не оценка качества компании, не проверка посещаемости и не сравнение SEO-позиций."/></h3></div>
                 <div className="competitor-legend"><span><i className="coverage-strong"><CoverageIcon coverage="strong"/></i>Раскрыто</span><span><i className="coverage-partial"><CoverageIcon coverage="partial"/></i>Частично</span><span><i className="coverage-missing"><CoverageIcon coverage="missing"/></i>Не найдено</span><span><i className="coverage-unknown"><CoverageIcon coverage="unknown"/></i>Не проверено</span></div>
               </div>
               <p className="competitor-table-hint">Таблица шире экрана — листайте вправо, чтобы сравнить с конкурентами <span>→</span></p>
@@ -5631,7 +5630,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <div className="content-plan-shell">
               <article className="content-plan-setup">
                 <div className="content-plan-setup-head">
-                  <div><span>Основа плана</span><h3>КЛИО разложит темы по отдельным статьям</h3><p>Если вы пришли из раздела с запросами, КЛИО возьмёт все найденные направления. Каждая будущая статья будет отвечать на один понятный вопрос читателя — без смешения тем.</p></div>
+                  <div><span>Основа плана</span><h3 className="field-label-help">КЛИО разложит темы по отдельным статьям<HelpTip label="КЛИО разложит темы по отдельным статьям" text="Если вы пришли из раздела с запросами, КЛИО возьмёт все найденные направления. Каждая будущая статья будет отвечать на один понятный вопрос читателя — без смешения тем."/></h3></div>
                   <span className={`status status-${contentPlanMode === "ai" ? "ai" : "example"}`}><i/>{contentPlanMode === "ai" ? "AI‑план" : aiConnection === "connected" ? "Ожидает тему" : "ИИ не подключён"}</span>
                 </div>
 
