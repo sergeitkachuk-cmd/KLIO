@@ -5180,7 +5180,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     </div>
                     <small id="brand-website-cost">КЛИО заполнит профиль — спишется 1 исследование</small>
                     <label className="profile-fill-replace"><input type="checkbox" checked={replaceFoundation} onChange={event => setReplaceFoundation(event.target.checked)} disabled={brandAnalyzeBusy || voiceBusy}/>Перезаписать поля, которые уже заполнены</label>
-                    <small className="profile-fill-replace-help">По умолчанию КЛИО дополняет только пустые поля вкладки. Отметьте, если нужно заменить и то, что уже написано, новыми данными с сайта.</small>
+                    <small className="profile-fill-replace-help">По умолчанию заполняются только пустые поля.</small>
                     {brandAnalyzeError && <small className="is-error" role="alert">{brandAnalyzeError}</small>}
                   </ProfileField>
                   <ProfileField id="brand-description" label="О компании" help="Короткая фактическая справка: сфера, география, услуги и масштаб." wide><AutoTextarea id="brand-description" aria-describedby="brand-description-help" rows={3} value={brand.description} onChange={(event) => updateBrand("description", event.target.value)}/></ProfileField>
@@ -5199,7 +5199,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <button type="button" className="button primary" onClick={() => void fillBrandTab("voice")} disabled={brandAnalyzeBusy || voiceBusy || voiceMissing.length > 0 || aiConnection !== "connected" || workspaceAccount.researchRemaining <= 0}>{voiceBusy ? "Подбираем голос…" : "Подобрать голос с КЛИО"}</button>
                   <small>{voiceMissing.length ? `На первой вкладке заполните ${voiceMissing.join(", ")}.` : aiConnection !== "connected" ? "КЛИО сейчас недоступна" : workspaceAccount.researchRemaining <= 0 ? "Лимит исследований исчерпан" : "По основе бренда · 1 исследование"}</small>
                   <label className="profile-fill-replace"><input type="checkbox" checked={replaceVoice} onChange={event => setReplaceVoice(event.target.checked)} disabled={voiceBusy || brandAnalyzeBusy}/>Перезаписать поля, которые уже заполнены</label>
-                  <small className="profile-fill-replace-help">По умолчанию КЛИО дополняет только пустые поля вкладки. Отметьте, если нужно заменить и то, что уже написано, новыми данными.</small>
+                  <small className="profile-fill-replace-help">По умолчанию заполняются только пустые поля.</small>
                   {voiceError && <p className="profile-fill-error" role="alert">{voiceError}</p>}
                 </div>
                   <div className="brand-fields">
