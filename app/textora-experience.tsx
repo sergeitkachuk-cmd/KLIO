@@ -763,6 +763,10 @@ const lengthPresets: Record<Format, { value: number; label: string }[]> = {
 const QUICK_LENGTH_OPTIONS = [
   { value: "auto", label: "Автоматически" },
   { value: "600", label: "≈ 600 · короткий пост" },
+  // Matches the "оптимальный" social-post default elsewhere (lengthPresets.social) —
+  // Telegram's caption limit for a post with an image is 1 024 characters,
+  // and this scale had nothing between 600 and 1 500 to fit under it.
+  { value: "1000", label: "≈ 1 000 · пост с картинкой" },
   { value: "1500", label: "≈ 1 500 · пост или тезисы" },
   { value: "3500", label: "≈ 3 500 · статья" },
   { value: "6000", label: "≈ 6 000 · подробная статья" },
@@ -1353,6 +1357,15 @@ function ModuleSelect({ label, value, options, onChange, help }: {
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  // Which side the menu opens on is decided once, when it opens (below,
+  // unless there's more room above) — not re-decided on every scroll event.
+  // Re-deciding on scroll used to flip the menu between above and below the
+  // trigger mid-scroll as the available space above/below crossed the same
+  // threshold that chose the side in the first place, reading as the menu
+  // randomly jumping (site owner: "скачет вверх... прыгает вниз если
+  // прокрутить"). Scrolling should only ever slide the menu to keep
+  // tracking the trigger on whichever side it already committed to.
+  const openUpRef = useRef(false);
 
   useEffect(() => {
     if (!open) return;
@@ -1374,9 +1387,9 @@ function ModuleSelect({ label, value, options, onChange, help }: {
       const rect = triggerRef.current.getBoundingClientRect();
       const edgeGap = 12;
       const maxMenuHeight = 480;
+      const openUp = openUpRef.current;
       const spaceBelow = Math.max(0, window.innerHeight - rect.bottom - edgeGap);
       const spaceAbove = Math.max(0, rect.top - edgeGap);
-      const openUp = spaceBelow < 240 && spaceAbove > spaceBelow;
       const maxHeight = Math.max(120, Math.min(maxMenuHeight, openUp ? spaceAbove : spaceBelow));
       setMenuRect({
         top: openUp ? Math.max(edgeGap, rect.top - maxHeight) : rect.bottom + 8,
@@ -1409,6 +1422,7 @@ function ModuleSelect({ label, value, options, onChange, help }: {
       const spaceBelow = Math.max(0, window.innerHeight - rect.bottom - edgeGap);
       const spaceAbove = Math.max(0, rect.top - edgeGap);
       const openUp = spaceBelow < 240 && spaceAbove > spaceBelow;
+      openUpRef.current = openUp;
       const maxHeight = Math.max(120, Math.min(maxMenuHeight, openUp ? spaceAbove : spaceBelow));
       setMenuRect({ top: openUp ? Math.max(edgeGap, rect.top - maxHeight) : rect.bottom + 8, left: rect.left, width: rect.width, maxHeight });
     }
@@ -2093,7 +2107,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       showToast(error instanceof Error ? error.message : "Не удалось отключить канал.");
     }
   }
-  const [generatorAdvanced, setGeneratorAdvanced] = useState(true);
   const [generatorMode, setGeneratorMode] = useState<"quick" | "advanced">("quick");
   const [quickPrompt, setQuickPrompt] = useState("");
   const [quickLength, setQuickLength] = useState("auto");
@@ -5469,7 +5482,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </div>}
                 {generatorMode === "advanced" && <>
                 <div className="field"><label>Формат</label><div className="format-tabs">{formats.map((item) => <button type="button" className={format === item.id ? "active" : ""} onClick={() => changeFormat(item.id)} key={item.id}>{item.label}</button>)}</div></div>
-                <div className={`editorial-plan-card generator-plan-card ${generatorAdvanced ? "" : "generator-advanced-hidden"}`}>
+                <div className="editorial-plan-card generator-plan-card">
                   <div><span>Редакционный контракт</span><b>{activeFormatPlan.title}</b><small>{activeFormatPlan.summary}</small></div>
                   <ol>{activeFormatPlan.steps.map((step) => <li key={step}>{step}</li>)}</ol>
                   <p><i>Итог</i>{activeFormatPlan.result}</p>
@@ -5480,6 +5493,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 ]} onChange={setAuthorPosition}/></div>
                 <label className="field"><span className="field-label-help">Ключевые слова<HelpTip label="Ключевые слова" text="Разделяйте запросы запятыми или получите их после анализа выдачи."/></span><AutoTextarea value={keywords} onChange={(event) => setKeywords(event.target.value)} /></label>
                 <label className="field generator-accent-field"><span className="field-label-help">Дополнительный акцент<HelpTip label="Дополнительный акцент" text="Можно ввести вручную или передать выводы из матрицы. Ориентиры влияют на разделы статьи, а не остаются служебной заметкой."/></span><AutoTextarea rows={3} value={accent} onChange={(event) => setAccent(event.target.value)} placeholder="Например: раскрыть питание, ограничения и порядок консультации"/>{Boolean((accent.match(/^\s*[•*\-–—]\s+/gm) ?? []).length) && <small>Распознано обязательных редакционных ориентиров: {(accent.match(/^\s*[•*\-–—]\s+/gm) ?? []).length}</small>}</label>
+                <div className="field two">
+                  <ModuleSelect label="Стиль" value={tone} help="Стиль меняет лексику и ритм, но не превращает выбранный формат в другой тип материала." options={styles.map((item) => ({ value: item, label: item }))} onChange={setTone}/>
+                  <ModuleSelect label="Объём" value={customLength ? "custom" : String(length)} options={[...lengthPresets[format].map((item) => ({ value: String(item.value), label: item.label })), { value: "custom", label: "Свой объём…" }]} onChange={changeLength}/>
+                </div>
+                {customLength && <label className="field custom-length">Свой объём<div><input type="number" min="300" max="30000" step="100" value={manualLengthInput} onChange={(event) => setManualLength(event.target.value)} onBlur={commitManualLength} inputMode="numeric"/><span>знаков</span></div><small>Укажите от 300 до 30 000 знаков с пробелами</small></label>}
                 <div className="generator-context-card">
                   <div className="generator-context-head"><span className="field-label-help">Контекст КЛИО<HelpTip label="Контекст КЛИО" text="Выберите источники для материала. Если модуль ещё не подготовлен, КЛИО сохранит выбор и покажет, что нужно сделать перед его подключением."/></span></div>
                   <div className="generator-context-options">
@@ -5512,12 +5530,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     </label>
                   </div>
                 </div>
-                <button className="generator-advanced-toggle" type="button" onClick={() => setGeneratorAdvanced((value) => !value)} aria-expanded={generatorAdvanced}><span><b>{generatorAdvanced ? "Скрыть профессиональные настройки" : "Профессиональные настройки"}</b><small>Стиль, объём и редакционный план формата</small></span><i>{generatorAdvanced ? "−" : "+"}</i></button>
-                <div className={`field two ${generatorAdvanced ? "" : "generator-advanced-hidden"}`}>
-                  <ModuleSelect label="Стиль" value={tone} help="Стиль меняет лексику и ритм, но не превращает выбранный формат в другой тип материала." options={styles.map((item) => ({ value: item, label: item }))} onChange={setTone}/>
-                  <ModuleSelect label="Объём" value={customLength ? "custom" : String(length)} options={[...lengthPresets[format].map((item) => ({ value: String(item.value), label: item.label })), { value: "custom", label: "Свой объём…" }]} onChange={changeLength}/>
-                </div>
-                {customLength && <label className={`field custom-length ${generatorAdvanced ? "" : "generator-advanced-hidden"}`}>Свой объём<div><input type="number" min="300" max="30000" step="100" value={manualLengthInput} onChange={(event) => setManualLength(event.target.value)} onBlur={commitManualLength} inputMode="numeric"/><span>знаков</span></div><small>Укажите от 300 до 30 000 знаков с пробелами</small></label>}
                 {generationError && <p className="generation-error" role="alert">{generationError}</p>}
                 <button className={`button primary generate ${busy ? "is-busy" : ""}`} type="button" onClick={generate} disabled={!activeBrandId || busy || aiConnection !== "connected" || workspaceAccount.generationsRemaining <= 0}><Icon name="spark"/>{busy ? busySteps[busyStep] : !activeBrandId ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
                 {busy && <>
@@ -5559,13 +5571,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
                 <div className="content-plan-query-row">
                   <label><span>Тема или фокус <small>необязательно</small></span><input value={contentPlanQuery} onChange={(event) => { const next = event.target.value; setContentPlanQuery(next); setContentPlanNeedsRefresh(true); setContentPlanError(""); persistContentPlan({ query: next, needsRefresh: true }); }} placeholder="Оставьте пустым для общего плана по вашему бизнесу" autoComplete="off"/>
-                    {semanticAnalysisReady
-                      ? <small>Нажмите «Из найденных тем», чтобы использовать карту запросов. Без неё КЛИО расширит план вокруг отрасли, задач аудитории и уместных сезонных поводов.</small>
-                      : <small>Кнопка «Из найденных тем» включится, когда в модуле <button type="button" className="inline-text-link" onClick={() => openModule("semantics")}>«Семантика»</button> будут найдены реальные запросы — оттуда их можно передать сюда. Без них КЛИО расширит план вокруг отрасли, задач аудитории и уместных сезонных поводов.</small>}
                   </label>
                   <div className="content-plan-basis-actions">
                     <button type="button" className={brandPlanBasisSelected ? "is-active" : ""} aria-pressed={brandPlanBasisSelected} onClick={useBrandForPlan} disabled={!useBrand || !foundationReady}><Icon name="arrow"/> По профилю бренда{brandPlanBasisSelected && <b aria-label="Выбрано">✓</b>}</button>
                     <button type="button" className={semanticPlanBasisSelected ? "is-active" : ""} aria-pressed={semanticPlanBasisSelected} onClick={applyCurrentSemanticsForPlan} disabled={!semanticAnalysisReady} title={semanticAnalysisReady ? undefined : "Сначала найдите запросы в модуле «Семантика»"}><Icon name="arrow"/> Из найденных тем{semanticPlanBasisSelected && <b aria-label="Выбрано">✓</b>}</button>
+                    <HelpTip label="Из найденных тем" text={semanticAnalysisReady
+                      ? "Нажмите «Из найденных тем», чтобы использовать карту запросов. Без неё КЛИО расширит план вокруг отрасли, задач аудитории и уместных сезонных поводов."
+                      : <>Кнопка «Из найденных тем» включится, когда в модуле <button type="button" className="inline-text-link" onClick={() => openModule("semantics")}>«Семантика»</button> будут найдены реальные запросы — оттуда их можно передать сюда. Без них КЛИО расширит план вокруг отрасли, задач аудитории и уместных сезонных поводов.</>}/>
                   </div>
                 </div>
 

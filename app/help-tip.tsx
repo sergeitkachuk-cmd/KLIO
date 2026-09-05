@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 
 /**
@@ -8,8 +9,12 @@ import { useEffect, useId, useRef, useState } from "react";
  * globals.css). Same interaction/visual language as the brand-profile
  * field help (see profile-field.tsx), generalized so it can sit next to
  * any label or heading, not just inside the brand-profile field grid.
+ * text accepts a ReactNode, not just a string, so a caller can embed a
+ * real interactive element (e.g. a link into another module) rather than
+ * flattening it to inert text - most callers just pass a plain string,
+ * which is itself a valid ReactNode.
  */
-export function HelpTip({ label, text }: { label: string; text: string }) {
+export function HelpTip({ label, text }: { label: string; text: ReactNode }) {
   const [open, setOpen] = useState(false);
   const pointerType = useRef("mouse");
   const wrap = useRef<HTMLSpanElement>(null);

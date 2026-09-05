@@ -3057,9 +3057,21 @@ textarea[data-autosize="true"] {
 
 .result-footer {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
+  /* Was a row (space-between, text left / buttons right) - .result-panel
+     is one column of a two-column desktop grid alongside the brief panel,
+     so its actual rendered width is roughly half the viewport regardless
+     of how wide the browser window is. Four buttons (Очистить/Копировать/
+     В публикацию/Адаптировать под площадку) don't fit next to the save
+     notice at that width, and since result-footer-actions doesn't shrink
+     (flex: 0 0 auto below), 100% of the squeeze fell on the text - it
+     wrapped into a single narrow column, one or two words per line (site
+     owner screenshot: "их надо выше кнопок"). A viewport-width media query
+     wouldn't have caught this either, since the *container* is narrow even
+     on a wide desktop window. Stacked unconditionally instead - the save
+     notice reads as one full-width line above the buttons at every size. */
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
   padding-top: 20px;
   color: rgba(255, 255, 255, 0.55);
   font-size: 13px;
@@ -3068,7 +3080,8 @@ textarea[data-autosize="true"] {
 .result-footer-actions {
   display: flex;
   align-items: center;
-  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-self: stretch;
   gap: 10px;
 }
 
@@ -4734,58 +4747,6 @@ footer nav a {
   grid-template-columns: minmax(0, 1fr) minmax(260px, 0.75fr);
   align-items: center;
   gap: 24px;
-}
-
-.generator-advanced-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  min-height: 48px;
-  padding: 0 15px;
-  border: 1px solid rgba(66, 54, 105, 0.14);
-  border-radius: 12px;
-  color: #4f485d;
-  background: rgba(255, 255, 255, 0.56);
-  font-size: 12px;
-  font-weight: 680;
-  cursor: pointer;
-}
-
-.generator-advanced-toggle > i {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  color: #fff;
-  background: #18151f;
-  font-style: normal;
-}
-
-.generator-advanced-toggle {
-  width: 100%;
-  margin: 2px 0 15px;
-  text-align: left;
-}
-
-.generator-advanced-toggle > span {
-  display: grid;
-  gap: 3px;
-}
-
-.generator-advanced-toggle b {
-  font-size: 13px;
-}
-
-.generator-advanced-toggle small {
-  color: #8c8795;
-  font-size: 11px;
-  font-weight: 520;
-}
-
-.generator-advanced-hidden {
-  display: none !important;
 }
 
 .workspace-project {
@@ -8327,6 +8288,7 @@ footer nav a {
 .content-plan-basis-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 10px;
 }
 
@@ -10844,16 +10806,6 @@ input[type="radio"] {
     gap: 5px;
   }
 
-  .result-footer {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .result-footer-actions {
-    align-self: stretch;
-    flex-wrap: wrap;
-  }
-
   .result-footer-actions button {
     flex: 1 1 auto;
     justify-content: center;
@@ -12504,6 +12456,14 @@ input[type="radio"] {
   max-height: 330px;
   padding: 7px;
   overflow-y: auto;
+  /* Setting only overflow-y makes the UA compute overflow-x as auto too
+     (per spec, once either axis leaves "visible"), so anything inside
+     that ran even 1px wider than the menu - a long site URL in a brand
+     row, the delete button's calc() width - opened an unstyled native
+     horizontal scrollbar nobody intended (site owner: "горизонтального
+     вообще не должно быть"). This menu only ever needs to scroll
+     vertically. */
+  overflow-x: hidden;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 15px;
   color: #fff;
@@ -12512,7 +12472,29 @@ input[type="radio"] {
     linear-gradient(155deg, #051a31 0%, #0c3459 55%, #041225 100%);
   box-shadow: 0 22px 55px rgba(2, 10, 22, 0.5), inset 0 1px rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(24px);
+  /* scrollbar-width: thin alone leaves Firefox's native (light grey)
+     thumb/track colors - scrollbar-color is required to actually theme
+     it, same treatment as .module-select-list above. Chromium/Safari
+     need the separate ::-webkit-scrollbar rules below regardless. */
   scrollbar-width: thin;
+  scrollbar-color: rgba(124, 58, 237, 0.45) transparent;
+}
+
+.brand-menu-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.brand-menu-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.brand-menu-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.45);
+}
+
+.brand-menu-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 58, 237, 0.65);
 }
 
 .brand-menu-list > button {
@@ -13242,7 +13224,6 @@ input[type="radio"] {
 .button.primary,
 .button.light,
 .workspace-history-button b,
-.generator-advanced-toggle > i,
 .archive-transform-tools > article > button > i,
 .archive-transform-panel .archive-tone-picker button.active,
 .archive-transform-panel > .archive-ai-submit {
@@ -13626,29 +13607,6 @@ input[type="radio"] {
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.brief-panel .generator-advanced-toggle {
-  border-color: rgba(183, 212, 244, 0.22);
-  color: #fff;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.115), rgba(78, 130, 183, 0.1));
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.14), 0 12px 28px rgba(5, 24, 45, 0.12);
-  backdrop-filter: blur(18px) saturate(145%);
-}
-
-.brief-panel .generator-advanced-toggle b {
-  color: #fff;
-}
-
-.brief-panel .generator-advanced-toggle small {
-  color: rgba(255, 255, 255, 0.76);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.brief-panel .generator-advanced-toggle > i {
-  color: var(--deep-navy);
-  background: var(--acid);
 }
 
 .workspace-history-head {
@@ -14070,11 +14028,6 @@ input[type="radio"] {
   .workspace-module-heading > p {
     font-size: 12px;
     line-height: 1.45;
-  }
-
-  .generator-advanced-toggle {
-    min-height: 42px;
-    padding: 0 11px;
   }
 
   .brand-profile {
@@ -16933,6 +16886,15 @@ input[type="radio"] {
     radial-gradient(circle at 85% -10%, rgba(53, 104, 212, 0.16), transparent 42%),
     linear-gradient(155deg, #e3eaf6 0%, #f0f4fa 55%, #ffffff 100%);
   box-shadow: 0 22px 55px rgba(20, 40, 80, 0.14), inset 0 1px rgba(255, 255, 255, 0.7);
+  scrollbar-color: rgba(53, 104, 212, 0.4) transparent;
+}
+
+[data-theme="light"] .brand-menu-list::-webkit-scrollbar-thumb {
+  background: rgba(53, 104, 212, 0.4);
+}
+
+[data-theme="light"] .brand-menu-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(53, 104, 212, 0.6);
 }
 
 [data-theme="light"] .brand-menu-list > button {
@@ -18395,29 +18357,6 @@ input[type="radio"] {
   color: #173f82;
   background: linear-gradient(120deg, #cadcff, #e8f0ff 60%, #c7e9ed);
   box-shadow: 0 6px 16px rgba(53, 104, 212, 0.14), inset 0 1px rgba(255, 255, 255, 0.82);
-}
-
-/* The generator's advanced toggle lives in a dark-native brief panel.
-   Override its white copy and acid control explicitly for light mode. */
-[data-theme="light"] .brief-panel .generator-advanced-toggle {
-  border-color: rgba(53, 104, 212, 0.26);
-  color: #0d1b31;
-  background: linear-gradient(120deg, rgba(220, 232, 250, 0.92), rgba(241, 246, 253, 0.86));
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.82), 0 9px 22px rgba(53, 104, 212, 0.08);
-}
-
-[data-theme="light"] .brief-panel .generator-advanced-toggle b {
-  color: #0d1b31;
-}
-
-[data-theme="light"] .brief-panel .generator-advanced-toggle small {
-  color: rgba(13, 27, 49, 0.62);
-}
-
-[data-theme="light"] .brief-panel .generator-advanced-toggle > i {
-  border: 1px solid rgba(53, 104, 212, 0.34);
-  color: #2452b8;
-  background: linear-gradient(135deg, #d4e3ff, #e5f4f3);
 }
 
 [data-theme="light"] .content-plan-goal > small {
@@ -20363,10 +20302,26 @@ input[type="radio"] {
   cursor: not-allowed;
 }
 
-.brand-menu-delete {
+/* Scoped to .brand-menu-list > .brand-menu-delete, not just
+   .brand-menu-delete alone: this button is also a direct child of
+   .brand-menu-list, matching .brand-menu-list > button too - that
+   selector's own display:grid/grid-template-columns/min-height/padding
+   (meant for the brand-row buttons, each with an avatar-i, name/site
+   b/small, and a checkmark-em in three fixed columns) has one more
+   class in it and so wins the specificity comparison over the plain
+   .brand-menu-delete class alone, regardless of source order. The
+   delete button has none of those grid children - it got crushed into
+   that three-column layout meant for a completely different button
+   shape, which is what actually made it unreadable/invisible (site
+   owner: "кнопки удалить бренд вообще не видно... текст скомкался").
+   The extra class in the selector here restores this button's own
+   plain single-line layout. */
+.brand-menu-list > .brand-menu-delete {
+  display: block;
   width: calc(100% - 16px);
   margin: 6px 8px 8px;
   min-height: 38px;
+  padding: 0 9px;
   border: 1px solid rgba(255, 129, 157, 0.34);
   border-radius: 12px;
   background: rgba(255, 91, 125, 0.08);
@@ -20374,18 +20329,19 @@ input[type="radio"] {
   font: inherit;
   font-size: 12px;
   font-weight: 700;
+  text-align: center;
   cursor: pointer;
   transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
 
-.brand-menu-delete:hover:not(:disabled),
-.brand-menu-delete:focus-visible {
+.brand-menu-list > .brand-menu-delete:hover:not(:disabled),
+.brand-menu-list > .brand-menu-delete:focus-visible {
   border-color: rgba(255, 129, 157, 0.7);
   background: rgba(255, 91, 125, 0.18);
 }
 
-.brand-menu-delete:active:not(:disabled) { transform: scale(0.98); }
-.brand-menu-delete:disabled { cursor: wait; opacity: 0.55; }
+.brand-menu-list > .brand-menu-delete:active:not(:disabled) { transform: scale(0.98); }
+.brand-menu-list > .brand-menu-delete:disabled { cursor: wait; opacity: 0.55; }
 
 .workspace-brand-pill {
   gap: 12px;

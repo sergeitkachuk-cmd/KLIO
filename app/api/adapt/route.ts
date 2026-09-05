@@ -78,12 +78,21 @@ const goalLabels: Record<AdaptationGoal, string> = {
 
 const deepRewriteGoals = new Set<AdaptationGoal>(["deepen", "rewrite", "seo", "social", "landing", "ads", "shorten", "cold_email"]);
 
-function coreRulesFor(goal: AdaptationGoal) {
-  if (goal !== "deepen") return ADAPTATION_CORE_RULES;
-  // Other editors must preserve the source as their complete fact base.
-  // "Глубина" is deliberately different: it receives a single bounded
-  // server-side research digest and may use only that extra fact base.
-  return ADAPTATION_CORE_RULES.filter((rule) => !rule.startsWith("Используй только сведения") && !rule.startsWith("Не дополняй исходник фактами"));
+// brand_voice and change_tone are, by definition, "change nothing but the
+// voice/tone" - the entire point of picking one of them is that content
+// stays put. Every other editor may enrich the source with verified facts
+// from web_research (site owner: real facts "add weight" to a text, and
+// this should apply broadly, not just to КЛИО Глубина).
+const voiceOnlyGoals = new Set<AdaptationGoal>(["brand_voice", "change_tone"]);
+
+function coreRulesFor(goal: AdaptationGoal): readonly string[] {
+  if (voiceOnlyGoals.has(goal)) return ADAPTATION_CORE_RULES;
+  const relaxed = ADAPTATION_CORE_RULES.filter((rule) => !rule.startsWith("Используй только сведения") && !rule.startsWith("Не дополняй исходник фактами"));
+  return [
+    ...relaxed,
+    "Если передано поле web_research, его сведения так же надёжны, как исходник и профиль бренда: используй их, чтобы заменить общие формулировки конкретными проверяемыми фактами, цифрами, критериями или примерами там, где это уместно для выбранного сценария. Не меняй ради этого объём, формат или композицию сильнее, чем требует сам сценарий, и не отмечай пробел в editorial_comment, если нужный факт в web_research уже есть.",
+    "Не добавляй факт, которого нет ни в исходнике, ни в профиле бренда, ни в web_research; никогда не выдавай предположение за проверенный факт.",
+  ];
 }
 
 function normalizeTone(value: unknown): ContentTone {
@@ -206,7 +215,7 @@ export async function POST(request: Request) {
     const researchTopic = input.keywords || input.instructions || input.sourceText.slice(0, 420);
     const [website, webResearch] = await Promise.all([
       readWebsiteContext(brandWebsite),
-      input.goal === "deepen" ? researchAdaptationFacts(researchTopic) : Promise.resolve(null),
+      voiceOnlyGoals.has(input.goal) ? Promise.resolve(null) : researchAdaptationFacts(researchTopic),
     ]);
     const reasoningEffort = adaptationReasoningEffort(input.goal);
     const plan = ADAPTATION_PLANS[input.goal];
@@ -240,8 +249,9 @@ export async function POST(request: Request) {
       // Was slice(0, 3) against a 5-result search — researchAdaptationFacts
       // now returns up to 6, and all of them go through: the model, not
       // this route, is in the best position to judge which are actually
-      // relevant to the gap it's trying to fill.
-      web_research: input.goal === "deepen" && webResearch
+      // relevant to the gap it's trying to fill. Every goal except the two
+      // voice-only ones gets this now, not just deepen — see coreRulesFor.
+      web_research: !voiceOnlyGoals.has(input.goal) && webResearch
         ? webResearch.results.map(({ title, url, content }) => ({ title, url, fact: content }))
         : null,
     };
