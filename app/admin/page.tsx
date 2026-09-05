@@ -63,6 +63,7 @@ const OPERATION_LABELS: Record<AiOperation, string> = {
   analyze_competitors: "Матрица конкурентов",
   revise_content: "Коррекция черновика",
   analyze_brand_website: "Анализ сайта бренда",
+  suggest_brand_voice: "Подбор голоса бренда",
   normalize_quick_brief: "Разбор брифа (nano)",
   validate_content: "Проверка качества (nano)",
   condense_overflow: "Сжатие переполнения (nano)",

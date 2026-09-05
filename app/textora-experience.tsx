@@ -5,6 +5,7 @@ import type { CSSProperties, MouseEvent as ReactMouseEvent, TextareaHTMLAttribut
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { ProfileField } from "./profile-field";
+import { FOUNDATION_FIELDS, VOICE_FIELDS, mergeProfileFill, missingVoiceFoundation } from "./brand-profile-fill";
 import { russianGeoTree } from "./geo-data";
 import { ADAPTATION_PLANS, FORMAT_PLANS, TONE_PLANS } from "./content-plans";
 import { PLAN_RULES, type PlanId } from "./plans";
@@ -709,17 +710,6 @@ function migrateStoredBrand(profile: BrandProfile) {
   return migrated;
 }
 
-function buildVoiceRecommendations(profile: BrandProfile): Pick<BrandProfile, "voice" | "restrictions" | "signature" | "prohibited"> {
-  const brandName = profile.name.trim() || "Бренд";
-
-  return {
-    voice: "Экспертно, понятно и доброжелательно. Коротко объяснять сложное, опираться на факты, избегать канцеляризмов и давления.",
-    restrictions: "Не придумывать цены, сроки, характеристики и результаты. Не давать гарантий без подтверждения. Спорные сведения оставлять на проверку специалисту.",
-    signature: `С заботой о вас, ${brandName}.`,
-    prohibited: "гарантированный результат; лучший на рынке; уникальный без доказательств; успейте любой ценой; никаких рисков; подходит всем",
-  };
-}
-
 const formats: { id: Format; label: string }[] = [
   { id: "seo", label: "SEO‑статья" },
   { id: "social", label: "Пост для соцсетей" },
@@ -858,7 +848,7 @@ const WORKSPACE_USE_CASES = [
   { kind: "Задача", id: "competitors", task: "Хочется найти свободный угол в теме, а не повторять конкурентов", solution: "Покажет, какие темы уже раскрыты у конкурентов и где ваш материал может быть полезнее читателю.", cta: "Посмотреть конкурентов" },
   { kind: "Совет", id: "content-plan", task: "Хотите точнее получить результат контент-плана?", solution: "Заполните поле «Тема или фокус»: например, укажите услугу, сезонную кампанию или нужную аудиторию. Так КЛИО сделает акцент именно на этом.", cta: "Уточнить фокус" },
   { kind: "Совет", id: "generator", task: "В режиме «Новичок» достаточно описать задачу своими словами", solution: "Расскажите КЛИО, какой материал вам нужен. Нужны отдельные настройки формата, ключей и стиля — переключитесь в режим «Эксперт» и заполните поля.", cta: "Открыть генератор" },
-  { kind: "Совет", id: "brand", task: "Не хотите заполнять профиль бренда вручную?", solution: "Впишите адрес сайта и нажмите «Заполнить с помощью КЛИО». КЛИО предложит основу профиля, а вам останется проверить и дополнить важные детали.", cta: "Заполнить по сайту" },
+  { kind: "Совет", id: "brand", task: "Не хотите заполнять профиль бренда вручную?", solution: "Впишите адрес сайта и нажмите «Заполнить по сайту с КЛИО». КЛИО предложит основу профиля, а вам останется проверить и дополнить важные детали.", cta: "Заполнить по сайту" },
 ] as const;
 
 // Rotates on the "Начните здесь" tab (see tipIndex below) — short,
@@ -1675,7 +1665,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }, [activeModule]);
   const [brandSaved, setBrandSaved] = useState(false);
   const [brandTab, setBrandTab] = useState<BrandTab>("foundation");
-  const [profileMode, setProfileMode] = useState<ProfileMode>("quick");
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  const [voiceError, setVoiceError] = useState("");
+  const [replaceFoundation, setReplaceFoundation] = useState(false);
+  const [replaceVoice, setReplaceVoice] = useState(false);
+  const brandFillLock = useRef(false);
+  const brandFillEpoch = useRef(0);
   const [brandAnalyzeBusy, setBrandAnalyzeBusy] = useState(false);
   const [brandAnalyzeError, setBrandAnalyzeError] = useState("");
   const [semanticQuery, setSemanticQuery] = useState("");
@@ -2259,11 +2254,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     && brand.audience.trim()
     && brand.advantages.trim(),
   );
-  const voiceRecommendations = useMemo(() => buildVoiceRecommendations(brand), [brand]);
-  const effectiveBrand = useMemo(() => {
-    if (profileMode !== "quick" || !foundationReady) return brand;
-    return { ...brand, ...voiceRecommendations };
-  }, [brand, foundationReady, profileMode, voiceRecommendations]);
+  const effectiveBrand = brand;
+  const voiceMissing = missingVoiceFoundation(brand);
   const brandChecklist = useMemo(() => [
     {
       label: "Основа",
@@ -2387,7 +2379,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const activeArchivePlan = ADAPTATION_PLANS[archiveTransformGoal];
   const workspaceSnapshot = useMemo<BrandWorkspaceSnapshot>(() => ({
     useBrand,
-    profileMode,
+    profileMode: "expert",
     semantics: {
       query: semanticQuery,
       geo: semanticGeo,
@@ -2433,7 +2425,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     adaptationGoal, adaptationInstructions, adaptationKeywords, adaptationMode, adaptationResult, adaptationSource, adaptationTone,
     competitorComment, competitorFocusSource, competitorMode, competitorNeedsRefresh, competitorQuery, competitorResult,
     competitors, contentPlanCount, contentPlanMode, contentPlanNeedsRefresh, contentPlanQuery, contentPlanResult,
-    profileMode,
     selectedCompetitorTopicIds, selectedSemanticIds, semanticGeo, semanticMode, semanticNeedsRefresh, semanticQuery, semanticResult,
     useBrand,
   ]);
@@ -2926,7 +2917,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setBrand(migrateStoredBrand({ ...defaultBrand, ...record.profile }));
     setBrandSaved(true);
     setUseBrand(snapshot.useBrand !== false);
-    setProfileMode(snapshot.profileMode === "expert" ? "expert" : "quick");
+    brandFillEpoch.current += 1;
+    setReplaceFoundation(false);
+    setReplaceVoice(false);
+    setVoiceError("");
+    setBrandAnalyzeError("");
 
     setSemanticQuery(semantics.query ?? "");
     setSemanticGeo(semantics.geo ? normalizeStoredGeo(semantics.geo) : defaultSemanticGeo);
@@ -3054,7 +3049,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       const response = await fetch("/api/workspace", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "create_brand", profile: blankProfile, workspace: { useBrand: true, profileMode: "quick" } }),
+        body: JSON.stringify({ action: "create_brand", profile: blankProfile, workspace: { useBrand: true, profileMode: "expert" } }),
       });
       const payload = await safeJson(response) as { error?: string; brand?: unknown; account?: WorkspaceAccount };
       const created = normalizeWorkspaceBrand(payload.brand);
@@ -3205,33 +3200,16 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }
 
   function updateBrand(field: keyof BrandProfile, value: string) {
+    if (voiceBusy && (FOUNDATION_FIELDS as readonly string[]).includes(field)) {
+      brandFillEpoch.current += 1;
+      setVoiceError("Основа изменилась во время подбора. Запросите голос заново по обновлённым данным.");
+    }
     setBrand((current) => ({ ...current, [field]: value }));
     setBrandSaved(false);
     if (["name", "website", "description", "positioning", "audience", "advantages"].includes(field)) {
       setSemanticNeedsRefresh(true);
       setContentPlanNeedsRefresh(true);
     }
-  }
-
-  function changeProfileMode(nextMode: ProfileMode) {
-    if (nextMode === profileMode) return;
-    if (nextMode === "expert" && profileMode === "quick" && foundationReady) {
-      setBrand(effectiveBrand);
-    }
-    setProfileMode(nextMode);
-    setBrandSaved(false);
-    showToast(nextMode === "quick" ? "Включён быстрый старт с рекомендациями КЛИО" : "Открыта полная ручная настройка");
-  }
-
-  function applyVoiceRecommendations() {
-    if (!foundationReady) {
-      setBrandTab("foundation");
-      showToast("Сначала заполните основу бренда, аудиторию и факты");
-      return;
-    }
-    setBrand((current) => ({ ...current, ...buildVoiceRecommendations(current) }));
-    setBrandSaved(false);
-    showToast("Рекомендации по голосу добавлены в профиль");
   }
 
   function changeFormat(nextFormat: Format) {
@@ -3279,7 +3257,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
   function restoreBrand() {
     setBrand(defaultBrand);
-    setProfileMode("quick");
+    brandFillEpoch.current += 1;
+    setReplaceFoundation(false);
+    setReplaceVoice(false);
     setSemanticNeedsRefresh(true);
     setContentPlanNeedsRefresh(true);
     if (!workspace) window.localStorage.setItem("clio-brand-profile-v1", JSON.stringify(defaultBrand));
@@ -3287,70 +3267,42 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     showToast("Базовый профиль восстановлен");
   }
 
-  async function analyzeBrandFromWebsite() {
-    if (aiConnection !== "connected") {
-      setBrandAnalyzeError("ИИ не подключён. Сначала добавьте серверный AI‑ключ.");
-      return;
-    }
-    const website = brand.website.trim();
-    if (!website) {
-      setBrandAnalyzeError("Укажите сайт бренда, чтобы КЛИО могла его прочитать.");
-      return;
-    }
-
-    setBrandAnalyzeBusy(true);
-    setBrandAnalyzeError("");
+  async function fillBrandTab(tab: BrandTab) {
+    if (brandFillLock.current) return;
+    const isVoice = tab === "voice";
+    const setError = isVoice ? setVoiceError : setBrandAnalyzeError;
+    if (aiConnection !== "connected") { setError("КЛИО сейчас недоступна. Попробуйте позже."); return; }
+    if (isVoice && voiceMissing.length) { setError(`Заполните ${voiceMissing.join(", ")} на первой вкладке.`); return; }
+    if (!isVoice && !brand.website.trim()) { setError("Укажите сайт бренда."); return; }
+    const fields = isVoice ? VOICE_FIELDS : FOUNDATION_FIELDS;
+    const replace = isVoice ? replaceVoice : replaceFoundation;
+    if (!replace && fields.every(key => brand[key].trim())) { setError("Все поля заполнены. Для обновления отметьте «Заменить заполненные поля»."); return; }
+    const snapshot = { ...brand };
+    const epoch = brandFillEpoch.current;
+    brandFillLock.current = true;
+    (isVoice ? setVoiceBusy : setBrandAnalyzeBusy)(true);
+    setError("");
     try {
-      const response = await fetch("/api/brand/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          website,
-          name: brand.name,
-          description: brand.description,
-          positioning: brand.positioning,
-          audience: brand.audience,
-          advantages: brand.advantages,
-          products: brand.products,
-          services: brand.services,
-          proof: brand.proof,
-          geography: brand.geography,
-        }),
+      const response = await fetch(isVoice ? "/api/brand/voice" : "/api/brand/analyze", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(snapshot),
       });
-      const payload = await safeJson(response) as {
-        error?: string;
-        mode?: "ai";
-        result?: { name: string; description: string; positioning: string; audience: string; advantages: string; products: string; services: string; proof: string; geography: string };
-        sources?: { website?: string };
-        usage?: { account?: WorkspaceAccount } | null;
-      };
-      if (!response.ok || payload.mode !== "ai" || !payload.result) {
-        throw new Error(payload.error || "Не удалось проанализировать сайт.");
-      }
-
-      const { result } = payload;
-      setBrand((current) => ({
-        ...current,
-        name: result.name || current.name,
-        // A sparse source must never erase facts the user already entered.
-        description: result.description || current.description,
-        positioning: result.positioning || current.positioning,
-        audience: result.audience || current.audience,
-        advantages: result.advantages || current.advantages,
-        products: result.products || current.products,
-        services: result.services || current.services,
-        proof: result.proof || current.proof,
-        geography: result.geography || current.geography,
-      }));
+      const payload = await safeJson(response) as { error?: string; mode?: string; result?: Partial<BrandProfile>; usage?: { account?: WorkspaceAccount } };
+      if (!response.ok || payload.mode !== "ai" || !payload.result || fields.some(key => typeof payload.result?.[key] !== "string")) throw new Error(payload.error || "КЛИО не смогла заполнить раздел. Попробуйте ещё раз.");
+      if (payload.usage?.account) setWorkspaceAccount(payload.usage.account);
+      if (epoch !== brandFillEpoch.current) return;
+      const result = payload.result;
+      setBrand(current => mergeProfileFill(current, snapshot, result, fields, replace));
       setBrandSaved(false);
       setSemanticNeedsRefresh(true);
       setContentPlanNeedsRefresh(true);
-      if (payload.usage?.account) setWorkspaceAccount(payload.usage.account);
-      showToast(payload.sources?.website === "loaded" ? "Основа бренда заполнена по сайту" : "Сайт прочитать не удалось — КЛИО использовала веб‑поиск");
+      (isVoice ? setReplaceVoice : setReplaceFoundation)(false);
+      showToast(isVoice ? "Голос подобран. Проверьте поля перед сохранением." : "Основа дополнена по сайту. Проверьте поля перед сохранением.");
     } catch (error) {
-      setBrandAnalyzeError(error instanceof Error ? error.message : "Не удалось проанализировать сайт.");
+      if (epoch === brandFillEpoch.current) setError(error instanceof Error ? error.message : "Не удалось заполнить раздел.");
     } finally {
-      setBrandAnalyzeBusy(false);
+      brandFillLock.current = false;
+      (isVoice ? setVoiceBusy : setBrandAnalyzeBusy)(false);
     }
   }
 
@@ -5192,14 +5144,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </div>
             </div>
             {brandOpen && <div className="brand-profile-body">
-              <div className="profile-mode-bar">
-                <div><span>Режим настройки</span><b>{profileMode === "quick" ? "Быстрый старт" : "Экспертный"}</b><small>{profileMode === "quick" ? "КЛИО готовит голос и правила площадок по основе бренда" : "Все формулировки доступны для полной ручной настройки"}</small></div>
-                <div className="profile-mode-switch" role="radiogroup" aria-label="Режим настройки профиля">
-                  <button type="button" className={profileMode === "quick" ? "active" : ""} onClick={() => changeProfileMode("quick")} role="radio" aria-checked={profileMode === "quick"}><i>✦</i><span><b>Быстрый старт</b><small>с рекомендациями</small></span></button>
-                  <button type="button" className={profileMode === "expert" ? "active" : ""} onClick={() => changeProfileMode("expert")} role="radio" aria-checked={profileMode === "expert"}><i>↗</i><span><b>Экспертный</b><small>ручная настройка</small></span></button>
-                </div>
-              </div>
-
               <div className="brand-profile-overview">
                 <div className="brand-score" style={{ "--profile-score": `${brandScore}%` } as CSSProperties}>
                   <div><b>{brandScore}</b><span>%</span></div>
@@ -5231,9 +5175,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <ProfileField id="brand-website" label="Сайт" help="КЛИО использует сайт при сборе семантики и генерации. Кнопка заполняет профиль по сайту; результат можно отредактировать. Недоступные сведения не додумываются.">
                     <div className="brand-website-row">
                       <input id="brand-website" aria-describedby="brand-website-help brand-website-cost" aria-invalid={Boolean(brandAnalyzeError)} value={brand.website} onChange={(event) => updateBrand("website", event.target.value)} autoComplete="off"/>
-                      <button type="button" className={brandAnalyzeBusy ? "is-busy" : ""} onClick={() => void analyzeBrandFromWebsite()} disabled={brandAnalyzeBusy || !brand.website.trim() || aiConnection !== "connected" || workspaceAccount.researchRemaining <= 0} title="КЛИО прочитает сайт и предложит описание, позиционирование, аудиторию и факты — каждое поле можно будет скорректировать вручную">{brandAnalyzeBusy ? "Читаем сайт…" : !brand.website.trim() ? "Укажите сайт" : aiConnection !== "connected" ? "ИИ не подключён" : workspaceAccount.researchRemaining <= 0 ? "Лимит исчерпан" : "Заполнить с помощью КЛИО"}</button>
+                      <button type="button" className={brandAnalyzeBusy ? "is-busy" : ""} onClick={() => void fillBrandTab("foundation")} disabled={brandAnalyzeBusy || voiceBusy || !brand.website.trim() || aiConnection !== "connected" || workspaceAccount.researchRemaining <= 0} title="КЛИО прочитает сайт и предложит описание, позиционирование, аудиторию и факты — каждое поле можно будет скорректировать вручную">{brandAnalyzeBusy ? "Читаем сайт…" : !brand.website.trim() ? "Укажите сайт" : aiConnection !== "connected" ? "ИИ не подключён" : workspaceAccount.researchRemaining <= 0 ? "Лимит исчерпан" : "Заполнить по сайту с КЛИО"}</button>
                     </div>
                     <small id="brand-website-cost">КЛИО заполнит профиль — спишется 1 исследование</small>
+                    <label className="profile-fill-replace"><input type="checkbox" checked={replaceFoundation} onChange={event => setReplaceFoundation(event.target.checked)} disabled={brandAnalyzeBusy || voiceBusy}/>Заменить заполненные поля этой вкладки</label>
                     {brandAnalyzeError && <small className="is-error" role="alert">{brandAnalyzeError}</small>}
                   </ProfileField>
                   <ProfileField id="brand-description" label="О компании" help="Короткая фактическая справка: сфера, география, услуги и масштаб." wide><AutoTextarea id="brand-description" aria-describedby="brand-description-help" rows={3} value={brand.description} onChange={(event) => updateBrand("description", event.target.value)}/></ProfileField>
@@ -5248,17 +5193,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </div>
 
               <div className="brand-field-group" role="tabpanel" id="brand-panel-voice" aria-labelledby="brand-tab-voice" hidden={brandTab !== "voice"}>
-                {!foundationReady ? <div className="profile-foundation-warning"><i>01</i><div><b>Сначала заполните основу бренда</b><p>Для рекомендаций нужны описание, позиционирование, аудитория и подтверждённые преимущества.</p></div><button type="button" onClick={() => setBrandTab("foundation")}>Перейти к основе</button></div> : profileMode === "quick" ? <>
-                  <div className="profile-ai-note"><span><i>✦</i> Предзаполнено КЛИО</span><p>Формулировки собраны из основы бренда и автоматически используются в генераторе. Перед сохранением их можно открыть и отредактировать.</p></div>
-                  <div className="profile-recommendation-grid">
-                    <article><span>Интонация</span><p>{voiceRecommendations.voice}</p></article>
-                    <article><span>Безопасность</span><p>{voiceRecommendations.restrictions}</p></article>
-                    <article><span>Фирменная подпись</span><p>{voiceRecommendations.signature}</p></article>
-                    <article><span>Стоп-слова</span><p>{voiceRecommendations.prohibited}</p></article>
-                  </div>
-                  <div className="profile-recommendation-footer"><button className="recommendation-edit-button" type="button" onClick={() => changeProfileMode("expert")}><Icon name="edit"/> Изменить рекомендации</button></div>
-                </> : <>
-                  <div className="profile-assistant-row"><div><span>Умное предзаполнение</span><p>Можно взять рекомендации из основы, а затем скорректировать каждое поле.</p></div><button type="button" onClick={applyVoiceRecommendations}>Предзаполнить поля</button></div>
+                <div className="profile-voice-fill">
+                  <button type="button" className="button primary" onClick={() => void fillBrandTab("voice")} disabled={brandAnalyzeBusy || voiceBusy || voiceMissing.length > 0 || aiConnection !== "connected" || workspaceAccount.researchRemaining <= 0}>{voiceBusy ? "Подбираем голос…" : "Подобрать голос с КЛИО"}</button>
+                  <small>{voiceMissing.length ? `На первой вкладке заполните ${voiceMissing.join(", ")}.` : aiConnection !== "connected" ? "КЛИО сейчас недоступна" : workspaceAccount.researchRemaining <= 0 ? "Лимит исследований исчерпан" : "По основе бренда · 1 исследование"}</small>
+                  <label className="profile-fill-replace"><input type="checkbox" checked={replaceVoice} onChange={event => setReplaceVoice(event.target.checked)} disabled={voiceBusy || brandAnalyzeBusy}/>Заменить заполненные поля этой вкладки</label>
+                  {voiceError && <p className="profile-fill-error" role="alert">{voiceError}</p>}
+                </div>
                   <div className="brand-fields">
                     <ProfileField id="brand-voice" label="Голос бренда" help="Интонация, сложность языка, длина фраз и степень эмоциональности." wide><AutoTextarea id="brand-voice" aria-describedby="brand-voice-help" rows={4} value={brand.voice} onChange={(event) => updateBrand("voice", event.target.value)}/></ProfileField>
                     <ProfileField id="brand-vocabulary" label="Словарь бренда" help="Предпочтительные термины и формулировки, которые помогают узнаваемости." wide><AutoTextarea id="brand-vocabulary" aria-describedby="brand-vocabulary-help" rows={2} value={brand.vocabulary} onChange={(event) => updateBrand("vocabulary", event.target.value)}/></ProfileField>
@@ -5267,7 +5207,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     <ProfileField id="brand-restrictions" label="Ограничения" help="Что нельзя обещать, утверждать или придумывать без проверки."><AutoTextarea id="brand-restrictions" aria-describedby="brand-restrictions-help" rows={4} value={brand.restrictions} onChange={(event) => updateBrand("restrictions", event.target.value)}/></ProfileField>
                     <ProfileField id="brand-prohibited" label="Стоп-слова и клише" help="Разделяйте слова и выражения точкой с запятой — они попадут в автоматическую проверку."><AutoTextarea id="brand-prohibited" aria-describedby="brand-prohibited-help" rows={4} value={brand.prohibited} onChange={(event) => updateBrand("prohibited", event.target.value)}/></ProfileField>
                   </div>
-                </>}
+
               </div>
               </div>
 

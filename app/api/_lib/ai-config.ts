@@ -129,6 +129,7 @@ export type AiOperation =
   | "analyze_competitors"
   | "revise_content"
   | "analyze_brand_website"
+  | "suggest_brand_voice"
   // Nano — short formalized steps
   | "normalize_quick_brief"
   | "validate_content"
@@ -221,6 +222,7 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // thin or unreadable (SPA, blocked, etc.) — the model can still ground
   // itself in public information about the company instead of guessing.
   analyze_brand_website: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 1_800, structuredOutput: true, retryable: true, useWebSearch: false },
+  suggest_brand_voice: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 2_200, structuredOutput: true, retryable: false, useWebSearch: false },
 
   normalize_quick_brief: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 800, structuredOutput: true, retryable: true, useWebSearch: false },
   validate_content: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 1_500, structuredOutput: true, retryable: true, useWebSearch: false },

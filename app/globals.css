@@ -22188,3 +22188,45 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
   .brand-tab-shell .brand-tabs button b { font-size: 14px; line-height: 1.4; }
   .brand-tab-shell .brand-field-group { padding: 0 2px 8px; }
 }
+/* Independent brand-tab autofill controls. */
+.brand-tab-shell .profile-voice-fill {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  margin-bottom: 20px;
+}
+.brand-tab-shell .profile-voice-fill > small { color: var(--profile-muted); font-size: 13px; }
+.brand-tab-shell .profile-fill-replace {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--profile-muted);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.brand-tab-shell .profile-voice-fill .profile-fill-replace { flex-basis: 100%; margin-top: 0; }
+.brand-tab-shell .brand-fields label.profile-fill-replace input,
+.brand-tab-shell .profile-voice-fill label.profile-fill-replace input {
+  appearance: auto;
+  display: inline-block;
+  flex: 0 0 16px;
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  min-height: 16px;
+  margin: 0;
+  padding: 0;
+  box-shadow: none;
+  accent-color: #8b5cf6;
+}
+.brand-tab-shell .profile-fill-error { flex-basis: 100%; margin: 0; color: #ff8f9a; font-size: 14px; }
+[data-theme="light"] .brand-tab-shell .profile-fill-error { color: #c81e3a; }
+@media (max-width: 600px) {
+  .brand-tab-shell .profile-voice-fill > button { width: 100%; }
+  .brand-tab-shell .profile-fill-replace { min-height: 44px; }
+}
