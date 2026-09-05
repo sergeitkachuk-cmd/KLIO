@@ -1357,13 +1357,6 @@ select:focus-visible {
   text-transform: uppercase;
 }
 
-.brand-profile-actions {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  flex: 0 0 auto;
-}
-
 .brand-switch {
   display: flex;
   align-items: center;
@@ -1414,33 +1407,9 @@ select:focus-visible {
   outline-offset: 3px;
 }
 
-.brand-switch b,
-.profile-toggle {
+.brand-switch b {
   font-size: 13px;
   font-weight: 650;
-}
-
-.profile-toggle {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0;
-  border: 0;
-  color: var(--cobalt);
-  background: none;
-  cursor: pointer;
-}
-
-.profile-toggle i {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border: 1px solid rgba(50, 43, 86, 0.16);
-  border-radius: 50%;
-  font-size: 19px;
-  font-style: normal;
-  font-weight: 420;
 }
 
 .profile-mode-bar {
@@ -4758,18 +4727,15 @@ footer nav a {
   font-size: 12px;
 }
 
-.tool-collapsed {
-  min-height: 0 !important;
-}
-
 .tool-heading {
   display: grid !important;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.75fr) auto;
+  /* Was a 3rd "auto" track for the Свернуть/Открыть button, removed with
+     it - the label and description are the only two columns left. */
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.75fr);
   align-items: center;
   gap: 24px;
 }
 
-.tool-heading > button,
 .generator-advanced-toggle {
   display: inline-flex;
   align-items: center;
@@ -4786,7 +4752,6 @@ footer nav a {
   cursor: pointer;
 }
 
-.tool-heading > button i,
 .generator-advanced-toggle > i {
   display: grid;
   place-items: center;
@@ -5116,6 +5081,17 @@ footer nav a {
   align-items: flex-end;
   gap: 10px;
   flex: 0 0 auto;
+}
+
+/* Every module but "Начните здесь" now renders .workspace-heading with
+   only this status pill inside (the eyebrow/title/description block is
+   start-only — see the workspace-heading JSX). Without this,
+   justify-content: space-between above resolves a lone flex child to
+   flex-start, so the pill would jump to the left edge instead of
+   holding its usual top-right spot. width:100% on the ≤820px stacked
+   layout already fills the row regardless, so this is a no-op there. */
+.workspace-heading-status:only-child {
+  margin-left: auto;
 }
 
 .workspace-brand-pill {
@@ -6714,80 +6690,6 @@ footer nav a {
   display: block;
 }
 
-.competitor-entry-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 30px;
-  width: 100%;
-  padding: 24px 28px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 4px 28px 4px 4px;
-  color: #fff;
-  background:
-    radial-gradient(circle at 90% 0%, rgba(124, 58, 237, 0.26), transparent 32%),
-    linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
-  box-shadow: 0 18px 54px rgba(3, 12, 26, 0.3), inset 0 1px rgba(255, 255, 255, 0.1);
-  text-align: left;
-  cursor: pointer;
-}
-
-.competitor-entry-copy {
-  display: grid;
-  gap: 0;
-  max-width: 850px;
-}
-
-.competitor-entry-copy > span {
-  color: #d5c9fb;
-  font-size: 10px;
-  font-weight: 740;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.competitor-entry-copy strong {
-  display: block;
-  margin: 6px 0 0;
-  font-size: 24px;
-  font-weight: 580;
-  letter-spacing: -0.035em;
-}
-
-.competitor-entry-copy small {
-  display: block;
-  margin: 6px 0 0;
-  color: rgba(255, 255, 255, 0.62);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.competitor-entry-action {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 0 0 auto;
-  color: #fff;
-}
-
-.competitor-entry-action b {
-  font-size: 12px;
-  font-weight: 690;
-}
-
-.competitor-entry-action i {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  color: #fff;
-  background: linear-gradient(145deg, #6842ce, #8b5cf6);
-  font-size: 18px;
-  font-style: normal;
-  font-weight: 400;
-}
-
 .competitor-optional-body {
   padding-top: 14px;
 }
@@ -8275,81 +8177,6 @@ footer nav a {
   line-height: 1.45;
 }
 
-.generation-brief-check {
-  display: grid;
-  grid-template-columns: minmax(150px, 0.82fr) repeat(3, minmax(0, 1fr));
-  gap: 1px;
-  margin: 22px 0 0;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 4px 18px 4px 4px;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.generation-brief-check > div,
-.generation-brief-check > p {
-  min-width: 0;
-  margin: 0;
-  padding: 14px 15px;
-  background: rgba(6, 22, 43, 0.82);
-}
-
-.generation-brief-check > div {
-  display: grid;
-  align-content: center;
-}
-
-.generation-brief-check > div span {
-  color: #cabdf6;
-  font-size: 11px;
-  font-weight: 740;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-}
-
-.generation-brief-check > div small,
-.generation-brief-check p small {
-  margin-top: 4px;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 11px;
-  line-height: 1.38;
-}
-
-.generation-brief-check > p {
-  display: grid;
-  grid-template-columns: 25px minmax(0, 1fr);
-  align-items: center;
-  gap: 9px;
-}
-
-.generation-brief-check > p > i {
-  display: grid;
-  place-items: center;
-  width: 25px;
-  height: 25px;
-  border-radius: 50%;
-  background: rgba(124, 58, 237, 0.22);
-  color: #cabdf6;
-  font-size: 12px;
-  font-style: normal;
-  font-weight: 760;
-}
-
-.generation-brief-check > p.is-missing > i {
-  background: rgba(224, 73, 106, 0.22);
-  color: #ff8f9a;
-}
-
-.generation-brief-check p span {
-  display: grid;
-  min-width: 0;
-}
-
-.generation-brief-check p b {
-  font-size: 12px;
-  font-weight: 690;
-}
-
 /* Content plan workspace */
 
 .content-plan-shell {
@@ -8905,11 +8732,11 @@ footer nav a {
   }
 
   .tool-heading {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .tool-heading > p {
-    grid-column: 1 / -1;
+    grid-column: 1;
     grid-row: 2;
   }
 }
@@ -8937,8 +8764,7 @@ footer nav a {
     grid-template-columns: 1fr;
   }
 
-  .tool-heading > p,
-  .tool-heading > button {
+  .tool-heading > p {
     grid-column: 1;
     width: 100%;
   }
@@ -10303,18 +10129,6 @@ input[type="radio"] {
     padding-top: 42px;
   }
 
-  .competitor-entry-card {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 18px;
-    padding: 22px 18px;
-  }
-
-  .competitor-entry-action {
-    justify-content: space-between;
-    width: 100%;
-  }
-
   .competitor-setup-head,
   .competitor-matrix-head,
   .competitor-matrix-footer {
@@ -10892,13 +10706,6 @@ input[type="radio"] {
     padding: 22px;
   }
 
-  .brand-profile-actions {
-    align-items: flex-start;
-    flex-direction: column;
-    width: 100%;
-    gap: 16px;
-  }
-
   .profile-mode-bar,
   .profile-ai-note,
   .profile-assistant-row,
@@ -11186,13 +10993,6 @@ input[type="radio"] {
   }
 }
 
-@media (max-width: 1180px) {
-  .generation-brief-check {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-}
-
 @media (max-width: 900px) {
   .content-plan-setup-head {
     align-items: flex-start;
@@ -11225,7 +11025,6 @@ input[type="radio"] {
 }
 
 @media (max-width: 600px) {
-  .generation-brief-check,
   .content-plan-source-strip,
   .content-plan-seo,
   .content-plan-brief-grid {
@@ -12154,22 +11953,6 @@ input[type="radio"] {
   backdrop-filter: blur(22px) saturate(145%);
 }
 
-.workspace-module.tool-collapsed {
-  margin: 26px 0 0;
-  padding: 0 !important;
-  overflow: visible;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.workspace-module.tool-collapsed > .workspace-module-heading {
-  position: relative;
-  top: auto;
-  margin: 0;
-  padding: 27px 30px;
-}
-
 .workspace-module-heading span {
   color: #d5c9fb;
 }
@@ -12189,24 +11972,6 @@ input[type="radio"] {
   line-height: 1.55;
   color: rgba(255, 255, 255, 0.67);
   font-size: 16px;
-}
-
-.tool-heading > button {
-  border-color: rgba(255, 255, 255, 0.2);
-  color: #fff;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.055));
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.13), 0 12px 30px rgba(0, 0, 0, 0.13);
-  backdrop-filter: blur(18px) saturate(145%);
-}
-
-.tool-heading > button:hover {
-  border-color: rgba(216, 255, 101, 0.42);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.17), rgba(124, 58, 237, 0.18));
-}
-
-.tool-heading > button i {
-  color: #17131f;
-  background: var(--acid);
 }
 
 /* Layout-only wrapper now: .brand-profile-head and .brand-profile-body
@@ -12267,23 +12032,6 @@ input[type="radio"] {
   font-size: 16px;
 }
 
-.brand-profile .profile-toggle {
-  min-height: 46px;
-  padding: 0 12px 0 15px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 13px;
-  color: #fff;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.055));
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.13), 0 12px 30px rgba(0, 0, 0, 0.13);
-  backdrop-filter: blur(18px) saturate(145%);
-}
-
-.brand-profile .profile-toggle i {
-  border-color: rgba(216, 255, 101, 0.4);
-  color: #17131f;
-  background: var(--acid);
-}
-
 .brand-profile-body {
   padding: 28px 32px 30px;
   overflow: hidden;
@@ -12292,16 +12040,6 @@ input[type="radio"] {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.83), rgba(244, 241, 252, 0.72));
   box-shadow: 0 24px 64px rgba(3, 17, 34, 0.22), inset 0 1px rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(28px) saturate(145%);
-}
-
-/* Same padding as the open state — .workspace-module.tool-collapsed's
-   heading doesn't change padding when collapsed either, only margin. */
-.brand-profile:not(.is-open) .brand-profile-head {
-  margin-bottom: 0;
-}
-
-.competitor-module:not(.tool-collapsed) .competitor-entry-card {
-  display: none;
 }
 
 .content-plan-item-actions {
@@ -12632,8 +12370,7 @@ input[type="radio"] {
     justify-self: start;
   }
 
-  .workspace-module > .workspace-module-heading,
-  .workspace-module.tool-collapsed > .workspace-module-heading {
+  .workspace-module > .workspace-module-heading {
     padding: 21px 18px;
   }
 
@@ -13502,9 +13239,7 @@ input[type="radio"] {
 .button.primary,
 .button.light,
 .workspace-history-button b,
-.tool-heading > button i,
 .generator-advanced-toggle > i,
-.brand-profile .profile-toggle i,
 .archive-transform-tools > article > button > i,
 .archive-transform-panel .archive-tone-picker button.active,
 .archive-transform-panel > .archive-ai-submit {
@@ -13613,17 +13348,6 @@ input[type="radio"] {
     radial-gradient(circle at 88% 0%, color-mix(in srgb, var(--module-accent, #7450bd) 30%, transparent), transparent 42%),
     linear-gradient(120deg, rgba(4, 21, 42, 0.98), rgba(12, 48, 80, 0.95));
   box-shadow: 0 20px 54px rgba(3, 19, 38, 0.23), inset 0 1px rgba(255, 255, 255, 0.11);
-}
-
-/* Collapsed accordion: .brand-profile-head is the only visible card (no
-   .brand-profile-body in the DOM until expanded), styled a notch quieter
-   than the open look above. Targets the head card itself now that the
-   card lives there instead of on the shared .brand-profile shell. */
-.brand-profile:not(.is-open) .brand-profile-head {
-  border-color: rgba(92, 65, 156, 0.2);
-  border-left: 4px solid #8a65cf;
-  background: rgba(5, 25, 48, 0.96);
-  box-shadow: 0 20px 54px rgba(3, 18, 36, 0.22);
 }
 
 .workspace-dashboard-bar > button,
@@ -14159,14 +13883,18 @@ input[type="radio"] {
   .workspace-sidebar nav button {
     display: inline-grid;
     flex: 0 0 auto;
-    grid-template-columns: 18px auto;
+    grid-template-columns: auto;
     align-items: center;
     gap: 7px;
     width: auto;
     min-width: 0;
     min-height: 44px;
-    padding: 8px 11px;
-    border-radius: 12px;
+    padding: 8px 14px;
+    /* Fully rounded, matching the site's shared .button capsule shape
+       (see the comment on .button) instead of the softer 12px card
+       corner this bar carried before - these items act as buttons here,
+       not as sidebar list rows. */
+    border-radius: 999px;
     scroll-snap-align: start;
   }
 
@@ -14186,8 +13914,13 @@ input[type="radio"] {
     display: none;
   }
 
+  /* The leading "+"/"·" glyph only makes sense in the desktop sidebar,
+     where each row has room for a real label + hint. Packed into this
+     narrow scrolling bar with the hint already hidden above, it reads
+     as an unexplained "+" in front of every item - so it's hidden here,
+     not removed from the markup (desktop still shows it). */
   .workspace-sidebar nav i {
-    font-size: 10px;
+    display: none;
   }
 
   .workspace-content {
@@ -14304,8 +14037,7 @@ input[type="radio"] {
     padding-top: 0;
   }
 
-  .workspace-module > .workspace-module-heading,
-  .workspace-module.tool-collapsed > .workspace-module-heading {
+  .workspace-module > .workspace-module-heading {
     gap: 12px;
     margin-bottom: 12px;
     padding: 17px 15px;
@@ -14329,7 +14061,6 @@ input[type="radio"] {
     line-height: 1.45;
   }
 
-  .tool-heading > button,
   .generator-advanced-toggle {
     min-height: 42px;
     padding: 0 11px;
@@ -14357,10 +14088,6 @@ input[type="radio"] {
   .brand-profile-head p {
     font-size: 12px;
     line-height: 1.45;
-  }
-
-  .brand-profile-actions {
-    gap: 10px;
   }
 
   .workspace-history {
@@ -16244,22 +15971,14 @@ input[type="radio"] {
   min-width: 0;
 }
 
-/* Smooth reveal, take 2. The first attempt animated grid-template-rows
-   (1fr <-> 0fr) for a true height morph — in practice that read as
-   "elastic"/rubbery (the easing used, cubic-bezier(0.22, 1, 0.36, 1),
-   overshoots by design — exactly the "stretches like a rubber band"
-   effect reported) and risked its own layout bugs (the row became a
-   grid item that also needed min-width:0 on the width axis, on top of
-   everything else already fixed in this module). Reverted to the plain,
-   always-correct display:none swap and instead give the revealed
-   content a calm fade + small settle: a CSS animation that plays
-   automatically whenever an element becomes visible, no transition/JS/
-   height-measuring involved, and — this time — no overshoot in the
-   easing. */
-.tool-collapsed > :not(.workspace-module-heading) {
-  display: none;
-}
-
+/* Every module's optional body used to be gated behind its own
+   "Свернуть"/"Открыть инструмент" toggle (.tool-collapsed hid
+   everything but the heading until it was clicked). That toggle turned
+   out to just be a disguised "go back to Начните здесь" — it's gone
+   now, the body always renders — but the reveal is still worth a calm
+   fade + small settle instead of popping in instantly, so this
+   animation (unconditional now, not tied to any collapsed state)
+   stays. */
 @keyframes moduleReveal {
   from {
     opacity: 0;
@@ -17586,12 +17305,6 @@ input[type="radio"] {
   color: rgba(13, 27, 49, 0.65);
 }
 
-[data-theme="light"] .brand-profile .profile-toggle {
-  border-color: rgba(15, 23, 42, 0.16);
-  color: #0d1b31;
-  background: linear-gradient(135deg, rgba(53, 104, 212, 0.1), rgba(255, 255, 255, 0.6));
-}
-
 [data-theme="light"] .brand-profile-body {
   color: #0d1b31;
   background:
@@ -18463,35 +18176,6 @@ input[type="radio"] {
   color: rgba(13, 27, 49, 0.55);
 }
 
-[data-theme="light"] .generation-brief-check {
-  border-color: rgba(15, 23, 42, 0.14);
-  background: rgba(53, 104, 212, 0.1);
-}
-
-[data-theme="light"] .generation-brief-check > div,
-[data-theme="light"] .generation-brief-check > p {
-  background: rgba(255, 255, 255, 0.85);
-}
-
-[data-theme="light"] .generation-brief-check > div span {
-  color: #2452b8;
-}
-
-[data-theme="light"] .generation-brief-check > div small,
-[data-theme="light"] .generation-brief-check p small {
-  color: rgba(13, 27, 49, 0.58);
-}
-
-[data-theme="light"] .generation-brief-check > p > i {
-  background: rgba(53, 104, 212, 0.14);
-  color: #2452b8;
-}
-
-[data-theme="light"] .generation-brief-check > p.is-missing > i {
-  background: rgba(224, 73, 106, 0.14);
-  color: #c81e3a;
-}
-
 [data-theme="light"] .result-footer {
   color: rgba(13, 27, 49, 0.55);
 }
@@ -18502,11 +18186,9 @@ input[type="radio"] {
 
 /* ---------------------------------------------------------------------
    Module heading bar (.workspace-module-heading) - shared across every
-   module (Семантика, Контент‑план, Конкуренты, Редакторы КЛИО...), both
-   collapsed and open (.tool-collapsed only changes its margin/padding,
-   not its background, so one rule covers both states). Same "a shade
-   deeper than the plain card below it" brief as .quality-zone above,
-   not the near-black it was. */
+   module (Семантика, Контент‑план, Конкуренты, Редакторы КЛИО...). Same
+   "a shade deeper than the plain card below it" brief as .quality-zone
+   above, not the near-black it was. */
 [data-theme="light"] .workspace-module > .workspace-module-heading {
   border-color: rgba(15, 23, 42, 0.14);
   color: #0d1b31;
@@ -18526,13 +18208,6 @@ input[type="radio"] {
 
 [data-theme="light"] .workspace-module-heading > p {
   color: rgba(13, 27, 49, 0.68);
-}
-
-[data-theme="light"] .tool-heading > button {
-  border-color: rgba(15, 23, 42, 0.18);
-  color: #0d1b31;
-  background: rgba(255, 255, 255, 0.65);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.5);
 }
 
 /* Публикации — only the page-flow parts (channel bar, toolbar, calendar
@@ -18619,11 +18294,6 @@ input[type="radio"] {
 
 [data-theme="light"] .publications-chip b {
   color: rgba(13, 27, 49, 0.6);
-}
-
-[data-theme="light"] .tool-heading > button:hover {
-  border-color: rgba(53, 104, 212, 0.4);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.75), rgba(53, 104, 212, 0.14));
 }
 
 /* =======================================================================
@@ -19896,31 +19566,6 @@ input[type="radio"] {
    this shared "save to materials" bar, so it stayed fully dark in both
    until now.
    ------------------------------------------------------------------- */
-[data-theme="light"] .competitor-entry-card {
-  border-color: rgba(15, 23, 42, 0.14);
-  color: #0d1b31;
-  background:
-    radial-gradient(circle at 90% 0%, rgba(53, 104, 212, 0.16), transparent 32%),
-    linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%);
-  box-shadow: 0 18px 54px rgba(20, 40, 80, 0.1), inset 0 1px #fff;
-}
-
-[data-theme="light"] .competitor-entry-copy > span {
-  color: #2452b8;
-}
-
-[data-theme="light"] .competitor-entry-copy small {
-  color: rgba(13, 27, 49, 0.6);
-}
-
-[data-theme="light"] .competitor-entry-action {
-  color: #0d1b31;
-}
-
-[data-theme="light"] .competitor-entry-action i {
-  background: linear-gradient(145deg, #3568d4, #6f9eff);
-}
-
 [data-theme="light"] .competitor-setup-card,
 [data-theme="light"] .competitor-matrix-card,
 [data-theme="light"] .competitor-insights-grid article,

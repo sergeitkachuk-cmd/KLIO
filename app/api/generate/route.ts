@@ -111,7 +111,10 @@ const FORMAT_OPERATION: Record<Format, AiOperation> = {
 const ALLOWED_FORMATS = new Set<Format>(["seo", "social", "ads", "landing"]);
 const DEFAULT_LENGTHS: Record<Format, number> = {
   seo: 8400,
-  social: 1050,
+  // Matches the client's lengthPresets "оптимальный" default (see
+  // textora-experience.tsx) — 1 000, not 1 050, to leave headroom under
+  // Telegram's 1 024-character caption limit for a post with an image.
+  social: 1000,
   ads: 700,
   landing: 3500,
 };
@@ -845,6 +848,19 @@ export async function POST(request: Request) {
         usedModel = condenseCall.model;
       } catch (error) {
         console.error("Nano condense pass failed, falling back to mechanical trim", error);
+        material = { ...material, body: trimOverflowBody(material.body, bodyBudget(material, input.length)) };
+      }
+
+      // The condense pass above is a model call, not a guarantee — it can
+      // itself land over budget (a cheap nano model asked to hit an exact
+      // character count won't always get there in one shot, especially
+      // shrinking a long draft down to a short social-post-scale target).
+      // Nothing after this point re-checked the result, so an overshoot
+      // that survived the condense call shipped to the client unchanged
+      // (site owner: a 1 050-target post came back at 1 380, 131%). Treat
+      // the mechanical trim as the hard floor no draft can end up above,
+      // regardless of what the AI pass produced.
+      if (publicationCharacters(material) > maximumCharacters) {
         material = { ...material, body: trimOverflowBody(material.body, bodyBudget(material, input.length)) };
       }
       missingGeo = missingGeography(material, input);
