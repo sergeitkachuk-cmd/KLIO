@@ -5013,7 +5013,18 @@ footer nav a {
    Tighter for that case only - Начните здесь keeps its own gap
    unaffected. */
 .workspace-heading:has(> .workspace-heading-status:only-child) {
-  margin-bottom: 14px;
+  margin-bottom: 6px;
+}
+
+/* Halves the gap again on top of the tightened margin-bottom above —
+   the module's own 30px margin-top (shared by every module, including
+   Начните здесь's dashboard cards) is the other half of that gap, so it
+   needs its own override here rather than a bigger negative margin on
+   the heading. ~, not +, since every module section is a sibling of
+   .workspace-heading in the DOM at once (only one shown via
+   display:none at a time) - + would only ever match the first one. */
+.workspace-heading:has(> .workspace-heading-status:only-child) ~ .workspace-module {
+  margin-top: 16px;
 }
 
 .workspace-heading p {
@@ -9412,25 +9423,6 @@ footer nav a {
   font-size: 11px;
 }
 
-.adaptation-result-head > button,
-.adaptation-result-footer button {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 8px 0;
-  border: 0;
-  color: #cabdf6;
-  background: transparent;
-  font-size: 12px;
-  font-weight: 670;
-  cursor: pointer;
-}
-
-.adaptation-result-head > button svg {
-  width: 16px;
-  height: 16px;
-}
-
 .adaptation-result-title,
 .adaptation-result-body,
 .adaptation-seo-fields textarea {
@@ -9865,7 +9857,7 @@ input[type="radio"] {
   }
 
   .workspace-heading:has(> .workspace-heading-status:only-child) {
-    margin-bottom: 10px;
+    margin-bottom: 5px;
   }
 
   .workspace-heading > div:first-child > span {
@@ -13951,7 +13943,11 @@ input[type="radio"] {
   }
 
   .workspace-heading:has(> .workspace-heading-status:only-child) {
-    margin-bottom: 10px;
+    margin-bottom: 5px;
+  }
+
+  .workspace-heading:has(> .workspace-heading-status:only-child) ~ .workspace-module {
+    margin-top: 10px;
   }
 
   .workspace-heading p {
@@ -18982,11 +18978,6 @@ input[type="radio"] {
 
 [data-theme="light"] .adaptation-result-head > div > small {
   color: rgba(13, 27, 49, 0.55);
-}
-
-[data-theme="light"] .adaptation-result-head > button,
-[data-theme="light"] .adaptation-result-footer button {
-  color: #2452b8;
 }
 
 [data-theme="light"] .adaptation-result-body {
