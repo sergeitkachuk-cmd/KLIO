@@ -2939,7 +2939,19 @@ select:focus-visible {
   line-height: 1.5;
 }
 
-.result-subtitle::placeholder { color: rgba(255, 255, 255, 0.42); }
+.result-subtitle::placeholder,
+.result-title::placeholder,
+.result-body::placeholder { color: rgba(255, 255, 255, 0.42); }
+
+/* The generous min-height below is sized for a real article, so an empty
+   result panel - just the placeholder's 3-4 lines - showed as several
+   hundred pixels of dead space before the first generation. .is-empty
+   (added while body has no real content) drops that floor down to what
+   the placeholder text actually needs; it lifts back to the full height
+   the moment there's a real draft to write into. */
+.result-body.is-empty {
+  min-height: 130px;
+}
 
 .result-body {
   display: block;
@@ -18618,7 +18630,9 @@ input[type="radio"] {
 
 [data-theme="light"] .result-subtitle-field > span { color: #2452b8; }
 [data-theme="light"] .result-subtitle { color: rgba(13, 27, 49, 0.72); }
-[data-theme="light"] .result-subtitle::placeholder { color: rgba(13, 27, 49, 0.4); }
+[data-theme="light"] .result-subtitle::placeholder,
+[data-theme="light"] .result-title::placeholder,
+[data-theme="light"] .result-body::placeholder { color: rgba(13, 27, 49, 0.4); }
 
 [data-theme="light"] .editor-note {
   border-color: rgba(15, 23, 42, 0.14);

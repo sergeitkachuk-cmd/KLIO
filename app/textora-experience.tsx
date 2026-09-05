@@ -2148,12 +2148,20 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [planReplacementBusy, setPlanReplacementBusy] = useState(false);
   const [planReplacementError, setPlanReplacementError] = useState("");
   const [planReplacements, setPlanReplacements] = useState<ContentPlanReplacement[]>([]);
-  const [title, setTitle] = useState(workspace ? "Здесь появится заголовок материала" : sample.seo.title);
-  const [body, setBody] = useState(workspace ? "Результат появится после генерации. Начните с темы и ключевых слов — дополнительные инструменты можно открыть позже." : sample.seo.body);
+  // Empty, not a friendly placeholder sentence, on purpose: title/body feed
+  // both the header's character count and every "material exists" check
+  // (disabled={!title && !body} on Очистить/Копировать/В публикацию below,
+  // hasQualityMaterial). A non-empty default made all of those read as if
+  // a real material already existed before the first generation - the
+  // header showed a live character count against the target range, and
+  // the result actions were clickable, on an empty workspace. The hint
+  // text itself still shows via the AutoTextarea's own placeholder prop.
+  const [title, setTitle] = useState(workspace ? "" : sample.seo.title);
+  const [body, setBody] = useState(workspace ? "" : sample.seo.body);
   const [subtitle, setSubtitle] = useState("");
   const [metaTitle, setMetaTitle] = useState(workspace ? "" : sample.seo.title.slice(0, 70));
   const [metaDescription, setMetaDescription] = useState(workspace ? "" : "Как выбрать санаторий для восстановления: медицинский профиль, лечебные факторы, программа и документы для поездки.");
-  const [editorNote, setEditorNote] = useState(workspace ? "Служебный комментарий появится после генерации и не попадёт в скопированный текст." : "Материал подготовлен в стиле «экспертный» с целевым объёмом 8 400 знаков с пробелами. Ключевые темы: санаторий для восстановления, лечение в Карелии, лечебные программы.");
+  const [editorNote, setEditorNote] = useState(workspace ? "" : "Материал подготовлен в стиле «экспертный» с целевым объёмом 8 400 знаков с пробелами. Ключевые темы: санаторий для восстановления, лечение в Карелии, лечебные программы.");
   const [busy, setBusy] = useState(false);
   const [busyStep, setBusyStep] = useState(0);
   const [generationMode, setGenerationMode] = useState<GenerationMode>("example");
@@ -2981,12 +2989,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setLength(defaultLengthByFormat.seo);
     setCustomLength(false);
     setAccent("");
-    setTitle("Здесь появится заголовок материала");
-    setBody("Результат появится после генерации. Шаблонные ответы отключены: до подключения ИИ КЛИО не создаёт тестовый текст.");
+    setTitle("");
+    setBody("");
     setSubtitle("");
     setMetaTitle("");
     setMetaDescription("");
-    setEditorNote("Служебный комментарий появится после реальной AI‑генерации и не попадёт в скопированный текст.");
+    setEditorNote("");
     setGenerationMode("example");
     setGenerationCoverage(null);
     setGeneratorUseBrand(true);
@@ -5600,13 +5608,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </>}
               </aside>
               <article className="result-panel">
-                <div className="result-head"><div><span className={`status status-${generationMode}`}><i/>{generationMode === "ai" ? "Создано КЛИО" : generationMode === "demo" ? "Сохранённая версия" : aiConnection === "connected" ? "Ожидает генерацию" : "ИИ не подключён"}</span><small>{characters.toLocaleString("ru-RU")} / {length.toLocaleString("ru-RU")} знаков с пробелами · {tone}</small></div><div className="result-head-actions"><button type="button" className="result-clear" onClick={clearGeneratedResult} disabled={!title && !body}><Icon name="erase"/> Очистить</button><button type="button" onClick={copyResult}><Icon name="copy"/> Копировать</button><button type="button" onClick={() => void openPublicationDraft({ title, body: [subtitle, body].filter(Boolean).join("\n\n"), generationId: generatedArchiveId })} disabled={!title && !body}>В публикацию</button></div></div>
+                <div className="result-head"><div><span className={`status status-${generationMode}`}><i/>{generationMode === "ai" ? "Создано КЛИО" : generationMode === "demo" ? "Сохранённая версия" : aiConnection === "connected" ? "Ожидает генерацию" : "ИИ не подключён"}</span><small>{characters.toLocaleString("ru-RU")} / {length.toLocaleString("ru-RU")} знаков с пробелами · {tone}</small></div><div className="result-head-actions"><button type="button" className="result-clear" onClick={clearGeneratedResult} disabled={!title && !body}><Icon name="erase"/> Очистить</button><button type="button" onClick={copyResult} disabled={!title && !body}><Icon name="copy"/> Копировать</button><button type="button" onClick={() => void openPublicationDraft({ title, body: [subtitle, body].filter(Boolean).join("\n\n"), generationId: generatedArchiveId })} disabled={!title && !body}>В публикацию</button></div></div>
                 <div className={`length-control ${targetChecked ? (withinTarget ? "is-ok" : "is-warning") : "is-idle"}`}><span><i/>{targetChecked ? (withinTarget ? "Объём в цели" : "Объём отличается от заданного") : "Контроль включится после генерации"}</span><b>{targetChecked ? `${Math.round((characters / Math.max(length, 1)) * 100)}%` : "—"}</b><u><i style={{ width: `${targetChecked ? Math.min(100, (characters / Math.max(length, 1)) * 100) : 0}%` }}/></u><small>{targetChecked && !withinTarget ? "Это ориентир, а не жёсткое правило — при желании сократите или дополните текст ниже." : `Ориентир: от ${Math.floor(length * 0.85).toLocaleString("ru-RU")} до ${Math.ceil(length * 1.15).toLocaleString("ru-RU")} знаков с пробелами`}</small></div>
-                <AutoTextarea className="result-title" rows={1} value={title} onChange={(event) => setTitle(event.target.value)} aria-label="Заголовок результата"/>
+                <AutoTextarea className="result-title" rows={1} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Здесь появится заголовок материала" aria-label="Заголовок результата"/>
                 <label className="result-subtitle-field"><span>Зацепка статьи</span><AutoTextarea className="result-subtitle" rows={2} value={subtitle} onChange={(event) => setSubtitle(event.target.value)} placeholder="Здесь появится зацепка статьи" aria-label="Подзаголовок или зацепка статьи"/></label>
-                <AutoTextarea className="result-body" value={body} onChange={(event) => setBody(event.target.value)} aria-label="Текст результата"/>
+                <AutoTextarea className={`result-body ${body.trim() ? "" : "is-empty"}`} value={body} onChange={(event) => setBody(event.target.value)} placeholder="Результат появится после генерации. Начните с темы и ключевых слов — дополнительные инструменты можно открыть позже." aria-label="Текст результата"/>
                 {generationCoverage && <div className="generation-brief-check"><div><span>Контроль брифа</span><small>Проверено до выдачи материала</small></div><p className={generationCoverage.subjectApplied ? "is-ready" : "is-missing"}><i>{generationCoverage.subjectApplied ? "✓" : "!"}</i><span><b>Предмет темы</b><small>{generationCoverage.subjectApplied ? `раскрыт в ${generationCoverage.subjectSections} смысловых блоках` : "недостаточно раскрыт"}</small></span></p><p className={!generationCoverage.keywordMissing.length ? "is-ready" : "is-missing"}><i>{!generationCoverage.keywordMissing.length ? "✓" : "!"}</i><span><b>Ключевые фразы</b><small>{generationCoverage.keywordTotal ? `${generationCoverage.keywordApplied.length} из ${generationCoverage.keywordTotal} использованы в тексте` : "ключевые фразы не задавались"}</small></span></p><p className={!generationCoverage.editorialFocusMissing.length ? "is-ready" : "is-missing"}><i>{!generationCoverage.editorialFocusMissing.length ? "✓" : "!"}</i><span><b>Редакционные ориентиры</b><small>{generationCoverage.editorialFocusTotal ? `${generationCoverage.editorialFocusApplied.length} из ${generationCoverage.editorialFocusTotal} применены` : "дополнительные ориентиры не передавались"}</small></span></p><p className="is-ready"><i>✓</i><span><b>География спроса</b><small>{generationCoverage.geographyApplied.length ? generationCoverage.geographyApplied.join(", ") : "отдельная география не задана"}</small></span></p></div>}
-                <aside className="editor-note"><span>Комментарий к материалу</span><p>{editorNote}</p><small>Не входит в текст и не копируется</small></aside>
+                <aside className="editor-note"><span>Комментарий к материалу</span><p>{editorNote || "Служебный комментарий появится после генерации и не попадёт в скопированный текст."}</p><small>Не входит в текст и не копируется</small></aside>
                 <div className="seo-passport">
                   <div className="seo-passport-head"><span>SEO‑паспорт</span><small>Служебные поля для публикации</small></div>
                   <label><span className="seo-field-label"><b>SEO‑заголовок</b><small>{metaTitle.length} знаков</small></span><AutoTextarea rows={1} value={metaTitle} onChange={(event) => setMetaTitle(event.target.value)} aria-label="SEO‑заголовок"/><button type="button" className="seo-field-copy" onClick={() => copyPlainText(metaTitle, "SEO‑заголовок")}><Icon name="copy"/> Копировать</button></label>
