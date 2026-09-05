@@ -22152,6 +22152,21 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 .profile-field-help[hidden] { display: none; }
 .brand-fields .brand-profile-field input,
 .brand-fields .brand-profile-field textarea { margin-top: 4px; }
+.brand-fields .brand-profile-field .brand-website-row { margin-top: 4px; }
+.brand-fields .brand-profile-field .brand-website-row input { margin-top: 0; }
+.brand-tab-shell .brand-fields .brand-profile-field .brand-website-row button {
+  color: #fff;
+  background: #302052;
+  border-color: #9577c4;
+}
+.brand-tab-shell .brand-fields .brand-profile-field .brand-website-row button:hover:not(:disabled) {
+  background: #402b6b;
+  border-color: #c4a5ff;
+}
+.brand-tab-shell .brand-fields .brand-profile-field .brand-website-row button:focus-visible {
+  outline: 2px solid var(--profile-accent);
+  outline-offset: 3px;
+}
 @media (max-width: 700px), (hover: none), (pointer: coarse) {
   .profile-field-heading { flex-wrap: wrap; }
   .brand-tab-shell .profile-help-trigger {

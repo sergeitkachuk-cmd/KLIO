@@ -858,7 +858,7 @@ const WORKSPACE_USE_CASES = [
   { kind: "Задача", id: "competitors", task: "Хочется найти свободный угол в теме, а не повторять конкурентов", solution: "Покажет, какие темы уже раскрыты у конкурентов и где ваш материал может быть полезнее читателю.", cta: "Посмотреть конкурентов" },
   { kind: "Совет", id: "content-plan", task: "Хотите точнее получить результат контент-плана?", solution: "Заполните поле «Тема или фокус»: например, укажите услугу, сезонную кампанию или нужную аудиторию. Так КЛИО сделает акцент именно на этом.", cta: "Уточнить фокус" },
   { kind: "Совет", id: "generator", task: "В режиме «Новичок» достаточно описать задачу своими словами", solution: "Расскажите КЛИО, какой материал вам нужен. Нужны отдельные настройки формата, ключей и стиля — переключитесь в режим «Эксперт» и заполните поля.", cta: "Открыть генератор" },
-  { kind: "Совет", id: "brand", task: "Не хотите заполнять профиль бренда вручную?", solution: "Впишите адрес сайта и нажмите «Заполнить с помощью ИИ». КЛИО предложит основу профиля, а вам останется проверить и дополнить важные детали.", cta: "Заполнить по сайту" },
+  { kind: "Совет", id: "brand", task: "Не хотите заполнять профиль бренда вручную?", solution: "Впишите адрес сайта и нажмите «Заполнить с помощью КЛИО». КЛИО предложит основу профиля, а вам останется проверить и дополнить важные детали.", cta: "Заполнить по сайту" },
 ] as const;
 
 // Rotates on the "Начните здесь" tab (see tipIndex below) — short,
@@ -5231,9 +5231,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <ProfileField id="brand-website" label="Сайт" help="КЛИО использует сайт при сборе семантики и генерации. Кнопка заполняет профиль по сайту; результат можно отредактировать. Недоступные сведения не додумываются.">
                     <div className="brand-website-row">
                       <input id="brand-website" aria-describedby="brand-website-help brand-website-cost" aria-invalid={Boolean(brandAnalyzeError)} value={brand.website} onChange={(event) => updateBrand("website", event.target.value)} autoComplete="off"/>
-                      <button type="button" className={brandAnalyzeBusy ? "is-busy" : ""} onClick={() => void analyzeBrandFromWebsite()} disabled={brandAnalyzeBusy || !brand.website.trim() || aiConnection !== "connected" || workspaceAccount.researchRemaining <= 0} title="КЛИО прочитает сайт и предложит описание, позиционирование, аудиторию и факты — каждое поле можно будет скорректировать вручную">{brandAnalyzeBusy ? "Читаем сайт…" : !brand.website.trim() ? "Укажите сайт" : aiConnection !== "connected" ? "ИИ не подключён" : workspaceAccount.researchRemaining <= 0 ? "Лимит исчерпан" : "Заполнить с помощью ИИ"}</button>
+                      <button type="button" className={brandAnalyzeBusy ? "is-busy" : ""} onClick={() => void analyzeBrandFromWebsite()} disabled={brandAnalyzeBusy || !brand.website.trim() || aiConnection !== "connected" || workspaceAccount.researchRemaining <= 0} title="КЛИО прочитает сайт и предложит описание, позиционирование, аудиторию и факты — каждое поле можно будет скорректировать вручную">{brandAnalyzeBusy ? "Читаем сайт…" : !brand.website.trim() ? "Укажите сайт" : aiConnection !== "connected" ? "ИИ не подключён" : workspaceAccount.researchRemaining <= 0 ? "Лимит исчерпан" : "Заполнить с помощью КЛИО"}</button>
                     </div>
-                    <small id="brand-website-cost">Заполнение с помощью ИИ спишет 1 исследование</small>
+                    <small id="brand-website-cost">КЛИО заполнит профиль — спишется 1 исследование</small>
                     {brandAnalyzeError && <small className="is-error" role="alert">{brandAnalyzeError}</small>}
                   </ProfileField>
                   <ProfileField id="brand-description" label="О компании" help="Короткая фактическая справка: сфера, география, услуги и масштаб." wide><AutoTextarea id="brand-description" aria-describedby="brand-description-help" rows={3} value={brand.description} onChange={(event) => updateBrand("description", event.target.value)}/></ProfileField>
