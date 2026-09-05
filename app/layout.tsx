@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
+import "../public/workspace-refresh-20260816-2.css";
 import CookieConsent from "./cookie-consent";
 import YandexMetrica from "./yandex-metrica";
 import { SITE_BASE_URL } from "./site-url";
@@ -74,7 +75,6 @@ export default function RootLayout({
     <html lang="ru">
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
-        <link rel="stylesheet" href="/workspace-refresh-20260816-2.css" />
       </head>
       <body className={`${manrope.variable} antialiased`}>
         {children}

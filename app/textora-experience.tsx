@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent as ReactMouseEvent, TextareaHTMLAttributes } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import Image from "next/image";
 import { ProfileField } from "./profile-field";
 import { FOUNDATION_FIELDS, VOICE_FIELDS, mergeProfileFill, missingVoiceFoundation } from "./brand-profile-fill";
 import { russianGeoTree } from "./geo-data";
@@ -2593,8 +2594,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           materials?: SavedWorkspaceMaterial[];
         };
         if (!response.ok || !payload.account) throw new Error(payload.error || "Не удалось загрузить кабинет.");
-        let records = (payload.brands ?? []).map(normalizeWorkspaceBrand).filter((item): item is WorkspaceBrand => Boolean(item));
-        let account = payload.account;
+        const records = (payload.brands ?? []).map(normalizeWorkspaceBrand).filter((item): item is WorkspaceBrand => Boolean(item));
+        const account = payload.account;
 
         if (cancelled) return;
         setWorkspaceUserName(payload.user?.displayName || "Пользователь");
@@ -5052,7 +5053,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   </label>
                 </div>
               </div>
-              {pubEditor.imageUrl && <img className="publications-editor-preview" src={pubEditor.imageUrl} alt="Превью картинки" onError={(event) => { (event.target as HTMLImageElement).style.display = "none"; }}/>}
+              {pubEditor.imageUrl && <Image unoptimized width={1200} height={800} style={{ height: "auto" }} className="publications-editor-preview" src={pubEditor.imageUrl} alt="Превью картинки" onError={(event) => { (event.target as HTMLImageElement).style.display = "none"; }}/>}
               {pubEditor.imageUrl && pubEditor.channelIds.some((id) => pubChannels.find((channel) => channel.id === id)?.platform === "telegram") && `${pubEditor.title}\n\n${pubEditor.body}`.trim().length > 1024 && <div className="publications-telegram-length-choice">
                 <strong>Текст длинный для публикации вместе с картинкой</strong>
                 <p>Выберите, как отправить пост в Telegram. Текст не будет потерян.</p>
@@ -5752,7 +5753,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <div className="publications-channels-bar">
                 <div className="publications-channels-list">
                   {pubChannels.map((channel) => <span className={`publications-channel-chip publications-channel-chip-${channel.platform}`} key={channel.id}>
-                    {channel.avatarUrl ? <img src={channel.avatarUrl} alt=""/> : <i>{channel.platform === "vk" ? "VK" : "TG"}</i>}
+                    {channel.avatarUrl ? <Image unoptimized width={28} height={28} src={channel.avatarUrl} alt=""/> : <i>{channel.platform === "vk" ? "VK" : "TG"}</i>}
                     <b>{channel.label}</b>
                     <button type="button" onClick={() => void removePubChannel(channel.id, channel.label)} aria-label={`Отключить канал «${channel.label}»`}>×</button>
                   </span>)}
