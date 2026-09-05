@@ -1698,7 +1698,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [pubLoading, setPubLoading] = useState(false);
   const [pubError, setPubError] = useState("");
   const [pubView, setPubView] = useState<"month" | "week">("month");
-  const [pubSelectedDayKey, setPubSelectedDayKey] = useState<string | null>(null);
+  // Opens with today already selected (and its post list already showing
+  // below the calendar) instead of an empty "Выберите день" state the
+  // person had to click through every time just to see today's posts.
+  const [pubSelectedDayKey, setPubSelectedDayKey] = useState<string | null>(() => localDayKey(new Date()));
   // Any date within the visible month/week — navigation just moves this,
   // the grid itself is always derived from it (see pubGridDays below).
   const [pubCursor, setPubCursor] = useState(() => new Date());
@@ -1764,7 +1767,20 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
   // A day selection belongs to the visible period; moving the calendar starts
   // a new selection instead of leaving a stale list from the previous month.
+  // Compares against the last *actual* pubCursor/pubView instead of a plain
+  // "has this run before" boolean: React 18 Strict Mode double-invokes a
+  // fresh effect in dev (setup, cleanup, setup again) within the same mount,
+  // which defeats a boolean ready-flag - the second invocation would still
+  // see it flipped from the first and reset anyway. pubCursor keeps the same
+  // object reference across that double-invoke (it only changes when
+  // setPubCursor actually runs), so comparing references only ever
+  // "changes" on a real navigation, mount included.
+  const pubSelectionCursorRef = useRef(pubCursor);
+  const pubSelectionViewRef = useRef(pubView);
   useEffect(() => {
+    if (pubSelectionCursorRef.current === pubCursor && pubSelectionViewRef.current === pubView) return;
+    pubSelectionCursorRef.current = pubCursor;
+    pubSelectionViewRef.current = pubView;
     setPubSelectedDayKey(null);
   }, [pubCursor, pubView]);
 

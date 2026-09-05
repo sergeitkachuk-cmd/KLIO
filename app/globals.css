@@ -11311,8 +11311,11 @@ input[type="radio"] {
   flex-wrap: wrap;
   margin-bottom: 18px;
   padding: 16px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 16px;
+  /* No border - it framed the channel chip's own pill outline right
+     inside it, reading as a border nested in a border. The background
+     tint alone still marks this as its own panel, same tradeoff as
+     .publications-vk-note above. */
   background: rgba(255, 255, 255, 0.03);
 }
 
@@ -18229,7 +18232,6 @@ input[type="radio"] {
 }
 
 [data-theme="light"] .publications-channels-bar {
-  border-color: rgba(15, 23, 42, 0.12);
   background: rgba(15, 23, 42, 0.03);
 }
 
@@ -21030,12 +21032,22 @@ input[type="radio"] {
 .publishing-landing-note {
   margin: 0 0 14px;
   padding: 10px 12px;
-  border: 1px solid rgba(155, 207, 75, 0.4);
   border-radius: 10px;
   color: rgba(239, 255, 215, 0.86);
   background: rgba(155, 207, 75, 0.1);
   font-size: 12px;
   line-height: 1.45;
+}
+
+/* The landing page shows this note on its own, with nothing else nearby
+   to outline it against - a border reads fine there. In the workspace
+   it sits directly above .publications-channels-bar, itself bordered
+   and holding its own bordered channel chip - three outlines stacked so
+   close together read as clutter (site owner screenshot: "убери
+   обводки, особенно где они одна в одной"). Background tint alone
+   still separates it without adding another line. */
+.publishing-landing-note {
+  border: 1px solid rgba(155, 207, 75, 0.4);
 }
 
 .publications-vk-note b,
@@ -21255,9 +21267,12 @@ input[type="radio"] {
 
 [data-theme="light"] .publications-vk-note,
 [data-theme="light"] .publishing-landing-note {
-  border-color: rgba(99, 140, 32, 0.3);
   color: rgba(35, 71, 18, 0.82);
   background: rgba(155, 207, 75, 0.17);
+}
+
+[data-theme="light"] .publishing-landing-note {
+  border-color: rgba(99, 140, 32, 0.3);
 }
 
 [data-theme="light"] .publications-vk-note b,
