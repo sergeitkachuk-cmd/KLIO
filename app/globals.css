@@ -3019,14 +3019,10 @@ select:focus-visible {
 }
 
 .seo-passport > label > span,
-.seo-passport > label > small {
+.seo-passport .seo-field-label > small {
   color: var(--muted);
   font-size: 12px;
   font-weight: 650;
-}
-
-.seo-passport > label > small {
-  justify-self: end;
 }
 
 .seo-passport textarea {
@@ -11229,40 +11225,48 @@ input[type="radio"] {
     gap: 5px;
   }
 
-  .seo-passport > label {
-    grid-template-columns: 1fr auto;
-  }
-
-  .seo-passport textarea {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
-
   .quality-head {
     align-items: flex-start;
     flex-direction: column;
     gap: 5px;
   }
 
+  /* Was 1 full-width card per row with an even bigger number (42px vs
+     desktop's 34-52px) - three stacked oversized cards for content the
+     header itself labels "Необязательно". Stay 3-across like desktop,
+     just scaled down to fit a ~110px column instead of growing further. */
   .quality-grid {
-    grid-template-columns: 1fr;
+    gap: 6px;
   }
 
   .quality-card {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: end;
+    padding: 10px 8px;
+  }
+
+  .quality-card small {
+    font-size: 9px;
   }
 
   .quality-card b {
-    grid-column: 2;
-    grid-row: 1 / 3;
-    margin: 0;
-    font-size: 42px;
+    margin: 4px 0 2px;
+    font-size: 22px;
+  }
+
+  .quality-card > span {
+    font-size: 10px;
   }
 
   .quality-card > i {
-    grid-column: 1 / 3;
+    margin-top: 8px;
+  }
+
+  .quality-tips {
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+
+  .quality-tips li {
+    font-size: 11px;
   }
 
   .result-footer {
@@ -13148,7 +13152,8 @@ input[type="radio"] {
   letter-spacing: inherit;
 }
 
-.seo-field-label > button {
+.seo-field-label > button,
+.seo-field-copy {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -13165,7 +13170,18 @@ input[type="radio"] {
   cursor: pointer;
 }
 
-.seo-field-label > button:hover {
+/* .seo-field-copy sits below its field (not inside the .seo-field-label
+   header) — see the comment above .seo-passport > label. As a lone grid
+   item it would otherwise stretch to the field's full width like the
+   header row above it; it's a small utility action, not a full-width one. */
+.seo-field-copy {
+  justify-self: start;
+  width: fit-content;
+  margin-top: 2px;
+}
+
+.seo-field-label > button:hover,
+.seo-field-copy:hover {
   border-color: rgba(124, 58, 237, 0.3);
   background: rgba(124, 58, 237, 0.07);
 }
@@ -13177,7 +13193,7 @@ input[type="radio"] {
 .content-plan-seo .seo-field-label > button,
 .adaptation-seo-fields .seo-field-label > button,
 .archive-editor-document .seo-field-label > button,
-.seo-passport .seo-field-label > button {
+.seo-passport .seo-field-copy {
   border-color: rgba(255, 255, 255, 0.22);
   color: #fff;
   background: rgba(255, 255, 255, 0.08);
@@ -13186,12 +13202,13 @@ input[type="radio"] {
 .content-plan-seo .seo-field-label > button:hover,
 .adaptation-seo-fields .seo-field-label > button:hover,
 .archive-editor-document .seo-field-label > button:hover,
-.seo-passport .seo-field-label > button:hover {
+.seo-passport .seo-field-copy:hover {
   border-color: rgba(216, 255, 101, 0.4);
   background: rgba(216, 255, 101, 0.12);
 }
 
-.seo-field-label > button svg {
+.seo-field-label > button svg,
+.seo-field-copy svg {
   width: 13px;
   height: 13px;
 }
@@ -13649,6 +13666,15 @@ input[type="radio"] {
   .seo-field-label {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  /* .seo-passport's version of .seo-field-label only ever holds a short
+     title + character count (the copy button moved below the field, see
+     .seo-field-copy) - unlike the title+button pairing above, that fits
+     one row fine and the column stack above just adds a wasted line. */
+  .seo-passport .seo-field-label {
+    align-items: center;
+    flex-direction: row;
   }
 
   .workspace-module > .workspace-module-heading {
@@ -18603,13 +18629,13 @@ input[type="radio"] {
   background: rgba(255, 255, 255, 0.7);
 }
 
-[data-theme="light"] .seo-passport .seo-field-label > button {
+[data-theme="light"] .seo-passport .seo-field-copy {
   border-color: rgba(15, 23, 42, 0.18);
   color: #0d1b31;
   background: rgba(255, 255, 255, 0.6);
 }
 
-[data-theme="light"] .seo-passport .seo-field-label > button:hover {
+[data-theme="light"] .seo-passport .seo-field-copy:hover {
   border-color: rgba(53, 104, 212, 0.4);
   background: rgba(53, 104, 212, 0.12);
 }
