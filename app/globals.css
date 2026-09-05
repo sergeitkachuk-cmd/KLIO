@@ -22270,19 +22270,19 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
   outline: 2px solid var(--profile-accent);
   outline-offset: 3px;
 }
-/* Trigger only grows for a touch target here - the panel itself stays the
-   same floating overlay as desktop (position:absolute from the base rule
-   above), just opened by tap instead of hover. Matches .help-tip-panel's
-   mobile behavior (see globals.css's other "?" component) - it used to
-   switch to position:static and push the field open instead of floating
-   over it. */
+/* The panel itself stays the same floating overlay as desktop
+   (position:absolute from the base rule above), just opened by tap
+   instead of hover. Matches .help-tip-panel's mobile behavior (see
+   globals.css's other "?" component) - it used to switch to
+   position:static and push the field open instead of floating over it.
+   The trigger itself used to grow to 44px here too - as a flex sibling
+   of the label text (align-items: center), that stretched every single
+   field's heading row to 44px tall on mobile even though the label text
+   only needs about 20px, padding out the whole form. Left at the same
+   32px as desktop; it's still a comfortable tap target for an
+   infrequently-used "?" hint, just not the largest one on the page. */
 @media (max-width: 700px), (hover: none), (pointer: coarse) {
   .profile-field-heading { flex-wrap: wrap; }
-  .brand-tab-shell .profile-help-trigger {
-    flex-basis: 44px;
-    width: 44px;
-    height: 44px;
-  }
 }
 @media (max-width: 600px) {
   .brand-tab-shell .brand-tabs { gap: 16px; padding-inline: 0; }
@@ -22330,7 +22330,11 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 [data-theme="light"] .brand-tab-shell .profile-fill-error { color: #c81e3a; }
 @media (max-width: 600px) {
   .brand-tab-shell .profile-voice-fill > button { width: 100%; }
-  .brand-tab-shell .profile-fill-replace { min-height: 44px; }
+  /* Was min-height: 44px here - the checkbox glyph is 16px and the whole
+     label (checkbox + text) is the click target via native <label>
+     behavior, not just the glyph, so the extra height was padding a
+     one-line row to more than double its content's height. Left it at
+     its natural size, matching desktop. */
 }
 
 /* Site-wide "?" help tooltip (see app/help-tip.tsx) - same visual and
@@ -22411,12 +22415,12 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
   background: #fff;
 }
 .help-tip-panel[hidden] { display: none; }
-/* Trigger only grows for a touch target here - the panel itself stays the
-   same floating overlay as desktop (position:absolute from the base rule
-   above), just opened by tap instead of hover. It used to switch to
-   position:static and push the rest of the field down instead, which
-   read as the tooltip elbowing the form open rather than floating over
-   it - not what "?" popovers look like anywhere else on the site. */
-@media (max-width: 700px), (hover: none), (pointer: coarse) {
-  .help-tip-trigger { flex-basis: 40px; width: 40px; height: 40px; }
-}
+/* The panel stays the same floating overlay as desktop (position:absolute
+   from the base rule above) on mobile too, just opened by tap instead of
+   hover - it used to switch to position:static and push the rest of the
+   field down instead, which read as the tooltip elbowing the form open
+   rather than floating over it. The trigger itself used to grow to 40px
+   here too; as a flex sibling of the label text it stretched every
+   field-label-help row to 40px tall on mobile even though the label text
+   only needs about 16-18px, padding out every field it touches (Стиль,
+   Ключевые слова, Контекст КЛИО, ...). Left at the same 28px as desktop. */
