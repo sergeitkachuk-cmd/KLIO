@@ -1553,7 +1553,7 @@ select:focus-visible {
   gap: 18px;
 }
 
-.brand-fields label {
+.brand-fields :is(label, .brand-profile-field) {
   min-width: 0;
   color: #4d4a5b;
   font-size: 13px;
@@ -1561,7 +1561,7 @@ select:focus-visible {
   letter-spacing: 0.04em;
 }
 
-.brand-fields label.wide {
+.brand-fields :is(label, .brand-profile-field).wide {
   grid-column: 1 / -1;
 }
 
@@ -1982,7 +1982,7 @@ select:focus-visible {
   line-height: 1.5;
 }
 
-.brand-fields label > small {
+.brand-fields :is(label, .brand-profile-field) > small {
   display: block;
   margin-top: 7px;
   color: #898592;
@@ -11139,7 +11139,7 @@ input[type="radio"] {
     grid-template-columns: 1fr;
   }
 
-  .brand-fields label.wide {
+  .brand-fields :is(label, .brand-profile-field).wide {
     grid-column: 1;
   }
 
@@ -16507,7 +16507,7 @@ input[type="radio"] {
 .brand-group-heading p,
 .brand-score p small,
 .brand-checklist small,
-.brand-fields label > small {
+.brand-fields :is(label, .brand-profile-field) > small {
   color: rgba(255, 255, 255, 0.62);
 }
 
@@ -16575,7 +16575,7 @@ input[type="radio"] {
   border-bottom-color: rgba(255, 255, 255, 0.14);
 }
 
-.brand-fields label {
+.brand-fields :is(label, .brand-profile-field) {
   color: rgba(255, 255, 255, 0.78);
 }
 
@@ -16677,7 +16677,7 @@ input[type="radio"] {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.brand-fields label > small.is-error {
+.brand-fields :is(label, .brand-profile-field) > small.is-error {
   color: #ff8f9a;
 }
 
@@ -17761,7 +17761,7 @@ input[type="radio"] {
 [data-theme="light"] .brand-group-heading p,
 [data-theme="light"] .brand-score p small,
 [data-theme="light"] .brand-checklist small,
-[data-theme="light"] .brand-fields label > small {
+[data-theme="light"] .brand-fields :is(label, .brand-profile-field) > small {
   color: rgba(13, 27, 49, 0.6);
 }
 
@@ -17829,7 +17829,7 @@ input[type="radio"] {
   border-bottom-color: rgba(15, 23, 42, 0.12);
 }
 
-[data-theme="light"] .brand-fields label {
+[data-theme="light"] .brand-fields :is(label, .brand-profile-field) {
   color: rgba(13, 27, 49, 0.78);
 }
 
@@ -17886,7 +17886,7 @@ input[type="radio"] {
   color: rgba(13, 27, 49, 0.35);
 }
 
-[data-theme="light"] .brand-fields label > small.is-error {
+[data-theme="light"] .brand-fields :is(label, .brand-profile-field) > small.is-error {
   color: #c81e3a;
 }
 
@@ -22040,3 +22040,136 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 [data-theme="light"] .publications-mobile-time,
 [data-theme="light"] .publications-mobile-item em { color: rgba(20, 43, 75, 0.62); }
 [data-theme="light"] .publications-mobile-item b { color: #13243b; }
+/* Brand profile: compact tabs and help on demand. */
+.brand-tab-shell {
+  --profile-text: #e9e5f5;
+  --profile-muted: #b9b6ca;
+  --profile-accent: #c4a5ff;
+  --profile-help-bg: #202d47;
+  --profile-rule: rgba(255, 255, 255, .16);
+}
+[data-theme="light"] .brand-tab-shell {
+  --profile-text: #25233b;
+  --profile-muted: #605d73;
+  --profile-accent: #6d28d9;
+  --profile-help-bg: #fff;
+  --profile-rule: rgba(61, 50, 102, .18);
+}
+.brand-tab-shell .brand-tab-navigation { margin-bottom: 18px; }
+.brand-tab-shell .brand-tabs {
+  flex-wrap: nowrap;
+  gap: 24px;
+  padding: 0 10px;
+  border: 0;
+  border-bottom: 1px solid var(--profile-rule);
+  border-radius: 0;
+  background: transparent;
+}
+.brand-tab-shell .brand-tabs button {
+  flex: 0 1 auto;
+  min-width: 0;
+  min-height: 48px;
+  margin-bottom: -1px;
+  padding: 12px 2px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  color: var(--profile-muted);
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+.brand-tab-shell .brand-tabs button:hover {
+  color: var(--profile-text);
+  background: transparent;
+}
+.brand-tab-shell .brand-tabs button.active {
+  color: var(--profile-accent);
+  border-bottom-color: var(--profile-accent);
+  background: transparent;
+  box-shadow: none;
+}
+.brand-tab-shell .brand-tabs button:focus-visible,
+.brand-tab-shell .profile-help-trigger:focus-visible {
+  outline: 2px solid var(--profile-accent);
+  outline-offset: 3px;
+}
+.brand-tab-shell .brand-field-group[hidden] { display: none; }
+.profile-field-heading {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  gap: 4px;
+}
+.brand-fields .profile-field-heading label {
+  letter-spacing: 0;
+  cursor: pointer;
+}
+.brand-tab-shell .profile-help-trigger {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--profile-muted);
+  background: transparent;
+  cursor: pointer;
+}
+.profile-help-trigger span {
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+.brand-tab-shell .profile-help-trigger:hover,
+.brand-tab-shell .profile-help-trigger[aria-expanded="true"] { color: var(--profile-accent); }
+.profile-field-help {
+  position: absolute;
+  z-index: 10;
+  top: 100%;
+  left: 0;
+  width: min(360px, 100%);
+  padding: 14px 16px;
+  border: 1px solid var(--profile-rule);
+  border-radius: 12px;
+  color: var(--profile-text);
+  background: var(--profile-help-bg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .2);
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.55;
+}
+.profile-field-help[hidden] { display: none; }
+.brand-fields .brand-profile-field input,
+.brand-fields .brand-profile-field textarea { margin-top: 4px; }
+@media (max-width: 700px), (hover: none), (pointer: coarse) {
+  .profile-field-heading { flex-wrap: wrap; }
+  .brand-tab-shell .profile-help-trigger {
+    flex-basis: 44px;
+    width: 44px;
+    height: 44px;
+  }
+  .profile-field-help {
+    position: static;
+    flex: 0 0 100%;
+    width: 100%;
+    margin: 0 0 8px;
+    box-shadow: none;
+  }
+}
+@media (max-width: 600px) {
+  .brand-tab-shell .brand-tabs { gap: 16px; padding-inline: 0; }
+  .brand-tab-shell .brand-tabs button { flex: 1 1 0; justify-content: center; }
+  .brand-tab-shell .brand-tabs button b { font-size: 14px; line-height: 1.4; }
+  .brand-tab-shell .brand-field-group { padding: 0 2px 8px; }
+}

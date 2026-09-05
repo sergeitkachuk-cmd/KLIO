@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent as ReactMouseEvent, TextareaHTMLAttributes } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { ProfileField } from "./profile-field";
 import { russianGeoTree } from "./geo-data";
 import { ADAPTATION_PLANS, FORMAT_PLANS, TONE_PLANS } from "./content-plans";
 import { PLAN_RULES, type PlanId } from "./plans";
@@ -5211,37 +5212,42 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
               <div className="brand-tab-shell">
               <div className="brand-tab-navigation">
-                <div className="brand-tab-navigation-head"><span>Разделы профиля</span><small>Нажимайте на кнопки, чтобы переключать настройки</small></div>
-                <div className="brand-tabs" role="tablist" aria-label="Переключение разделов профиля бренда">
-                  <button type="button" className={brandTab === "foundation" ? "active" : ""} onClick={() => setBrandTab("foundation")} role="tab" aria-selected={brandTab === "foundation"}><i>01</i><b>Основа бренда</b><span>›</span></button>
-                  <button type="button" className={brandTab === "voice" ? "active" : ""} onClick={() => setBrandTab("voice")} role="tab" aria-selected={brandTab === "voice"}><i>02</i><b>Голос и ограничения</b><span>›</span></button>
+                <div className="brand-tabs" role="tablist" aria-label="Разделы профиля бренда"
+                  onKeyDown={(event) => {
+                    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+                    event.preventDefault();
+                    const next = event.key === "Home" ? "foundation" : event.key === "End" ? "voice" : brandTab === "foundation" ? "voice" : "foundation";
+                    setBrandTab(next);
+                    document.getElementById(`brand-tab-${next}`)?.focus();
+                  }}>
+                  <button id="brand-tab-foundation" type="button" className={brandTab === "foundation" ? "active" : ""} onClick={() => setBrandTab("foundation")} role="tab" aria-selected={brandTab === "foundation"} aria-controls="brand-panel-foundation" tabIndex={brandTab === "foundation" ? 0 : -1}><b>Основа бренда</b></button>
+                  <button id="brand-tab-voice" type="button" className={brandTab === "voice" ? "active" : ""} onClick={() => setBrandTab("voice")} role="tab" aria-selected={brandTab === "voice"} aria-controls="brand-panel-voice" tabIndex={brandTab === "voice" ? 0 : -1}><b>Голос и ограничения</b></button>
                 </div>
               </div>
 
-              {brandTab === "foundation" && <div className="brand-field-group" role="tabpanel">
-                <div className="brand-group-heading"><span>Основа бренда</span><p>Факты, которые определяют, о ком и для кого говорит каждый материал.</p></div>
+              <div className="brand-field-group" role="tabpanel" id="brand-panel-foundation" aria-labelledby="brand-tab-foundation" hidden={brandTab !== "foundation"}>
                 <div className="brand-fields">
-                  <label>Компания<input value={brand.name} onChange={(event) => updateBrand("name", event.target.value)} autoComplete="off"/><small>Полное название, которое можно использовать в публикации.</small></label>
-                  <label>Сайт
+                  <ProfileField id="brand-name" label="Компания" help="Полное название, которое можно использовать в публикации."><input id="brand-name" aria-describedby="brand-name-help" value={brand.name} onChange={(event) => updateBrand("name", event.target.value)} autoComplete="off"/></ProfileField>
+                  <ProfileField id="brand-website" label="Сайт" help="КЛИО использует сайт при сборе семантики и генерации. Кнопка заполняет профиль по сайту; результат можно отредактировать. Недоступные сведения не додумываются.">
                     <div className="brand-website-row">
-                      <input value={brand.website} onChange={(event) => updateBrand("website", event.target.value)} autoComplete="off"/>
+                      <input id="brand-website" aria-describedby="brand-website-help brand-website-cost" aria-invalid={Boolean(brandAnalyzeError)} value={brand.website} onChange={(event) => updateBrand("website", event.target.value)} autoComplete="off"/>
                       <button type="button" className={brandAnalyzeBusy ? "is-busy" : ""} onClick={() => void analyzeBrandFromWebsite()} disabled={brandAnalyzeBusy || !brand.website.trim() || aiConnection !== "connected" || workspaceAccount.researchRemaining <= 0} title="КЛИО прочитает сайт и предложит описание, позиционирование, аудиторию и факты — каждое поле можно будет скорректировать вручную">{brandAnalyzeBusy ? "Читаем сайт…" : !brand.website.trim() ? "Укажите сайт" : aiConnection !== "connected" ? "ИИ не подключён" : workspaceAccount.researchRemaining <= 0 ? "Лимит исчерпан" : "Заполнить с помощью ИИ"}</button>
                     </div>
-                    <small className={brandAnalyzeError ? "is-error" : ""}>{brandAnalyzeError || "КЛИО читает эту страницу при сборе семантики и генерации; кнопка справа заполняет по ней профиль бренда и расходует 1 исследование. Недоступные сведения не додумываются."}</small>
-                  </label>
-                  <label className="wide">О компании<AutoTextarea rows={3} value={brand.description} onChange={(event) => updateBrand("description", event.target.value)}/><small>Короткая фактическая справка: сфера, география, услуги и масштаб.</small></label>
-                  <label className="wide">Позиционирование<AutoTextarea rows={3} value={brand.positioning} onChange={(event) => updateBrand("positioning", event.target.value)}/><small>Какое место бренд хочет занимать в сознании аудитории — не рекламный слоган, а редакционный ориентир.</small></label>
-                  <label>Основная аудитория<AutoTextarea rows={4} value={brand.audience} onChange={(event) => updateBrand("audience", event.target.value)}/><small>Кто читатель, с какой задачей и на каком уровне понимания темы.</small></label>
-                  <label>Факты и преимущества<AutoTextarea rows={4} value={brand.advantages} onChange={(event) => updateBrand("advantages", event.target.value)}/><small>Только подтверждённые особенности, на которые можно опираться в тексте.</small></label>
-                  <label>Продукты и программы<AutoTextarea rows={3} value={brand.products} onChange={(event) => updateBrand("products", event.target.value)}/><small>Конкретные предложения бренда; не включайте предположения.</small></label>
-                  <label>Услуги<AutoTextarea rows={3} value={brand.services} onChange={(event) => updateBrand("services", event.target.value)}/><small>Что компания реально делает для аудитории.</small></label>
-                  <label>Доказательства и источники<AutoTextarea rows={3} value={brand.proof} onChange={(event) => updateBrand("proof", event.target.value)}/><small>Документы, подтверждённые условия, исследования или другие основания для claims.</small></label>
-                  <label>География бренда<AutoTextarea rows={3} value={brand.geography} onChange={(event) => updateBrand("geography", event.target.value)}/><small>Рынок и территория работы. Не путайте с географией поискового спроса.</small></label>
+                    <small id="brand-website-cost">Заполнение с помощью ИИ спишет 1 исследование</small>
+                    {brandAnalyzeError && <small className="is-error" role="alert">{brandAnalyzeError}</small>}
+                  </ProfileField>
+                  <ProfileField id="brand-description" label="О компании" help="Короткая фактическая справка: сфера, география, услуги и масштаб." wide><AutoTextarea id="brand-description" aria-describedby="brand-description-help" rows={3} value={brand.description} onChange={(event) => updateBrand("description", event.target.value)}/></ProfileField>
+                  <ProfileField id="brand-positioning" label="Позиционирование" help="Какое место бренд хочет занимать в сознании аудитории — не рекламный слоган, а редакционный ориентир." wide><AutoTextarea id="brand-positioning" aria-describedby="brand-positioning-help" rows={3} value={brand.positioning} onChange={(event) => updateBrand("positioning", event.target.value)}/></ProfileField>
+                  <ProfileField id="brand-audience" label="Основная аудитория" help="Кто читатель, с какой задачей и на каком уровне понимания темы."><AutoTextarea id="brand-audience" aria-describedby="brand-audience-help" rows={4} value={brand.audience} onChange={(event) => updateBrand("audience", event.target.value)}/></ProfileField>
+                  <ProfileField id="brand-advantages" label="Факты и преимущества" help="Только подтверждённые особенности, на которые можно опираться в тексте."><AutoTextarea id="brand-advantages" aria-describedby="brand-advantages-help" rows={4} value={brand.advantages} onChange={(event) => updateBrand("advantages", event.target.value)}/></ProfileField>
+                  <ProfileField id="brand-products" label="Продукты и программы" help="Конкретные предложения бренда; не включайте предположения."><AutoTextarea id="brand-products" aria-describedby="brand-products-help" rows={3} value={brand.products} onChange={(event) => updateBrand("products", event.target.value)}/></ProfileField>
+                  <ProfileField id="brand-services" label="Услуги" help="Что компания реально делает для аудитории."><AutoTextarea id="brand-services" aria-describedby="brand-services-help" rows={3} value={brand.services} onChange={(event) => updateBrand("services", event.target.value)}/></ProfileField>
+                  <ProfileField id="brand-proof" label="Доказательства и источники" help="Документы, подтверждённые условия, исследования или другие основания для claims."><AutoTextarea id="brand-proof" aria-describedby="brand-proof-help" rows={3} value={brand.proof} onChange={(event) => updateBrand("proof", event.target.value)}/></ProfileField>
+                  <ProfileField id="brand-geography" label="География бренда" help="Рынок и территория работы. Не путайте с географией поискового спроса."><AutoTextarea id="brand-geography" aria-describedby="brand-geography-help" rows={3} value={brand.geography} onChange={(event) => updateBrand("geography", event.target.value)}/></ProfileField>
                 </div>
-              </div>}
+              </div>
 
-              {brandTab === "voice" && <div className="brand-field-group" role="tabpanel">
-                <div className="brand-group-heading"><span>Редакционный голос</span><p>Здесь задаётся не один «тон», а устойчивый характер коммуникации.</p></div>
+              <div className="brand-field-group" role="tabpanel" id="brand-panel-voice" aria-labelledby="brand-tab-voice" hidden={brandTab !== "voice"}>
                 {!foundationReady ? <div className="profile-foundation-warning"><i>01</i><div><b>Сначала заполните основу бренда</b><p>Для рекомендаций нужны описание, позиционирование, аудитория и подтверждённые преимущества.</p></div><button type="button" onClick={() => setBrandTab("foundation")}>Перейти к основе</button></div> : profileMode === "quick" ? <>
                   <div className="profile-ai-note"><span><i>✦</i> Предзаполнено КЛИО</span><p>Формулировки собраны из основы бренда и автоматически используются в генераторе. Перед сохранением их можно открыть и отредактировать.</p></div>
                   <div className="profile-recommendation-grid">
@@ -5250,19 +5256,19 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     <article><span>Фирменная подпись</span><p>{voiceRecommendations.signature}</p></article>
                     <article><span>Стоп-слова</span><p>{voiceRecommendations.prohibited}</p></article>
                   </div>
-                  <div className="profile-recommendation-footer"><small>Рекомендации не являются закрытым шаблоном — их можно полностью изменить.</small><button className="recommendation-edit-button" type="button" onClick={() => changeProfileMode("expert")}><Icon name="edit"/> Изменить рекомендации</button></div>
+                  <div className="profile-recommendation-footer"><button className="recommendation-edit-button" type="button" onClick={() => changeProfileMode("expert")}><Icon name="edit"/> Изменить рекомендации</button></div>
                 </> : <>
                   <div className="profile-assistant-row"><div><span>Умное предзаполнение</span><p>Можно взять рекомендации из основы, а затем скорректировать каждое поле.</p></div><button type="button" onClick={applyVoiceRecommendations}>Предзаполнить поля</button></div>
                   <div className="brand-fields">
-                    <label className="wide">Голос бренда<AutoTextarea rows={4} value={brand.voice} onChange={(event) => updateBrand("voice", event.target.value)}/><small>Интонация, сложность языка, длина фраз и степень эмоциональности.</small></label>
-                    <label className="wide">Словарь бренда<AutoTextarea rows={2} value={brand.vocabulary} onChange={(event) => updateBrand("vocabulary", event.target.value)}/><small>Предпочтительные термины и формулировки, которые помогают узнаваемости.</small></label>
-                    <label className="wide">Желаемое действие читателя<AutoTextarea rows={2} value={brand.cta} onChange={(event) => updateBrand("cta", event.target.value)}/><small>Например: оставить заявку, записаться на консультацию или узнать условия. КЛИО использует этот призыв, только когда он уместен в материале.</small></label>
-                    <label className="wide">Фирменная подпись<AutoTextarea rows={2} value={brand.signature} onChange={(event) => updateBrand("signature", event.target.value)}/><small>Финальная формулировка для постов; КЛИО добавляет её только там, где она уместна.</small></label>
-                    <label>Ограничения<AutoTextarea rows={4} value={brand.restrictions} onChange={(event) => updateBrand("restrictions", event.target.value)}/><small>Что нельзя обещать, утверждать или придумывать без проверки.</small></label>
-                    <label>Стоп-слова и клише<AutoTextarea rows={4} value={brand.prohibited} onChange={(event) => updateBrand("prohibited", event.target.value)}/><small>Разделяйте слова и выражения точкой с запятой — они попадут в автоматическую проверку.</small></label>
+                    <ProfileField id="brand-voice" label="Голос бренда" help="Интонация, сложность языка, длина фраз и степень эмоциональности." wide><AutoTextarea id="brand-voice" aria-describedby="brand-voice-help" rows={4} value={brand.voice} onChange={(event) => updateBrand("voice", event.target.value)}/></ProfileField>
+                    <ProfileField id="brand-vocabulary" label="Словарь бренда" help="Предпочтительные термины и формулировки, которые помогают узнаваемости." wide><AutoTextarea id="brand-vocabulary" aria-describedby="brand-vocabulary-help" rows={2} value={brand.vocabulary} onChange={(event) => updateBrand("vocabulary", event.target.value)}/></ProfileField>
+                    <ProfileField id="brand-cta" label="Желаемое действие читателя" help="Например: оставить заявку, записаться на консультацию или узнать условия. КЛИО использует этот призыв, только когда он уместен в материале." wide><AutoTextarea id="brand-cta" aria-describedby="brand-cta-help" rows={2} value={brand.cta} onChange={(event) => updateBrand("cta", event.target.value)}/></ProfileField>
+                    <ProfileField id="brand-signature" label="Фирменная подпись" help="Финальная формулировка для постов; КЛИО добавляет её только там, где она уместна." wide><AutoTextarea id="brand-signature" aria-describedby="brand-signature-help" rows={2} value={brand.signature} onChange={(event) => updateBrand("signature", event.target.value)}/></ProfileField>
+                    <ProfileField id="brand-restrictions" label="Ограничения" help="Что нельзя обещать, утверждать или придумывать без проверки."><AutoTextarea id="brand-restrictions" aria-describedby="brand-restrictions-help" rows={4} value={brand.restrictions} onChange={(event) => updateBrand("restrictions", event.target.value)}/></ProfileField>
+                    <ProfileField id="brand-prohibited" label="Стоп-слова и клише" help="Разделяйте слова и выражения точкой с запятой — они попадут в автоматическую проверку."><AutoTextarea id="brand-prohibited" aria-describedby="brand-prohibited-help" rows={4} value={brand.prohibited} onChange={(event) => updateBrand("prohibited", event.target.value)}/></ProfileField>
                   </div>
                 </>}
-              </div>}
+              </div>
               </div>
 
               <div className="brand-profile-footer"><p><i className={brandSaved ? "saved" : ""}/>{brandSaved ? "Профиль и данные бренда сохранены в кабинете" : "Есть несохранённые изменения"}</p><div><button type="button" onClick={restoreBrand}>Восстановить базовый профиль</button><button className="button primary" type="button" onClick={() => void saveBrand()}>Сохранить профиль</button></div></div>
