@@ -4856,7 +4856,11 @@ footer nav a {
 
 .workspace-sidebar nav {
   display: grid;
-  gap: 4px;
+  /* Was 4px - read as "слепленным" (glued together) once each row lost
+     its second line (subtitle) and shrank to a single line; a bit more
+     room between rows than a plain compaction pass would suggest keeps
+     them feeling like distinct buttons instead of one solid block. */
+  gap: 8px;
   margin-top: 16px;
   /* .workspace-stage below relies on margin-top:auto to push itself to
      the bottom of the sidebar's flex column, which only works while
@@ -4874,21 +4878,16 @@ footer nav a {
 .workspace-sidebar nav a,
 .workspace-sidebar nav button {
   display: grid;
-  /* Was 30px minmax(0, 1fr) - a reserved column for the leading "+" icon
-     below, removed site-wide (desktop sidebar included now, not just the
-     mobile bottom bar) since it never stood for anything a person could
-     read at a glance. Single column now that there's nothing to reserve
-     space for. */
-  grid-template-columns: minmax(0, 1fr);
+  /* Was a bare single column once the old "+"/"·" placeholder (never
+     worth a real column) got removed entirely - each row read as bare
+     text with nothing to anchor it ("кнопки смотрятся теперь пустовато").
+     Restored the icon column, now holding a real per-module icon (see
+     the nav JSX) instead of an unreadable placeholder. */
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
   gap: 10px;
   width: 100%;
-  /* Was 13px 12px - taller than a single line of bold text (see the
-     nav JSX above) needs now that the "+" icon and the description
-     subtitle line are both gone; the extra padding was only ever
-     earning its keep when there were two lines to hold. Site owner:
-     make the sidebar itself more compact so ваш тариф stops getting
-     squeezed off the bottom. */
-  padding: 10px 14px;
+  padding: 9px 14px;
   border: 1px solid transparent;
   /* Matches the site's shared .button capsule shape - "кнопки названия
      модулей в боковом меню... тоже закруглить". */
@@ -4928,6 +4927,7 @@ footer nav a {
 .workspace-sidebar nav a[href="#content-plan"] { --module-accent: #3f7e70; }
 .workspace-sidebar nav a[href="#adaptation"] { --module-accent: #9b536d; }
 .workspace-sidebar nav a[href="#publications"] { --module-accent: #9bcf4b; }
+.workspace-sidebar nav a[href="#history"] { --module-accent: #c9932f; }
 
 .workspace-sidebar nav a.active {
   border-color: color-mix(in srgb, var(--module-accent, #7450bd) 55%, transparent);
@@ -4940,8 +4940,28 @@ footer nav a {
    for anything readable at a glance - hidden everywhere now, not just
    the mobile bottom bar (see the ≤820px block below, which used to be
    the only place this was hidden). */
+/* Small per-module icon badge, replacing the old unreadable "+" - each
+   link's --module-accent (set per href above) tints both the circle and
+   the icon, so the sidebar keeps the same "one colour per module" cue
+   the active-state highlight already used. */
 .workspace-sidebar nav i {
-  display: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: var(--module-accent, #7450bd);
+  background: color-mix(in srgb, var(--module-accent, #7450bd) 22%, transparent);
+}
+
+.workspace-sidebar nav i svg {
+  width: 15px;
+  height: 15px;
+}
+
+.workspace-sidebar nav a.active i {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.22);
 }
 
 .workspace-sidebar nav span {
@@ -4951,8 +4971,19 @@ footer nav a {
 
 .workspace-sidebar nav b {
   color: rgba(244, 248, 255, 0.9);
-  font-size: 14px;
-  font-weight: 620;
+  /* Uppercase, one size down from the old 14px/620 - the longest labels
+     ("Генерировать материал", "Редакторы КЛИО") are ~20+ Cyrillic
+     characters, which set in caps run wider than lowercase; the 168px
+     label column (276px sidebar - padding - the 30px icon circle - its
+     gap) wraps them at the old size. Kept the tracking tight (not the
+     0.1em+ used on this site's small all-caps eyebrows) since this is a
+     primary nav label meant to stay legible, not a tiny tag. Mobile's
+     own rule (~line 13993) overrides size/white-space but not this
+     transform/tracking, so it inherits both there too. */
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .workspace-sidebar nav small {
@@ -13940,7 +13971,7 @@ input[type="radio"] {
   .workspace-sidebar nav button {
     display: inline-grid;
     flex: 0 0 auto;
-    grid-template-columns: auto;
+    grid-template-columns: 22px auto;
     align-items: center;
     gap: 7px;
     width: auto;
@@ -13953,6 +13984,16 @@ input[type="radio"] {
        not as sidebar list rows. */
     border-radius: 999px;
     scroll-snap-align: start;
+  }
+
+  .workspace-sidebar nav i {
+    width: 22px;
+    height: 22px;
+  }
+
+  .workspace-sidebar nav i svg {
+    width: 12px;
+    height: 12px;
   }
 
   .workspace-sidebar nav span {

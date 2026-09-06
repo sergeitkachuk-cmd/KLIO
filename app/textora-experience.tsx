@@ -1331,7 +1331,7 @@ function nameInitials(value: string) {
   return (parts.slice(0, 2).map((item) => item[0]?.toLocaleUpperCase("ru-RU") || "").join("") || "К").slice(0, 2);
 }
 
-function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" | "erase" | "sun" | "moon" }) {
+function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" | "erase" | "sun" | "moon" | "home" | "building" | "list" | "search" | "barChart" | "calendar" | "folder" }) {
   const paths = {
     arrow: <><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></>,
     spark: <><path d="m12 2 1.7 5.3L19 9l-5.3 1.7L12 16l-1.7-5.3L5 9l5.3-1.7L12 2Z"/><path d="m5 16 .7 2.3L8 19l-2.3.7L5 22l-.7-2.3L2 19l2.3-.7L5 16Z"/></>,
@@ -1341,6 +1341,16 @@ function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" | 
     erase: <><path d="m18 6-12 12"/><path d="m6 6 12 12"/></>,
     sun: <><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></>,
     moon: <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/>,
+    // Sidebar nav module icons — one per WorkspaceModule, replacing the
+    // unreadable "+" placeholder (see the nav JSX). generator/adaptation
+    // reuse spark/edit above instead of adding near-duplicates.
+    home: <><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/></>,
+    building: <><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 21v-4h6v4"/><path d="M9 7h1"/><path d="M14 7h1"/><path d="M9 11h1"/><path d="M14 11h1"/></>,
+    list: <><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></>,
+    search: <><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></>,
+    barChart: <><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></>,
+    calendar: <><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></>,
+    folder: <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/>,
   };
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
@@ -4981,15 +4991,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             {brandCreatorOpen && <div className="brand-create-form"><input value={newBrandName} onChange={(event) => setNewBrandName(event.target.value)} placeholder="Название бренда" autoFocus autoComplete="off"/><button type="button" onClick={() => void createWorkspaceBrand()}>Создать</button></div>}
           </div>
           <nav aria-label="Рабочие модули">
-            <a href="#start" className={activeModule === "start" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("start"); }}><span><b>Начните здесь</b></span></a>
-            <a href="#brand-profile" className={activeModule === "brand" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("brand"); }}><span><b>Профиль бренда</b></span></a>
-            <a href="#generator" className={activeModule === "generator" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("generator"); }}><span><b>Генерировать материал</b></span></a>
-            <a href="#content-plan" className={activeModule === "content-plan" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("content-plan"); }}><span><b>Контент‑план</b></span></a>
-            <a href="#adaptation" className={activeModule === "adaptation" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("adaptation"); }}><span><b>Редакторы КЛИО</b></span></a>
-            <a href="#semantics" className={activeModule === "semantics" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("semantics"); }}><span><b>Семантика</b></span></a>
-            <a href="#competitors" className={activeModule === "competitors" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("competitors"); }}><span><b>Конкуренты</b></span></a>
-            <a href="#publications" className={activeModule === "publications" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("publications"); }}><span><b>Публикации</b></span></a>
-            <a href="#history" className={activeModule === "history" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("history"); }}><span><b>Материалы</b></span></a>
+            <a href="#start" className={activeModule === "start" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("start"); }}><i><Icon name="home"/></i><span><b>Начните здесь</b></span></a>
+            <a href="#brand-profile" className={activeModule === "brand" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("brand"); }}><i><Icon name="building"/></i><span><b>Профиль бренда</b></span></a>
+            <a href="#generator" className={activeModule === "generator" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("generator"); }}><i><Icon name="spark"/></i><span><b>Генерировать материал</b></span></a>
+            <a href="#content-plan" className={activeModule === "content-plan" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("content-plan"); }}><i><Icon name="list"/></i><span><b>Контент‑план</b></span></a>
+            <a href="#adaptation" className={activeModule === "adaptation" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("adaptation"); }}><i><Icon name="edit"/></i><span><b>Редакторы КЛИО</b></span></a>
+            <a href="#semantics" className={activeModule === "semantics" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("semantics"); }}><i><Icon name="search"/></i><span><b>Семантика</b></span></a>
+            <a href="#competitors" className={activeModule === "competitors" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("competitors"); }}><i><Icon name="barChart"/></i><span><b>Конкуренты</b></span></a>
+            <a href="#publications" className={activeModule === "publications" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("publications"); }}><i><Icon name="calendar"/></i><span><b>Публикации</b></span></a>
+            <a href="#history" className={activeModule === "history" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("history"); }}><i><Icon name="folder"/></i><span><b>Материалы</b></span></a>
           </nav>
           <div className="workspace-stage workspace-quota-stage"><span>Ваш тариф</span><b>{workspaceAccount.planName}</b><div className="workspace-quota-list"><p><span>Материалы</span><em>{workspaceAccount.generationsRemaining} / {workspaceAccount.generationLimit}</em><i><u style={{ width: `${generationProgress}%` }}/></i></p><p><span>Исследования</span><em>{workspaceAccount.researchRemaining} / {workspaceAccount.researchLimit}</em><i><u style={{ width: `${researchProgress}%` }}/></i></p><p><span>AI‑редактура</span><em>{workspaceAccount.editorActionsRemaining} / {workspaceAccount.editorActionLimit}</em><i><u style={{ width: `${editorProgress}%` }}/></i></p></div></div>
         </aside>
