@@ -847,6 +847,10 @@ const modules = [
 // explicit feedback that this tab must stay a guide, not another module.
 const WORKSPACE_MODULE_GUIDE: Array<{
   id: "generator" | "brand" | "semantics" | "competitors" | "content-plan" | "adaptation" | "publications";
+  // "+" is a sentinel, not a real step marker to display — only
+  // "generator" has an actual sequence number ("01"); every other card
+  // renders no badge at all (see the "+" !== check at the map call
+  // below) rather than a "+" nobody could read a meaning into.
   step: string;
   title: string;
   text: string;
@@ -4977,15 +4981,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             {brandCreatorOpen && <div className="brand-create-form"><input value={newBrandName} onChange={(event) => setNewBrandName(event.target.value)} placeholder="Название бренда" autoFocus autoComplete="off"/><button type="button" onClick={() => void createWorkspaceBrand()}>Создать</button></div>}
           </div>
           <nav aria-label="Рабочие модули">
-            <a href="#start" className={activeModule === "start" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("start"); }}><i>·</i><span><b>Начните здесь</b><small>обзор и подсказки</small></span></a>
-            <a href="#brand-profile" className={activeModule === "brand" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("brand"); }}><i>+</i><span><b>Профиль бренда</b><small>настройте один раз</small></span></a>
-            <a href="#generator" className={activeModule === "generator" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("generator"); }}><i>+</i><span><b>Генерировать материал</b><small>создать новый текст</small></span></a>
-            <a href="#content-plan" className={activeModule === "content-plan" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("content-plan"); }}><i>+</i><span><b>Контент‑план</b><small>очередь тем для публикаций</small></span></a>
-            <a href="#adaptation" className={activeModule === "adaptation" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("adaptation"); }}><i>+</i><span><b>Редакторы КЛИО</b><small>15 режимов для готового текста</small></span></a>
-            <a href="#semantics" className={activeModule === "semantics" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("semantics"); }}><i>+</i><span><b>Семантика</b><small>реальные поисковые запросы</small></span></a>
-            <a href="#competitors" className={activeModule === "competitors" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("competitors"); }}><i>+</i><span><b>Конкуренты</b><small>для более точных тем</small></span></a>
-            <a href="#publications" className={activeModule === "publications" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("publications"); }}><i>+</i><span><b>Публикации</b><small>календарь и автопостинг</small></span></a>
-            <a href="#history" className={activeModule === "history" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("history"); }}><i>+</i><span><b>Материалы</b><small>{activeMaterialCount ? `${activeMaterialCount} сохранено` : "статьи, планы, исследования"}</small></span></a>
+            <a href="#start" className={activeModule === "start" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("start"); }}><span><b>Начните здесь</b></span></a>
+            <a href="#brand-profile" className={activeModule === "brand" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("brand"); }}><span><b>Профиль бренда</b></span></a>
+            <a href="#generator" className={activeModule === "generator" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("generator"); }}><span><b>Генерировать материал</b></span></a>
+            <a href="#content-plan" className={activeModule === "content-plan" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("content-plan"); }}><span><b>Контент‑план</b></span></a>
+            <a href="#adaptation" className={activeModule === "adaptation" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("adaptation"); }}><span><b>Редакторы КЛИО</b></span></a>
+            <a href="#semantics" className={activeModule === "semantics" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("semantics"); }}><span><b>Семантика</b></span></a>
+            <a href="#competitors" className={activeModule === "competitors" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("competitors"); }}><span><b>Конкуренты</b></span></a>
+            <a href="#publications" className={activeModule === "publications" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("publications"); }}><span><b>Публикации</b></span></a>
+            <a href="#history" className={activeModule === "history" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("history"); }}><span><b>Материалы</b></span></a>
           </nav>
           <div className="workspace-stage workspace-quota-stage"><span>Ваш тариф</span><b>{workspaceAccount.planName}</b><div className="workspace-quota-list"><p><span>Материалы</span><em>{workspaceAccount.generationsRemaining} / {workspaceAccount.generationLimit}</em><i><u style={{ width: `${generationProgress}%` }}/></i></p><p><span>Исследования</span><em>{workspaceAccount.researchRemaining} / {workspaceAccount.researchLimit}</em><i><u style={{ width: `${researchProgress}%` }}/></i></p><p><span>AI‑редактура</span><em>{workspaceAccount.editorActionsRemaining} / {workspaceAccount.editorActionLimit}</em><i><u style={{ width: `${editorProgress}%` }}/></i></p></div></div>
         </aside>
@@ -5148,7 +5152,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
             <div className="workspace-start-grid">
               {WORKSPACE_MODULE_GUIDE.map((item) => <button type="button" className={`workspace-start-card workspace-start-card-${item.id}`} key={item.id} onClick={() => openModule(item.id)}>
-                <i>{item.step}</i>
+                {item.step !== "+" && <i>{item.step}</i>}
                 <h3>{item.title}</h3>
                 <p>{item.text}</p>
                 <span>{item.cta} <Icon name="arrow"/></span>

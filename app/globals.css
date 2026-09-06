@@ -4856,8 +4856,8 @@ footer nav a {
 
 .workspace-sidebar nav {
   display: grid;
-  gap: 7px;
-  margin-top: 22px;
+  gap: 4px;
+  margin-top: 16px;
   /* .workspace-stage below relies on margin-top:auto to push itself to
      the bottom of the sidebar's flex column, which only works while
      there's leftover space - on shorter viewports (or once the module
@@ -4868,18 +4868,31 @@ footer nav a {
      auto-margin just absorbs correspondingly less of it (visual result
      unchanged), and when there isn't, this is what keeps the two apart
      instead of collapsing to zero. */
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .workspace-sidebar nav a,
 .workspace-sidebar nav button {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
+  /* Was 30px minmax(0, 1fr) - a reserved column for the leading "+" icon
+     below, removed site-wide (desktop sidebar included now, not just the
+     mobile bottom bar) since it never stood for anything a person could
+     read at a glance. Single column now that there's nothing to reserve
+     space for. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   width: 100%;
-  padding: 13px 12px;
+  /* Was 13px 12px - taller than a single line of bold text (see the
+     nav JSX above) needs now that the "+" icon and the description
+     subtitle line are both gone; the extra padding was only ever
+     earning its keep when there were two lines to hold. Site owner:
+     make the sidebar itself more compact so ваш тариф stops getting
+     squeezed off the bottom. */
+  padding: 10px 14px;
   border: 1px solid transparent;
-  border-radius: 13px;
+  /* Matches the site's shared .button capsule shape - "кнопки названия
+     модулей в боковом меню... тоже закруглить". */
+  border-radius: 999px;
   color: rgba(255, 255, 255, 0.68);
   background: transparent;
   text-align: left;
@@ -4923,15 +4936,12 @@ footer nav a {
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.16), 0 10px 26px color-mix(in srgb, var(--module-accent, #7450bd) 22%, transparent);
 }
 
-.workspace-sidebar nav a.active i {
-  color: #fff;
-}
-
+/* The leading "+" (see the WORKSPACE_MODULE_GUIDE/nav JSX) never stood
+   for anything readable at a glance - hidden everywhere now, not just
+   the mobile bottom bar (see the ≤820px block below, which used to be
+   the only place this was hidden). */
 .workspace-sidebar nav i {
-  color: rgba(216, 255, 101, 0.9);
-  font-size: 12px;
-  font-style: normal;
-  font-weight: 700;
+  display: none;
 }
 
 .workspace-sidebar nav span {
@@ -13961,15 +13971,6 @@ input[type="radio"] {
     display: none;
   }
 
-  /* The leading "+"/"·" glyph only makes sense in the desktop sidebar,
-     where each row has room for a real label + hint. Packed into this
-     narrow scrolling bar with the hint already hidden above, it reads
-     as an unexplained "+" in front of every item - so it's hidden here,
-     not removed from the markup (desktop still shows it). */
-  .workspace-sidebar nav i {
-    display: none;
-  }
-
   .workspace-content {
     padding: 26px 14px 130px;
   }
@@ -17039,18 +17040,6 @@ input[type="radio"] {
   color: #091426;
   background: linear-gradient(120deg, color-mix(in srgb, var(--module-accent, #2452b8) 42%, white), color-mix(in srgb, var(--module-accent, #2452b8) 20%, white));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.72), 0 4px 12px color-mix(in srgb, var(--module-accent, #2452b8) 16%, transparent);
-}
-
-[data-theme="light"] .workspace-sidebar nav a.active i {
-  color: color-mix(in srgb, var(--module-accent, #2452b8) 75%, black);
-}
-
-/* Was #6b8f1f (dark olive) trying to keep the dark theme's acid-green
-   marker identity readable on light - still read as muddy/low-contrast
-   per feedback. Cool blue instead, matching the rest of this pass
-   rather than forcing green to work where it doesn't. */
-[data-theme="light"] .workspace-sidebar nav i {
-  color: #2452b8;
 }
 
 [data-theme="light"] .workspace-sidebar nav small {
@@ -20587,8 +20576,7 @@ input[type="radio"] {
     box-shadow: inset 0 1px rgba(255, 255, 255, 0.92), 0 3px 8px rgba(36, 82, 184, 0.1);
   }
 
-  [data-theme="light"] .workspace-sidebar nav b,
-  [data-theme="light"] .workspace-sidebar nav i {
+  [data-theme="light"] .workspace-sidebar nav b {
     color: #173b85;
   }
 
@@ -20599,8 +20587,7 @@ input[type="radio"] {
     box-shadow: inset 0 1px rgba(255, 255, 255, 0.28), 0 5px 12px rgba(36, 82, 184, 0.25);
   }
 
-  [data-theme="light"] .workspace-sidebar nav a.active b,
-  [data-theme="light"] .workspace-sidebar nav a.active i {
+  [data-theme="light"] .workspace-sidebar nav a.active b {
     color: #fff;
   }
 }
