@@ -2372,7 +2372,7 @@ select:focus-visible {
   margin-top: 9px;
   padding: 0 13px;
   border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 12px;
+  border-radius: 999px;
   color: #fff;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.055));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
@@ -2473,7 +2473,7 @@ select:focus-visible {
   min-height: 42px;
   padding: 7px 11px;
   border: 1px solid transparent;
-  border-radius: 11px;
+  border-radius: 999px;
   color: #fff;
   background: rgba(255, 255, 255, 0.035);
   font-size: 13px;
@@ -2528,7 +2528,7 @@ select:focus-visible {
   min-height: 42px;
   padding: 7px 10px;
   border: 1px solid rgba(255, 255, 255, 0.17);
-  border-radius: 11px;
+  border-radius: 999px;
   color: rgba(255, 255, 255, 0.72);
   background: rgba(255, 255, 255, 0.055);
   font-size: 14px;
@@ -5396,7 +5396,7 @@ footer nav a {
   min-height: 72px;
   padding: 10px 12px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 999px;
   color: var(--ink);
   background: transparent;
   text-align: left;
@@ -5478,7 +5478,7 @@ footer nav a {
   min-height: 34px;
   padding: 5px 7px 5px 10px;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
+  border-radius: 999px;
   color: #fff;
   background: rgba(255, 255, 255, 0.08);
   cursor: pointer;
@@ -5575,7 +5575,7 @@ footer nav a {
   height: 46px;
   padding: 0 13px;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 11px;
+  border-radius: 999px;
   color: #fff;
   background: rgba(255, 255, 255, 0.08);
   font-size: 11px;
@@ -5730,7 +5730,7 @@ footer nav a {
   min-height: 35px;
   padding: 5px 8px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 999px;
   color: rgba(255, 255, 255, 0.72);
   background: transparent;
   font-size: 11px;
@@ -5813,7 +5813,7 @@ footer nav a {
   min-height: 38px;
   padding: 0 18px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 999px;
   color: var(--night);
   background: var(--acid);
   font-size: 11px;
@@ -6267,7 +6267,7 @@ footer nav a {
   min-height: 36px;
   padding: 0 11px;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 9px;
+  border-radius: 999px;
   color: #fff;
   background: rgba(255, 255, 255, 0.09);
   font-size: 12px;
@@ -7139,7 +7139,7 @@ footer nav a {
   min-height: 41px;
   padding: 0 12px;
   border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 11px;
+  border-radius: 999px;
   color: rgba(255, 255, 255, 0.72);
   background: transparent;
   font: inherit;
@@ -7159,7 +7159,7 @@ footer nav a {
   min-height: 41px;
   padding: 0 14px;
   border: 1px solid rgba(124, 58, 237, 0.2);
-  border-radius: 11px;
+  border-radius: 999px;
   color: #fff;
   background: linear-gradient(135deg, #6540c9, #8057e6);
   box-shadow: 0 10px 26px rgba(91, 55, 168, 0.17);
@@ -7327,7 +7327,7 @@ footer nav a {
   min-height: 42px;
   margin-top: 10px;
   border: 1px dashed rgba(124, 58, 237, 0.45);
-  border-radius: 12px;
+  border-radius: 999px;
   color: #cabdf6;
   background: rgba(124, 58, 237, 0.1);
   font-size: 12px;
@@ -8272,7 +8272,7 @@ footer nav a {
   min-height: 52px;
   padding: 0 17px;
   border: 1px solid rgba(67, 55, 111, 0.16);
-  border-radius: 12px;
+  border-radius: 999px;
   background: rgba(255, 255, 255, 0.7);
   color: #423b57;
   font-size: 13px;
@@ -8485,7 +8485,7 @@ footer nav a {
   min-width: 47px;
   min-height: 36px;
   border: 1px solid rgba(55, 46, 92, 0.13);
-  border-radius: 9px;
+  border-radius: 999px;
   background: rgba(255, 255, 255, 0.62);
   color: #706a7d;
   font-size: 13px;
@@ -11379,7 +11379,7 @@ input[type="radio"] {
   min-width: 32px;
   height: 32px;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 10px;
+  border-radius: 999px;
   color: #fff;
   background: rgba(255, 255, 255, 0.05);
   font-size: 15px;
@@ -12189,23 +12189,18 @@ input[type="radio"] {
   font-size: 10px;
 }
 
-.archive-editor-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 9px;
+/* A служебное/editorial-only field, not part of the copied publication -
+   reads better quieter than the actual document fields above it, not
+   with the same bordered-textarea treatment as the title/body/SEO
+   fields it sits among. Wins over .archive-editor-document textarea by
+   source order (equal specificity, this rule comes later). */
+.archive-editor-comment span {
+  font-size: 11px;
 }
 
-.archive-editor-actions > button:first-child {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 44px;
-  padding: 0 14px;
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  cursor: pointer;
+.archive-editor-comment textarea {
+  border: 0;
+  font-size: 12px;
 }
 
 .archive-editor-actions svg {
@@ -12368,7 +12363,7 @@ input[type="radio"] {
   min-height: 55px;
   padding: 8px 10px;
   border: 1px solid rgba(255, 255, 255, 0.17);
-  border-radius: 14px;
+  border-radius: 999px;
   color: #fff;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.11), rgba(124, 58, 237, 0.12));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
@@ -12506,7 +12501,7 @@ input[type="radio"] {
   min-height: 52px;
   padding: 7px 9px;
   border: 1px solid transparent;
-  border-radius: 11px;
+  border-radius: 999px;
   color: #fff;
   background: rgba(255, 255, 255, 0.035);
   text-align: left;
@@ -12542,7 +12537,7 @@ input[type="radio"] {
   min-height: 34px;
   padding: 0 10px;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
+  border-radius: 999px;
   color: #fff;
   background: rgba(255, 255, 255, 0.09);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
@@ -12638,62 +12633,38 @@ input[type="radio"] {
   letter-spacing: inherit;
 }
 
-.seo-field-label > button,
+/* Sits below its field now (not inside the .seo-field-label header) in
+   every module that has SEO fields — Генератор, Контент‑план, Редакторы
+   КЛИО, Материалы. As a lone grid item it would otherwise stretch to the
+   field's full width like the header row above it; it's a small utility
+   action, not a full-width one. Colors are the dark-theme values directly
+   since every one of those modules is dark-native now — see the
+   [data-theme="light"] override below for the one exception. */
 .seo-field-copy {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   min-height: 28px;
   padding: 0 8px;
-  border: 1px solid rgba(72, 58, 111, 0.13);
-  border-radius: 8px;
-  color: #5e36b4;
-  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
   font-size: 10px;
   font-weight: 690;
   letter-spacing: 0;
   text-transform: none;
   cursor: pointer;
-}
-
-/* .seo-field-copy sits below its field (not inside the .seo-field-label
-   header) — see the comment above .seo-passport > label. As a lone grid
-   item it would otherwise stretch to the field's full width like the
-   header row above it; it's a small utility action, not a full-width one. */
-.seo-field-copy {
   justify-self: start;
   width: fit-content;
   margin-top: 2px;
 }
 
-.seo-field-label > button:hover,
 .seo-field-copy:hover {
-  border-color: rgba(124, 58, 237, 0.3);
-  background: rgba(124, 58, 237, 0.07);
-}
-
-/* .seo-field-label is shared across every module that has SEO fields.
-   The Генератор result panel (.seo-passport) used to be the one light
-   holdout this comment carved out as "still light-themed, out of scope" —
-   it's dark now too, so it joins the same scoped override as the rest. */
-.content-plan-seo .seo-field-label > button,
-.adaptation-seo-fields .seo-field-label > button,
-.archive-editor-document .seo-field-label > button,
-.seo-passport .seo-field-copy {
-  border-color: rgba(255, 255, 255, 0.22);
-  color: #fff;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.content-plan-seo .seo-field-label > button:hover,
-.adaptation-seo-fields .seo-field-label > button:hover,
-.archive-editor-document .seo-field-label > button:hover,
-.seo-passport .seo-field-copy:hover {
   border-color: rgba(216, 255, 101, 0.4);
   background: rgba(216, 255, 101, 0.12);
 }
 
-.seo-field-label > button svg,
 .seo-field-copy svg {
   width: 13px;
   height: 13px;
@@ -13163,12 +13134,16 @@ input[type="radio"] {
   }
 
   .archive-editor-modal .archive-editor-actions {
-    /* Same reasoning as archive-editor-head above: stop pinning the save/
-       copy button row to the bottom of the screen for the whole time the
-       editor is open. Two columns instead of one — see the mobile button
-       sizing (compact padding/font, wrapping enabled) a bit further down,
-       which is what actually keeps 2-up from overflowing. */
-    position: static;
+    /* Reversed from an earlier pass that set this to position:static
+       ("stop pinning the save/copy row to the bottom of the screen") -
+       on a long saved article the row then only ever reached by scrolling
+       all the way to the end past body/SEO/comment, easy to lose track of
+       (site owner: "не делай их прокручиваемыми скролом"). Sticky (the
+       desktop behavior, inherited from the base rule) keeps it reachable
+       the whole time the editor is open instead. Two columns instead of
+       one — see the mobile button sizing (compact padding/font, wrapping
+       enabled) a bit further down, which is what actually keeps 2-up from
+       overflowing. */
     bottom: -18px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -13644,7 +13619,7 @@ input[type="radio"] {
   min-height: 40px;
   padding: 0 12px;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
+  border-radius: 999px;
   cursor: pointer;
   color: #fff;
   background: rgba(255, 255, 255, 0.08);
@@ -14091,7 +14066,7 @@ input[type="radio"] {
     height: 36px;
     min-height: 36px;
     padding: 0;
-    border-radius: 11px;
+    border-radius: 999px;
     box-shadow: inset 0 1px rgba(255, 255, 255, 0.86);
   }
 
@@ -14195,8 +14170,10 @@ input[type="radio"] {
        while its 3 siblings got the compact/wrapping treatment, so the
        first cell didn't fit its column. Sizing all four consistently and
        letting the label wrap onto a second line (line-height: 1.25,
-       min-height 40px has room for two lines) is what makes 2-up fit. */
-    position: static;
+       min-height 40px has room for two lines) is what makes 2-up fit.
+       Stays sticky (inherited from the base rule, no position:static
+       override here anymore) so it's reachable without scrolling past
+       body/SEO/comment first — see the ≤700px block above. */
     grid-template-columns: repeat(2, minmax(0, 1fr));
     bottom: -14px;
     gap: 7px;
@@ -14477,7 +14454,7 @@ input[type="radio"] {
   min-height: 39px;
   padding: 0 13px;
   border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 11px;
+  border-radius: 999px;
   color: #fff;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(118, 152, 195, 0.12));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.14);
@@ -18105,13 +18082,13 @@ input[type="radio"] {
   background: rgba(255, 255, 255, 0.7);
 }
 
-[data-theme="light"] .seo-passport .seo-field-copy {
+[data-theme="light"] .seo-field-copy {
   border-color: rgba(15, 23, 42, 0.18);
   color: #0d1b31;
   background: rgba(255, 255, 255, 0.6);
 }
 
-[data-theme="light"] .seo-passport .seo-field-copy:hover {
+[data-theme="light"] .seo-field-copy:hover {
   border-color: rgba(53, 104, 212, 0.4);
   background: rgba(53, 104, 212, 0.12);
 }
@@ -18721,26 +18698,6 @@ input[type="radio"] {
 
 [data-theme="light"] .content-plan-selection-bar small {
   color: rgba(13, 27, 49, 0.62);
-}
-
-/* .seo-field-label > button is shared across every module with SEO
-   fields - installment 3 (Генератор) only lit up .seo-passport's copy of
-   it; extending the same rule to Контент-план's here, and pre-emptively
-   to Редакторы КЛИО/Материалы's copies since it is the same three
-   values. */
-[data-theme="light"] .content-plan-seo .seo-field-label > button,
-[data-theme="light"] .adaptation-seo-fields .seo-field-label > button,
-[data-theme="light"] .archive-editor-document .seo-field-label > button {
-  border-color: rgba(15, 23, 42, 0.18);
-  color: #0d1b31;
-  background: rgba(255, 255, 255, 0.6);
-}
-
-[data-theme="light"] .content-plan-seo .seo-field-label > button:hover,
-[data-theme="light"] .adaptation-seo-fields .seo-field-label > button:hover,
-[data-theme="light"] .archive-editor-document .seo-field-label > button:hover {
-  border-color: rgba(53, 104, 212, 0.4);
-  background: rgba(53, 104, 212, 0.12);
 }
 
 /* =======================================================================
@@ -20323,7 +20280,7 @@ input[type="radio"] {
   min-height: 38px;
   padding: 0 9px;
   border: 1px solid rgba(255, 129, 157, 0.34);
-  border-radius: 12px;
+  border-radius: 999px;
   background: rgba(255, 91, 125, 0.08);
   color: #ffd0da;
   font: inherit;
