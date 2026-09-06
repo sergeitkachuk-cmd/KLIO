@@ -4314,33 +4314,6 @@ footer nav a {
   color: rgba(255, 255, 255, 0.64);
 }
 
-.workspace-history-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  min-height: 38px;
-  padding: 0 12px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 999px;
-  color: rgba(255, 255, 255, 0.78);
-  background: rgba(255, 255, 255, 0.06);
-  font-size: 12px;
-  font-weight: 650;
-  cursor: pointer;
-}
-
-.workspace-history-button b {
-  display: grid;
-  place-items: center;
-  min-width: 23px;
-  height: 23px;
-  padding: 0 5px;
-  border-radius: 999px;
-  color: #15131b;
-  background: var(--acid);
-  font-size: 10px;
-}
-
 .brand-project-switcher label {
   position: relative;
   display: block;
@@ -13347,7 +13320,6 @@ input[type="radio"] {
 
 .button.primary,
 .button.light,
-.workspace-history-button b,
 .archive-transform-tools > article > button > i,
 .archive-transform-panel .archive-tone-picker button.active,
 .archive-transform-panel > .archive-ai-submit {
@@ -13851,16 +13823,6 @@ input[type="radio"] {
     gap: 9px;
   }
 
-  .workspace-history-button {
-    min-height: 34px;
-    padding: 0 7px 0 11px;
-  }
-
-  .workspace-history-button b {
-    min-width: 21px;
-    height: 21px;
-  }
-
   .workspace-account {
     padding-left: 9px;
   }
@@ -14362,10 +14324,6 @@ input[type="radio"] {
 }
 
 @media (max-width: 380px) {
-  .workspace-history-button span {
-    display: none;
-  }
-
   .workspace-header-actions {
     gap: 6px;
   }
@@ -16876,14 +16834,8 @@ input[type="radio"] {
 }
 
 [data-theme="light"] .workspace-account small,
-[data-theme="light"] .workspace-account > em,
-[data-theme="light"] .workspace-history-button {
+[data-theme="light"] .workspace-account > em {
   color: rgba(13, 27, 49, 0.6);
-}
-
-[data-theme="light"] .workspace-history-button {
-  border-color: rgba(15, 23, 42, 0.14);
-  background: rgba(15, 23, 42, 0.04);
 }
 
 [data-theme="light"] .account-menu-list {

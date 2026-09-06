@@ -1599,15 +1599,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // shown when the page first loads (see the workspace-start block).
   // Only one of these is ever visible at once; opening another module
   // implicitly closes whichever was open, so the page never becomes a
-  // long stacked feed of expanded sections. openModule/toggleModule below
-  // are what every open/close call site in this file now goes through.
+  // long stacked feed of expanded sections. openModule below is what
+  // every navigation call site in this file now goes through — every
+  // module (Материалы included, now that it's a real sidebar/bottom-nav
+  // entry instead of a header-only toggle button) is reached and left the
+  // same way, so there's no separate toggle-to-close behavior anywhere.
   const [activeModule, setActiveModule] = useState<WorkspaceModule>("start");
   const [workspaceModuleRestored, setWorkspaceModuleRestored] = useState(false);
   function openModule(id: WorkspaceModule) {
     setActiveModule(id);
-  }
-  function toggleModule(id: WorkspaceModule) {
-    setActiveModule((current) => (current === id ? "start" : id));
   }
 
   // Keep the same workspace tool open when this browser tab is refreshed.
@@ -4939,7 +4939,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         <div className="workspace-header-actions">
           <Link href="/">На главную</Link>
           <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"} title={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"}><Icon name={theme === "dark" ? "sun" : "moon"}/></button>
-          <button className="workspace-history-button" type="button" onClick={() => toggleModule("history")}><span>Материалы</span><b>{activeMaterialCount}</b></button>
           <div className={`account-menu ${accountMenuOpen ? "is-open" : ""}`} ref={accountMenuRef}>
             <button type="button" className="workspace-account" onClick={() => setAccountMenuOpen((value) => !value)} aria-haspopup="menu" aria-expanded={accountMenuOpen}>
               <i>{nameInitials(workspaceUserName)}</i><b>{workspaceUserName}</b><small>{workspaceAccount.planName} · 1 пользователь</small><em>⌄</em>
@@ -4986,6 +4985,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <a href="#semantics" className={activeModule === "semantics" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("semantics"); }}><i>+</i><span><b>Семантика</b><small>реальные поисковые запросы</small></span></a>
             <a href="#competitors" className={activeModule === "competitors" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("competitors"); }}><i>+</i><span><b>Конкуренты</b><small>для более точных тем</small></span></a>
             <a href="#publications" className={activeModule === "publications" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("publications"); }}><i>+</i><span><b>Публикации</b><small>календарь и автопостинг</small></span></a>
+            <a href="#history" className={activeModule === "history" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("history"); }}><i>+</i><span><b>Материалы</b><small>{activeMaterialCount ? `${activeMaterialCount} сохранено` : "статьи, планы, исследования"}</small></span></a>
           </nav>
           <div className="workspace-stage workspace-quota-stage"><span>Ваш тариф</span><b>{workspaceAccount.planName}</b><div className="workspace-quota-list"><p><span>Материалы</span><em>{workspaceAccount.generationsRemaining} / {workspaceAccount.generationLimit}</em><i><u style={{ width: `${generationProgress}%` }}/></i></p><p><span>Исследования</span><em>{workspaceAccount.researchRemaining} / {workspaceAccount.researchLimit}</em><i><u style={{ width: `${researchProgress}%` }}/></i></p><p><span>AI‑редактура</span><em>{workspaceAccount.editorActionsRemaining} / {workspaceAccount.editorActionLimit}</em><i><u style={{ width: `${editorProgress}%` }}/></i></p></div></div>
         </aside>
