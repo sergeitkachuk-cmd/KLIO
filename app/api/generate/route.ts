@@ -11,11 +11,12 @@ import {
   type ContentTone,
 } from "../../content-plans";
 import { readWebsiteContext } from "../_lib/website-context";
-import { researchContentPlanWeb } from "../_lib/tavily";
+import { researchMaterialWeb } from "../_lib/tavily";
 import { assertGenerationQuotaAvailable, recordGeneration, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 import { AiCallError, callAiModel } from "../_lib/ai-router";
 import { aiConfigured } from "../_lib/ai-config";
 import type { AiOperation } from "../_lib/ai-config";
+import { createGenerationBudget, materialOutputTokenBudget } from "../_lib/generation-budget";
 import { isAiRateLimited } from "../_lib/rate-limit";
 import { publicationCharacters, bodyBudget, trimOverflowBody } from "../_lib/text-length";
 
@@ -118,13 +119,6 @@ const DEFAULT_LENGTHS: Record<Format, number> = {
   ads: 700,
   landing: 3500,
 };
-
-function materialOutputTokenBudget(targetCharacters: number) {
-  // The body is Russian prose plus a small JSON envelope. A bounded budget
-  // prevents a short post from inheriting a 10k-token ceiling intended for a
-  // long SEO article, while leaving enough headroom for headings and meta.
-  return Math.max(1_100, Math.min(10_000, Math.ceil(targetCharacters / 2.2) + 900));
-}
 
 function cleanText(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
@@ -584,10 +578,11 @@ export async function POST(request: Request) {
       }, { status: 503 });
     }
 
+    const budget = createGenerationBudget(input.length <= 2000 ? 90_000 : 150_000);
     const [identity, website, webResearch] = await Promise.all([
       workspaceIdentity(),
       readWebsiteContext(input.useBrand ? input.brand.website : ""),
-      researchContentPlanWeb(input.topic, input.geography),
+      researchMaterialWeb(input.topic, input.geography),
     ]);
     const operation = FORMAT_OPERATION[input.format];
     const formatPlan = FORMAT_PLANS[input.format];
@@ -672,7 +667,7 @@ export async function POST(request: Request) {
       website_snapshot: input.useBrand && website.status === "loaded"
         ? { url: website.resolvedUrl, text: website.text }
         : null,
-      web_research: webResearch ? webResearch.results.slice(0, 3).map((item) => ({ title: item.title, url: item.url, fact: item.content })) : null,
+      web_research: webResearch ? webResearch.results.slice(0, 5).map((item) => ({ title: item.title, url: item.url, fact: item.content })) : null,
     }, null, 2);
 
     let material: GeneratedMaterial;
@@ -680,7 +675,8 @@ export async function POST(request: Request) {
     try {
       const call = await callAiModel<Record<string, unknown>>({
         operation,
-        maxOutputTokensOverride: materialOutputTokenBudget(input.length),
+        maxOutputTokensOverride: materialOutputTokenBudget(input.length, operation),
+        requestTimeoutMs: budget.timeoutMs(input.length <= 2000 ? 60_000 : 120_000),
         ownerEmail: identity.email,
         brandId: input.useBrand ? input.brandId : undefined,
         schemaName: "klio_generated_material",
@@ -702,8 +698,8 @@ export async function POST(request: Request) {
             : "",
           "editorialBrief — скрытое техническое задание редактора. Если он передан, используй его вопрос читателя, ракурс, интент, структуру, факты и ограничения как конкретизацию темы; не пересказывай его в публикации.",
           "Если тема содержит название активного бренда, компании, продукта, программы или услуги, создай маркетинговый материал именно об этом предложении: раскрой его релевантность задаче аудитории, подтверждённые сильные стороны, программу или процесс и следующий шаг. Не подменяй такую тему инструкцией по выбору категории.",
-          "Если названный в теме бренд, компания или продукт реальны, но source_facts и website_snapshot не переданы (профиль бренда не заполнен или выключен), не выдумывай его функции, программу или преимущества. Сначала выполни веб‑поиск, найди официальный сайт и реальные факты об этом конкретном предложении, и уже на них построй материал. Если поиск не подтвердил, что это за компания или продукт, пиши осторожнее и опирайся только на то, что подтвердилось, отметив пробелы в editorial_comment — не подменяй недостающие факты правдоподобно звучащими выдумками.",
-          "Профиль и сайт бренда — это источник только сведений о самом бренде: его услугах, условиях, преимуществах, голосе и CTA. Они не являются единственным источником смысла статьи. Для каждой информационной или экспертной темы обязательно выполни веб‑поиск по предмету и добавь проверяемую полезную фактуру: объяснения, критерии выбора, нюансы, типичные ошибки, безопасные практические советы или примеры сценариев. Выбирай сведения, которые действительно помогают читателю решить вопрос, а не заполняют объём общими словами.",
+          "Если в теме назван конкретный бренд, используй только подтверждённые сведения из source_facts, website_snapshot и web_research. Если сведений недостаточно, не выдумывай функции, программу или преимущества; отметь пробелы в editorial_comment.",
+          "Профиль и сайт бренда подтверждают только сведения о самом бренде. Независимую фактуру по предмету статьи бери из переданного web_research: используй полезные объяснения, нюансы и сценарии, которые подтверждены источниками. Не заполняй объём общими словами.",
           "Строго разделяй источники: сведения о бренде бери только из source_facts, website_snapshot или официального сайта бренда; отраслевые знания, определения и рекомендации — из авторитетных независимых источников. Не приписывай бренду найденные общие сведения и не выдавай общую отраслевую информацию за преимущество компании.",
           "Для медицины, оздоровления, права и финансов используй только официальные и авторитетные источники для общей фактуры. В медицинском материале можно объяснить общие показания, ограничения, подготовку и вопросы врачу только когда это уместно теме; не ставь диагноз, не назначай лечение и не обещай результат. Противопоказания не должны быть выдуманным списком: если они упоминаются, дай осторожную общую формулировку и укажи необходимость очной консультации специалиста.",
           "Не переносить примеры, отраслевые признаки, терминологию, структуру и факты из других запросов. Тема про финансы, технологии, образование, недвижимость или любую иную сферу должна оставаться в своей сфере во всех разделах.",
@@ -711,7 +707,7 @@ export async function POST(request: Request) {
           "Каждый элемент mandatory_editorial_focus с required_in_publication=true обязателен: раскрой его как самостоятельный смысловой тезис или содержательный раздел. Не пересказывай редакционную команду и не копируй структуру конкурентов.",
           "Если semantic_module передан, используй его для уточнения интента, ширины запросов, тематических кластеров и полноты ответа. Не превращай классификацию семантики в видимый читателю служебный текст.",
           "Если competitor_module передан, используй выбранные выводы как обязательные темы и точки дифференциации. Не копируй формулировки, порядок разделов или позиционирование конкурентов и не считай их сведения фактами активного бренда.",
-          "После веб‑поиска кратко укажи в editorial_comment, какая независимая фактура использована и какие источники требуют редакторской проверки. В саму статью не вставляй технические ссылки или служебные оговорки, если формат не предполагает список источников.",
+          "Кратко укажи в editorial_comment, какая фактура из web_research использована и какие источники требуют редакторской проверки. В публикацию не вставляй технические ссылки и служебные оговорки, если формат не предполагает список источников.",
           `Правила выбранной интонации «${input.tone}»:`,
           ...selectedToneRules,
           ...TONE_SYSTEM_RULES,
@@ -762,10 +758,12 @@ export async function POST(request: Request) {
     // Repair only a genuinely unusable draft; formatting is sanitized below
     // and an overshoot is handled by the deterministic trim backstop.
     const needsModelCorrection = publicationCharacters(material) < Math.floor(minimumCharacters * 0.55) || !subjectCheck.passes;
-    if (needsModelCorrection) {
+    if (needsModelCorrection && budget.remainingMs() >= 5_000) {
       try {
         const correctionCall = await callAiModel<Record<string, unknown>>({
           operation: "revise_content",
+          requestTimeoutMs: budget.timeoutMs(35_000),
+          maxOutputTokensOverride: materialOutputTokenBudget(input.length, "revise_content"),
           ownerEmail: identity.email,
           brandId: input.useBrand ? input.brandId : undefined,
           schemaName: "klio_corrected_material",
@@ -830,6 +828,8 @@ export async function POST(request: Request) {
       try {
         const condenseCall = await callAiModel<Record<string, unknown>>({
           operation: "condense_overflow",
+          requestTimeoutMs: budget.timeoutMs(30_000),
+          maxOutputTokensOverride: materialOutputTokenBudget(input.length, "condense_overflow"),
           ownerEmail: identity.email,
           brandId: input.useBrand ? input.brandId : undefined,
           schemaName: "klio_condensed_material",

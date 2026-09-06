@@ -153,11 +153,13 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // not by a model-owned web tool. DeepSeek can otherwise spend minutes in
   // search/tool loops before it starts writing; a single compact digest keeps
   // the facts while making generation a single predictable model pass.
-  generate_seo_article: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 10_000, structuredOutput: true, retryable: true, useWebSearch: false },
-  generate_social_post: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 2_500, structuredOutput: true, retryable: true, useWebSearch: false },
-  generate_ad_copy: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 2_000, structuredOutput: true, retryable: true, useWebSearch: false },
-  generate_landing: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 10_000, structuredOutput: true, retryable: true, useWebSearch: false },
-  generate_quick_material: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 6_000, structuredOutput: true, retryable: true, useWebSearch: false },
+  // Preserve editorial reasoning. The route budgets for BOTH thinking and
+  // publication text (generation-budget.ts), with no automatic full replay.
+  generate_seo_article: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 16_000, structuredOutput: true, retryable: false, useWebSearch: false },
+  generate_social_post: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 16_000, structuredOutput: true, retryable: false, useWebSearch: false },
+  generate_ad_copy: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 16_000, structuredOutput: true, retryable: false, useWebSearch: false },
+  generate_landing: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 16_000, structuredOutput: true, retryable: false, useWebSearch: false },
+  generate_quick_material: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 16_000, structuredOutput: true, retryable: false, useWebSearch: false },
   // adapt_text spans 12 KLIO editor goals with very different weight
   // (proofread vs. full SEO rebuild) — the route picks reasoningEffort
   // per goal (see adaptationReasoningEffort below); this entry is the
@@ -212,7 +214,7 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // The correction/patch pass (missing keyword, off-target length, etc.):
   // always a small, targeted rewrite of an already-generated draft, never
   // a fresh full generation.
-  revise_content: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 12_000, structuredOutput: true, retryable: false, useWebSearch: false },
+  revise_content: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 16_000, structuredOutput: true, retryable: false, useWebSearch: false },
   // Reads one site (already fetched server-side by readWebsiteContext) and
   // distills it into 4 short profile fields — small output, but genuinely
   // needs judgement (what's the real positioning vs. marketing filler,
@@ -233,7 +235,7 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // length constraint, not composing new prose, so it's in nano's range;
   // a purely mechanical word-count cut (see trimOverflowBody in
   // generate/route.ts) is kept only as the fallback if this call fails.
-  condense_overflow: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 8_000, structuredOutput: true, retryable: true, useWebSearch: false },
+  condense_overflow: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 8_000, structuredOutput: true, retryable: false, useWebSearch: false },
 };
 
 // adapt_text's 14 KLIO editor goals (see app/content-plans.ts

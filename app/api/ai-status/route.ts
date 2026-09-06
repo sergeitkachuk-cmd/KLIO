@@ -6,5 +6,10 @@ import { aiConfigured } from "../_lib/ai-config";
 // or choose a model.
 export async function GET() {
   const connected = aiConfigured();
-  return Response.json({ connected }, { headers: { "Cache-Control": "no-store" } });
+  // Deployment marker: a healthy old container must not be mistaken for
+  // the release with bounded, reasoning-enabled material generation.
+  return Response.json({ connected }, { headers: {
+    "Cache-Control": "no-store",
+    "X-Klio-Ai-Release": "2026-09-06-reasoning-research-v1",
+  } });
 }

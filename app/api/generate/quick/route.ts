@@ -1,5 +1,8 @@
 import { assertGenerationQuotaAvailable, recordGeneration, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../../_lib/workspace-account";
 import { AiCallError, callAiModel } from "../../_lib/ai-router";
+import { createGenerationBudget, materialOutputTokenBudget } from "../../_lib/generation-budget";
+import { researchMaterialWeb } from "../../_lib/tavily";
+import { readWebsiteContext } from "../../_lib/website-context";
 import { aiConfigured } from "../../_lib/ai-config";
 import { publicationCharacters, bodyBudget, trimOverflowBody } from "../../_lib/text-length";
 
@@ -144,10 +147,13 @@ export async function POST(request: Request) {
       ? Math.round(payload.lengthHint)
       : undefined;
 
+    const budget = createGenerationBudget(lengthHint && lengthHint <= 2000 ? 90_000 : 150_000);
+    const grounding = Promise.all([researchMaterialWeb(prompt.slice(0, 500), []), readWebsiteContext(brand?.website || "")]);
     let brief: QuickBrief;
     try {
       const briefCall = await callAiModel<Record<string, unknown>>({
         operation: "normalize_quick_brief",
+        requestTimeoutMs: budget.timeoutMs(15_000),
         ownerEmail: identity.email,
         brandId,
         schemaName: "klio_quick_brief",
@@ -176,11 +182,14 @@ export async function POST(request: Request) {
     const minimumCharacters = Math.floor(brief.targetLength * 0.85);
     const maximumCharacters = Math.ceil(brief.targetLength * 1.15);
 
+    const [webResearch, website] = await grounding;
     let parsed: Record<string, unknown>;
     let usedModel = "";
     try {
       const materialCall = await callAiModel<Record<string, unknown>>({
         operation: "generate_quick_material",
+        requestTimeoutMs: budget.timeoutMs(brief.targetLength <= 2000 ? 60_000 : 120_000),
+        maxOutputTokensOverride: materialOutputTokenBudget(brief.targetLength, "generate_quick_material"),
         ownerEmail: identity.email,
         brandId,
         schemaName: "klio_quick_material",
@@ -196,9 +205,9 @@ export async function POST(request: Request) {
             "Когда brand_profile уместен: пиши от лица бренда («мы», «наш/наша/наше»), а не как внешний наблюдатель — запрещены формулы «на сайте компании», «данный бренд предлагает». Используй только то, что подтверждено в description/positioning/audience/advantages — ничего сверх этого не выдумывай. Поля voice/restrictions/prohibited, если заполнены, соблюдай как редакционный стиль и стоп-лист. Если задача требует фактов, которых нет в brand_profile, добавляй только проверяемую отраслевую фактуру отдельно от свойств бренда — не приписывай её бренду.",
             "Поле signature в brand_profile, если заполнено, уместно использовать в конце материала — не обязательно каждый раз, только там, где это естественно по формату.",
           ] : []),
-          "Если в задаче назван конкретный бренд, компания, продукт или сайт, выполни веб‑поиск, найди официальный сайт и реальные факты о нём. Не выдумывай функции, преимущества, характеристики или программу — пиши только на подтверждённых фактах. Если поиск не подтвердил, что это за компания или продукт, честно опирайся только на то, что подтвердилось, и отметь пробел в editorial_comment.",
-          "Любой факт из веб‑поиска обязательно отметь в editorial_comment вместе со ссылкой на источник и пометкой «найдено в вебе, требует проверки».",
-          "Не ограничивайся сайтом бренда. Для экспертного, информационного или маркетингового материала выполни веб‑поиск и по самой теме: добавь проверяемые объяснения, нюансы, критерии выбора, безопасные советы или примеры сценариев, которые делают текст полезным читателю. Общую отраслевую фактуру не выдавай за свойства бренда. Для медицинских, правовых и финансовых тем используй только авторитетные источники, не давай персональных назначений и не обещай результат.",
+          "Веб-поиск уже выполнен сервером: используй переданные web_research, website_snapshot и brand_profile. Самостоятельный поиск недоступен. Если в задаче назван конкретный бренд, не выдумывай его функции или преимущества: используй только подтверждённые сведения; пробелы отметь в editorial_comment.",
+          "Факты из web_research отметь в editorial_comment вместе со ссылкой на источник и пометкой «найдено в вебе, требует проверки».",
+          "Используй независимую фактуру из web_research для полезных объяснений, нюансов и сценариев по теме. Не приписывай общие отраслевые сведения бренду. Для медицинских, правовых и финансовых тем используй только авторитетные источники, не давай персональных назначений и не обещай результат. Если надёжных фактов нет, не выдумывай их.",
           "Материал должен быть готов к публикации сразу: конкретный, без воды, без пересказа задачи и без служебных пометок внутри текста.",
           "Пиши обычным чистым текстом для редактора: без Markdown-разметки и символов **, __, ##, >, без маркеров списков. Смысловые акценты делай короткими самостоятельными предложениями.",
           "Список, вопрос или эмодзи используй только при реальной пользе для конкретного формата и интонации — не как украшение. По умолчанию пиши без эмодзи; если формат явно предполагает лёгкий разговорный тон (например, пост для соцсетей), уместен максимум один-два по смыслу, не в каждом абзаце.",
@@ -209,6 +218,8 @@ export async function POST(request: Request) {
           user_prompt: prompt,
           inferred_brief: { format: brief.format, tone: brief.tone, topic: brief.topic, target_length: brief.targetLength },
           brand_profile: brand,
+          website_snapshot: website.status === "loaded" ? { url: website.resolvedUrl, text: website.text } : null,
+          web_research: webResearch?.results.slice(0, 5).map(({ title, url, content }) => ({ title, url, fact: content })) ?? null,
         }),
       });
       parsed = materialCall.result;
@@ -243,6 +254,8 @@ export async function POST(request: Request) {
       try {
         const condenseCall = await callAiModel<Record<string, unknown>>({
           operation: "condense_overflow",
+          requestTimeoutMs: budget.timeoutMs(30_000),
+          maxOutputTokensOverride: materialOutputTokenBudget(brief.targetLength, "condense_overflow"),
           ownerEmail: identity.email,
           brandId,
           schemaName: "klio_quick_material",

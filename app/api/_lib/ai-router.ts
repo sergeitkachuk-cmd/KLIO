@@ -32,6 +32,10 @@ export class AiCallError extends Error {
   }
 }
 
+function timeoutError() {
+  return new AiCallError("ИИ не успел подготовить ответ за отведённое время. Повторите запрос чуть позже.", 504);
+}
+
 type CallAiModelInput = {
   operation: AiOperation;
   instructions: string;
@@ -90,19 +94,22 @@ function outputText(response: unknown): { text: string; refused: boolean } {
   // content[].text (reasoning_text) — unlike OpenAI's, which leaves this
   // empty — so without filtering by item type, the loop below would grab
   // that reasoning narration instead of waiting for the final answer.
+  const parts: string[] = [];
   for (const item of output) {
     if (!item || typeof item !== "object") continue;
     const record = item as Record<string, unknown>;
     if (record.type !== "message") continue;
+    // Tool-planning commentary is not the final publication.
+    if (record.phase === "commentary") continue;
     const content = Array.isArray(record.content) ? record.content : [];
     for (const part of content) {
       if (!part || typeof part !== "object") continue;
       const partRecord = part as Record<string, unknown>;
       if (partRecord.type === "refusal") return { text: "", refused: true };
-      if (typeof partRecord.text === "string" && partRecord.text.trim()) return { text: partRecord.text.trim(), refused: false };
+      if (partRecord.type === "output_text" && typeof partRecord.text === "string") parts.push(partRecord.text);
     }
   }
-  return { text: "", refused: false };
+  return { text: parts.join("").trim(), refused: false };
 }
 
 // Compact, unbounded-safe summary of response.output for the diagnostic
@@ -209,6 +216,8 @@ async function requestOnce(params: {
   }
 
   let response: Response;
+  let responseText: string;
+  const signal = AbortSignal.timeout(params.requestTimeoutMs ?? 90_000);
   try {
     response = await fetch(PROVIDER_ENDPOINTS[provider], {
       method: "POST",
@@ -227,12 +236,13 @@ async function requestOnce(params: {
         instructions: params.instructions,
         input: params.input,
       }),
-      ...(params.requestTimeoutMs ? { signal: AbortSignal.timeout(params.requestTimeoutMs) } : {}),
+      signal,
     });
+    // fetch resolves on headers. Keep body consumption inside the same
+    // deadline/error boundary: providers may send headers then stall.
+    responseText = await response.text();
   } catch (error) {
-    if (error instanceof DOMException && error.name === "TimeoutError") {
-      throw new AiCallError("AI‑редакция не успела собрать план за отведённое время. Попробуйте ещё раз с меньшим количеством тем.", 504);
-    }
+    if (signal.aborted || (error instanceof DOMException && error.name === "TimeoutError")) throw timeoutError();
     throw new AiCallError("AI‑редакция временно недоступна.", 502);
   }
 
@@ -240,14 +250,14 @@ async function requestOnce(params: {
     throw new AiCallError("Ошибка авторизации в AI API.", response.status);
   }
   if (response.status === 429) {
-    const detail = await response.text();
+    const detail = responseText;
     const error = new AiCallError("Превышен лимит запросов к ИИ.", 429);
     (error as { transient?: boolean }).transient = true;
     console.error(`${provider} rate limited`, detail.slice(0, 500));
     throw error;
   }
   if (!response.ok) {
-    const detail = await response.text();
+    const detail = responseText;
     console.error(`${provider} request failed`, response.status, detail.slice(0, 1200));
     const transient = response.status >= 500;
     const error = new AiCallError("AI-редакция временно не ответила.", response.status);
@@ -255,9 +265,24 @@ async function requestOnce(params: {
     throw error;
   }
 
-  const body = await response.json();
+  let body;
+  try {
+    body = JSON.parse(responseText);
+  } catch {
+    throw new AiCallError("ИИ вернул некорректный ответ сервера. Повторите запрос чуть позже.", 502);
+  }
   const usage = extractUsage(body);
   const { text, refused } = outputText(body);
+  if (body.status === "incomplete" || body.status === "failed" || body.error) {
+    console.error(`${provider} incomplete response`, JSON.stringify({
+      status: body.status, incomplete_details: body.incomplete_details,
+      requestId: usage.requestId, outputTokens: usage.outputTokens,
+      output: summarizeOutputItems(body.output),
+    }));
+    const error = new AiCallError("ИИ не завершил материал. Повторите запрос чуть позже.", 502);
+    (error as { usage?: typeof usage }).usage = usage;
+    throw error;
+  }
   // From here on, every throw follows a real, billed provider response —
   // attach the usage it already cost so callAiModel's retry loop can log
   // it instead of silently discarding it (see the comment there: this
@@ -287,7 +312,8 @@ async function requestOnce(params: {
       output: diagnostic.output,
     }).slice(0, 6000));
     const error = new AiCallError("AI-редакция вернула пустой ответ.", 502);
-    (error as { transient?: boolean }).transient = true;
+    // This was already billed; replaying the same prompt hides the failure
+    // for minutes and often consumes the same budget without an answer.
     (error as { usage?: typeof usage }).usage = usage;
     throw error;
   }
@@ -351,6 +377,9 @@ export async function callAiModel<T = Record<string, unknown>>(
   const reasoningEffort = params.reasoningEffortOverride ?? config.reasoningEffort;
   const maxOutputTokens = Math.max(1, Math.min(params.maxOutputTokensOverride ?? config.maxOutputTokens, config.maxOutputTokens));
   const startedAt = Date.now();
+  // This is a budget for the whole router call, including retries/fallback,
+  // not a fresh timeout for every attempt.
+  const deadline = startedAt + Math.max(1, Math.floor(params.requestTimeoutMs ?? 90_000));
 
   let attemptModel = config.model;
   let transientRetries = 0;
@@ -362,11 +391,12 @@ export async function callAiModel<T = Record<string, unknown>>(
   // + 1 invalid-output retry, never an unbounded loop.
   for (let attempt = 0; attempt < 6; attempt += 1) {
     try {
+      if (Date.now() >= deadline) throw timeoutError();
       const outcome = await requestOnce({
         model: attemptModel,
         reasoningEffort,
         maxOutputTokens,
-        requestTimeoutMs: params.requestTimeoutMs,
+        requestTimeoutMs: Math.max(1, deadline - Date.now()),
         structuredOutput: config.structuredOutput,
         useWebSearch: config.useWebSearch,
         schemaName: params.schemaName,
@@ -445,11 +475,13 @@ export async function callAiModel<T = Record<string, unknown>>(
       const isAuthOrConfig = error instanceof AiCallError
         && (error.status === 401 || error.status === 403 || (error.status === 503 && (error as { configError?: boolean }).configError === true));
       // Auth/config errors (bad key, missing key) never retry or fall back.
-      if (isAuthOrConfig) break;
+      if (isAuthOrConfig || (error instanceof AiCallError && error.status === 504) || Date.now() >= deadline) break;
 
       if (isTransient && config.retryable && transientRetries < 2) {
         transientRetries += 1;
-        await sleep(400 * 2 ** transientRetries);
+        const delay = 400 * 2 ** transientRetries;
+        if (Date.now() + delay >= deadline) break;
+        await sleep(delay);
         continue;
       }
 
@@ -461,7 +493,7 @@ export async function callAiModel<T = Record<string, unknown>>(
       // Exhausted this model's own retries. Nano may fall back to Luna
       // once; Luna never falls back anywhere.
       const fallback = FALLBACKS[attemptModel];
-      if (fallback && fallback !== attemptModel && !fallbackFrom) {
+      if (config.retryable && (isTransient || isInvalidOutput) && fallback && fallback !== attemptModel && !fallbackFrom) {
         fallbackFrom = attemptModel;
         attemptModel = fallback;
         continue;
