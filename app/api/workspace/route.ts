@@ -20,6 +20,8 @@ type WorkspacePayload = {
   material?: unknown;
   id?: unknown;
   archived?: unknown;
+  itemId?: unknown;
+  status?: unknown;
 };
 
 const MATERIAL_TYPES = new Set(["semantics", "competitors", "content_plan"]);
@@ -348,6 +350,45 @@ export async function POST(request: Request) {
         archivedAt: payload.archived === false ? null : sql`CURRENT_TIMESTAMP`,
       }).where(and(eq(materials.id, id), eq(materials.ownerEmail, user.email))).returning();
       if (!saved) return Response.json({ error: "Материал не найден или недоступен." }, { status: 404 });
+      return Response.json({ material: materialResponse(saved) });
+    }
+
+    // Patches one content-plan topic's status inside an already-saved
+    // material's own payload, in place — no new version row, unlike
+    // save_material. Needed because a saved plan's items live only in
+    // this row's payloadJson: sending one topic straight to the
+    // generator from a Материалы card (see sendSavedPlanTopicToGenerator)
+    // reads a detached copy of it, not the live Контент‑план module's
+    // contentPlanResult, so updateContentPlanStatus's in-memory update
+    // has nothing there to find and silently does nothing (site owner:
+    // "если я отправляю тему в генерацию из раздела Материалов... это
+    // не учитывается").
+    if (action === "update_material_item_status") {
+      const id = clean(payload.id, 100);
+      const itemId = clean(payload.itemId, 100);
+      const status = clean(payload.status, 80);
+      if (!id || !itemId || !status) return Response.json({ error: "Недостаточно данных для обновления темы." }, { status: 400 });
+      const [existing] = await db.select().from(materials).where(and(
+        eq(materials.id, id),
+        eq(materials.ownerEmail, user.email),
+      )).limit(1);
+      if (!existing) return Response.json({ error: "Материал не найден или недоступен." }, { status: 404 });
+      const parsed = parseJson(existing.payloadJson, {}) as { result?: { items?: Array<Record<string, unknown>> } };
+      const items = parsed.result && Array.isArray(parsed.result.items) ? parsed.result.items : null;
+      if (!items) return Response.json({ error: "В этом материале нет тем контент‑плана." }, { status: 400 });
+      let found = false;
+      const nextItems = items.map((item) => {
+        if (item.id !== itemId) return item;
+        found = true;
+        return { ...item, status };
+      });
+      if (!found) return Response.json({ error: "Тема не найдена в этом материале." }, { status: 404 });
+      const nextPayloadJson = JSON.stringify({ ...parsed, result: { ...parsed.result, items: nextItems } });
+      const [saved] = await db.update(materials).set({
+        payloadJson: nextPayloadJson,
+        updatedAt: sql`CURRENT_TIMESTAMP`,
+      }).where(and(eq(materials.id, id), eq(materials.ownerEmail, user.email))).returning();
+      if (!saved) return Response.json({ error: "Не удалось обновить тему." }, { status: 500 });
       return Response.json({ material: materialResponse(saved) });
     }
 

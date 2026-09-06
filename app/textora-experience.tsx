@@ -4492,6 +4492,34 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     showToast("Тема, ключи и структура переданы в генератор");
   }
 
+  // Patches one topic's status inside an already-saved content-plan
+  // material, in place — no new version. sendPlanItemToGenerator's own
+  // updateContentPlanStatus only ever touches the *live* Контент‑план
+  // module's contentPlanResult (plus its localStorage mirror); a topic
+  // read from a saved material's payload (see sendSavedPlanTopicToGenerator
+  // below) is a detached copy with no connection to that live state, so
+  // without this call the status change had nowhere to land at all (site
+  // owner: "если я отправляю тему в генерацию из раздела Материалов...
+  // это не учитывается"). Best-effort — a failure here shouldn't block
+  // the handoff to the generator, which is the part that actually matters
+  // to finish the action; only a toast marks it if the status patch
+  // itself didn't stick.
+  async function updateSavedPlanItemStatus(material: SavedWorkspaceMaterial, itemId: string, status: ContentPlanStatus) {
+    try {
+      const response = await fetch("/api/workspace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "update_material_item_status", id: material.id, itemId, status }),
+      });
+      const payload = await safeJson(response) as { error?: string; material?: SavedWorkspaceMaterial };
+      if (!response.ok || !payload.material) throw new Error(payload.error || "Не удалось обновить статус темы.");
+      const saved = payload.material;
+      setWorkspaceMaterials((current) => current.map((entry) => entry.id === material.id ? saved : entry));
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Не удалось обновить статус темы в сохранённом материале.");
+    }
+  }
+
   // Same handoff as sendPlanItemToGenerator, callable straight from a saved
   // content-plan card in Материалы — see material-content_plan below. Loading
   // the whole plan into the module first ("В модуль") is the right move for
@@ -4505,6 +4533,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       return;
     }
     sendPlanItemToGenerator(item);
+    void updateSavedPlanItemStatus(material, item.id, "В работе");
   }
 
   function exportContentPlan() {
