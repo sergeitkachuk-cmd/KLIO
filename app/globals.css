@@ -4647,6 +4647,19 @@ footer nav a {
 
 .material-plan-preview {
   display: grid;
+  /* Explicit minmax(0, 1fr), not a bare implicit column: with no
+     grid-template-columns at all, a single-column grid's one implicit
+     track defaults to auto sizing, which is allowed to grow past the
+     container to fit its widest descendant's max-content width - here,
+     a long topic title's natural (untruncated) width. That silently
+     defeated the li's own text-overflow:ellipsis (nothing was forcing
+     it to overflow in the first place) and pushed .material-plan-send
+     out past the card's own right edge, onto the neighboring material
+     card, where it wasn't visible and wasn't clickable either -
+     confirmed via getBoundingClientRect: the <li> measured 418px wide
+     against a ~350px card. Same root cause already fixed once this
+     session for .content-plan-shell. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 4px;
   margin: 0 0 9px;
   padding: 0;
@@ -4654,31 +4667,94 @@ footer nav a {
 }
 
 .material-plan-preview li {
-  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   position: relative;
   padding-left: 11px;
   color: rgba(255, 255, 255, 0.86);
   font-size: 11px;
   line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .material-plan-preview li::before {
   position: absolute;
-  top: 0;
+  top: 2px;
   left: 0;
   color: #83f3df;
   content: "•";
 }
 
+.material-plan-preview li > span {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Sends this one topic straight to the generator without opening the
+   plan module first - "просто выбрать одну тему... нет смысла гонять
+   через модули". Kept reasonably visible by default (not hover-only) so
+   it's still reachable on touch, where hover-reveal patterns don't work
+   at all. */
+.material-plan-send {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-left: auto;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+}
+
+.material-plan-send:hover,
+.material-plan-send:focus-visible {
+  border-color: rgba(216, 255, 101, 0.5);
+  color: var(--acid);
+  background: rgba(216, 255, 101, 0.12);
+}
+
+.material-plan-send svg {
+  width: 11px;
+  height: 11px;
+}
+
 .material-plan-preview .material-plan-more {
-  color: rgba(255, 255, 255, 0.62);
-  font-weight: 650;
+  padding-left: 0;
 }
 
 .material-plan-preview .material-plan-more::before {
+  display: none;
+}
+
+.material-plan-more button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: rgba(255, 255, 255, 0.62);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.material-plan-more button::before {
+  margin-right: 4px;
+  color: rgba(255, 255, 255, 0.62);
   content: "+";
+}
+
+.material-plan-more button.is-expanded::before {
+  content: "−";
+}
+
+.material-plan-more button:hover {
+  color: #fff;
 }
 
 .workspace-history-list footer {

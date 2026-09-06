@@ -2201,6 +2201,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [materialsDateRange, setMaterialsDateRange] = useState<MaterialsDateRange>("all");
   const [moduleMaterialSources, setModuleMaterialSources] = useState<Partial<Record<SavedMaterialType, string>>>({});
   const [materialSavingType, setMaterialSavingType] = useState<SavedMaterialType | null>(null);
+  // Which saved content-plan card (if any) has its full topic list expanded
+  // in the Материалы list — see the material-content_plan card below. Only
+  // one at a time; "В модуль" already exists for reopening the whole plan,
+  // this is for picking a single topic without round-tripping through it.
+  const [expandedPlanMaterialId, setExpandedPlanMaterialId] = useState<string | null>(null);
   const [archiveEditorItem, setArchiveEditorItem] = useState<GenerationArchiveItem | null>(null);
   const [archiveEditorOriginal, setArchiveEditorOriginal] = useState<GenerationArchiveItem | null>(null);
   const [archiveEditorSaving, setArchiveEditorSaving] = useState(false);
@@ -4412,6 +4417,21 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     showToast("Тема, ключи и структура переданы в генератор");
   }
 
+  // Same handoff as sendPlanItemToGenerator, callable straight from a saved
+  // content-plan card in Материалы — see material-content_plan below. Loading
+  // the whole plan into the module first ("В модуль") is the right move for
+  // bulk work; picking one topic out of a saved plan doesn't need that
+  // round trip. Guards on brand the same way openSavedMaterial does — the
+  // topic's own editorialBrief would otherwise pair with the wrong brand's
+  // profile/voice if the saved material belongs to a different one.
+  function sendSavedPlanTopicToGenerator(material: SavedWorkspaceMaterial, item: ContentPlanItem) {
+    if (material.brandId !== activeBrandId) {
+      showToast("Материал сохранён для другого бренда — сначала переключитесь на него");
+      return;
+    }
+    sendPlanItemToGenerator(item);
+  }
+
   function exportContentPlan() {
     if (!contentPlanResult.items.length) {
       showToast("Сначала соберите контент‑план");
@@ -4905,12 +4925,19 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 return <article className="material-card material-article" key={item.id}><div><span>{formatLabel}</span><small>{archiveDate(item.createdAt)}</small></div><h3>{item.title}</h3><p>{item.topic}</p><footer><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал">Удалить</button><button type="button" onClick={() => openArchiveItem(item)}>В редактор <Icon name="arrow"/></button></div></footer></article>;
               }
               const typeLabel = item.type === "content_plan" ? "Контент‑план" : item.type === "semantics" ? "Семантика" : "Анализ конкурентов";
-              const planTopics = item.type === "content_plan"
-                ? ((item.payload as { result?: { items?: Array<{ title?: unknown }> } }).result?.items || [])
-                  .map((planItem) => typeof planItem.title === "string" ? planItem.title.trim() : "")
-                  .filter(Boolean)
+              // Full items (not just title strings) so each topic can be sent
+              // straight to the generator from this card - see
+              // sendSavedPlanTopicToGenerator below. normalizeStoredContentPlanResult,
+              // not a lighter ad-hoc cast: this runs per saved content-plan
+              // card, and a malformed/legacy payload should just yield an
+              // empty list here rather than crash the materials list.
+              const planItems = item.type === "content_plan"
+                ? normalizeStoredContentPlanResult((item.payload as BrandWorkspaceSnapshot["contentPlan"])?.result)?.items || []
                 : [];
-              return <article className={`material-card material-${item.type}`} key={item.id}><div><span>{typeLabel}</span><small>{archiveDate(item.createdAt)} · версия {item.versionNumber}</small></div>{item.type === "content_plan" && planTopics.length ? <><h3 className="material-plan-heading">Темы в плане</h3><ul className="material-plan-preview">{planTopics.slice(0, 3).map((topic, index) => <li key={`${item.id}-${index}`} title={topic}>{topic}</li>)}{planTopics.length > 3 && <li className="material-plan-more">{planTopics.length - 3 === 1 ? "Ещё одна тема" : `Ещё ${planTopics.length - 3} тем`}</li>}</ul></> : <h3>{item.title}</h3>}<p>{item.type === "content_plan" && planTopics.length ? `${planTopics.length} тем · ${item.status}` : item.status}</p><footer><div><button type="button" className="material-delete" onClick={() => void deleteSavedMaterial(item)} aria-label="Удалить материал">Удалить</button><button type="button" className="material-export" onClick={() => exportSavedMaterial(item)}>Экспорт</button><button type="button" onClick={() => openSavedMaterial(item)}>В модуль <Icon name="arrow"/></button></div></footer></article>;
+              const planTopics = planItems.map((planItem) => planItem.title.trim()).filter(Boolean);
+              const planExpanded = expandedPlanMaterialId === item.id;
+              const visiblePlanItems = planExpanded ? planItems : planItems.slice(0, 3);
+              return <article className={`material-card material-${item.type}`} key={item.id}><div><span>{typeLabel}</span><small>{archiveDate(item.createdAt)} · версия {item.versionNumber}</small></div>{item.type === "content_plan" && planTopics.length ? <><h3 className="material-plan-heading">Темы в плане</h3><ul className="material-plan-preview">{visiblePlanItems.map((planItem, index) => <li key={planItem.id || `${item.id}-${index}`} title={planItem.title}><span>{planItem.title}</span><button type="button" className="material-plan-send" onClick={() => sendSavedPlanTopicToGenerator(item, planItem)} title="Отправить эту тему в генератор" aria-label={`Отправить в генератор: ${planItem.title}`}><Icon name="arrow"/></button></li>)}{planTopics.length > 3 && <li className="material-plan-more"><button type="button" className={planExpanded ? "is-expanded" : ""} onClick={() => setExpandedPlanMaterialId(planExpanded ? null : item.id)}>{planExpanded ? "Свернуть" : planTopics.length - 3 === 1 ? "Ещё одна тема" : `Ещё ${planTopics.length - 3} тем`}</button></li>}</ul></> : <h3>{item.title}</h3>}<p>{item.type === "content_plan" && planTopics.length ? `${planTopics.length} тем · ${item.status}` : item.status}</p><footer><div><button type="button" className="material-delete" onClick={() => void deleteSavedMaterial(item)} aria-label="Удалить материал">Удалить</button><button type="button" className="material-export" onClick={() => exportSavedMaterial(item)}>Экспорт</button><button type="button" onClick={() => openSavedMaterial(item)}>В модуль <Icon name="arrow"/></button></div></footer></article>;
             })}</div> : <div className="workspace-history-empty"><i>Аа</i><div><h3>{activeMaterialCount > 0 ? "Нет материалов за выбранный период" : "У этого бренда пока нет материалов"}</h3><p>{activeMaterialCount > 0 ? "Попробуйте выбрать другой период или фильтр." : "Сгенерированные тексты появятся здесь автоматически. Семантику, анализ конкурентов и контент‑планы можно зафиксировать кнопкой «Сохранить в материалы»."}</p></div></div>}
           </section>}
 
