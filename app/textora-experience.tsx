@@ -4915,12 +4915,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }, [activeModule]);
 
   if (workspace) {
-    // ±15% matches the tolerance the generator itself already accepts as a
-    // finished result server-side (see app/api/generate/route.ts) — the UI
-    // must never flag a character count the backend already considered fine.
-    const withinTarget = characters >= Math.floor(length * 0.85) && characters <= Math.ceil(length * 1.15);
-    const targetChecked = generationMode !== "example";
-
     // One-line, rule-based (not AI-generated) note for the "Начните здесь"
     // stats block — reads the same account numbers already shown in the
     // sidebar quota widget, just narrated instead of listed.
@@ -5706,13 +5700,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                       a fixed width — a wait that can run past a minute for
                       long articles was reading as hung, not slow. */}
                   <div className={`generation-progress ${busyStep === busySteps.length - 1 ? "is-indeterminate" : ""}`} aria-hidden="true"><i style={busyStep === busySteps.length - 1 ? undefined : { width: `${((busyStep + 1) / busySteps.length) * 100}%` }}/></div>
-                  <small className="generation-wait-note">Обычно 20–40 секунд; для длинных SEO‑статей с повторной проверкой — до 2 минут</small>
+                  <small className="generation-wait-note">Время подготовки зависит от объёма материала, поиска источников и редакторской проверки.</small>
                 </>}
                 </>}
               </aside>
               <article className="result-panel" ref={resultPanelRef}>
                 <div className="result-head"><div><span className={`status status-${generationMode}`}><i/>{generationMode === "ai" ? "Создано КЛИО" : generationMode === "demo" ? "Сохранённая версия" : aiConnection === "connected" ? "Ожидает генерацию" : "ИИ не подключён"}</span><small>{generatorMode === "quick" && generationMode === "example" ? `${characters.toLocaleString("ru-RU")} знаков с пробелами` : `${characters.toLocaleString("ru-RU")} / ${length.toLocaleString("ru-RU")} знаков с пробелами · ${tone}`}</small></div></div>
-                <div className={`length-control ${targetChecked ? (withinTarget ? "is-ok" : "is-warning") : "is-idle"}`}><span><i/>{targetChecked ? (withinTarget ? "Объём в цели" : "Объём отличается от заданного") : "Контроль включится после генерации"}</span><b>{targetChecked ? `${Math.round((characters / Math.max(length, 1)) * 100)}%` : "—"}</b><u><i style={{ width: `${targetChecked ? Math.min(100, (characters / Math.max(length, 1)) * 100) : 0}%` }}/></u><small>{targetChecked && !withinTarget ? "Это ориентир, а не жёсткое правило — при желании сократите или дополните текст ниже." : generatorMode === "quick" && generationMode === "example" ? "КЛИО сама подберёт подходящий объём по задаче" : `Ориентир: от ${Math.floor(length * 0.85).toLocaleString("ru-RU")} до ${Math.ceil(length * 1.15).toLocaleString("ru-RU")} знаков с пробелами`}</small></div>
                 <AutoTextarea className="result-title" rows={1} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Здесь появится заголовок материала" aria-label="Заголовок результата"/>
                 <label className="result-subtitle-field"><span>Зацепка статьи</span><AutoTextarea className="result-subtitle" rows={2} value={subtitle} onChange={(event) => setSubtitle(event.target.value)} placeholder="Здесь появится зацепка статьи" aria-label="Подзаголовок или зацепка статьи"/></label>
                 <AutoTextarea className={`result-body ${body.trim() ? "" : "is-empty"}`} value={body} onChange={(event) => setBody(event.target.value)} placeholder="Результат появится после генерации. Начните с темы и ключевых слов — дополнительные инструменты можно открыть позже." aria-label="Текст результата"/>
