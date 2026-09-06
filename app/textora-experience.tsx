@@ -4441,7 +4441,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     const structureLines = item.structure.map((section) => `• ${section}: раскрыть применительно к теме материала и опереться только на подтверждённые факты`);
     const targetFormat = contentPlanFormatToGeneratorFormat[item.format] ?? "seo";
     setFormat(targetFormat);
-    setAuthorPosition(item.intent === "Информационный" ? "expert" : "brand");
+    // Профиль бренда включён wins outright over the intent-based guess
+    // below — site owner: "если включен профиль бренда то... Авторская
+    // позиция всегда по умолчанию стоит От лица бренда". Only falls back
+    // to the informational-topic-reads-better-as-Эксперт heuristic when
+    // brand voice isn't in play at all.
+    const defaultAuthorPosition = useBrand ? "brand" : item.intent === "Информационный" ? "expert" : "brand";
+    setAuthorPosition(defaultAuthorPosition);
     setEditorialBrief({
       topic: cleanTitle,
       intent: item.intent,
@@ -4450,7 +4456,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       angle: item.angle,
       format: item.format,
       tone,
-      authorPosition: item.intent === "Информационный" ? "expert" : "brand",
+      authorPosition: defaultAuthorPosition,
       structure: item.structure,
       keyPoints: item.structure,
       keywords: uniqueText([item.primaryKeyword, ...item.lsi]),
