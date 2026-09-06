@@ -2209,6 +2209,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [archiveEditorChanges, setArchiveEditorChanges] = useState<string[]>([]);
   const [archiveEditorTone, setArchiveEditorTone] = useState("Экспертный");
   const [archiveTransformGoal, setArchiveTransformGoal] = useState<AdaptationGoal>("proofread");
+  // .archive-editor-actions sticks right under .archive-editor-head (see the
+  // effect below) instead of at the bottom of the modal — its own height
+  // needs measuring since the head is variable (title/description length),
+  // so a fixed sticky `top` in CSS alone can't track it.
+  const archiveEditorHeadRef = useRef<HTMLDivElement>(null);
+  const [archiveEditorHeadHeight, setArchiveEditorHeadHeight] = useState(0);
   const [brandCreatorOpen, setBrandCreatorOpen] = useState(false);
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -2455,6 +2461,22 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     archiveEditorItem.editorialComment !== archiveEditorOriginal.editorialComment,
     archiveEditorTone !== (archiveEditorOriginal.tone || "Экспертный"),
   ].some(Boolean));
+
+  // Measures .archive-editor-head so .archive-editor-actions (see its JSX,
+  // right below the body field) knows how far down to stick — the head's
+  // own height varies with the material's title/topic length, so a fixed
+  // CSS top wouldn't track it. ResizeObserver, not just a run-once measure
+  // on open: the head can reflow (e.g. a long title wraps to a second line)
+  // after mount too.
+  useEffect(() => {
+    if (!archiveEditorItem || !archiveEditorHeadRef.current) return;
+    const node = archiveEditorHeadRef.current;
+    const measure = () => setArchiveEditorHeadHeight(node.getBoundingClientRect().height);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [archiveEditorItem]);
 
   useEffect(() => {
     // Reads what the blocking bootstrap script in layout.tsx already
@@ -4894,7 +4916,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
           {archiveEditorItem && <div className="archive-editor-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) closeArchiveEditor(); }}>
             <section className="archive-editor-modal" role="dialog" aria-modal="true" aria-labelledby="archive-editor-title">
-              <div className="archive-editor-head">
+              <div className="archive-editor-head" ref={archiveEditorHeadRef}>
                 <div><span>Материалы / редактор КЛИО</span><h2 id="archive-editor-title">{formats.find((item) => item.id === archiveEditorItem.format)?.label || archiveEditorItem.format}</h2><p>Работайте с сохранённой статьёй отдельно: текущий черновик генератора не изменяется.</p></div>
                 <div className="archive-editor-head-actions"><span className={archiveEditorDirty ? "is-dirty" : ""}>{archiveEditorDirty ? "Есть несохранённые правки" : "Версия сохранена"}</span><button type="button" onClick={closeArchiveEditor} aria-label="Закрыть редактор">×</button></div>
               </div>
@@ -4908,6 +4930,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <article className="archive-editor-document">
                   <label><span>Заголовок материала</span><AutoTextarea className="archive-editor-title" rows={1} value={archiveEditorItem.title} onChange={(event) => setArchiveEditorItem((current) => current ? { ...current, title: event.target.value } : current)}/></label>
                   <label><span>Текст материала</span><AutoTextarea className="archive-editor-body" rows={16} value={archiveEditorItem.body} onChange={(event) => setArchiveEditorItem((current) => current ? { ...current, body: event.target.value } : current)}/></label>
+                  <div className="archive-editor-actions" style={{ top: archiveEditorHeadHeight }}>
+                    <button className="button ghost" type="button" onClick={copyArchiveItem}><Icon name="copy"/> Копировать</button>
+                    <button className="button ghost" type="button" onClick={() => void openPublicationDraft({ title: archiveEditorItem.title, body: archiveEditorItem.body, generationId: archiveEditorItem.id })}>В публикацию</button>
+                    <button className="button ghost" type="button" onClick={restoreArchiveOriginal} disabled={!archiveEditorDirty || archiveEditorSaving || archiveEditorBusy}>Вернуть</button>
+                    <button className="button ghost" type="button" onClick={() => void saveArchiveItem("copy")} disabled={archiveEditorSaving || archiveEditorBusy}>{archiveEditorSaving ? "Сохраняем…" : "Сохранить копию"}</button>
+                    <button className="button primary" type="button" onClick={() => void saveArchiveItem("update")} disabled={archiveEditorSaving || archiveEditorBusy || !archiveEditorDirty}>{archiveEditorSaving ? "Сохраняем…" : "Сохранить"}</button>
+                  </div>
                   <div className="archive-editor-seo">
                     <label><span className="seo-field-label"><b>SEO‑заголовок</b></span><AutoTextarea rows={1} value={archiveEditorItem.metaTitle} onChange={(event) => setArchiveEditorItem((current) => current ? { ...current, metaTitle: event.target.value } : current)}/><button type="button" className="seo-field-copy" onClick={() => copyPlainText(archiveEditorItem.metaTitle, "SEO‑заголовок")}><Icon name="copy"/> Копировать</button></label>
                     <label><span className="seo-field-label"><b>Метаописание</b></span><AutoTextarea rows={2} value={archiveEditorItem.metaDescription} onChange={(event) => setArchiveEditorItem((current) => current ? { ...current, metaDescription: event.target.value } : current)}/><button type="button" className="seo-field-copy" onClick={() => copyPlainText(archiveEditorItem.metaDescription, "Метаописание")}><Icon name="copy"/> Копировать</button></label>
@@ -4915,13 +4944,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <label className="archive-editor-comment"><span>Редакторский комментарий</span><AutoTextarea rows={3} value={archiveEditorItem.editorialComment} onChange={(event) => setArchiveEditorItem((current) => current ? { ...current, editorialComment: event.target.value } : current)}/><small>Служебное поле не копируется вместе с публикацией.</small></label>
                   {archiveEditorChanges.length > 0 && <div className="archive-editor-change-log"><span>Что изменил режим КЛИО</span><div>{archiveEditorChanges.map((item) => <p key={item}><i>✓</i>{item}</p>)}</div></div>}
                   {archiveEditorError && <p className="generation-error" role="alert">{archiveEditorError}</p>}
-                  <div className="archive-editor-actions">
-                    <button className="button ghost" type="button" onClick={copyArchiveItem}><Icon name="copy"/> Копировать</button>
-                    <button className="button ghost" type="button" onClick={() => void openPublicationDraft({ title: archiveEditorItem.title, body: archiveEditorItem.body, generationId: archiveEditorItem.id })}>В публикацию</button>
-                    <button className="button ghost" type="button" onClick={restoreArchiveOriginal} disabled={!archiveEditorDirty || archiveEditorSaving || archiveEditorBusy}>Вернуть</button>
-                    <button className="button ghost" type="button" onClick={() => void saveArchiveItem("copy")} disabled={archiveEditorSaving || archiveEditorBusy}>{archiveEditorSaving ? "Сохраняем…" : "Сохранить копию"}</button>
-                    <button className="button primary" type="button" onClick={() => void saveArchiveItem("update")} disabled={archiveEditorSaving || archiveEditorBusy || !archiveEditorDirty}>{archiveEditorSaving ? "Сохраняем…" : "Сохранить"}</button>
-                  </div>
                 </article>
                 <aside className="archive-transform-panel">
                   <span>Редакторы КЛИО</span><h3>{activeArchivePlan.title}</h3><p>{activeArchivePlan.result}. {archiveTransformGoal === "deepen" ? "КЛИО добавит только краткую проверяемую фактуру из одного серверного поиска." : "Все остальные режимы используют сохранённый материал как единственный источник фактов."}</p>

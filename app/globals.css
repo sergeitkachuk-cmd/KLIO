@@ -12182,6 +12182,18 @@ input[type="radio"] {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+  /* Without this, grid's default align-items:stretch makes both labels
+     match the taller sibling's height (Метаописание's rows={2} textarea
+     vs SEO‑заголовок's rows={1}) - the label itself grew to fill that
+     extra height, so its own "SEO‑заголовок"/"Метаописание" heading text
+     started at different Y positions between the two columns, and their
+     .seo-field-copy buttons ended up at different Y positions too (site
+     owner screenshot: "выровнены криво... начинаются не ровно", "кнопки
+     копировать... разного размера" - same root cause, the buttons were
+     never actually different sizes, just sitting at different heights so
+     they read that way). start makes both labels only as tall as their
+     own content, anchored to the same top edge. */
+  align-items: start;
 }
 
 .archive-editor-comment small {
@@ -12756,6 +12768,29 @@ input[type="radio"] {
     linear-gradient(145deg, #0a2340 0%, #082b4c 55%, #061c34 100%);
   box-shadow: 0 34px 100px rgba(0, 0, 0, 0.5), inset 0 1px rgba(255, 255, 255, 0.1);
   overscroll-behavior: contain;
+  /* This whole modal is the scroll container (not a nested inner one) —
+     without this it shows the plain native OS scrollbar (site owner:
+     "общий вертикальный ползунок скрола сделай в едином стиле с
+     сайтом"). Same treatment as .module-select-list/.brand-menu-list. */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(124, 58, 237, 0.45) transparent;
+}
+
+.archive-editor-modal::-webkit-scrollbar {
+  width: 8px;
+}
+
+.archive-editor-modal::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.archive-editor-modal::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.45);
+}
+
+.archive-editor-modal::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 58, 237, 0.65);
 }
 
 .archive-editor-modal .archive-editor-head {
@@ -12817,16 +12852,28 @@ input[type="radio"] {
   min-height: 440px;
 }
 
+/* Sticks right below .archive-editor-head (top set inline from
+   archiveEditorHeadHeight, measured in JS since the head's own height
+   varies with title/description length) instead of at the bottom of the
+   modal. Moved up in the DOM to sit right after the body field too, not
+   after SEO/comment/changelog — site owner: "перенеси под поле текста…
+   зафиксировать их, а не перемещать при скролле" (this used to be
+   sticky to the bottom only on desktop; на mobile it went static and
+   scrolled away entirely — both replaced by this one sticky-top rule,
+   which the mobile breakpoints below no longer override). The gradient
+   is flipped from the old bottom-anchored version (solid fading up from
+   below) to solid-at-top/fading-toward-bottom, since content now scrolls
+   up *from underneath* this bar instead of out from behind it. */
 .archive-editor-modal .archive-editor-actions {
   position: sticky;
   z-index: 3;
-  bottom: -21px;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
   justify-content: end;
-  padding: 14px 0 0;
-  background: linear-gradient(180deg, transparent, #061c34 28%);
+  margin-top: 4px;
+  padding: 14px 0;
+  background: linear-gradient(180deg, #061c34 82%, transparent);
 }
 
 .archive-editor-actions > button {
@@ -13134,17 +13181,16 @@ input[type="radio"] {
   }
 
   .archive-editor-modal .archive-editor-actions {
-    /* Reversed from an earlier pass that set this to position:static
-       ("stop pinning the save/copy row to the bottom of the screen") -
-       on a long saved article the row then only ever reached by scrolling
-       all the way to the end past body/SEO/comment, easy to lose track of
-       (site owner: "не делай их прокручиваемыми скролом"). Sticky (the
-       desktop behavior, inherited from the base rule) keeps it reachable
-       the whole time the editor is open instead. Two columns instead of
-       one — see the mobile button sizing (compact padding/font, wrapping
-       enabled) a bit further down, which is what actually keeps 2-up from
-       overflowing. */
-    bottom: -18px;
+    /* No position/top/bottom override here anymore — inherits sticky
+       positioning (top set inline from archiveEditorHeadHeight) from the
+       base rule on every breakpoint now, mobile included. This used to
+       force position:static ("stop pinning the save/copy row to the
+       bottom of the screen"), which meant scrolling all the way past
+       body/SEO/comment to reach it on a long article (site owner: "не
+       делай их прокручиваемыми скролом"). Two columns instead of one —
+       see the mobile button sizing (compact padding/font, wrapping
+       enabled) a bit further down, which is what actually keeps 2-up
+       from overflowing. */
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -14175,7 +14221,6 @@ input[type="radio"] {
        override here anymore) so it's reachable without scrolling past
        body/SEO/comment first — see the ≤700px block above. */
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    bottom: -14px;
     gap: 7px;
   }
 
