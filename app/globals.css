@@ -4668,7 +4668,7 @@ footer nav a {
 
 .material-plan-preview li {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   position: relative;
   padding-left: 11px;
@@ -4685,11 +4685,12 @@ footer nav a {
   content: "•";
 }
 
+/* Full title, wrapped rather than cut off with an ellipsis - a topic is
+   what the person is choosing between here, so truncating it is exactly
+   the wrong place to save a line. */
 .material-plan-preview li > span {
-  overflow: hidden;
   min-width: 0;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  padding-top: 1px;
 }
 
 /* Sends this one topic straight to the generator without opening the
@@ -14553,7 +14554,7 @@ input[type="radio"] {
   min-height: 36px;
   padding: 0 12px;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
+  border-radius: 999px;
   color: #fff;
   background: rgba(255, 255, 255, 0.1);
 }
