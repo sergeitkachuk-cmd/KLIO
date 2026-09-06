@@ -329,11 +329,12 @@ type GenerationArchiveItem = {
   tone: string;
   targetLength: number;
   imageUrl: string;
+  archivedAt: string | null;
   createdAt: string;
 };
 
 type SavedMaterialType = "semantics" | "competitors" | "content_plan";
-type MaterialsFilter = "all" | "article" | SavedMaterialType;
+type MaterialsFilter = "all" | "article" | SavedMaterialType | "archived";
 type MaterialsDateRange = "all" | "today" | "yesterday" | "week" | "month" | "lastMonth" | "quarter" | "year";
 
 const MATERIALS_DATE_RANGE_OPTIONS: { value: MaterialsDateRange; label: string }[] = [
@@ -403,6 +404,7 @@ type SavedWorkspaceMaterial = {
   payload: Record<string, unknown>;
   groupId: string;
   versionNumber: number;
+  archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -2423,6 +2425,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     () => workspaceBrands.find((item) => item.id === activeBrandId) ?? null,
     [activeBrandId, workspaceBrands],
   );
+  // Raw brand-scoped lists, archived items included — the "Архив" tab and
+  // its count need these; every other tab works off the *Live variants
+  // below instead, so an archived item doesn't linger in "Все материалы"
+  // or inflate its count (the whole point of archiving is that it stops
+  // "hanging around" there — see archiveArchiveItem/archiveSavedMaterial).
   const activeBrandArticles = useMemo(
     () => workspaceHistory.filter((item) => item.brandId === activeBrandId),
     [activeBrandId, workspaceHistory],
@@ -2431,20 +2438,41 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     () => workspaceMaterials.filter((item) => item.brandId === activeBrandId),
     [activeBrandId, workspaceMaterials],
   );
+  const activeBrandArticlesLive = useMemo(
+    () => activeBrandArticles.filter((item) => !item.archivedAt),
+    [activeBrandArticles],
+  );
+  const activeBrandSavedMaterialsLive = useMemo(
+    () => activeBrandSavedMaterials.filter((item) => !item.archivedAt),
+    [activeBrandSavedMaterials],
+  );
+  const archivedBrandArticles = useMemo(
+    () => activeBrandArticles.filter((item) => item.archivedAt),
+    [activeBrandArticles],
+  );
+  const archivedBrandSavedMaterials = useMemo(
+    () => activeBrandSavedMaterials.filter((item) => item.archivedAt),
+    [activeBrandSavedMaterials],
+  );
   const materialsFilterOptions = useMemo(() => [
-    { id: "all" as const, label: "Все материалы", count: activeBrandArticles.length + activeBrandSavedMaterials.length },
-    { id: "article" as const, label: "Статьи и тексты", count: activeBrandArticles.length },
-    { id: "content_plan" as const, label: "Контент‑планы", count: activeBrandSavedMaterials.filter((item) => item.type === "content_plan").length },
-    { id: "semantics" as const, label: "Семантика", count: activeBrandSavedMaterials.filter((item) => item.type === "semantics").length },
-    { id: "competitors" as const, label: "Анализ конкурентов", count: activeBrandSavedMaterials.filter((item) => item.type === "competitors").length },
-  ], [activeBrandArticles, activeBrandSavedMaterials]);
-  const visibleBrandArticles = (materialsFilter === "all" || materialsFilter === "article" ? activeBrandArticles : [])
+    { id: "all" as const, label: "Все материалы", count: activeBrandArticlesLive.length + activeBrandSavedMaterialsLive.length },
+    { id: "article" as const, label: "Статьи и тексты", count: activeBrandArticlesLive.length },
+    { id: "content_plan" as const, label: "Контент‑планы", count: activeBrandSavedMaterialsLive.filter((item) => item.type === "content_plan").length },
+    { id: "semantics" as const, label: "Семантика", count: activeBrandSavedMaterialsLive.filter((item) => item.type === "semantics").length },
+    { id: "competitors" as const, label: "Анализ конкурентов", count: activeBrandSavedMaterialsLive.filter((item) => item.type === "competitors").length },
+    { id: "archived" as const, label: "Архив", count: archivedBrandArticles.length + archivedBrandSavedMaterials.length },
+  ], [activeBrandArticlesLive, activeBrandSavedMaterialsLive, archivedBrandArticles, archivedBrandSavedMaterials]);
+  const visibleBrandArticles = (materialsFilter === "archived"
+    ? archivedBrandArticles
+    : materialsFilter === "all" || materialsFilter === "article" ? activeBrandArticlesLive : [])
     .filter((item) => isWithinMaterialsDateRange(item.createdAt, materialsDateRange));
-  const visibleBrandSavedMaterials = (materialsFilter === "all"
-    ? activeBrandSavedMaterials
-    : materialsFilter === "article"
-      ? []
-      : activeBrandSavedMaterials.filter((item) => item.type === materialsFilter))
+  const visibleBrandSavedMaterials = (materialsFilter === "archived"
+    ? archivedBrandSavedMaterials
+    : materialsFilter === "all"
+      ? activeBrandSavedMaterialsLive
+      : materialsFilter === "article"
+        ? []
+        : activeBrandSavedMaterialsLive.filter((item) => item.type === materialsFilter))
     .filter((item) => isWithinMaterialsDateRange(item.createdAt, materialsDateRange));
   const normalizedContentPlanQuery = contentPlanQuery.trim();
   const semanticPlanQuery = (semanticResult.primaryQuery || semanticQuery).trim();
@@ -2454,7 +2482,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     ...visibleBrandArticles.map((item) => ({ kind: "article" as const, item })),
     ...visibleBrandSavedMaterials.map((item) => ({ kind: "saved" as const, item })),
   ].sort((left, right) => new Date(right.item.createdAt).getTime() - new Date(left.item.createdAt).getTime());
-  const activeMaterialCount = activeBrandArticles.length + activeBrandSavedMaterials.length;
+  // Excludes archived items, same reasoning as materialsFilterOptions above
+  // — the header/sidebar "Материалы N" badge shouldn't count something the
+  // person specifically moved out of their way.
+  const activeMaterialCount = activeBrandArticlesLive.length + activeBrandSavedMaterialsLive.length;
   const generationProgress = Math.min(100, Math.round((workspaceAccount.generationsUsed / Math.max(workspaceAccount.generationLimit, 1)) * 100));
   const researchProgress = Math.min(100, Math.round((workspaceAccount.researchUsed / Math.max(workspaceAccount.researchLimit, 1)) * 100));
   const editorProgress = Math.min(100, Math.round((workspaceAccount.editorActionsUsed / Math.max(workspaceAccount.editorActionLimit, 1)) * 100));
@@ -4135,6 +4166,44 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     }
   }
 
+  // Reversible move out of the default Материалы list — "типа ты его
+  // использовал или опубликовал и чтобы в общем списке он не висел". No
+  // confirm() dialog: unlike delete, archiving doesn't lose anything, and
+  // the card's own "Из архива" button is right there to undo it.
+  async function archiveArchiveItem(item: GenerationArchiveItem, archived: boolean) {
+    try {
+      const response = await fetch("/api/workspace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "archive_generation", id: item.id, archived }),
+      });
+      const payload = await safeJson(response) as { error?: string; generation?: GenerationArchiveItem };
+      if (!response.ok || !payload.generation) throw new Error(payload.error || "Не удалось изменить статус материала.");
+      const saved = payload.generation;
+      setWorkspaceHistory((current) => current.map((entry) => entry.id === item.id ? saved : entry));
+      showToast(archived ? "Материал отправлен в архив" : "Материал возвращён из архива");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Не удалось изменить статус материала.");
+    }
+  }
+
+  async function archiveSavedMaterial(item: SavedWorkspaceMaterial, archived: boolean) {
+    try {
+      const response = await fetch("/api/workspace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "archive_material", id: item.id, archived }),
+      });
+      const payload = await safeJson(response) as { error?: string; material?: SavedWorkspaceMaterial };
+      if (!response.ok || !payload.material) throw new Error(payload.error || "Не удалось изменить статус материала.");
+      const saved = payload.material;
+      setWorkspaceMaterials((current) => current.map((entry) => entry.id === item.id ? saved : entry));
+      showToast(archived ? "Материал отправлен в архив" : "Материал возвращён из архива");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Не удалось изменить статус материала.");
+    }
+  }
+
   function persistContentPlan(options: {
     query?: string;
     goal?: ContentPlanGoal;
@@ -4922,7 +4991,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 // needs its own label here rather than falling back to the raw
                 // string like an actually-unrecognized value would.
                 const formatLabel = item.format === "external" ? "Добавлено вручную" : formats.find((candidate) => candidate.id === item.format)?.label || item.format;
-                return <article className="material-card material-article" key={item.id}><div><span>{formatLabel}</span><small>{archiveDate(item.createdAt)}</small></div><h3>{item.title}</h3><p>{item.topic}</p><footer><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал">Удалить</button><button type="button" onClick={() => openArchiveItem(item)}>В редактор <Icon name="arrow"/></button></div></footer></article>;
+                return <article className={`material-card material-article ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><span>{formatLabel}</span><small>{archiveDate(item.createdAt)}</small></div><h3>{item.title}</h3><p>{item.topic}</p><footer><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал">Удалить</button><button type="button" className="material-archive" onClick={() => void archiveArchiveItem(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" onClick={() => openArchiveItem(item)}>В редактор <Icon name="arrow"/></button></div></footer></article>;
               }
               const typeLabel = item.type === "content_plan" ? "Контент‑план" : item.type === "semantics" ? "Семантика" : "Анализ конкурентов";
               // Full items (not just title strings) so each topic can be sent
@@ -4937,7 +5006,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               const planTopics = planItems.map((planItem) => planItem.title.trim()).filter(Boolean);
               const planExpanded = expandedPlanMaterialId === item.id;
               const visiblePlanItems = planExpanded ? planItems : planItems.slice(0, 3);
-              return <article className={`material-card material-${item.type}`} key={item.id}><div><span>{typeLabel}</span><small>{archiveDate(item.createdAt)} · версия {item.versionNumber}</small></div>{item.type === "content_plan" && planTopics.length ? <><h3 className="material-plan-heading">Темы в плане</h3><ul className="material-plan-preview">{visiblePlanItems.map((planItem, index) => <li key={planItem.id || `${item.id}-${index}`} title={planItem.title}><span>{planItem.title}</span><button type="button" className="material-plan-send" onClick={() => sendSavedPlanTopicToGenerator(item, planItem)} title="Отправить эту тему в генератор" aria-label={`Отправить в генератор: ${planItem.title}`}><Icon name="arrow"/></button></li>)}{planTopics.length > 3 && <li className="material-plan-more"><button type="button" className={planExpanded ? "is-expanded" : ""} onClick={() => setExpandedPlanMaterialId(planExpanded ? null : item.id)}>{planExpanded ? "Свернуть" : planTopics.length - 3 === 1 ? "Ещё одна тема" : `Ещё ${planTopics.length - 3} тем`}</button></li>}</ul></> : <h3>{item.title}</h3>}<p>{item.type === "content_plan" && planTopics.length ? `${planTopics.length} тем · ${item.status}` : item.status}</p><footer><div><button type="button" className="material-delete" onClick={() => void deleteSavedMaterial(item)} aria-label="Удалить материал">Удалить</button><button type="button" className="material-export" onClick={() => exportSavedMaterial(item)}>Экспорт</button><button type="button" onClick={() => openSavedMaterial(item)}>В модуль <Icon name="arrow"/></button></div></footer></article>;
+              return <article className={`material-card material-${item.type} ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><span>{typeLabel}</span><small>{archiveDate(item.createdAt)} · версия {item.versionNumber}</small></div>{item.type === "content_plan" && planTopics.length ? <><h3 className="material-plan-heading">Темы в плане</h3><ul className="material-plan-preview">{visiblePlanItems.map((planItem, index) => <li key={planItem.id || `${item.id}-${index}`} title={planItem.title}><span>{planItem.title}</span><button type="button" className="material-plan-send" onClick={() => sendSavedPlanTopicToGenerator(item, planItem)} title="Отправить эту тему в генератор" aria-label={`Отправить в генератор: ${planItem.title}`}><Icon name="arrow"/></button></li>)}{planTopics.length > 3 && <li className="material-plan-more"><button type="button" className={planExpanded ? "is-expanded" : ""} onClick={() => setExpandedPlanMaterialId(planExpanded ? null : item.id)}>{planExpanded ? "Свернуть" : planTopics.length - 3 === 1 ? "Ещё одна тема" : `Ещё ${planTopics.length - 3} тем`}</button></li>}</ul></> : <h3>{item.title}</h3>}<p>{item.type === "content_plan" && planTopics.length ? `${planTopics.length} тем · ${item.status}` : item.status}</p><footer><div><button type="button" className="material-delete" onClick={() => void deleteSavedMaterial(item)} aria-label="Удалить материал">Удалить</button><button type="button" className="material-archive" onClick={() => void archiveSavedMaterial(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" className="material-export" onClick={() => exportSavedMaterial(item)}>Экспорт</button><button type="button" onClick={() => openSavedMaterial(item)}>В модуль <Icon name="arrow"/></button></div></footer></article>;
             })}</div> : <div className="workspace-history-empty"><i>Аа</i><div><h3>{activeMaterialCount > 0 ? "Нет материалов за выбранный период" : "У этого бренда пока нет материалов"}</h3><p>{activeMaterialCount > 0 ? "Попробуйте выбрать другой период или фильтр." : "Сгенерированные тексты появятся здесь автоматически. Семантику, анализ конкурентов и контент‑планы можно зафиксировать кнопкой «Сохранить в материалы»."}</p></div></div>}
           </section>}
 

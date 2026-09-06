@@ -4783,6 +4783,32 @@ footer nav a {
   color: #ff8a7a !important;
 }
 
+/* Reversible — unlike .material-delete, moves a card out of the default
+   Материалы list without losing it (see archiveArchiveItem/
+   archiveSavedMaterial). Shares .workspace-history-list footer button's
+   base pill styling; only the color differs, acid-green instead of the
+   delete button's red, since this isn't a destructive action. */
+.material-archive {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+.material-archive:hover {
+  color: var(--acid) !important;
+}
+
+/* Archived cards only ever show up under the "Архив" tab (every other
+   tab excludes them), so this isn't about standing out from unarchived
+   siblings in the same list - it's a quieter default read ("put away")
+   that still sharpens up on hover/interaction. */
+.material-card.is-archived {
+  opacity: 0.7;
+  transition: opacity 160ms ease;
+}
+
+.material-card.is-archived:hover {
+  opacity: 1;
+}
+
 .workspace-history-empty {
   display: flex;
   align-items: center;
@@ -20262,11 +20288,19 @@ input[type="radio"] {
   color: rgba(255, 255, 255, 0.72) !important;
 }
 
+[data-theme="light"] .workspace-history-list .material-card .material-archive {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
 [data-theme="light"] .workspace-history-list footer {
   border-top-color: rgba(15, 23, 42, 0.1);
 }
 
 [data-theme="light"] .material-delete {
+  color: rgba(13, 27, 49, 0.55) !important;
+}
+
+[data-theme="light"] .material-archive {
   color: rgba(13, 27, 49, 0.55) !important;
 }
 

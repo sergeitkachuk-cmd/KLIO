@@ -147,6 +147,11 @@ export const generations = pgTable("generations", {
   // publishing-config.ts for why publishToChannel() needs a fetchable URL
   // rather than a local path.
   imageUrl: text("image_url").notNull().default(""),
+  // Set when the person moves this out of the default Материалы list
+  // (used it, published it, or otherwise doesn't need it front and
+  // center any more) — null means not archived. Never deleted this way;
+  // archiving stays reversible, unlike delete_generation.
+  archivedAt: text("archived_at"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
   index("generations_owner_created_idx").on(table.ownerEmail, table.createdAt),
@@ -286,6 +291,8 @@ export const materials = pgTable("materials", {
   payloadJson: text("payload_json").notNull(),
   groupId: text("group_id").notNull(),
   versionNumber: integer("version_number").notNull().default(1),
+  // Same meaning as generations.archivedAt — see the comment there.
+  archivedAt: text("archived_at"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [

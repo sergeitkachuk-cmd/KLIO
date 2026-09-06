@@ -19,6 +19,7 @@ type WorkspacePayload = {
   generation?: unknown;
   material?: unknown;
   id?: unknown;
+  archived?: unknown;
 };
 
 const MATERIAL_TYPES = new Set(["semantics", "competitors", "content_plan"]);
@@ -107,6 +108,7 @@ function materialResponse(item: typeof materials.$inferSelect) {
     payload: parseJson(item.payloadJson, {}),
     groupId: item.groupId,
     versionNumber: item.versionNumber,
+    archivedAt: item.archivedAt,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
   };
@@ -323,6 +325,30 @@ export async function POST(request: Request) {
       )).returning({ id: materials.id });
       if (!deleted) return Response.json({ error: "Материал не найден или недоступен." }, { status: 404 });
       return Response.json({ ok: true, id: deleted.id });
+    }
+
+    // Reversible — moves a row out of the default Материалы list without
+    // deleting it (unlike delete_generation/delete_material above).
+    // `archived` picks the direction so one action covers both archiving
+    // and restoring.
+    if (action === "archive_generation") {
+      const id = clean(payload.id, 100);
+      if (!id) return Response.json({ error: "Не указан материал." }, { status: 400 });
+      const [saved] = await db.update(generations).set({
+        archivedAt: payload.archived === false ? null : sql`CURRENT_TIMESTAMP`,
+      }).where(and(eq(generations.id, id), eq(generations.ownerEmail, user.email))).returning();
+      if (!saved) return Response.json({ error: "Материал не найден или недоступен." }, { status: 404 });
+      return Response.json({ generation: saved });
+    }
+
+    if (action === "archive_material") {
+      const id = clean(payload.id, 100);
+      if (!id) return Response.json({ error: "Не указан материал." }, { status: 400 });
+      const [saved] = await db.update(materials).set({
+        archivedAt: payload.archived === false ? null : sql`CURRENT_TIMESTAMP`,
+      }).where(and(eq(materials.id, id), eq(materials.ownerEmail, user.email))).returning();
+      if (!saved) return Response.json({ error: "Материал не найден или недоступен." }, { status: 404 });
+      return Response.json({ material: materialResponse(saved) });
     }
 
     return Response.json({ error: "Неизвестное действие кабинета." }, { status: 400 });
