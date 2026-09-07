@@ -46,6 +46,16 @@ function formatNumber(value: number): string {
   return value.toLocaleString("ru-RU");
 }
 
+function formatDuration(value: unknown): string {
+  const milliseconds = num(value);
+  if (milliseconds < 1_000) return `${Math.round(milliseconds)} мс`;
+  const seconds = milliseconds / 1_000;
+  if (seconds < 60) return `${seconds.toLocaleString("ru-RU", { maximumFractionDigits: 1 })} с`;
+  const minutes = Math.floor(seconds / 60);
+  const remainder = Math.round(seconds % 60);
+  return `${minutes} мин ${remainder} с`;
+}
+
 // Typed against AiOperation so adding a new operation to ai-config.ts
 // without a matching label here is a compile error, not a silent
 // snake_case fallback in the table.
@@ -114,7 +124,7 @@ export default async function AdminPage() {
     await db.delete(accounts).where(eq(accounts.email, stale.email));
   }
 
-  const [userRows, usageByUser, brandCounts, invoiceRefsByUser, transactionRefsByUser, totalsRows, last30Rows, byModelRows, byOperationRows, externalServices, paymentRows] = await Promise.all([
+  const [userRows, usageByUser, brandCounts, invoiceRefsByUser, transactionRefsByUser, totalsRows, last30Rows, byModelRows, byOperationRows, recentAiRows, externalServices, paymentRows] = await Promise.all([
     db.select().from(accounts).orderBy(desc(accounts.createdAt)),
     db.select({
       ownerEmail: aiUsage.ownerEmail,
@@ -154,7 +164,23 @@ export default async function AdminPage() {
       operation: aiUsage.operation,
       totalCostUsd: sql<number>`coalesce(sum(${aiUsage.estimatedCostUsd}), 0)`,
       totalCalls: sql<number>`count(*)`,
+      averageDurationMs: sql<number>`coalesce(avg(${aiUsage.durationMs}), 0)`,
+      maximumDurationMs: sql<number>`coalesce(max(${aiUsage.durationMs}), 0)`,
     }).from(aiUsage).groupBy(aiUsage.operation).orderBy(sql`sum(${aiUsage.estimatedCostUsd}) desc`),
+    db.select({
+      id: aiUsage.id,
+      ownerEmail: aiUsage.ownerEmail,
+      operation: aiUsage.operation,
+      model: aiUsage.model,
+      reasoningEffort: aiUsage.reasoningEffort,
+      durationMs: aiUsage.durationMs,
+      inputTokens: aiUsage.inputTokens,
+      outputTokens: aiUsage.outputTokens,
+      retryCount: aiUsage.retryCount,
+      status: aiUsage.status,
+      errorMessage: aiUsage.errorMessage,
+      createdAt: aiUsage.createdAt,
+    }).from(aiUsage).orderBy(desc(aiUsage.createdAt)).limit(30),
     getExternalServiceStatuses(),
     // Raw payment attempts (SBP/card quick-pay, not the invoice/УПД flow) —
     // exists so a stuck payment (webhook never arrived, see the delivery
@@ -265,18 +291,50 @@ export default async function AdminPage() {
       <section className="admin-block">
         <h2>Расход по операциям</h2>
         <table className="admin-table">
-          <thead><tr><th>Операция</th><th>Запросов</th><th>Расход</th></tr></thead>
+          <thead><tr><th>Операция</th><th>Запросов</th><th>Среднее время</th><th>Максимум</th><th>Расход</th></tr></thead>
           <tbody>
             {byOperationRows.map((row) => (
               <tr key={row.operation}>
                 <td>{OPERATION_LABELS[row.operation as AiOperation] ?? row.operation}</td>
                 <td>{formatNumber(num(row.totalCalls))}</td>
+                <td>{formatDuration(row.averageDurationMs)}</td>
+                <td>{formatDuration(row.maximumDurationMs)}</td>
                 <td>{formatUsd(num(row.totalCostUsd))}</td>
               </tr>
             ))}
-            {!byOperationRows.length && <tr><td colSpan={3} className="admin-empty-row">Пока нет вызовов ИИ.</td></tr>}
+            {!byOperationRows.length && <tr><td colSpan={5} className="admin-empty-row">Пока нет вызовов ИИ.</td></tr>}
           </tbody>
         </table>
+      </section>
+
+      <section className="admin-block">
+        <div className="admin-block-heading">
+          <div>
+            <h2>Последние вызовы ИИ</h2>
+            <p>Каждая строка — отдельный запрос к модели. Несколько соседних строк одного пользователя могут относиться к одной генерации: основной текст, коррекция или сокращение.</p>
+          </div>
+        </div>
+        <div className="admin-table-scroll">
+          <table className="admin-table">
+            <thead><tr><th>Время</th><th>Пользователь</th><th>Операция</th><th>Модель</th><th>Размышление</th><th>Длительность</th><th>Токены вход / выход</th><th>Статус</th><th>Ошибка</th></tr></thead>
+            <tbody>
+              {recentAiRows.map((row) => (
+                <tr key={row.id}>
+                  <td>{formatDate(row.createdAt)}</td>
+                  <td>{row.ownerEmail}</td>
+                  <td>{OPERATION_LABELS[row.operation as AiOperation] ?? row.operation}</td>
+                  <td>{row.model}</td>
+                  <td>{row.reasoningEffort}</td>
+                  <td>{formatDuration(row.durationMs)}</td>
+                  <td>{formatNumber(row.inputTokens)} / {formatNumber(row.outputTokens)}</td>
+                  <td>{row.status === "success" ? "Успешно" : `Ошибка${row.retryCount ? ` · повторов ${row.retryCount}` : ""}`}</td>
+                  <td className="admin-ai-error">{row.errorMessage || "—"}</td>
+                </tr>
+              ))}
+              {!recentAiRows.length && <tr><td colSpan={9} className="admin-empty-row">Пока нет вызовов ИИ.</td></tr>}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className="admin-block">
@@ -424,6 +482,7 @@ function AdminStyles() {
       .admin-payment-status-paid { color: #15803d; background: rgba(74, 222, 128, 0.14); font-weight: 700; }
       .admin-payment-status-refunded { color: #475569; background: rgba(148, 163, 184, 0.16); font-weight: 700; }
       .admin-payment-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+      .admin-ai-error { max-width: 320px; white-space: normal !important; overflow-wrap: anywhere; }
       .admin-empty-row { color: #9ca3af; white-space: normal; }
       .admin-table-scroll { overflow-x: auto; border: 1px solid rgba(148, 163, 184, 0.24); border-radius: 16px; scrollbar-color: #64748b transparent; scrollbar-width: thin; }
       .admin-table-scroll::-webkit-scrollbar { height: 8px; }

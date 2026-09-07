@@ -12,5 +12,6 @@ export async function GET() {
     "Cache-Control": "no-store",
     "X-Klio-Ai-Release": "2026-09-06-reasoning-research-v1",
     "X-Klio-Ui-Release": "2026-09-07-volume-control-removed",
+    "X-Klio-Admin-Release": "2026-09-07-ai-latency-visible",
   } });
 }
