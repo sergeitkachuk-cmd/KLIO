@@ -348,7 +348,7 @@ select:focus-visible {
   color: #fff;
   background: linear-gradient(115deg, rgba(18, 15, 31, 0.74), rgba(25, 19, 47, 0.49));
   box-shadow: 0 20px 70px rgba(0, 0, 0, 0.19), inset 0 1px rgba(255, 255, 255, 0.16);
-  backdrop-filter: blur(24px) saturate(155%);
+  backdrop-filter: blur(12px) saturate(155%);
   transform: translateX(-50%);
 }
 
@@ -669,7 +669,7 @@ select:focus-visible {
   border-radius: 5px 48px 5px 5px;
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.21), rgba(255, 255, 255, 0.055));
   box-shadow: 0 42px 96px rgba(0, 0, 0, 0.27), inset 0 1px rgba(255, 255, 255, 0.42);
-  backdrop-filter: blur(24px) saturate(155%);
+  backdrop-filter: blur(12px) saturate(155%);
   transform: rotate(2deg);
   animation: coverFloat 7s ease-in-out infinite;
 }
@@ -746,7 +746,7 @@ select:focus-visible {
   color: #14131b;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(237, 232, 255, 0.7));
   box-shadow: 0 24px 65px rgba(0, 0, 0, 0.22), inset 0 1px rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(10px) saturate(150%);
 }
 
 .floating-leaf small,
@@ -957,7 +957,7 @@ select:focus-visible {
     radial-gradient(circle at 100% 0%, rgba(139, 92, 246, 0.11), transparent 38%),
     linear-gradient(145deg, rgba(255, 255, 255, 0.76), rgba(246, 244, 252, 0.48));
   box-shadow: 0 24px 68px rgba(38, 27, 65, 0.08), inset 0 1px rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(22px) saturate(135%);
+  backdrop-filter: blur(11px) saturate(135%);
   transition: border-color 220ms ease, transform 220ms ease, box-shadow 220ms ease;
 }
 
@@ -1039,7 +1039,7 @@ select:focus-visible {
   border-radius: 5px 48px 5px 5px;
   background: rgba(255, 255, 255, 0.52);
   box-shadow: 0 42px 110px rgba(29, 21, 58, 0.14), inset 0 1px rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(28px) saturate(145%);
+  backdrop-filter: blur(14px) saturate(145%);
 }
 
 .showcase-brief {
@@ -1112,7 +1112,7 @@ select:focus-visible {
   border-radius: 4px 22px 4px 4px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.06));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.16);
-  backdrop-filter: blur(18px);
+  backdrop-filter: blur(9px);
 }
 
 .showcase-brand > span,
@@ -2143,7 +2143,7 @@ select:focus-visible {
   border-radius: 5px 46px 5px 5px;
   background: rgba(4, 18, 37, 0.4);
   box-shadow: 0 44px 110px rgba(3, 12, 26, 0.35), inset 0 1px rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(28px) saturate(130%);
+  backdrop-filter: blur(14px) saturate(130%);
 }
 
 .brief-panel::before {
@@ -2294,7 +2294,14 @@ select:focus-visible {
   color: #fff;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.055));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(16px);
+  /* Dropped backdrop-filter (was blur(16px)) - this rule hits every
+     text input/textarea/select in every form across the whole app, so
+     a field-heavy page (Профиль бренда, Генератор) was compositing a
+     dozen-plus separate blur layers at once, each one a candidate for
+     GPU memory pressure and, while focused/typing, a live repaint
+     target (site owner: still choppy on a tablet after the sticky-
+     header fix). A blurred backdrop is also barely perceptible on a
+     ~50px input strip to begin with - not a meaningful loss. */
   font-size: 16px;
   /* .field itself is font-weight: 610 for the caption text ("Тема
      материала" etc.) sitting right next to these in the same <label>;
@@ -2442,7 +2449,7 @@ select:focus-visible {
     radial-gradient(circle at 85% -10%, rgba(124, 58, 237, 0.4), transparent 42%),
     linear-gradient(155deg, #051a31 0%, #0c3459 55%, #041225 100%);
   box-shadow: 0 22px 55px rgba(2, 10, 22, 0.5), inset 0 1px rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(24px);
+  backdrop-filter: blur(12px);
   scrollbar-width: thin;
   scrollbar-color: rgba(124, 58, 237, 0.45) transparent;
 }
@@ -3105,7 +3112,7 @@ textarea[data-autosize="true"] {
   border-radius: 4px 38px 4px 4px;
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.78), rgba(247, 247, 252, 0.5));
   box-shadow: 0 25px 70px rgba(28, 24, 48, 0.08), inset 0 1px rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(10px);
   transition: transform 220ms ease, box-shadow 220ms ease;
 }
 
@@ -3293,7 +3300,7 @@ textarea[data-autosize="true"] {
   border-radius: 4px 40px 4px 4px;
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.045));
   box-shadow: 0 38px 80px rgba(0, 0, 0, 0.25), inset 0 1px rgba(255, 255, 255, 0.13);
-  backdrop-filter: blur(24px) saturate(145%);
+  backdrop-filter: blur(12px) saturate(145%);
 }
 
 .table-head,
@@ -3365,7 +3372,7 @@ textarea[data-autosize="true"] {
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.48);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(18px);
+  backdrop-filter: blur(9px);
 }
 
 .billing-toggle button {
@@ -3404,7 +3411,7 @@ textarea[data-autosize="true"] {
   border-radius: 4px 38px 4px 4px;
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.79), rgba(247, 247, 252, 0.48));
   box-shadow: 0 27px 75px rgba(29, 24, 52, 0.09), inset 0 1px rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(22px) saturate(135%);
+  backdrop-filter: blur(11px) saturate(135%);
 }
 
 .price-card.popular {
@@ -3662,7 +3669,7 @@ textarea[data-autosize="true"] {
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.42);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.86);
-  backdrop-filter: blur(18px);
+  backdrop-filter: blur(9px);
 }
 
 .payment-note > span {
@@ -3968,7 +3975,7 @@ textarea[data-autosize="true"] {
   height: 74px;
   background: rgba(255, 255, 255, 0.08);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(6px);
 }
 
 .magazine-photo small {
@@ -4196,7 +4203,7 @@ footer nav a {
   font-size: 13px;
   font-style: normal;
   font-weight: 700;
-  backdrop-filter: blur(14px);
+  backdrop-filter: blur(7px);
 }
 
 .workspace-account b {
@@ -4235,7 +4242,7 @@ footer nav a {
     radial-gradient(circle at 85% -10%, rgba(124, 58, 237, 0.4), transparent 42%),
     linear-gradient(155deg, #051a31 0%, #0c3459 55%, #041225 100%);
   box-shadow: 0 22px 55px rgba(2, 10, 22, 0.5), inset 0 1px rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(24px);
+  backdrop-filter: blur(12px);
 }
 
 .account-menu-list button,
@@ -5008,7 +5015,7 @@ footer nav a {
   border-radius: 18px 18px 4px 18px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.045));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(10px);
 }
 
 .workspace-stage b {
@@ -5152,7 +5159,7 @@ footer nav a {
   color: #fff;
   background: radial-gradient(circle at 90% 0%, rgba(124, 58, 237, 0.26), transparent 34%), linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
   box-shadow: 0 16px 42px rgba(3, 12, 26, 0.24), inset 0 1px rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(10px);
 }
 
 /* Base dot color is amber — meant to read as "in progress" (loading the
@@ -5217,7 +5224,7 @@ footer nav a {
   color: #fff;
   background: radial-gradient(circle at 12% 0%, rgba(124, 58, 237, 0.34), transparent 40%), linear-gradient(135deg, #1a1330, #241a3e 60%, #17112a 100%);
   box-shadow: 0 14px 36px rgba(20, 12, 40, 0.22), inset 0 1px rgba(255, 255, 255, 0.09);
-  backdrop-filter: blur(20px);
+  backdrop-filter: blur(10px);
 }
 
 .workspace-brand-pill.is-off {
@@ -5329,7 +5336,7 @@ footer nav a {
     radial-gradient(circle at 92% 3%, rgba(124, 58, 237, 0.26), transparent 32%),
     linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
   box-shadow: 0 28px 82px rgba(3, 12, 26, 0.3), inset 0 1px rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(28px) saturate(145%);
+  backdrop-filter: blur(14px) saturate(145%);
 }
 
 .semantic-search-card {
@@ -6813,7 +6820,7 @@ footer nav a {
 .competitor-actionbar {
   border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow: 0 24px 70px rgba(3, 12, 26, 0.28), inset 0 1px rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(25px) saturate(145%);
+  backdrop-filter: blur(13px) saturate(145%);
 }
 
 .competitor-setup-card {
@@ -9113,7 +9120,7 @@ footer nav a {
     radial-gradient(circle at 96% 0%, rgba(124, 58, 237, 0.26), transparent 32%),
     linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
   box-shadow: 0 28px 82px rgba(3, 12, 26, 0.3), inset 0 1px rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(28px) saturate(145%);
+  backdrop-filter: blur(14px) saturate(145%);
 }
 
 .adaptation-input-card,
@@ -9255,7 +9262,7 @@ footer nav a {
   color: rgba(255, 255, 255, 0.78);
   background: rgba(255, 255, 255, 0.05);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(18px) saturate(145%);
+  backdrop-filter: blur(9px) saturate(145%);
   text-align: left;
   cursor: pointer;
   transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
@@ -12032,7 +12039,7 @@ input[type="radio"] {
     radial-gradient(circle at 88% 0%, color-mix(in srgb, var(--module-accent) 34%, transparent), transparent 42%),
     linear-gradient(120deg, rgba(18, 15, 28, 0.94), rgba(38, 29, 53, 0.88));
   box-shadow: 0 20px 54px rgba(24, 17, 39, 0.2), inset 0 1px rgba(255, 255, 255, 0.11);
-  backdrop-filter: blur(22px) saturate(145%);
+  backdrop-filter: blur(11px) saturate(145%);
 }
 
 .workspace-module-heading span {
@@ -12094,7 +12101,7 @@ input[type="radio"] {
     radial-gradient(circle at 88% 0%, rgba(124, 58, 237, 0.36), transparent 40%),
     linear-gradient(120deg, rgba(18, 15, 28, 0.95), rgba(39, 29, 55, 0.9));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.11);
-  backdrop-filter: blur(22px) saturate(145%);
+  backdrop-filter: blur(11px) saturate(145%);
 }
 
 .brand-profile-head span {
@@ -12121,7 +12128,7 @@ input[type="radio"] {
   border-radius: 4px 38px 4px 4px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.83), rgba(244, 241, 252, 0.72));
   box-shadow: 0 24px 64px rgba(3, 17, 34, 0.22), inset 0 1px rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(28px) saturate(145%);
+  backdrop-filter: blur(14px) saturate(145%);
 }
 
 .content-plan-item-actions {
@@ -12378,7 +12385,7 @@ input[type="radio"] {
   color: #fff;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.095), rgba(124, 58, 237, 0.08));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.1), 0 10px 24px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(16px) saturate(145%);
+  backdrop-filter: blur(8px) saturate(145%);
   text-align: left;
   cursor: pointer;
 }
@@ -12605,7 +12612,7 @@ input[type="radio"] {
     radial-gradient(circle at 85% -10%, rgba(124, 58, 237, 0.4), transparent 42%),
     linear-gradient(155deg, #051a31 0%, #0c3459 55%, #041225 100%);
   box-shadow: 0 22px 55px rgba(2, 10, 22, 0.5), inset 0 1px rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(24px);
+  backdrop-filter: blur(12px);
   /* scrollbar-width: thin alone leaves Firefox's native (light grey)
      thumb/track colors - scrollbar-color is required to actually theme
      it, same treatment as .module-select-list above. Chromium/Safari
@@ -12680,7 +12687,7 @@ input[type="radio"] {
   color: #fff;
   background: rgba(255, 255, 255, 0.09);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(16px) saturate(145%);
+  backdrop-filter: blur(8px) saturate(145%);
   font-size: 11px;
   white-space: nowrap;
 }
@@ -12718,7 +12725,7 @@ input[type="radio"] {
   color: rgba(255, 255, 255, 0.78);
   background: rgba(255, 255, 255, 0.06);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(8px) saturate(140%);
   cursor: pointer;
 }
 
@@ -12854,7 +12861,7 @@ input[type="radio"] {
   color: #6b6574;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(229, 222, 244, 0.44));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.92), 0 7px 18px rgba(49, 35, 81, 0.055);
-  backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(7px) saturate(140%);
   font-size: 11px;
   font-weight: 650;
   cursor: pointer;
@@ -13478,7 +13485,7 @@ input[type="radio"] {
   display: grid;
   place-items: center;
   padding: 22px;
-  backdrop-filter: blur(14px) saturate(90%);
+  backdrop-filter: blur(7px) saturate(90%);
   /* This unconditional padding comes after the @media (max-width: 700px)
      block that sets padding: 0 for the full-bleed phone layout (see
      .archive-editor-modal's border:0/border-radius:0/min-height:100svh
@@ -13591,7 +13598,8 @@ input[type="radio"] {
   border-radius: 14px;
   color: #fff;
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.23), inset 0 1px rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(18px);
+  /* Dropped backdrop-filter (was blur(18px)) - background below is
+     97-97.5% opaque, so this bought nothing visible. */
   font-size: 15px;
   font-weight: 620;
   background: linear-gradient(120deg, rgba(4, 21, 41, 0.975), rgba(18, 43, 76, 0.97));
@@ -13606,7 +13614,7 @@ input[type="radio"] {
   border-radius: 16px;
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.105), rgba(69, 118, 170, 0.09));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.13), 0 14px 34px rgba(5, 24, 45, 0.13);
-  backdrop-filter: blur(18px) saturate(145%);
+  backdrop-filter: blur(9px) saturate(145%);
 }
 
 .generator-context-head {
@@ -13952,7 +13960,14 @@ input[type="radio"] {
     border-top: 1px solid rgba(151, 190, 234, 0.16);
     background: linear-gradient(180deg, rgba(4, 12, 24, 0.88), rgba(4, 12, 24, 0.98));
     box-shadow: 0 -14px 30px rgba(3, 15, 30, 0.35);
-    backdrop-filter: blur(18px) saturate(140%);
+    /* Dropped backdrop-filter (was blur(18px) saturate(140%)) - same
+       reasoning as .workspace-header: this bar is position: fixed at
+       the bottom of the screen for the ENTIRE duration of any scroll
+       on a phone/tablet (this is exactly the nav bar site owner's
+       phone/tablet testing scrolls past constantly), and its own
+       background is already 88-98% opaque, so the blur was mostly
+       wasted compute on the device class where GPU headroom matters
+       most. */
   }
 
   .workspace-sidebar nav::-webkit-scrollbar,
@@ -14591,7 +14606,7 @@ input[type="radio"] {
   font-size: 10px;
   font-weight: 690;
   cursor: pointer;
-  backdrop-filter: blur(16px) saturate(145%);
+  backdrop-filter: blur(8px) saturate(145%);
 }
 
 .module-material-bar button:disabled,
@@ -15338,8 +15353,8 @@ input[type="radio"] {
   border-radius: 18px;
   background: linear-gradient(135deg, rgba(8, 22, 40, 0.86), rgba(12, 31, 52, 0.78));
   box-shadow: 0 18px 40px rgba(8, 8, 26, 0.2), inset 0 1px rgba(255, 255, 255, 0.09);
-  backdrop-filter: blur(26px) saturate(160%);
-  -webkit-backdrop-filter: blur(26px) saturate(160%);
+  backdrop-filter: blur(13px) saturate(160%);
+  -webkit-backdrop-filter: blur(13px) saturate(160%);
 }
 
 .workspace-start-stats-bar > span {
@@ -15414,7 +15429,7 @@ input[type="radio"] {
     radial-gradient(circle at 88% 0%, rgba(124, 58, 237, 0.29), transparent 35%),
     linear-gradient(120deg, #04162b, #0a3155 66%, #071f38);
   box-shadow: 0 24px 64px rgba(3, 17, 34, 0.25), inset 0 1px rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(24px) saturate(145%);
+  backdrop-filter: blur(12px) saturate(145%);
 }
 
 .workspace-start-hero-copy {
