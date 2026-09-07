@@ -19,6 +19,8 @@ import type { AiOperation } from "../_lib/ai-config";
 import { createGenerationBudget, materialOutputTokenBudget } from "../_lib/generation-budget";
 import { isAiRateLimited } from "../_lib/rate-limit";
 import { publicationCharacters, bodyBudget, trimOverflowBody } from "../_lib/text-length";
+import { AiResponseError } from "../_lib/openai-response";
+import { claimAsyncJob, markAsyncJobProcessing, completeAsyncJob, failAsyncJob } from "../_lib/async-jobs";
 
 type Format = ContentFormat;
 
@@ -443,7 +445,7 @@ function missingGeography(material: GeneratedMaterial, input: ReturnType<typeof 
 }
 
 // Exact-phrase matching only makes sense for formats a search engine
-// indexes (seo, landing) — see the same condition in the POST handler,
+// indexes (seo, landing) — see the same condition in runMaterialGeneration,
 // which uses it to relax the prompt's keyword_contract for social/ads.
 function keywordMatchIsStrict(input: ReturnType<typeof normalizePayload>) {
   return input.format === "seo" || input.format === "landing";
@@ -559,6 +561,376 @@ function materialFromRecord(parsed: Record<string, unknown>): GeneratedMaterial 
   };
 }
 
+// A full material's own provider time alone can run close to two minutes
+// (createGenerationBudget below) — long enough that a hosting platform's own
+// reverse-proxy timeout can kill the connection before DeepSeek finishes,
+// surfacing to the user as a bare network failure or no response at all
+// instead of a real, readable error (see async-jobs.ts: this is exactly the
+// failure mode content-plan generation hit first, and this route's own avg/
+// max durations in the ai_usage admin table point at the same thing). Runs
+// in the background exactly like content-plan's job, with POST below only
+// claiming the job and GET /api/generate/status polling it — never one
+// long-lived HTTP request held open end to end.
+const MATERIAL_GENERATION_TIMEOUT_MS = 110_000;
+
+// Everything the AI actually does for one generation — kicked off from
+// POST below and run in the background (see runMaterialGenerationJob).
+// Throws AiCallError/AiResponseError/WorkspaceAccessError on failure; never
+// returns a Response itself, since there is no live request to answer by
+// the time most of this runs.
+async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>, ownerEmail: string) {
+  // Keep the whole job below its own UX boundary. Research and website
+  // reading happen in parallel before the single full-quality draft; any
+  // repair pass must fit inside the same deadline.
+  const budget = createGenerationBudget(input.length <= 2000 ? 75_000 : 110_000);
+  const [website, webResearch] = await Promise.all([
+    readWebsiteContext(input.useBrand ? input.brand.website : ""),
+    researchMaterialWeb(input.topic, input.geography),
+  ]);
+  const operation = FORMAT_OPERATION[input.format];
+  const formatPlan = FORMAT_PLANS[input.format];
+  const selectedToneRules = toneRules(input.tone);
+  // Exact-phrase keyword matching is a search-ranking requirement, not a
+  // writing requirement — it belongs to formats a search engine indexes
+  // (seo, landing). Forcing the same literal phrase into a social post or
+  // an ad produces the "когда говорят X, имеют в виду Y" definition-style
+  // filler sentence: technically compliant, but reads like nobody wrote it.
+  // Those formats get the topic/meaning from the phrase without quoting it.
+  const keywordMatchStrict = keywordMatchIsStrict(input);
+  const userBrief = JSON.stringify({
+    format: FORMAT_LABELS[input.format],
+    format_contract: {
+      objective: formatPlan.result,
+      plan: formatPlan.steps,
+      rules: formatPlan.aiRules,
+    },
+    topic: input.topic,
+    editorialBrief: {
+      ...input.editorialBrief,
+      topic: input.editorialBrief.topic || input.topic,
+      format: input.editorialBrief.format || FORMAT_LABELS[input.format],
+      tone: input.editorialBrief.tone || input.tone,
+      authorPosition: input.editorialBrief.authorPosition || input.authorPosition,
+      keywords: input.editorialBrief.keywords.length ? input.editorialBrief.keywords : selectedKeywords(input),
+    },
+    author_position: input.authorPosition,
+    topic_contract: {
+      primary_subject: input.topic,
+      required_subject_terms: semanticTokens(input.topic).slice(0, 5),
+      minimum_body_sections_with_subject: input.length >= 4500 ? 3 : input.length >= 1100 ? 2 : 1,
+      prohibited_substitution: "не заменять предмет запроса общей статьёй о категории, другой отрасли, выборе поставщика или абстрактном бренде",
+    },
+    keywords: input.keywords,
+    keyword_contract: keywordMatchStrict ? {
+      required_phrases: selectedKeywords(input),
+      rule: "каждую фразу использовать в body хотя бы один раз в точной или грамматически корректной форме; основной ключ — также в H1 или первых 100 словах",
+      prohibition: "не перечислять ключи подряд, не подписывать их как ключевые слова и не создавать ради них бессмысленные предложения",
+    } : {
+      required_topics: selectedKeywords(input),
+      rule: "каждая фраза — это ориентир по теме и смыслу, а не текст для вставки; узнаваемо раскрой её идею живым языком формата, без обязательного дословного вхождения",
+      prohibition: "не цитировать фразу дословно как поисковый оборот, не объяснять читателю, что означает запрос («когда говорят X, имеют в виду...», «по запросу X»), не создавать ради фразы отдельное неестественное предложение",
+    },
+    tone: input.tone,
+    tone_contract: selectedToneRules,
+    target_characters_with_spaces: input.length,
+    additional_focus: input.accent,
+    mandatory_editorial_focus: activeEditorialFocuses(input).map((item) => ({
+      label: item.label,
+      guidance: item.guidance,
+      required_in_publication: item.required,
+    })),
+    semantic_module: input.useSemantics ? input.semanticContext : null,
+    competitor_module: input.useCompetitors ? input.competitorContext : null,
+    search_demand_geography: input.geography,
+    geography_contract: input.geography.length ? {
+      purpose: "территории целевого поискового спроса и/или точки, из которых аудитория рассматривает предложение",
+      required_mentions: input.geography.slice(0, 5).map((item) => item.label),
+      prohibition: "не называть эти территории местонахождением, филиалами или зоной работы бренда без подтверждения",
+    } : null,
+    source_facts: input.useBrand ? {
+      brand_name: input.brand.name,
+      website: input.brand.website,
+      description: input.brand.description,
+      positioning: input.brand.positioning,
+      audience: input.brand.audience,
+      verified_advantages: input.brand.advantages,
+      products: input.brand.products,
+      services: input.brand.services,
+      proof: input.brand.proof,
+      geography: input.brand.geography,
+    } : null,
+    hidden_editorial_controls: input.useBrand ? {
+      voice: input.brand.voice,
+      restrictions: input.brand.restrictions,
+      prohibited_phrases: input.brand.prohibited,
+      signature: input.brand.signature,
+      vocabulary: input.brand.vocabulary,
+      default_cta: input.brand.cta,
+    } : null,
+    website_snapshot: input.useBrand && website.status === "loaded"
+      ? { url: website.resolvedUrl, text: website.text }
+      : null,
+    web_research: webResearch ? webResearch.results.slice(0, 5).map((item) => ({ title: item.title, url: item.url, fact: item.content })) : null,
+  }, null, 2);
+
+  const call = await callAiModel<Record<string, unknown>>({
+    operation,
+    maxOutputTokensOverride: materialOutputTokenBudget(input.length, operation),
+    requestTimeoutMs: budget.timeoutMs(input.length <= 2000 ? 58_000 : 92_000),
+    ownerEmail,
+    brandId: input.useBrand ? input.brandId : undefined,
+    schemaName: "klio_generated_material",
+    schema: MATERIAL_SCHEMA,
+    instructions: [
+      "Ты — старший русскоязычный редактор и контент‑маркетолог платформы КЛИО.",
+      "Создай готовый к публикации материал по брифу и верни только валидный JSON. Текст для читателя пиши обычными абзацами: без Markdown-разметки, символов **, __, ##, > и маркеров списков. Если нужен акцент, сформулируй его отдельным коротким предложением, а не разметкой.",
+      ...CORE_SYSTEM_RULES,
+      ...GENERATION_RESEARCH_RULES,
+      "Веб-исследование, если оно нужно, уже выполнено сервером и передано в поле web_research. Не запускай собственный поиск и не выдумывай факты: используй только переданные источники, профиль и снимок сайта.",
+      `Контракт выбранного формата «${formatPlan.title}» обязателен и важнее стилистической окраски:`,
+      ...formatPlan.aiRules,
+      "Тема — главный контракт материала. Сначала выдели конкретный предмет запроса, затем построй вокруг него вступление, подзаголовки, аргументацию и финал.",
+      "Перед написанием классифицируй коммуникационную задачу по формулировке темы и брифу: рассказать о конкретном бренде/продукте/услуге, дать экспертный ответ, сформировать спрос, снять возражение или привести к действию. Не выбирай автоматически формат инструкции.",
+      `Авторская позиция: ${input.authorPosition}.`,
+      ...authorPositionRules(input.authorPosition),
+      input.authorPosition === "brand"
+        ? "Это собственная публикация активного бренда. Все подтверждённые сведения о его сайте, услугах, программах, специалистах и условиях подавай изнутри бренда: «у нас», «в нашей программе», «на нашем сайте». Не описывай их от третьего лица и не ссылайся на «официальный сайт бренда» — это создаёт ложное впечатление внешней статьи. Независимую отраслевую фактуру можно излагать нейтрально, но не приписывай её бренду."
+        : "",
+      "editorialBrief — скрытое техническое задание редактора. Если он передан, используй его вопрос читателя, ракурс, интент, структуру, факты и ограничения как конкретизацию темы; не пересказывай его в публикации.",
+      "Если тема содержит название активного бренда, компании, продукта, программы или услуги, создай маркетинговый материал именно об этом предложении: раскрой его релевантность задаче аудитории, подтверждённые сильные стороны, программу или процесс и следующий шаг. Не подменяй такую тему инструкцией по выбору категории.",
+      "Если в теме назван конкретный бренд, используй только подтверждённые сведения из source_facts, website_snapshot и web_research. Если сведений недостаточно, не выдумывай функции, программу или преимущества; отметь пробелы в editorial_comment.",
+      "Профиль и сайт бренда подтверждают только сведения о самом бренде. Независимую фактуру по предмету статьи бери из переданного web_research: используй полезные объяснения, нюансы и сценарии, которые подтверждены источниками. Не заполняй объём общими словами.",
+      "Строго разделяй источники: сведения о бренде бери только из source_facts, website_snapshot или официального сайта бренда; отраслевые знания, определения и рекомендации — из авторитетных независимых источников. Не приписывай бренду найденные общие сведения и не выдавай общую отраслевую информацию за преимущество компании.",
+      "Для медицины, оздоровления, права и финансов используй только официальные и авторитетные источники для общей фактуры. В медицинском материале можно объяснить общие показания, ограничения, подготовку и вопросы врачу только когда это уместно теме; не ставь диагноз, не назначай лечение и не обещай результат. Противопоказания не должны быть выдуманным списком: если они упоминаются, дай осторожную общую формулировку и укажи необходимость очной консультации специалиста.",
+      "Не переносить примеры, отраслевые признаки, терминологию, структуру и факты из других запросов. Тема про финансы, технологии, образование, недвижимость или любую иную сферу должна оставаться в своей сфере во всех разделах.",
+      "Недопустимо упомянуть конкретный предмет только в заголовке, Title или первом абзаце, а основной текст заменить общей статьёй о категории. Для длинного материала предмет должен содержательно раскрываться минимум в трёх разделах.",
+      "Каждый элемент mandatory_editorial_focus с required_in_publication=true обязателен: раскрой его как самостоятельный смысловой тезис или содержательный раздел. Не пересказывай редакционную команду и не копируй структуру конкурентов.",
+      "Если semantic_module передан, используй его для уточнения интента, ширины запросов, тематических кластеров и полноты ответа. Не превращай классификацию семантики в видимый читателю служебный текст.",
+      "Если competitor_module передан, используй выбранные выводы как обязательные темы и точки дифференциации. Не копируй формулировки, порядок разделов или позиционирование конкурентов и не считай их сведения фактами активного бренда.",
+      "Кратко укажи в editorial_comment, какая фактура из web_research использована и какие источники требуют редакторской проверки. В публикацию не вставляй технические ссылки и служебные оговорки, если формат не предполагает список источников.",
+      `Правила выбранной интонации «${input.tone}»:`,
+      ...selectedToneRules,
+      ...TONE_SYSTEM_RULES,
+      "Не используй выражения из prohibited. Фирменную подпись добавляй только когда она уместна для выбранного формата и прямо передана в профиле.",
+      "Выбранная география описывает территорию поискового спроса и должна заметно влиять на готовый материал. Если список не пуст, естественно упомяни каждую территорию из geography_contract.required_mentions хотя бы один раз — как контекст аудитории, маршрута, спроса или выбора.",
+      "География спроса не доказывает, что бренд находится, работает или имеет филиал в этих местах. Не превращай её в факт о компании и не добавляй неподтверждённую локализацию.",
+      "Поля source_facts и hidden_editorial_controls — внутренний бриф, а не содержание публикации. Никогда не пересказывай устройство брифа, профиль бренда, описание аудитории, выбранный стиль, ключевые слова или правила формата.",
+      "Не используй мета-фразы «материал адресован», «текст говорит», «профиль бренда», «выбранный стиль», «ключевые темы» и подобные редакционные пояснения.",
+      "Факты и преимущества вплетай в тему естественно. Позиционирование можно переформулировать; не копируй его отдельным рекламным абзацем.",
+      keywordMatchStrict
+        ? "Выполни keyword_contract: каждая required_phrases должна присутствовать в body хотя бы один раз в точной или грамматически корректной форме. Не выдавай ключи списком и не комментируй SEO‑настройки. Целевой объём считается в знаках с пробелами по title, subtitle и body вместе; отклонение до 15% допустимо."
+        : "Выполни keyword_contract: required_topics задают тему и смысл материала, но это не поисковый формат — не цитируй фразу дословно и не встраивай её как поисковый оборот. Не выдавай ключи списком и не комментируй SEO‑настройки. Целевой объём считается в знаках с пробелами по title, subtitle и body вместе; отклонение до 15% допустимо.",
+      keywordMatchStrict
+        ? "Не добивай текст вариациями одного ключа. Поисковые формулировки нужны для ясного соответствия интенту, а не для плотности: при конфликте с естественностью используй грамматически корректную форму и сохрани смысл."
+        : "Ключевые фразы здесь — внутренний ориентир по теме, а не текст для вставки. Раскрывай их идею своими словами в интонации формата; не создавай предложение-определение вроде «когда говорят/ищут X, имеют в виду...» и не подписывай текст под конкретный поисковый запрос.",
+      "Материал должен добавлять собственную пользу: предметное объяснение, подтверждённые факты бренда, независимую полезную фактуру, практический вывод или решение задачи. Не пересказывай абстрактно то, что могло бы относиться к любой компании. Для длинной статьи раскрой минимум два содержательных нюанса или практических сценария помимо описания бренда.",
+      "Для медицинской тематики избегай гарантий результата, диагнозов и персональных назначений.",
+      "Структура JSON: title, subtitle, body, meta_title, meta_description, editorial_comment. subtitle — отдельная зацепка под H1, 1–2 предложения, раскрывает пользу и не повторяет заголовок. Все значения — строки.",
+      "body должен быть цельным русским текстом с абзацами и уместными подзаголовками без служебных комментариев.",
+      "editorial_comment кратко объясняет использованный ракурс, соблюдение голоса бренда и возможные места для фактчекинга; он не является частью статьи.",
+      ...FINAL_QA_RULES,
+    ].join("\n"),
+    input: `Подготовь материал по этому брифу:\n${userBrief}`,
+  });
+  let material: GeneratedMaterial = materialFromRecord(call.result);
+  let usedModel = call.model;
+
+  // ±15%, not ±5% — LLMs reliably land "close" to a target length, not
+  // exact, and hard-rejecting near-misses was discarding good articles
+  // and forcing costly full retries. Coverage badges in the UI already
+  // surface a length mismatch softly without blocking the result.
+  const minimumCharacters = Math.floor(input.length * 0.85);
+  const maximumCharacters = Math.ceil(input.length * 1.15);
+  let missingGeo = missingGeography(material, input);
+  let subjectCheck = topicCoverage(material, input);
+  let missingFocuses = missingEditorialFocuses(material, input);
+  let missingKeyPhrases = missingKeywords(material, input);
+
+  // The coverage badges already expose small misses without blocking the
+  // result. A full second article pass for a missing keyword or a 15%
+  // length drift was the main source of two-minute "small" generations.
+  // Repair only a genuinely unusable draft; formatting is sanitized below
+  // and an overshoot is handled by the deterministic trim backstop.
+  const needsModelCorrection = publicationCharacters(material) < Math.floor(minimumCharacters * 0.55) || !subjectCheck.passes;
+  if (needsModelCorrection && budget.remainingMs() >= 15_000) {
+    try {
+      const correctionCall = await callAiModel<Record<string, unknown>>({
+        operation: "revise_content",
+        requestTimeoutMs: budget.timeoutMs(20_000),
+        maxOutputTokensOverride: materialOutputTokenBudget(input.length, "revise_content"),
+        ownerEmail,
+        brandId: input.useBrand ? input.brandId : undefined,
+        schemaName: "klio_corrected_material",
+        schema: MATERIAL_SCHEMA,
+        instructions: [
+          "Ты — выпускающий редактор платформы КЛИО.",
+          "Приведи материал к заданному объёму, сохранив тему, факты, ключевые фразы, структуру и голос бренда.",
+          ...CORE_SYSTEM_RULES,
+          `Требуемый объём всего материала — title, subtitle и body вместе: ${input.length} знаков с пробелами. Допустимый диапазон: ${minimumCharacters}–${maximumCharacters}.`,
+          "Не добавляй неподтверждённые факты и не повторяй абзацы ради объёма.",
+          `Сохрани контракт формата «${formatPlan.title}»:`,
+          ...formatPlan.aiRules,
+          `Сохрани правила интонации «${input.tone}»:`,
+          ...selectedToneRules,
+          ...TONE_SYSTEM_RULES,
+          `Сохрани авторскую позицию: ${input.authorPosition}.`,
+          ...authorPositionRules(input.authorPosition),
+          "Удали весь метатекст о брифе, профиле бренда, аудитории, стиле, ключевых словах и правилах формата. Читатель должен видеть только готовую публикацию по теме.",
+          "В body, title, meta_title и meta_description не должно быть URL, доменов, Markdown-ссылок, сносок, HTML и символов # для заголовков. Если нужно сохранить источник для команды, перенеси его только в editorial_comment.",
+          !subjectCheck.passes
+            ? `Основной текст подменил или недостаточно раскрыл предмет «${input.topic}». Перестрой композицию так, чтобы конкретный предмет запроса содержательно присутствовал минимум в ${subjectCheck.requiredSections} разделах, а не только в заголовке.`
+            : `Сохрани предмет «${input.topic}» как основу всей композиции.`,
+          missingFocuses.length
+            ? `Не применены обязательные редакционные ориентиры: ${missingFocuses.map((item) => item.label).join(", ")}. Раскрой каждый как содержательный тезис или раздел без копирования конкурентов и без служебных формулировок.`
+            : "Сохрани все уже применённые редакционные ориентиры матрицы.",
+          missingKeyPhrases.length
+            ? `Не использованы выбранные ключевые фразы: ${missingKeyPhrases.join(", ")}. Естественно встрои каждую в body в точной или грамматически корректной форме; не перечисляй их подряд и не называй ключами.`
+            : "Сохрани все уже применённые ключевые фразы без переспама.",
+          missingGeo.length
+            ? `Материал не применил выбранную географию: ${missingGeo.join(", ")}. Естественно упомяни эти территории как контекст аудитории, маршрута, спроса или выбора, не называя их местонахождением бренда без подтверждения.`
+            : "Сохрани уже применённую географию спроса и не подменяй её местонахождением бренда.",
+          "Верни только валидный JSON с полями title, subtitle, body, meta_title, meta_description, editorial_comment. subtitle — самостоятельная зацепка под H1, не дубль заголовка.",
+          ...FINAL_QA_RULES,
+        ].join("\n"),
+        input: JSON.stringify({ brief: JSON.parse(userBrief), current_material: material }),
+      });
+      material = materialFromRecord(correctionCall.result);
+      usedModel = correctionCall.model;
+      missingGeo = missingGeography(material, input);
+      subjectCheck = topicCoverage(material, input);
+      missingFocuses = missingEditorialFocuses(material, input);
+      missingKeyPhrases = missingKeywords(material, input);
+    } catch (error) {
+      // The correction pass is best-effort — if it fails, fall through
+      // with the original material rather than losing the whole result.
+      console.error("Generation correction pass failed", error);
+    }
+  }
+
+  // Backstop for a case the correction pass sometimes still misses: a
+  // genuine overshoot (e.g. 130% of target). Rather than ship a too-long
+  // article and then tell the client in the UI that "the result doesn't
+  // match the brief" — which reads as KLIO admitting a failed generation
+  // — shrink it here before the client ever sees it. First choice is a
+  // cheap nano pass that actually reads the text and condenses it
+  // without breaking an argument that continues into the next sentence
+  // (a blind word-count cut can't tell the difference between "the end
+  // of a thought" and "a sentence boundary"). A purely mechanical trim
+  // is only the fallback if that call itself fails — always leave the
+  // client with *something* rather than an error.
+  if (publicationCharacters(material) > maximumCharacters && budget.remainingMs() >= 12_000) {
+    try {
+      const condenseCall = await callAiModel<Record<string, unknown>>({
+        operation: "condense_overflow",
+        requestTimeoutMs: budget.timeoutMs(15_000),
+        maxOutputTokensOverride: materialOutputTokenBudget(input.length, "condense_overflow"),
+        ownerEmail,
+        brandId: input.useBrand ? input.brandId : undefined,
+        schemaName: "klio_condensed_material",
+        schema: MATERIAL_SCHEMA,
+        instructions: [
+          "Ты сокращаешь уже готовую статью до целевого объёма, не переписывая её заново.",
+          `Целевой объём всего материала — title, subtitle и body вместе: ${input.length} знаков с пробелами, допустимо от ${minimumCharacters} до ${maximumCharacters}.`,
+          "Сокращай за счёт наименее важного: повторов, избыточных примеров, лишних деталей. Не обрывай мысль или аргумент на середине — если предложение продолжает мысль из предыдущего, сокращай их вместе или не трогай.",
+          "Не добавляй новые факты, не меняй заголовок, тему, ключевые фразы и структуру подзаголовков без необходимости.",
+          "Сохрани subtitle, meta_title, meta_description и editorial_comment по смыслу как есть (можно чуть скорректировать под новый объём).",
+          "Верни только валидный JSON с полями title, subtitle, body, meta_title, meta_description, editorial_comment.",
+        ].join("\n"),
+        input: JSON.stringify({ target_characters_with_spaces: input.length, current_material: material }),
+      });
+      material = materialFromRecord(condenseCall.result);
+      usedModel = condenseCall.model;
+    } catch (error) {
+      console.error("Nano condense pass failed, falling back to mechanical trim", error);
+      material = { ...material, body: trimOverflowBody(material.body, bodyBudget(material, input.length)) };
+    }
+
+    // The condense pass above is a model call, not a guarantee — it can
+    // itself land over budget (a cheap nano model asked to hit an exact
+    // character count won't always get there in one shot, especially
+    // shrinking a long draft down to a short social-post-scale target).
+    // Nothing after this point re-checked the result, so an overshoot
+    // that survived the condense call shipped to the client unchanged
+    // (site owner: a 1 050-target post came back at 1 380, 131%). Treat
+    // the mechanical trim as the hard floor no draft can end up above,
+    // regardless of what the AI pass produced.
+  }
+
+  // If there was too little time for an AI condense pass, or it still
+  // overshot, enforce the upper bound locally without spending another
+  // minute on the provider.
+  if (publicationCharacters(material) > maximumCharacters) {
+    material = { ...material, body: trimOverflowBody(material.body, bodyBudget(material, input.length)) };
+  }
+  missingGeo = missingGeography(material, input);
+  subjectCheck = topicCoverage(material, input);
+  missingFocuses = missingEditorialFocuses(material, input);
+  missingKeyPhrases = missingKeywords(material, input);
+
+  // Public copy must remain publication-ready even when a model correction
+  // misses a formatting instruction. Editorial comments keep source notes;
+  // published fields never expose URLs or Markdown syntax.
+  material = {
+    ...material,
+    title: sanitizePublicationText(material.title),
+    body: sanitizePublicationText(material.body),
+    subtitle: sanitizePublicationText(material.subtitle),
+    metaTitle: sanitizePublicationText(material.metaTitle),
+    metaDescription: sanitizePublicationText(material.metaDescription),
+  };
+
+  // Word count, geography, editorial-focus and keyword coverage are all
+  // soft targets: the correction pass above already tried once to fix
+  // them, and the client already renders a per-criterion coverage badge
+  // (see coverageSummary below) instead of a pass/fail wall. Hard-
+  // rejecting near-misses here used to discard a perfectly usable
+  // article and force a full, costly retry — sometimes repeatedly.
+  // Meta-leakage (internal brief text visible in the article) and a
+  // hijacked topic are real defects, not just imprecision, so those two
+  // still block.
+  if (hasMetaLeakage(material.body)) {
+    throw new AiResponseError("AI‑редакция обнаружила в тексте служебные формулировки. Материал не принят — запустите генерацию ещё раз.", 422);
+  }
+
+  if (!subjectCheck.passes) {
+    throw new AiResponseError(`AI‑редакция не раскрыла предмет темы «${input.topic}» в основном тексте. Материал не принят — запустите генерацию ещё раз.`, 422);
+  }
+
+  const usage = await recordGeneration({
+    brandId: input.brandId,
+    format: input.format,
+    topic: input.topic,
+    title: material.title,
+    body: material.body,
+    subtitle: material.subtitle,
+    metaTitle: material.metaTitle,
+    metaDescription: material.metaDescription,
+    editorialComment: material.editorialComment,
+    keywords: input.keywords,
+    tone: input.tone,
+    targetLength: input.length,
+  });
+  return { material, mode: "ai" as const, model: usedModel, coverage: coverageSummary(material, input), sources: { website: website.status, geography: input.geography.map((item) => item.label) }, usage };
+}
+
+// Runs the generation in the background and writes the outcome to the job
+// row — never thrown/awaited by the route handler that kicks it off. See
+// async-jobs.ts and runContentPlanJob in content-plan/route.ts for the same
+// pattern already proven there.
+async function runMaterialGenerationJob(jobId: string, input: ReturnType<typeof normalizePayload>, ownerEmail: string) {
+  try {
+    await markAsyncJobProcessing(jobId);
+    const payload = await runMaterialGeneration(input, ownerEmail);
+    await completeAsyncJob(jobId, payload);
+  } catch (error) {
+    const message = error instanceof WorkspaceAccessError || error instanceof AiResponseError || error instanceof AiCallError
+      ? error.message
+      : "Не удалось сформировать материал. Проверьте поля и повторите попытку.";
+    if (!(error instanceof WorkspaceAccessError)) console.error("generate background job failed", error);
+    await failAsyncJob(jobId, message);
+  }
+}
+
 export async function POST(request: Request) {
   try {
     if (isAiRateLimited(request, "generate", 4)) return Response.json({ error: "Слишком много запусков подряд. Подождите минуту и повторите." }, { status: 429 });
@@ -569,6 +941,9 @@ export async function POST(request: Request) {
       return Response.json({ error: "Укажите тему материала." }, { status: 400 });
     }
 
+    // Checked up front, synchronously, so an account that's already over its
+    // limit gets a clean 429 immediately instead of a job that's created
+    // only to fail a few seconds later.
     await assertGenerationQuotaAvailable();
 
     if (!aiConfigured()) {
@@ -578,360 +953,16 @@ export async function POST(request: Request) {
       }, { status: 503 });
     }
 
-    // Keep the whole request below the two-minute UX boundary. Research and
-    // website reading happen in parallel before the single full-quality draft;
-    // any repair pass must fit inside the same deadline.
-    const budget = createGenerationBudget(input.length <= 2000 ? 75_000 : 110_000);
-    const [identity, website, webResearch] = await Promise.all([
-      workspaceIdentity(),
-      readWebsiteContext(input.useBrand ? input.brand.website : ""),
-      researchMaterialWeb(input.topic, input.geography),
-    ]);
-    const operation = FORMAT_OPERATION[input.format];
-    const formatPlan = FORMAT_PLANS[input.format];
-    const selectedToneRules = toneRules(input.tone);
-    // Exact-phrase keyword matching is a search-ranking requirement, not a
-    // writing requirement — it belongs to formats a search engine indexes
-    // (seo, landing). Forcing the same literal phrase into a social post or
-    // an ad produces the "когда говорят X, имеют в виду Y" definition-style
-    // filler sentence: technically compliant, but reads like nobody wrote it.
-    // Those formats get the topic/meaning from the phrase without quoting it.
-    const keywordMatchStrict = keywordMatchIsStrict(input);
-    const userBrief = JSON.stringify({
-      format: FORMAT_LABELS[input.format],
-      format_contract: {
-        objective: formatPlan.result,
-        plan: formatPlan.steps,
-        rules: formatPlan.aiRules,
-      },
-      topic: input.topic,
-      editorialBrief: {
-        ...input.editorialBrief,
-        topic: input.editorialBrief.topic || input.topic,
-        format: input.editorialBrief.format || FORMAT_LABELS[input.format],
-        tone: input.editorialBrief.tone || input.tone,
-        authorPosition: input.editorialBrief.authorPosition || input.authorPosition,
-        keywords: input.editorialBrief.keywords.length ? input.editorialBrief.keywords : selectedKeywords(input),
-      },
-      author_position: input.authorPosition,
-      topic_contract: {
-        primary_subject: input.topic,
-        required_subject_terms: semanticTokens(input.topic).slice(0, 5),
-        minimum_body_sections_with_subject: input.length >= 4500 ? 3 : input.length >= 1100 ? 2 : 1,
-        prohibited_substitution: "не заменять предмет запроса общей статьёй о категории, другой отрасли, выборе поставщика или абстрактном бренде",
-      },
-      keywords: input.keywords,
-      keyword_contract: keywordMatchStrict ? {
-        required_phrases: selectedKeywords(input),
-        rule: "каждую фразу использовать в body хотя бы один раз в точной или грамматически корректной форме; основной ключ — также в H1 или первых 100 словах",
-        prohibition: "не перечислять ключи подряд, не подписывать их как ключевые слова и не создавать ради них бессмысленные предложения",
-      } : {
-        required_topics: selectedKeywords(input),
-        rule: "каждая фраза — это ориентир по теме и смыслу, а не текст для вставки; узнаваемо раскрой её идею живым языком формата, без обязательного дословного вхождения",
-        prohibition: "не цитировать фразу дословно как поисковый оборот, не объяснять читателю, что означает запрос («когда говорят X, имеют в виду...», «по запросу X»), не создавать ради фразы отдельное неестественное предложение",
-      },
-      tone: input.tone,
-      tone_contract: selectedToneRules,
-      target_characters_with_spaces: input.length,
-      additional_focus: input.accent,
-      mandatory_editorial_focus: activeEditorialFocuses(input).map((item) => ({
-        label: item.label,
-        guidance: item.guidance,
-        required_in_publication: item.required,
-      })),
-      semantic_module: input.useSemantics ? input.semanticContext : null,
-      competitor_module: input.useCompetitors ? input.competitorContext : null,
-      search_demand_geography: input.geography,
-      geography_contract: input.geography.length ? {
-        purpose: "территории целевого поискового спроса и/или точки, из которых аудитория рассматривает предложение",
-        required_mentions: input.geography.slice(0, 5).map((item) => item.label),
-        prohibition: "не называть эти территории местонахождением, филиалами или зоной работы бренда без подтверждения",
-      } : null,
-      source_facts: input.useBrand ? {
-        brand_name: input.brand.name,
-        website: input.brand.website,
-        description: input.brand.description,
-        positioning: input.brand.positioning,
-        audience: input.brand.audience,
-        verified_advantages: input.brand.advantages,
-        products: input.brand.products,
-        services: input.brand.services,
-        proof: input.brand.proof,
-        geography: input.brand.geography,
-      } : null,
-      hidden_editorial_controls: input.useBrand ? {
-        voice: input.brand.voice,
-        restrictions: input.brand.restrictions,
-        prohibited_phrases: input.brand.prohibited,
-        signature: input.brand.signature,
-        vocabulary: input.brand.vocabulary,
-        default_cta: input.brand.cta,
-      } : null,
-      website_snapshot: input.useBrand && website.status === "loaded"
-        ? { url: website.resolvedUrl, text: website.text }
-        : null,
-      web_research: webResearch ? webResearch.results.slice(0, 5).map((item) => ({ title: item.title, url: item.url, fact: item.content })) : null,
-    }, null, 2);
-
-    let material: GeneratedMaterial;
-    let usedModel = "";
-    try {
-      const call = await callAiModel<Record<string, unknown>>({
-        operation,
-        maxOutputTokensOverride: materialOutputTokenBudget(input.length, operation),
-        requestTimeoutMs: budget.timeoutMs(input.length <= 2000 ? 58_000 : 92_000),
-        ownerEmail: identity.email,
-        brandId: input.useBrand ? input.brandId : undefined,
-        schemaName: "klio_generated_material",
-        schema: MATERIAL_SCHEMA,
-        instructions: [
-          "Ты — старший русскоязычный редактор и контент‑маркетолог платформы КЛИО.",
-          "Создай готовый к публикации материал по брифу и верни только валидный JSON. Текст для читателя пиши обычными абзацами: без Markdown-разметки, символов **, __, ##, > и маркеров списков. Если нужен акцент, сформулируй его отдельным коротким предложением, а не разметкой.",
-          ...CORE_SYSTEM_RULES,
-          ...GENERATION_RESEARCH_RULES,
-          "Веб-исследование, если оно нужно, уже выполнено сервером и передано в поле web_research. Не запускай собственный поиск и не выдумывай факты: используй только переданные источники, профиль и снимок сайта.",
-          `Контракт выбранного формата «${formatPlan.title}» обязателен и важнее стилистической окраски:`,
-          ...formatPlan.aiRules,
-          "Тема — главный контракт материала. Сначала выдели конкретный предмет запроса, затем построй вокруг него вступление, подзаголовки, аргументацию и финал.",
-          "Перед написанием классифицируй коммуникационную задачу по формулировке темы и брифу: рассказать о конкретном бренде/продукте/услуге, дать экспертный ответ, сформировать спрос, снять возражение или привести к действию. Не выбирай автоматически формат инструкции.",
-          `Авторская позиция: ${input.authorPosition}.`,
-          ...authorPositionRules(input.authorPosition),
-          input.authorPosition === "brand"
-            ? "Это собственная публикация активного бренда. Все подтверждённые сведения о его сайте, услугах, программах, специалистах и условиях подавай изнутри бренда: «у нас», «в нашей программе», «на нашем сайте». Не описывай их от третьего лица и не ссылайся на «официальный сайт бренда» — это создаёт ложное впечатление внешней статьи. Независимую отраслевую фактуру можно излагать нейтрально, но не приписывай её бренду."
-            : "",
-          "editorialBrief — скрытое техническое задание редактора. Если он передан, используй его вопрос читателя, ракурс, интент, структуру, факты и ограничения как конкретизацию темы; не пересказывай его в публикации.",
-          "Если тема содержит название активного бренда, компании, продукта, программы или услуги, создай маркетинговый материал именно об этом предложении: раскрой его релевантность задаче аудитории, подтверждённые сильные стороны, программу или процесс и следующий шаг. Не подменяй такую тему инструкцией по выбору категории.",
-          "Если в теме назван конкретный бренд, используй только подтверждённые сведения из source_facts, website_snapshot и web_research. Если сведений недостаточно, не выдумывай функции, программу или преимущества; отметь пробелы в editorial_comment.",
-          "Профиль и сайт бренда подтверждают только сведения о самом бренде. Независимую фактуру по предмету статьи бери из переданного web_research: используй полезные объяснения, нюансы и сценарии, которые подтверждены источниками. Не заполняй объём общими словами.",
-          "Строго разделяй источники: сведения о бренде бери только из source_facts, website_snapshot или официального сайта бренда; отраслевые знания, определения и рекомендации — из авторитетных независимых источников. Не приписывай бренду найденные общие сведения и не выдавай общую отраслевую информацию за преимущество компании.",
-          "Для медицины, оздоровления, права и финансов используй только официальные и авторитетные источники для общей фактуры. В медицинском материале можно объяснить общие показания, ограничения, подготовку и вопросы врачу только когда это уместно теме; не ставь диагноз, не назначай лечение и не обещай результат. Противопоказания не должны быть выдуманным списком: если они упоминаются, дай осторожную общую формулировку и укажи необходимость очной консультации специалиста.",
-          "Не переносить примеры, отраслевые признаки, терминологию, структуру и факты из других запросов. Тема про финансы, технологии, образование, недвижимость или любую иную сферу должна оставаться в своей сфере во всех разделах.",
-          "Недопустимо упомянуть конкретный предмет только в заголовке, Title или первом абзаце, а основной текст заменить общей статьёй о категории. Для длинного материала предмет должен содержательно раскрываться минимум в трёх разделах.",
-          "Каждый элемент mandatory_editorial_focus с required_in_publication=true обязателен: раскрой его как самостоятельный смысловой тезис или содержательный раздел. Не пересказывай редакционную команду и не копируй структуру конкурентов.",
-          "Если semantic_module передан, используй его для уточнения интента, ширины запросов, тематических кластеров и полноты ответа. Не превращай классификацию семантики в видимый читателю служебный текст.",
-          "Если competitor_module передан, используй выбранные выводы как обязательные темы и точки дифференциации. Не копируй формулировки, порядок разделов или позиционирование конкурентов и не считай их сведения фактами активного бренда.",
-          "Кратко укажи в editorial_comment, какая фактура из web_research использована и какие источники требуют редакторской проверки. В публикацию не вставляй технические ссылки и служебные оговорки, если формат не предполагает список источников.",
-          `Правила выбранной интонации «${input.tone}»:`,
-          ...selectedToneRules,
-          ...TONE_SYSTEM_RULES,
-          "Не используй выражения из prohibited. Фирменную подпись добавляй только когда она уместна для выбранного формата и прямо передана в профиле.",
-          "Выбранная география описывает территорию поискового спроса и должна заметно влиять на готовый материал. Если список не пуст, естественно упомяни каждую территорию из geography_contract.required_mentions хотя бы один раз — как контекст аудитории, маршрута, спроса или выбора.",
-          "География спроса не доказывает, что бренд находится, работает или имеет филиал в этих местах. Не превращай её в факт о компании и не добавляй неподтверждённую локализацию.",
-          "Поля source_facts и hidden_editorial_controls — внутренний бриф, а не содержание публикации. Никогда не пересказывай устройство брифа, профиль бренда, описание аудитории, выбранный стиль, ключевые слова или правила формата.",
-          "Не используй мета-фразы «материал адресован», «текст говорит», «профиль бренда», «выбранный стиль», «ключевые темы» и подобные редакционные пояснения.",
-          "Факты и преимущества вплетай в тему естественно. Позиционирование можно переформулировать; не копируй его отдельным рекламным абзацем.",
-          keywordMatchStrict
-            ? "Выполни keyword_contract: каждая required_phrases должна присутствовать в body хотя бы один раз в точной или грамматически корректной форме. Не выдавай ключи списком и не комментируй SEO‑настройки. Целевой объём считается в знаках с пробелами по title, subtitle и body вместе; отклонение до 15% допустимо."
-            : "Выполни keyword_contract: required_topics задают тему и смысл материала, но это не поисковый формат — не цитируй фразу дословно и не встраивай её как поисковый оборот. Не выдавай ключи списком и не комментируй SEO‑настройки. Целевой объём считается в знаках с пробелами по title, subtitle и body вместе; отклонение до 15% допустимо.",
-          keywordMatchStrict
-            ? "Не добивай текст вариациями одного ключа. Поисковые формулировки нужны для ясного соответствия интенту, а не для плотности: при конфликте с естественностью используй грамматически корректную форму и сохрани смысл."
-            : "Ключевые фразы здесь — внутренний ориентир по теме, а не текст для вставки. Раскрывай их идею своими словами в интонации формата; не создавай предложение-определение вроде «когда говорят/ищут X, имеют в виду...» и не подписывай текст под конкретный поисковый запрос.",
-          "Материал должен добавлять собственную пользу: предметное объяснение, подтверждённые факты бренда, независимую полезную фактуру, практический вывод или решение задачи. Не пересказывай абстрактно то, что могло бы относиться к любой компании. Для длинной статьи раскрой минимум два содержательных нюанса или практических сценария помимо описания бренда.",
-          "Для медицинской тематики избегай гарантий результата, диагнозов и персональных назначений.",
-          "Структура JSON: title, subtitle, body, meta_title, meta_description, editorial_comment. subtitle — отдельная зацепка под H1, 1–2 предложения, раскрывает пользу и не повторяет заголовок. Все значения — строки.",
-          "body должен быть цельным русским текстом с абзацами и уместными подзаголовками без служебных комментариев.",
-          "editorial_comment кратко объясняет использованный ракурс, соблюдение голоса бренда и возможные места для фактчекинга; он не является частью статьи.",
-          ...FINAL_QA_RULES,
-        ].join("\n"),
-        input: `Подготовь материал по этому брифу:\n${userBrief}`,
-      });
-      material = materialFromRecord(call.result);
-      usedModel = call.model;
-    } catch (error) {
-      if (error instanceof AiCallError) {
-        return Response.json({ error: error.message }, { status: error.status });
-      }
-      throw error;
-    }
-
-    // ±15%, not ±5% — LLMs reliably land "close" to a target length, not
-    // exact, and hard-rejecting near-misses was discarding good articles
-    // and forcing costly full retries. Coverage badges in the UI already
-    // surface a length mismatch softly without blocking the result.
-    const minimumCharacters = Math.floor(input.length * 0.85);
-    const maximumCharacters = Math.ceil(input.length * 1.15);
-    let missingGeo = missingGeography(material, input);
-    let subjectCheck = topicCoverage(material, input);
-    let missingFocuses = missingEditorialFocuses(material, input);
-    let missingKeyPhrases = missingKeywords(material, input);
-
-    // The coverage badges already expose small misses without blocking the
-    // result. A full second article pass for a missing keyword or a 15%
-    // length drift was the main source of two-minute "small" generations.
-    // Repair only a genuinely unusable draft; formatting is sanitized below
-    // and an overshoot is handled by the deterministic trim backstop.
-    const needsModelCorrection = publicationCharacters(material) < Math.floor(minimumCharacters * 0.55) || !subjectCheck.passes;
-    if (needsModelCorrection && budget.remainingMs() >= 15_000) {
-      try {
-        const correctionCall = await callAiModel<Record<string, unknown>>({
-          operation: "revise_content",
-          requestTimeoutMs: budget.timeoutMs(20_000),
-          maxOutputTokensOverride: materialOutputTokenBudget(input.length, "revise_content"),
-          ownerEmail: identity.email,
-          brandId: input.useBrand ? input.brandId : undefined,
-          schemaName: "klio_corrected_material",
-          schema: MATERIAL_SCHEMA,
-          instructions: [
-            "Ты — выпускающий редактор платформы КЛИО.",
-            "Приведи материал к заданному объёму, сохранив тему, факты, ключевые фразы, структуру и голос бренда.",
-            ...CORE_SYSTEM_RULES,
-            `Требуемый объём всего материала — title, subtitle и body вместе: ${input.length} знаков с пробелами. Допустимый диапазон: ${minimumCharacters}–${maximumCharacters}.`,
-            "Не добавляй неподтверждённые факты и не повторяй абзацы ради объёма.",
-            `Сохрани контракт формата «${formatPlan.title}»:`,
-            ...formatPlan.aiRules,
-            `Сохрани правила интонации «${input.tone}»:`,
-            ...selectedToneRules,
-            ...TONE_SYSTEM_RULES,
-            `Сохрани авторскую позицию: ${input.authorPosition}.`,
-            ...authorPositionRules(input.authorPosition),
-            "Удали весь метатекст о брифе, профиле бренда, аудитории, стиле, ключевых словах и правилах формата. Читатель должен видеть только готовую публикацию по теме.",
-            "В body, title, meta_title и meta_description не должно быть URL, доменов, Markdown-ссылок, сносок, HTML и символов # для заголовков. Если нужно сохранить источник для команды, перенеси его только в editorial_comment.",
-            !subjectCheck.passes
-              ? `Основной текст подменил или недостаточно раскрыл предмет «${input.topic}». Перестрой композицию так, чтобы конкретный предмет запроса содержательно присутствовал минимум в ${subjectCheck.requiredSections} разделах, а не только в заголовке.`
-              : `Сохрани предмет «${input.topic}» как основу всей композиции.`,
-            missingFocuses.length
-              ? `Не применены обязательные редакционные ориентиры: ${missingFocuses.map((item) => item.label).join(", ")}. Раскрой каждый как содержательный тезис или раздел без копирования конкурентов и без служебных формулировок.`
-              : "Сохрани все уже применённые редакционные ориентиры матрицы.",
-            missingKeyPhrases.length
-              ? `Не использованы выбранные ключевые фразы: ${missingKeyPhrases.join(", ")}. Естественно встрои каждую в body в точной или грамматически корректной форме; не перечисляй их подряд и не называй ключами.`
-              : "Сохрани все уже применённые ключевые фразы без переспама.",
-            missingGeo.length
-              ? `Материал не применил выбранную географию: ${missingGeo.join(", ")}. Естественно упомяни эти территории как контекст аудитории, маршрута, спроса или выбора, не называя их местонахождением бренда без подтверждения.`
-              : "Сохрани уже применённую географию спроса и не подменяй её местонахождением бренда.",
-            "Верни только валидный JSON с полями title, subtitle, body, meta_title, meta_description, editorial_comment. subtitle — самостоятельная зацепка под H1, не дубль заголовка.",
-            ...FINAL_QA_RULES,
-          ].join("\n"),
-          input: JSON.stringify({ brief: JSON.parse(userBrief), current_material: material }),
-        });
-        material = materialFromRecord(correctionCall.result);
-        usedModel = correctionCall.model;
-        missingGeo = missingGeography(material, input);
-        subjectCheck = topicCoverage(material, input);
-        missingFocuses = missingEditorialFocuses(material, input);
-        missingKeyPhrases = missingKeywords(material, input);
-      } catch (error) {
-        // The correction pass is best-effort — if it fails, fall through
-        // with the original material rather than losing the whole result.
-        console.error("Generation correction pass failed", error);
-      }
-    }
-
-    // Backstop for a case the correction pass sometimes still misses: a
-    // genuine overshoot (e.g. 130% of target). Rather than ship a too-long
-    // article and then tell the client in the UI that "the result doesn't
-    // match the brief" — which reads as KLIO admitting a failed generation
-    // — shrink it here before the client ever sees it. First choice is a
-    // cheap nano pass that actually reads the text and condenses it
-    // without breaking an argument that continues into the next sentence
-    // (a blind word-count cut can't tell the difference between "the end
-    // of a thought" and "a sentence boundary"). A purely mechanical trim
-    // is only the fallback if that call itself fails — always leave the
-    // client with *something* rather than an error.
-    if (publicationCharacters(material) > maximumCharacters && budget.remainingMs() >= 12_000) {
-      try {
-        const condenseCall = await callAiModel<Record<string, unknown>>({
-          operation: "condense_overflow",
-          requestTimeoutMs: budget.timeoutMs(15_000),
-          maxOutputTokensOverride: materialOutputTokenBudget(input.length, "condense_overflow"),
-          ownerEmail: identity.email,
-          brandId: input.useBrand ? input.brandId : undefined,
-          schemaName: "klio_condensed_material",
-          schema: MATERIAL_SCHEMA,
-          instructions: [
-            "Ты сокращаешь уже готовую статью до целевого объёма, не переписывая её заново.",
-            `Целевой объём всего материала — title, subtitle и body вместе: ${input.length} знаков с пробелами, допустимо от ${minimumCharacters} до ${maximumCharacters}.`,
-            "Сокращай за счёт наименее важного: повторов, избыточных примеров, лишних деталей. Не обрывай мысль или аргумент на середине — если предложение продолжает мысль из предыдущего, сокращай их вместе или не трогай.",
-            "Не добавляй новые факты, не меняй заголовок, тему, ключевые фразы и структуру подзаголовков без необходимости.",
-            "Сохрани subtitle, meta_title, meta_description и editorial_comment по смыслу как есть (можно чуть скорректировать под новый объём).",
-            "Верни только валидный JSON с полями title, subtitle, body, meta_title, meta_description, editorial_comment.",
-          ].join("\n"),
-          input: JSON.stringify({ target_characters_with_spaces: input.length, current_material: material }),
-        });
-        material = materialFromRecord(condenseCall.result);
-        usedModel = condenseCall.model;
-      } catch (error) {
-        console.error("Nano condense pass failed, falling back to mechanical trim", error);
-        material = { ...material, body: trimOverflowBody(material.body, bodyBudget(material, input.length)) };
-      }
-
-      // The condense pass above is a model call, not a guarantee — it can
-      // itself land over budget (a cheap nano model asked to hit an exact
-      // character count won't always get there in one shot, especially
-      // shrinking a long draft down to a short social-post-scale target).
-      // Nothing after this point re-checked the result, so an overshoot
-      // that survived the condense call shipped to the client unchanged
-      // (site owner: a 1 050-target post came back at 1 380, 131%). Treat
-      // the mechanical trim as the hard floor no draft can end up above,
-      // regardless of what the AI pass produced.
-    }
-
-    // If there was too little time for an AI condense pass, or it still
-    // overshot, enforce the upper bound locally without spending another
-    // minute on the provider.
-    if (publicationCharacters(material) > maximumCharacters) {
-      material = { ...material, body: trimOverflowBody(material.body, bodyBudget(material, input.length)) };
-    }
-    missingGeo = missingGeography(material, input);
-    subjectCheck = topicCoverage(material, input);
-    missingFocuses = missingEditorialFocuses(material, input);
-    missingKeyPhrases = missingKeywords(material, input);
-
-    // Public copy must remain publication-ready even when a model correction
-    // misses a formatting instruction. Editorial comments keep source notes;
-    // published fields never expose URLs or Markdown syntax.
-    material = {
-      ...material,
-      title: sanitizePublicationText(material.title),
-      body: sanitizePublicationText(material.body),
-      subtitle: sanitizePublicationText(material.subtitle),
-      metaTitle: sanitizePublicationText(material.metaTitle),
-      metaDescription: sanitizePublicationText(material.metaDescription),
-    };
-
-    // Word count, geography, editorial-focus and keyword coverage are all
-    // soft targets: the correction pass above already tried once to fix
-    // them, and the client already renders a per-criterion coverage badge
-    // (see coverageSummary below) instead of a pass/fail wall. Hard-
-    // rejecting near-misses here used to discard a perfectly usable
-    // article and force a full, costly retry — sometimes repeatedly.
-    // Meta-leakage (internal brief text visible in the article) and a
-    // hijacked topic are real defects, not just imprecision, so those two
-    // still block.
-    if (hasMetaLeakage(material.body)) {
-      return Response.json(
-        { error: "AI‑редакция обнаружила в тексте служебные формулировки. Материал не принят — запустите генерацию ещё раз." },
-        { status: 422 },
-      );
-    }
-
-    if (!subjectCheck.passes) {
-      return Response.json(
-        { error: `AI‑редакция не раскрыла предмет темы «${input.topic}» в основном тексте. Материал не принят — запустите генерацию ещё раз.` },
-        { status: 422 },
-      );
-    }
-
-    const usage = await recordGeneration({
-      brandId: input.brandId,
-      format: input.format,
-      topic: input.topic,
-      title: material.title,
-      body: material.body,
-      subtitle: material.subtitle,
-      metaTitle: material.metaTitle,
-      metaDescription: material.metaDescription,
-      editorialComment: material.editorialComment,
-      keywords: input.keywords,
-      tone: input.tone,
-      targetLength: input.length,
-    });
-    return Response.json({ material, mode: "ai", model: usedModel, coverage: coverageSummary(material, input), sources: { website: website.status, geography: input.geography.map((item) => item.label) }, usage });
+    const identity = await workspaceIdentity();
+    const job = await claimAsyncJob("material_generation", identity.email, input, MATERIAL_GENERATION_TIMEOUT_MS + 10_000);
+    if (job.reused) return Response.json({ jobId: job.id, reused: true });
+    // Intentionally not awaited — see async-jobs.ts for why this keeps
+    // running after the response below is sent on this host.
+    void runMaterialGenerationJob(job.id, input, identity.email);
+    return Response.json({ jobId: job.id });
   } catch (error) {
     if (error instanceof WorkspaceAccessError) return workspaceErrorResponse(error);
-    console.error("Generation route failed", error);
-    return Response.json(
-      { error: "Не удалось сформировать материал. Проверьте поля и повторите попытку." },
-      { status: 500 },
-    );
+    console.error("Generation route failed to start", error);
+    return Response.json({ error: "Не удалось запустить генерацию материала." }, { status: 500 });
   }
 }

@@ -1970,7 +1970,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     const sourceText = `${pubEditor.title}\n\n${pubEditor.body}`.trim();
     setPubEditor((current) => current && { ...current, busy: true, error: "" });
     try {
-      const response = await fetch("/api/adapt", {
+      const startResponse = await fetch("/api/adapt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1985,8 +1985,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           instructions: "Адаптируй текст для Telegram без потери смысла, фактов и интонации. Итог вместе с заголовком — не более 950 символов. Не используй Markdown-символы, не добавляй новых фактов и не пиши служебных пояснений.",
         }),
       });
-      const payload = await safeJson(response) as { error?: string; material?: AdaptedMaterial; usage?: { account?: WorkspaceAccount } | null };
-      if (!response.ok || !payload.material) throw new Error(payload.error || "Не удалось подготовить короткую версию.");
+      const startPayload = await safeJson(startResponse) as { error?: string; jobId?: string };
+      if (!startResponse.ok || !startPayload.jobId) throw new Error(startPayload.error || "Не удалось запустить подготовку короткой версии.");
+      // See pollAsyncJob's own comment: the editor pass can take up to a
+      // minute or so, long enough that this shouldn't be one held-open
+      // request — startResponse above only confirms the job was accepted.
+      const payload = await pollAsyncJob<{ error?: string; material?: AdaptedMaterial; usage?: { account?: WorkspaceAccount } | null }>("/api/adapt/status", startPayload.jobId);
+      if (!payload.material) throw new Error(payload.error || "Не удалось подготовить короткую версию.");
       const length = `${payload.material.title}\n\n${payload.material.body}`.trim().length;
       if (length > 1024) throw new Error("Короткая версия всё ещё слишком длинная. Попробуйте сократить текст вручную.");
       if (payload.usage?.account) setWorkspaceAccount(payload.usage.account);
@@ -3191,7 +3196,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setArchiveEditorBusy(true);
     setArchiveEditorError("");
     try {
-      const response = await fetch("/api/adapt", {
+      const startResponse = await fetch("/api/adapt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3205,8 +3210,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           useBrand: Boolean(archivedBrand),
         }),
       });
-      const payload = await safeJson(response) as { error?: string; mode?: "ai"; material?: AdaptedMaterial; usage?: { account?: WorkspaceAccount } | null };
-      if (!response.ok || !payload.material || payload.mode !== "ai") throw new Error(payload.error || "Редактор КЛИО не подготовил новую версию.");
+      const startPayload = await safeJson(startResponse) as { error?: string; jobId?: string };
+      if (!startResponse.ok || !startPayload.jobId) throw new Error(startPayload.error || "Не удалось запустить редактуру.");
+      // See pollAsyncJob's own comment: the editor pass can take up to a
+      // minute or so, long enough that this shouldn't be one held-open
+      // request — startResponse above only confirms the job was accepted.
+      const payload = await pollAsyncJob<{ error?: string; mode?: "ai"; material?: AdaptedMaterial; usage?: { account?: WorkspaceAccount } | null }>("/api/adapt/status", startPayload.jobId);
+      if (!payload.material || payload.mode !== "ai") throw new Error(payload.error || "Редактор КЛИО не подготовил новую версию.");
       if (payload.usage?.account) setWorkspaceAccount(payload.usage.account);
       setArchiveEditorItem((current) => current ? {
         ...current,
@@ -3531,7 +3541,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     const includeBrand = requestBody.useBrand && generatorBrandReady;
     const includeSemantics = requestBody.useSemantics !== false && generatorSemanticsReady;
     const includeCompetitors = requestBody.useCompetitors !== false && generatorCompetitorsReady;
-    const response = await fetch("/api/generate", {
+    const startResponse = await fetch("/api/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -3571,14 +3581,21 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         editorialBrief: requestBody.editorialBrief ?? null,
       }),
     });
-    const payload = await safeJson(response) as {
+    const startPayload = await safeJson(startResponse) as { error?: string; jobId?: string };
+    if (!startResponse.ok || !startPayload.jobId) throw new Error(startPayload.error || "Не удалось запустить генерацию материала.");
+
+    // The actual generation (full draft, plus an optional correction and/or
+    // condense pass) can legitimately take a minute or two — startResponse
+    // above only confirms the job was accepted, not that it's finished. See
+    // pollAsyncJob's own comment for why this isn't one long-lived request.
+    const payload = await pollAsyncJob<{
       error?: string;
       mode?: "ai";
       material?: GeneratedMaterial;
       coverage?: GenerationCoverage;
       usage?: { account?: WorkspaceAccount; archive?: GenerationArchiveItem } | null;
-    };
-    if (!response.ok || !payload.material) throw new Error(payload.error || "Не удалось сформировать материал.");
+    }>("/api/generate/status", startPayload.jobId);
+    if (!payload.material) throw new Error(payload.error || "Не удалось сформировать материал.");
     if (payload.usage?.account) setWorkspaceAccount(payload.usage.account);
     if (payload.usage?.archive) setWorkspaceHistory((current) => [payload.usage!.archive!, ...current.filter((item) => item.id !== payload.usage!.archive!.id)].slice(0, 60));
     if (payload.mode !== "ai") throw new Error("Материал не получен от AI‑редакции.");
@@ -4776,7 +4793,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setAdaptationBusy(true);
     setAdaptationError("");
     try {
-      const response = await fetch("/api/adapt", {
+      const startResponse = await fetch("/api/adapt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4790,13 +4807,18 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           useBrand,
         }),
       });
-      const payload = await safeJson(response) as {
+      const startPayload = await safeJson(startResponse) as { error?: string; jobId?: string };
+      if (!startResponse.ok || !startPayload.jobId) throw new Error(startPayload.error || "Не удалось запустить редактуру.");
+      // See pollAsyncJob's own comment: the editor pass can take up to a
+      // minute or so, long enough that this shouldn't be one held-open
+      // request — startResponse above only confirms the job was accepted.
+      const payload = await pollAsyncJob<{
         error?: string;
         mode?: "ai";
         material?: AdaptedMaterial;
         usage?: { account?: WorkspaceAccount } | null;
-      };
-      if (!response.ok || !payload.material) throw new Error(payload.error || "Не удалось адаптировать текст.");
+      }>("/api/adapt/status", startPayload.jobId);
+      if (!payload.material) throw new Error(payload.error || "Не удалось адаптировать текст.");
       setAdaptationResult(payload.material);
       if (payload.mode !== "ai") throw new Error("Материал не получен от редактора КЛИО.");
       if (payload.usage?.account) setWorkspaceAccount(payload.usage.account);

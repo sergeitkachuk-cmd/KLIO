@@ -17,6 +17,8 @@ import { AiCallError, callAiModel } from "../_lib/ai-router";
 import { adaptationReasoningEffort, aiConfigured } from "../_lib/ai-config";
 import { isAiRateLimited } from "../_lib/rate-limit";
 import { adaptationOutputTokenBudget, createGenerationBudget, materialOutputTokenBudget } from "../_lib/generation-budget";
+import { AiResponseError } from "../_lib/openai-response";
+import { claimAsyncJob, markAsyncJobProcessing, completeAsyncJob, failAsyncJob } from "../_lib/async-jobs";
 
 type AdaptationGoal = AdaptationPlan;
 
@@ -200,6 +202,179 @@ function adaptationHasViolation(input: ReturnType<typeof normalizePayload>, mate
   return Boolean(adaptationViolationReason(input, material));
 }
 
+// Same reasoning as MATERIAL_GENERATION_TIMEOUT_MS in generate/route.ts and
+// CONTENT_PLAN_TIMEOUT_MS in content-plan/route.ts: an editor pass can take
+// up to 90s of provider time alone (totalBudgetMs below), long enough that
+// a hosting platform's own reverse-proxy timeout can kill the connection
+// before DeepSeek finishes — surfacing as a bare network failure or no
+// response at all instead of a real, readable error. Runs in the
+// background; POST only claims the job, GET /api/adapt/status polls it.
+const ADAPTATION_TIMEOUT_MS = 90_000;
+
+// Everything the AI actually does for one editor pass. Throws AiCallError/
+// AiResponseError/WorkspaceAccessError on failure; never returns a
+// Response, since there is no live request to answer by the time most of
+// this runs (see runAdaptationJob below).
+async function runAdaptation(input: ReturnType<typeof normalizePayload>, ownerEmail: string) {
+  const reasoningEffort = adaptationReasoningEffort(input.goal);
+  // Fast modes have no reasoning phase and must finish sooner. Research
+  // and judgement-heavy modes keep more room, while every editor remains
+  // under one deadline including a possible correction pass.
+  const totalBudgetMs = reasoningEffort === "none" ? 70_000 : 90_000;
+  const budget = createGenerationBudget(totalBudgetMs);
+  const brandWebsite = input.useBrand && websiteContextGoals.has(input.goal) ? clean(input.brand.website, 220) : "";
+  const sourceHeading = input.sourceText.split(/\r?\n/, 1)[0]?.slice(0, 240) ?? "";
+  // Leave room for researchAdaptationFacts' evidence qualifiers after
+  // tavilySearch applies its 700-character request limit.
+  const researchTopic = [sourceHeading, input.instructions, input.keywords].filter(Boolean).join(" ").slice(0, 430)
+    || input.sourceText.slice(0, 430);
+  const [website, webResearch] = await Promise.all([
+    readWebsiteContext(brandWebsite),
+    researchGoals.has(input.goal) ? researchAdaptationFacts(researchTopic) : Promise.resolve(null),
+  ]);
+  const plan = ADAPTATION_PLANS[input.goal];
+  const toneRules = TONE_PLANS[input.tone];
+  const transformationDirective = deepRewriteGoals.has(input.goal)
+    ? "Создай самостоятельную редакторскую версию: измени композицию, порядок подачи и формулировки в объёме, необходимом для выбранного сценария."
+    : "Выполни точечную редактуру в границах выбранного сценария: сохраняй удачные фрагменты, композицию и объём там, где их изменение не требуется задачей.";
+  const shortenLengthDirective = input.goal === "shorten"
+    ? `В режиме «Коротко» длина поля body обязательна: от ${Math.ceil(wordCount(input.sourceText) * 0.45)} до ${Math.floor(wordCount(input.sourceText) * 0.6)} слов (45–60% от ${wordCount(input.sourceText)} слов исходника). Проверь число слов перед ответом.`
+    : "";
+  const maxCharactersDirective = input.maxCharacters
+    ? `ЖЁСТКОЕ ОГРАНИЧЕНИЕ: title и body вместе, включая пробелы и переносы, должны занимать не более ${input.maxCharacters} символов. Сначала сократи материал до этого размера без потери главной мысли и фактов, затем проверь число символов перед ответом.`
+    : "";
+  const adaptationBrief = {
+    target: goalLabels[input.goal],
+    adaptation_contract: {
+      objective: plan.result,
+      plan: plan.steps,
+      rules: plan.aiRules,
+    },
+    source_text: input.sourceText,
+    keywords: input.keywords,
+    editor_note: input.instructions,
+    tone: input.tone,
+    tone_contract: toneRules,
+    brand_context: input.useBrand ? input.brand : null,
+    author_position: input.authorPosition,
+    website_snapshot: input.useBrand && website.status === "loaded"
+      ? { url: website.resolvedUrl, text: website.text }
+      : null,
+    // researchAdaptationFacts returns up to 6 results, and all of them go
+    // through for the evidence-aware modes above. Mechanical editors do
+    // not receive this field, so they cannot expand the fact set by
+    // accident and do not wait for an irrelevant search.
+    web_research: researchGoals.has(input.goal) && webResearch
+      ? webResearch.results.map(({ title, url, content }) => ({ title, url, fact: content }))
+      : null,
+  };
+
+  const call = await callAiModel<Record<string, unknown>>({
+    operation: "adapt_text",
+    reasoningEffortOverride: reasoningEffort,
+    requestTimeoutMs: budget.timeoutMs(reasoningEffort === "none" ? 62_000 : 78_000),
+    maxOutputTokensOverride: adaptationOutputTokenBudget(input.sourceText.length, reasoningEffort),
+    ownerEmail,
+    schemaName: "klio_adapted_material",
+    schema: ADAPTED_MATERIAL_SCHEMA,
+    instructions: [
+      "Ты — старший русскоязычный редактор и контент‑маркетолог платформы КЛИО.",
+      "Переработай готовый текст пользователя под указанную задачу и верни только валидный JSON. В полях материала пиши чистый текст без Markdown-разметки и символов **, __, ##, > или маркеров списков; акцент выражай словами, а не знаками.",
+      ...CORE_SYSTEM_RULES,
+      ...coreRulesFor(input.goal),
+      transformationDirective,
+      shortenLengthDirective,
+      maxCharactersDirective,
+      `Соблюдай выбранную интонацию «${input.tone}»:`,
+      ...toneRules,
+      ...TONE_SYSTEM_RULES,
+      `Авторская позиция: ${input.authorPosition}.`,
+      ...authorPositionRules(input.authorPosition),
+      `Применяй только выбранный сценарий «${plan.title}»; не смешивай его с другими форматами:`,
+      ...plan.aiRules,
+      ...FINAL_QA_RULES,
+      "Структура JSON: title, subtitle, body, meta_title, meta_description, editorial_comment, changes. subtitle — самостоятельная зацепка под H1, не повторяет title. changes — массив из 3–6 коротких строк.",
+    ].join("\n"),
+    input: JSON.stringify(adaptationBrief),
+  });
+  let material: AdaptedMaterial | null = materialFromRecord(call.result);
+  let usedModel = call.model;
+
+  if ((!material || adaptationHasViolation(input, material)) && budget.remainingMs() >= 12_000) {
+    try {
+      const correctionCall = await callAiModel<Record<string, unknown>>({
+        operation: "revise_content",
+        requestTimeoutMs: budget.timeoutMs(20_000),
+        maxOutputTokensOverride: materialOutputTokenBudget(input.sourceText.length, "revise_content"),
+        ownerEmail,
+        schemaName: "klio_corrected_adaptation",
+        schema: ADAPTED_MATERIAL_SCHEMA,
+        instructions: [
+          "Ты — выпускающий редактор КЛИО. Пересобери материал: текущая версия не прошла проверку формата или слишком похожа на исходник.",
+          "Верни только валидный JSON с полями title, subtitle, body, meta_title, meta_description, editorial_comment, changes.",
+          ...CORE_SYSTEM_RULES,
+          ...coreRulesFor(input.goal),
+          `Строго выполни сценарий «${plan.title}»:`,
+          ...plan.aiRules,
+          `Сохрани интонацию «${input.tone}»:`,
+          ...toneRules,
+          ...TONE_SYSTEM_RULES,
+          `Сохрани авторскую позицию: ${input.authorPosition}.`,
+          ...authorPositionRules(input.authorPosition),
+          transformationDirective,
+          shortenLengthDirective,
+          maxCharactersDirective,
+          ...FINAL_QA_RULES,
+          "Запрещены заголовки «Что получает читатель» и «Условия и следующий шаг».",
+        ].join("\n"),
+        input: JSON.stringify({
+          brief: adaptationBrief,
+          rejected_material: material ?? null,
+          validation_failure: material
+            ? adaptationViolationReason(input, material) ?? "Материал нарушил ограничения выбранного сценария."
+            : "Обязательные поля title и body отсутствуют или пусты.",
+        }),
+      });
+      const corrected = materialFromRecord(correctionCall.result);
+      if (corrected) {
+        material = corrected;
+        usedModel = correctionCall.model;
+      }
+    } catch (error) {
+      console.error("Adaptation correction pass failed", error);
+    }
+  }
+  if (!material || adaptationHasViolation(input, material)) {
+    throw new AiResponseError("AI‑редактор не прошёл проверку формата. Исходный текст сохранён; повторите попытку или уточните задачу.", 422);
+  }
+  if (researchGoals.has(input.goal) && !webResearch) {
+    material.editorialComment = [
+      "Внешний поиск временно не вернул источники; версия подготовлена по исходнику, профилю бренда и доступным страницам сайта.",
+      material.editorialComment,
+    ].filter(Boolean).join(" ");
+  }
+  const usage = await recordEditorialAction();
+  return { material, mode: "ai" as const, model: usedModel, sources: { website: website.status, webResearch: webResearch?.results.length ?? 0, researchProvider: webResearch?.provider ?? null }, usage };
+}
+
+// Runs the editor pass in the background and writes the outcome to the job
+// row — never thrown/awaited by the route handler that kicks it off. See
+// async-jobs.ts and the identical pattern in content-plan/route.ts and
+// generate/route.ts.
+async function runAdaptationJob(jobId: string, input: ReturnType<typeof normalizePayload>, ownerEmail: string) {
+  try {
+    await markAsyncJobProcessing(jobId);
+    const payload = await runAdaptation(input, ownerEmail);
+    await completeAsyncJob(jobId, payload);
+  } catch (error) {
+    const message = error instanceof WorkspaceAccessError || error instanceof AiResponseError || error instanceof AiCallError
+      ? error.message
+      : "Не удалось обработать исходный текст. Проверьте его и повторите попытку.";
+    if (!(error instanceof WorkspaceAccessError)) console.error("adapt background job failed", error);
+    await failAsyncJob(jobId, message);
+  }
+}
+
 export async function POST(request: Request) {
   try {
     if (isAiRateLimited(request, "adapt", 4)) return Response.json({ error: "Слишком много редакторских запусков подряд. Подождите минуту и повторите." }, { status: 429 });
@@ -213,159 +388,21 @@ export async function POST(request: Request) {
       code: "AI_NOT_CONFIGURED",
     }, { status: 503 });
 
+    // Checked up front, synchronously, so an account that's already over its
+    // limit gets a clean 429 immediately instead of a job that's created
+    // only to fail a few seconds later.
     await assertSecondaryQuotaAvailable("editor");
 
     const identity = await workspaceIdentity();
-    const reasoningEffort = adaptationReasoningEffort(input.goal);
-    // Fast modes have no reasoning phase and must finish sooner. Research
-    // and judgement-heavy modes keep more room, while every editor remains
-    // under one deadline including a possible correction pass.
-    const totalBudgetMs = reasoningEffort === "none" ? 70_000 : 90_000;
-    const budget = createGenerationBudget(totalBudgetMs);
-    const brandWebsite = input.useBrand && websiteContextGoals.has(input.goal) ? clean(input.brand.website, 220) : "";
-    const sourceHeading = input.sourceText.split(/\r?\n/, 1)[0]?.slice(0, 240) ?? "";
-    // Leave room for researchAdaptationFacts' evidence qualifiers after
-    // tavilySearch applies its 700-character request limit.
-    const researchTopic = [sourceHeading, input.instructions, input.keywords].filter(Boolean).join(" ").slice(0, 430)
-      || input.sourceText.slice(0, 430);
-    const [website, webResearch] = await Promise.all([
-      readWebsiteContext(brandWebsite),
-      researchGoals.has(input.goal) ? researchAdaptationFacts(researchTopic) : Promise.resolve(null),
-    ]);
-    const plan = ADAPTATION_PLANS[input.goal];
-    const toneRules = TONE_PLANS[input.tone];
-    const transformationDirective = deepRewriteGoals.has(input.goal)
-      ? "Создай самостоятельную редакторскую версию: измени композицию, порядок подачи и формулировки в объёме, необходимом для выбранного сценария."
-      : "Выполни точечную редактуру в границах выбранного сценария: сохраняй удачные фрагменты, композицию и объём там, где их изменение не требуется задачей.";
-    const shortenLengthDirective = input.goal === "shorten"
-      ? `В режиме «Коротко» длина поля body обязательна: от ${Math.ceil(wordCount(input.sourceText) * 0.45)} до ${Math.floor(wordCount(input.sourceText) * 0.6)} слов (45–60% от ${wordCount(input.sourceText)} слов исходника). Проверь число слов перед ответом.`
-      : "";
-    const maxCharactersDirective = input.maxCharacters
-      ? `ЖЁСТКОЕ ОГРАНИЧЕНИЕ: title и body вместе, включая пробелы и переносы, должны занимать не более ${input.maxCharacters} символов. Сначала сократи материал до этого размера без потери главной мысли и фактов, затем проверь число символов перед ответом.`
-      : "";
-    const adaptationBrief = {
-      target: goalLabels[input.goal],
-      adaptation_contract: {
-        objective: plan.result,
-        plan: plan.steps,
-        rules: plan.aiRules,
-      },
-      source_text: input.sourceText,
-      keywords: input.keywords,
-      editor_note: input.instructions,
-      tone: input.tone,
-      tone_contract: toneRules,
-      brand_context: input.useBrand ? input.brand : null,
-      author_position: input.authorPosition,
-      website_snapshot: input.useBrand && website.status === "loaded"
-        ? { url: website.resolvedUrl, text: website.text }
-        : null,
-      // researchAdaptationFacts returns up to 6 results, and all of them go
-      // through for the evidence-aware modes above. Mechanical editors do
-      // not receive this field, so they cannot expand the fact set by
-      // accident and do not wait for an irrelevant search.
-      web_research: researchGoals.has(input.goal) && webResearch
-        ? webResearch.results.map(({ title, url, content }) => ({ title, url, fact: content }))
-        : null,
-    };
-    let material: AdaptedMaterial | null = null;
-    let usedModel = "";
-    try {
-      const call = await callAiModel<Record<string, unknown>>({
-        operation: "adapt_text",
-        reasoningEffortOverride: reasoningEffort,
-        requestTimeoutMs: budget.timeoutMs(reasoningEffort === "none" ? 62_000 : 78_000),
-        maxOutputTokensOverride: adaptationOutputTokenBudget(input.sourceText.length, reasoningEffort),
-        ownerEmail: identity.email,
-        schemaName: "klio_adapted_material",
-        schema: ADAPTED_MATERIAL_SCHEMA,
-        instructions: [
-          "Ты — старший русскоязычный редактор и контент‑маркетолог платформы КЛИО.",
-          "Переработай готовый текст пользователя под указанную задачу и верни только валидный JSON. В полях материала пиши чистый текст без Markdown-разметки и символов **, __, ##, > или маркеров списков; акцент выражай словами, а не знаками.",
-          ...CORE_SYSTEM_RULES,
-          ...coreRulesFor(input.goal),
-          transformationDirective,
-          shortenLengthDirective,
-          maxCharactersDirective,
-          `Соблюдай выбранную интонацию «${input.tone}»:`,
-          ...toneRules,
-          ...TONE_SYSTEM_RULES,
-          `Авторская позиция: ${input.authorPosition}.`,
-          ...authorPositionRules(input.authorPosition),
-          `Применяй только выбранный сценарий «${plan.title}»; не смешивай его с другими форматами:`,
-          ...plan.aiRules,
-          ...FINAL_QA_RULES,
-          "Структура JSON: title, subtitle, body, meta_title, meta_description, editorial_comment, changes. subtitle — самостоятельная зацепка под H1, не повторяет title. changes — массив из 3–6 коротких строк.",
-        ].join("\n"),
-        input: JSON.stringify(adaptationBrief),
-      });
-      material = materialFromRecord(call.result);
-      usedModel = call.model;
-    } catch (error) {
-      if (error instanceof AiCallError) {
-        return Response.json({ error: error.message }, { status: error.status });
-      }
-      throw error;
-    }
-
-    if ((!material || adaptationHasViolation(input, material)) && budget.remainingMs() >= 12_000) {
-      try {
-        const correctionCall = await callAiModel<Record<string, unknown>>({
-          operation: "revise_content",
-          requestTimeoutMs: budget.timeoutMs(20_000),
-          maxOutputTokensOverride: materialOutputTokenBudget(input.sourceText.length, "revise_content"),
-          ownerEmail: identity.email,
-          schemaName: "klio_corrected_adaptation",
-          schema: ADAPTED_MATERIAL_SCHEMA,
-          instructions: [
-            "Ты — выпускающий редактор КЛИО. Пересобери материал: текущая версия не прошла проверку формата или слишком похожа на исходник.",
-            "Верни только валидный JSON с полями title, subtitle, body, meta_title, meta_description, editorial_comment, changes.",
-            ...CORE_SYSTEM_RULES,
-            ...coreRulesFor(input.goal),
-            `Строго выполни сценарий «${plan.title}»:`,
-            ...plan.aiRules,
-            `Сохрани интонацию «${input.tone}»:`,
-            ...toneRules,
-            ...TONE_SYSTEM_RULES,
-            `Сохрани авторскую позицию: ${input.authorPosition}.`,
-            ...authorPositionRules(input.authorPosition),
-            transformationDirective,
-            shortenLengthDirective,
-            maxCharactersDirective,
-            ...FINAL_QA_RULES,
-            "Запрещены заголовки «Что получает читатель» и «Условия и следующий шаг».",
-          ].join("\n"),
-          input: JSON.stringify({
-            brief: adaptationBrief,
-            rejected_material: material ?? null,
-            validation_failure: material
-              ? adaptationViolationReason(input, material) ?? "Материал нарушил ограничения выбранного сценария."
-              : "Обязательные поля title и body отсутствуют или пусты.",
-          }),
-        });
-        const corrected = materialFromRecord(correctionCall.result);
-        if (corrected) {
-          material = corrected;
-          usedModel = correctionCall.model;
-        }
-      } catch (error) {
-        console.error("Adaptation correction pass failed", error);
-      }
-    }
-    if (!material || adaptationHasViolation(input, material)) {
-      return Response.json({ error: "AI‑редактор не прошёл проверку формата. Исходный текст сохранён; повторите попытку или уточните задачу." }, { status: 422 });
-    }
-    if (researchGoals.has(input.goal) && !webResearch) {
-      material.editorialComment = [
-        "Внешний поиск временно не вернул источники; версия подготовлена по исходнику, профилю бренда и доступным страницам сайта.",
-        material.editorialComment,
-      ].filter(Boolean).join(" ");
-    }
-    const usage = await recordEditorialAction();
-    return Response.json({ material, mode: "ai", model: usedModel, sources: { website: website.status, webResearch: webResearch?.results.length ?? 0, researchProvider: webResearch?.provider ?? null }, usage });
+    const job = await claimAsyncJob("adapt_text", identity.email, input, ADAPTATION_TIMEOUT_MS + 10_000);
+    if (job.reused) return Response.json({ jobId: job.id, reused: true });
+    // Intentionally not awaited — see async-jobs.ts for why this keeps
+    // running after the response below is sent on this host.
+    void runAdaptationJob(job.id, input, identity.email);
+    return Response.json({ jobId: job.id });
   } catch (error) {
     if (error instanceof WorkspaceAccessError) return workspaceErrorResponse(error);
-    console.error("Adaptation route failed", error);
-    return Response.json({ error: "Не удалось обработать исходный текст. Проверьте его и повторите попытку." }, { status: 500 });
+    console.error("Adaptation route failed to start", error);
+    return Response.json({ error: "Не удалось запустить обработку текста." }, { status: 500 });
   }
 }
