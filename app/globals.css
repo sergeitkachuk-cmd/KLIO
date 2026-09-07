@@ -4128,7 +4128,17 @@ footer nav a {
     radial-gradient(circle at 78% -60%, rgba(124, 58, 237, 0.65), transparent 42%),
     linear-gradient(115deg, rgba(8, 8, 15, 0.97), rgba(24, 17, 40, 0.95));
   box-shadow: 0 18px 50px rgba(16, 12, 29, 0.16), inset 0 1px rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(24px) saturate(145%);
+  /* Dropped backdrop-filter (was blur(24px) saturate(145%)) - the
+     gradient behind it is already 95-97% opaque, so the blur was doing
+     almost nothing visually while still costing a full recomposite of
+     everything scrolling underneath it on every frame, every page, since
+     this bar is sticky (site owner: scrolling stutters like ~20fps on
+     fast scroll; a friend on Safari/macOS saw blank white patches and
+     freezes mid-scroll - both textbook symptoms of backdrop-filter on a
+     sticky/fixed element, and Safari's compositor handles this
+     particular combination worse than Chromium's). No visible change on
+     an already-near-opaque background; scroll no longer has to
+     recompute a blur nobody could see. */
 }
 
 .workspace-header-actions,
@@ -12917,7 +12927,10 @@ input[type="radio"] {
   margin: -25px -25px 0;
   padding: 24px 25px 19px;
   background: rgba(6, 22, 42, 0.9);
-  backdrop-filter: blur(20px);
+  /* Same reasoning as .workspace-header above: 90% opaque background
+     makes the blur nearly invisible, but this bar is sticky inside a
+     scrollable modal, so it paid for a full recomposite on every scroll
+     frame regardless. Dropped. */
 }
 
 .archive-editor-head-actions {
