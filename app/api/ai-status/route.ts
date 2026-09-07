@@ -14,5 +14,6 @@ export async function GET() {
     "X-Klio-Ui-Release": "2026-09-07-volume-control-removed",
     "X-Klio-Admin-Release": "2026-09-07-ai-latency-visible",
     "X-Klio-Editor-Release": "2026-09-07-search-fallback-v3",
+    "X-Klio-Generator-Release": "2026-09-07-bounded-latency-v2",
   } });
 }

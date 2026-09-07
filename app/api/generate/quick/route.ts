@@ -147,7 +147,9 @@ export async function POST(request: Request) {
       ? Math.round(payload.lengthHint)
       : undefined;
 
-    const budget = createGenerationBudget(lengthHint && lengthHint <= 2000 ? 90_000 : 150_000);
+    // The free-form brief adds one short normalization call, but the complete
+    // pipeline must still finish inside the same sub-two-minute deadline.
+    const budget = createGenerationBudget(lengthHint && lengthHint <= 2000 ? 75_000 : 110_000);
     const grounding = Promise.all([researchMaterialWeb(prompt.slice(0, 500), []), readWebsiteContext(brand?.website || "")]);
     let brief: QuickBrief;
     try {
@@ -188,7 +190,7 @@ export async function POST(request: Request) {
     try {
       const materialCall = await callAiModel<Record<string, unknown>>({
         operation: "generate_quick_material",
-        requestTimeoutMs: budget.timeoutMs(brief.targetLength <= 2000 ? 60_000 : 120_000),
+        requestTimeoutMs: budget.timeoutMs(brief.targetLength <= 2000 ? 58_000 : 92_000),
         maxOutputTokensOverride: materialOutputTokenBudget(brief.targetLength, "generate_quick_material"),
         ownerEmail: identity.email,
         brandId,
@@ -250,11 +252,11 @@ export async function POST(request: Request) {
     // overshoot delivered straight to the user reads as KLIO ignoring "пост
     // для ТГ" and writing a full article instead. Condense once rather than
     // ship it, mirroring generate/route.ts's condense_overflow pass.
-    if (publicationCharacters(material) > maximumCharacters) {
+    if (publicationCharacters(material) > maximumCharacters && budget.remainingMs() >= 12_000) {
       try {
         const condenseCall = await callAiModel<Record<string, unknown>>({
           operation: "condense_overflow",
-          requestTimeoutMs: budget.timeoutMs(30_000),
+          requestTimeoutMs: budget.timeoutMs(15_000),
           maxOutputTokensOverride: materialOutputTokenBudget(brief.targetLength, "condense_overflow"),
           ownerEmail: identity.email,
           brandId,

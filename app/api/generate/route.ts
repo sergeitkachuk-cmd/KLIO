@@ -578,7 +578,10 @@ export async function POST(request: Request) {
       }, { status: 503 });
     }
 
-    const budget = createGenerationBudget(input.length <= 2000 ? 90_000 : 150_000);
+    // Keep the whole request below the two-minute UX boundary. Research and
+    // website reading happen in parallel before the single full-quality draft;
+    // any repair pass must fit inside the same deadline.
+    const budget = createGenerationBudget(input.length <= 2000 ? 75_000 : 110_000);
     const [identity, website, webResearch] = await Promise.all([
       workspaceIdentity(),
       readWebsiteContext(input.useBrand ? input.brand.website : ""),
@@ -676,7 +679,7 @@ export async function POST(request: Request) {
       const call = await callAiModel<Record<string, unknown>>({
         operation,
         maxOutputTokensOverride: materialOutputTokenBudget(input.length, operation),
-        requestTimeoutMs: budget.timeoutMs(input.length <= 2000 ? 60_000 : 120_000),
+        requestTimeoutMs: budget.timeoutMs(input.length <= 2000 ? 58_000 : 92_000),
         ownerEmail: identity.email,
         brandId: input.useBrand ? input.brandId : undefined,
         schemaName: "klio_generated_material",
@@ -758,11 +761,11 @@ export async function POST(request: Request) {
     // Repair only a genuinely unusable draft; formatting is sanitized below
     // and an overshoot is handled by the deterministic trim backstop.
     const needsModelCorrection = publicationCharacters(material) < Math.floor(minimumCharacters * 0.55) || !subjectCheck.passes;
-    if (needsModelCorrection && budget.remainingMs() >= 5_000) {
+    if (needsModelCorrection && budget.remainingMs() >= 15_000) {
       try {
         const correctionCall = await callAiModel<Record<string, unknown>>({
           operation: "revise_content",
-          requestTimeoutMs: budget.timeoutMs(35_000),
+          requestTimeoutMs: budget.timeoutMs(20_000),
           maxOutputTokensOverride: materialOutputTokenBudget(input.length, "revise_content"),
           ownerEmail: identity.email,
           brandId: input.useBrand ? input.brandId : undefined,
@@ -824,11 +827,11 @@ export async function POST(request: Request) {
     // of a thought" and "a sentence boundary"). A purely mechanical trim
     // is only the fallback if that call itself fails — always leave the
     // client with *something* rather than an error.
-    if (publicationCharacters(material) > maximumCharacters) {
+    if (publicationCharacters(material) > maximumCharacters && budget.remainingMs() >= 12_000) {
       try {
         const condenseCall = await callAiModel<Record<string, unknown>>({
           operation: "condense_overflow",
-          requestTimeoutMs: budget.timeoutMs(30_000),
+          requestTimeoutMs: budget.timeoutMs(15_000),
           maxOutputTokensOverride: materialOutputTokenBudget(input.length, "condense_overflow"),
           ownerEmail: identity.email,
           brandId: input.useBrand ? input.brandId : undefined,
@@ -860,14 +863,18 @@ export async function POST(request: Request) {
       // (site owner: a 1 050-target post came back at 1 380, 131%). Treat
       // the mechanical trim as the hard floor no draft can end up above,
       // regardless of what the AI pass produced.
-      if (publicationCharacters(material) > maximumCharacters) {
-        material = { ...material, body: trimOverflowBody(material.body, bodyBudget(material, input.length)) };
-      }
-      missingGeo = missingGeography(material, input);
-      subjectCheck = topicCoverage(material, input);
-      missingFocuses = missingEditorialFocuses(material, input);
-      missingKeyPhrases = missingKeywords(material, input);
     }
+
+    // If there was too little time for an AI condense pass, or it still
+    // overshot, enforce the upper bound locally without spending another
+    // minute on the provider.
+    if (publicationCharacters(material) > maximumCharacters) {
+      material = { ...material, body: trimOverflowBody(material.body, bodyBudget(material, input.length)) };
+    }
+    missingGeo = missingGeography(material, input);
+    subjectCheck = topicCoverage(material, input);
+    missingFocuses = missingEditorialFocuses(material, input);
+    missingKeyPhrases = missingKeywords(material, input);
 
     // Public copy must remain publication-ready even when a model correction
     // misses a formatting instruction. Editorial comments keep source notes;
