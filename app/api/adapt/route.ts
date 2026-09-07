@@ -87,7 +87,6 @@ const distinctRewriteGoals = new Set<AdaptationGoal>(["rewrite", "seo", "social"
 // search digest. Mechanical modes must preserve the supplied facts, and an
 // unnecessary advanced search made even proofreading wait up to 12 seconds.
 const researchGoals = new Set<AdaptationGoal>(["deepen", "rewrite", "seo", "landing", "review", "cold_email"]);
-const requiredResearchGoals = new Set<AdaptationGoal>(["deepen"]);
 const websiteContextGoals = new Set<AdaptationGoal>([...researchGoals, "brand_voice"]);
 
 function coreRulesFor(goal: AdaptationGoal): readonly string[] {
@@ -233,12 +232,6 @@ export async function POST(request: Request) {
       readWebsiteContext(brandWebsite),
       researchGoals.has(input.goal) ? researchAdaptationFacts(researchTopic) : Promise.resolve(null),
     ]);
-    if (requiredResearchGoals.has(input.goal) && !webResearch) {
-      return Response.json({
-        error: "Сейчас не удалось получить внешнюю фактуру для «КЛИО Глубина». Исходный текст не изменён и редакторское действие не списано — повторите запрос чуть позже.",
-        code: "RESEARCH_UNAVAILABLE",
-      }, { status: 503 });
-    }
     const plan = ADAPTATION_PLANS[input.goal];
     const toneRules = TONE_PLANS[input.tone];
     const transformationDirective = deepRewriteGoals.has(input.goal)
@@ -362,8 +355,14 @@ export async function POST(request: Request) {
     if (!material || adaptationHasViolation(input, material)) {
       return Response.json({ error: "AI‑редактор не прошёл проверку формата. Исходный текст сохранён; повторите попытку или уточните задачу." }, { status: 422 });
     }
+    if (researchGoals.has(input.goal) && !webResearch) {
+      material.editorialComment = [
+        "Внешний поиск временно не вернул источники; версия подготовлена по исходнику, профилю бренда и доступным страницам сайта.",
+        material.editorialComment,
+      ].filter(Boolean).join(" ");
+    }
     const usage = await recordEditorialAction();
-    return Response.json({ material, mode: "ai", model: usedModel, sources: { website: website.status, webResearch: webResearch?.results.length ?? 0 }, usage });
+    return Response.json({ material, mode: "ai", model: usedModel, sources: { website: website.status, webResearch: webResearch?.results.length ?? 0, researchProvider: webResearch?.provider ?? null }, usage });
   } catch (error) {
     if (error instanceof WorkspaceAccessError) return workspaceErrorResponse(error);
     console.error("Adaptation route failed", error);
