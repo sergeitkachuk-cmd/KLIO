@@ -103,8 +103,8 @@ export async function researchMaterialWeb(topic: string, geography: Geography[])
 // though a real search should have found them). This query is deliberately
 // biased toward pages that carry citable specifics.
 export async function researchAdaptationFacts(topic: string): Promise<TavilyResearch | null> {
-  const query = `${topic} конкретные цифры, показатели, критерии, нормы и подтверждённые факты`;
-  return tavilySearch(query, 6, `adaptation-deepen:${cacheKey(topic, [])}`);
+  const query = `${topic} первоисточники, исследования, конкретные цифры, показатели, критерии, нормы и подтверждённые факты`;
+  return tavilySearch(query, 6, `adaptation-facts-v2:${cacheKey(topic, [])}`, { depth: "advanced", contentLength: 1_800, timeoutMs: 12_000 });
 }
 
 export async function discoverTavilyWeb(query: string): Promise<TavilyResearch | null> {

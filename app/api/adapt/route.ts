@@ -16,6 +16,7 @@ import { assertSecondaryQuotaAvailable, recordEditorialAction, workspaceIdentity
 import { AiCallError, callAiModel } from "../_lib/ai-router";
 import { adaptationReasoningEffort, aiConfigured } from "../_lib/ai-config";
 import { isAiRateLimited } from "../_lib/rate-limit";
+import { adaptationOutputTokenBudget, createGenerationBudget, materialOutputTokenBudget } from "../_lib/generation-budget";
 
 type AdaptationGoal = AdaptationPlan;
 
@@ -77,6 +78,10 @@ const goalLabels: Record<AdaptationGoal, string> = {
 };
 
 const deepRewriteGoals = new Set<AdaptationGoal>(["deepen", "rewrite", "seo", "social", "landing", "ads", "shorten", "cold_email"]);
+// "Глубина" enriches an already-good draft. Requiring it to replace more
+// than 18% of the wording forced an unnecessary second full model call even
+// when the requested facts had already been added.
+const distinctRewriteGoals = new Set<AdaptationGoal>(["rewrite", "seo", "social", "landing", "ads", "shorten", "cold_email"]);
 
 // brand_voice and change_tone are, by definition, "change nothing but the
 // voice/tone" - the entire point of picking one of them is that content
@@ -180,7 +185,7 @@ function adaptationViolationReason(
   const resultWords = wordCount(material.body);
   const completeLength = `${material.title}\n\n${material.body}`.trim().length;
   if (input.maxCharacters && completeLength > input.maxCharacters) return `Текст должен занимать не более ${input.maxCharacters} символов вместе с заголовком, сейчас ${completeLength}.`;
-  if (deepRewriteGoals.has(input.goal) && similarity(input.sourceText, material.body) > 0.82) return "Версия слишком похожа на исходник для выбранного сценария.";
+  if (distinctRewriteGoals.has(input.goal) && similarity(input.sourceText, material.body) > 0.82) return "Версия слишком похожа на исходник для выбранного сценария.";
   if (/^(?:Что получает читатель|Условия и следующий шаг)$/im.test(material.body)) return "В тексте появился служебный шаблонный заголовок.";
   if (input.goal === "social" && (resultWords < 60 || resultWords > 220)) return "Длина публикации для социальных сетей должна быть от 60 до 220 слов.";
   if (input.goal === "ads" && (resultWords < 30 || resultWords > 120)) return "Длина рекламного текста должна быть от 30 до 120 слов.";
@@ -210,13 +215,27 @@ export async function POST(request: Request) {
 
     await assertSecondaryQuotaAvailable("editor");
 
+    // Includes site reading, one bounded Tavily request and every possible
+    // model pass. The previous route could spend ~90 seconds on the first
+    // answer and start a fresh 90-second correction afterward.
+    const budget = createGenerationBudget(90_000);
     const identity = await workspaceIdentity();
     const brandWebsite = input.useBrand ? clean(input.brand.website, 220) : "";
-    const researchTopic = input.keywords || input.instructions || input.sourceText.slice(0, 420);
+    const sourceHeading = input.sourceText.split(/\r?\n/, 1)[0]?.slice(0, 240) ?? "";
+    // Leave room for researchAdaptationFacts' evidence qualifiers after
+    // tavilySearch applies its 700-character request limit.
+    const researchTopic = [sourceHeading, input.instructions, input.keywords].filter(Boolean).join(" ").slice(0, 430)
+      || input.sourceText.slice(0, 430);
     const [website, webResearch] = await Promise.all([
       readWebsiteContext(brandWebsite),
       voiceOnlyGoals.has(input.goal) ? Promise.resolve(null) : researchAdaptationFacts(researchTopic),
     ]);
+    if (input.goal === "deepen" && !webResearch) {
+      return Response.json({
+        error: "Сейчас не удалось получить внешнюю фактуру для «КЛИО Глубина». Исходный текст не изменён и редакторское действие не списано — повторите запрос чуть позже.",
+        code: "RESEARCH_UNAVAILABLE",
+      }, { status: 503 });
+    }
     const reasoningEffort = adaptationReasoningEffort(input.goal);
     const plan = ADAPTATION_PLANS[input.goal];
     const toneRules = TONE_PLANS[input.tone];
@@ -261,6 +280,8 @@ export async function POST(request: Request) {
       const call = await callAiModel<Record<string, unknown>>({
         operation: "adapt_text",
         reasoningEffortOverride: reasoningEffort,
+        requestTimeoutMs: budget.timeoutMs(78_000),
+        maxOutputTokensOverride: adaptationOutputTokenBudget(input.sourceText.length, reasoningEffort),
         ownerEmail: identity.email,
         schemaName: "klio_adapted_material",
         schema: ADAPTED_MATERIAL_SCHEMA,
@@ -293,10 +314,12 @@ export async function POST(request: Request) {
       throw error;
     }
 
-    if (!material || adaptationHasViolation(input, material)) {
+    if ((!material || adaptationHasViolation(input, material)) && budget.remainingMs() >= 12_000) {
       try {
         const correctionCall = await callAiModel<Record<string, unknown>>({
           operation: "revise_content",
+          requestTimeoutMs: budget.timeoutMs(20_000),
+          maxOutputTokensOverride: materialOutputTokenBudget(input.sourceText.length, "revise_content"),
           ownerEmail: identity.email,
           schemaName: "klio_corrected_adaptation",
           schema: ADAPTED_MATERIAL_SCHEMA,

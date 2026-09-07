@@ -130,6 +130,9 @@ export const generations = pgTable("generations", {
   ownerEmail: text("owner_email").notNull(),
   brandId: text("brand_id"),
   format: text("format").notNull(),
+  // "generator" | "editor" | "manual". Existing rows receive the
+  // generator default when db:push adds the column.
+  origin: text("origin").notNull().default("generator"),
   topic: text("topic").notNull(),
   title: text("title").notNull(),
   body: text("body").notNull(),

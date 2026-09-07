@@ -247,6 +247,7 @@ export async function POST(request: Request) {
         ownerEmail: user.email,
         brandId: source.brandId,
         format: source.format,
+        origin: "editor",
         topic: source.topic,
         title: generation.title,
         body: generation.body,

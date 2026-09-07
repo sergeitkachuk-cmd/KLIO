@@ -344,6 +344,7 @@ export async function recordGeneration(material: ArchiveMaterial) {
     ownerEmail: user.email,
     brandId,
     format: material.format,
+    origin: "generator",
     topic: material.topic,
     title: material.title,
     body: material.body,

@@ -12969,28 +12969,18 @@ input[type="radio"] {
   min-height: 440px;
 }
 
-/* Sticks right below .archive-editor-head (top set inline from
-   archiveEditorHeadHeight, measured in JS since the head's own height
-   varies with title/description length) instead of at the bottom of the
-   modal. Moved up in the DOM to sit right after the body field too, not
-   after SEO/comment/changelog — site owner: "перенеси под поле текста…
-   зафиксировать их, а не перемещать при скролле" (this used to be
-   sticky to the bottom only on desktop; на mobile it went static and
-   scrolled away entirely — both replaced by this one sticky-top rule,
-   which the mobile breakpoints below no longer override). The gradient
-   is flipped from the old bottom-anchored version (solid fading up from
-   below) to solid-at-top/fading-toward-bottom, since content now scrolls
-   up *from underneath* this bar instead of out from behind it. */
+/* This row belongs directly under the body field in normal document flow.
+   Keeping it static prevents the controls from covering text while either
+   the desktop modal or the mobile page scrolls. */
 .archive-editor-modal .archive-editor-actions {
-  position: sticky;
-  z-index: 3;
+  position: static;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
   justify-content: end;
   margin-top: 4px;
   padding: 14px 0;
-  background: linear-gradient(180deg, #061c34 82%, transparent);
+  background: transparent;
 }
 
 .archive-editor-actions > button {
@@ -13298,16 +13288,6 @@ input[type="radio"] {
   }
 
   .archive-editor-modal .archive-editor-actions {
-    /* No position/top/bottom override here anymore — inherits sticky
-       positioning (top set inline from archiveEditorHeadHeight) from the
-       base rule on every breakpoint now, mobile included. This used to
-       force position:static ("stop pinning the save/copy row to the
-       bottom of the screen"), which meant scrolling all the way past
-       body/SEO/comment to reach it on a long article (site owner: "не
-       делай их прокручиваемыми скролом"). Two columns instead of one —
-       see the mobile button sizing (compact padding/font, wrapping
-       enabled) a bit further down, which is what actually keeps 2-up
-       from overflowing. */
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -14316,17 +14296,6 @@ input[type="radio"] {
   }
 
   .archive-editor-modal .archive-editor-actions {
-    /* Two per row (not the earlier one-per-row fix) — what actually
-       caused the old overflow wasn't the column count itself, it was
-       .archive-editor-actions > button:first-child (below) staying at
-       its desktop size (min-height: 44px, padding: 0 13px, no wrapping)
-       while its 3 siblings got the compact/wrapping treatment, so the
-       first cell didn't fit its column. Sizing all four consistently and
-       letting the label wrap onto a second line (line-height: 1.25,
-       min-height 40px has room for two lines) is what makes 2-up fit.
-       Stays sticky (inherited from the base rule, no position:static
-       override here anymore) so it's reachable without scrolling past
-       body/SEO/comment first — see the ≤700px block above. */
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 7px;
   }

@@ -318,6 +318,7 @@ type GenerationArchiveItem = {
   // generator itself produces, so it stays out of the narrower `Format`
   // union that drives the generator's own format picker.
   format: Format | "external";
+  origin?: "generator" | "editor" | "manual";
   topic: string;
   title: string;
   body: string;
@@ -2230,12 +2231,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [archiveEditorChanges, setArchiveEditorChanges] = useState<string[]>([]);
   const [archiveEditorTone, setArchiveEditorTone] = useState("Экспертный");
   const [archiveTransformGoal, setArchiveTransformGoal] = useState<AdaptationGoal>("proofread");
-  // .archive-editor-actions sticks right under .archive-editor-head (see the
-  // effect below) instead of at the bottom of the modal — its own height
-  // needs measuring since the head is variable (title/description length),
-  // so a fixed sticky `top` in CSS alone can't track it.
-  const archiveEditorHeadRef = useRef<HTMLDivElement>(null);
-  const [archiveEditorHeadHeight, setArchiveEditorHeadHeight] = useState(0);
   const [brandCreatorOpen, setBrandCreatorOpen] = useState(false);
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -2511,22 +2506,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     archiveEditorItem.editorialComment !== archiveEditorOriginal.editorialComment,
     archiveEditorTone !== (archiveEditorOriginal.tone || "Экспертный"),
   ].some(Boolean));
-
-  // Measures .archive-editor-head so .archive-editor-actions (see its JSX,
-  // right below the body field) knows how far down to stick — the head's
-  // own height varies with the material's title/topic length, so a fixed
-  // CSS top wouldn't track it. ResizeObserver, not just a run-once measure
-  // on open: the head can reflow (e.g. a long title wraps to a second line)
-  // after mount too.
-  useEffect(() => {
-    if (!archiveEditorItem || !archiveEditorHeadRef.current) return;
-    const node = archiveEditorHeadRef.current;
-    const measure = () => setArchiveEditorHeadHeight(node.getBoundingClientRect().height);
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [archiveEditorItem]);
 
   useEffect(() => {
     // Reads what the blocking bootstrap script in layout.tsx already
@@ -4740,6 +4719,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     if (!title && !body) return;
     setAdaptationSource(`${title}\n\n${body}`.trim());
     setAdaptationKeywords(keywords);
+    setAdaptationInstructions("");
     setAdaptationResult(null);
     setAdaptationMode("example");
     setAdaptationError("");
@@ -4821,6 +4801,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       if (payload.mode !== "ai") throw new Error("Материал не получен от редактора КЛИО.");
       if (payload.usage?.account) setWorkspaceAccount(payload.usage.account);
       setAdaptationMode("ai");
+      setAdaptationInstructions("");
       await saveAdaptationResult(payload.material);
       showToast(`${activeAdaptationPlan.title} завершил редактуру`);
     } catch (error) {
@@ -5034,7 +5015,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 // needs its own label here rather than falling back to the raw
                 // string like an actually-unrecognized value would.
                 const formatLabel = item.format === "external" ? "Добавлено вручную" : formats.find((candidate) => candidate.id === item.format)?.label || item.format;
-                return <article className={`material-card material-article ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><span>{formatLabel}</span><small>{archiveDate(item.createdAt)}</small></div><h3>{item.title}</h3><p>{item.topic}</p><footer><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал">Удалить</button><button type="button" className="material-archive" onClick={() => void archiveArchiveItem(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" onClick={() => openArchiveItem(item)}>В редактор <Icon name="arrow"/></button></div></footer></article>;
+                const materialLabel = item.origin === "editor" ? `РЕД. · ${formatLabel}` : formatLabel;
+                return <article className={`material-card material-article ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><span>{materialLabel}</span><small>{archiveDate(item.createdAt)}</small></div><h3>{item.title}</h3><p>{item.topic}</p><footer><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал">Удалить</button><button type="button" className="material-archive" onClick={() => void archiveArchiveItem(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" onClick={() => openArchiveItem(item)}>В редактор <Icon name="arrow"/></button></div></footer></article>;
               }
               const typeLabel = item.type === "content_plan" ? "Контент‑план" : item.type === "semantics" ? "Семантика" : "Анализ конкурентов";
               // Full items (not just title strings) so each topic can be sent
@@ -5055,7 +5037,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
           {archiveEditorItem && <div className="archive-editor-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) closeArchiveEditor(); }}>
             <section className="archive-editor-modal" role="dialog" aria-modal="true" aria-labelledby="archive-editor-title">
-              <div className="archive-editor-head" ref={archiveEditorHeadRef}>
+              <div className="archive-editor-head">
                 <div><span>Материалы / редактор КЛИО</span><h2 id="archive-editor-title">{formats.find((item) => item.id === archiveEditorItem.format)?.label || archiveEditorItem.format}</h2><p>Работайте с сохранённой статьёй отдельно: текущий черновик генератора не изменяется.</p></div>
                 <div className="archive-editor-head-actions"><span className={archiveEditorDirty ? "is-dirty" : ""}>{archiveEditorDirty ? "Есть несохранённые правки" : "Версия сохранена"}</span><button type="button" onClick={closeArchiveEditor} aria-label="Закрыть редактор">×</button></div>
               </div>
@@ -5069,7 +5051,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <article className="archive-editor-document">
                   <label><span>Заголовок материала</span><AutoTextarea className="archive-editor-title" rows={1} value={archiveEditorItem.title} onChange={(event) => setArchiveEditorItem((current) => current ? { ...current, title: event.target.value } : current)}/></label>
                   <label><span>Текст материала</span><AutoTextarea className="archive-editor-body" rows={16} value={archiveEditorItem.body} onChange={(event) => setArchiveEditorItem((current) => current ? { ...current, body: event.target.value } : current)}/></label>
-                  <div className="archive-editor-actions" style={{ top: archiveEditorHeadHeight }}>
+                  <div className="archive-editor-actions">
                     <button className="button ghost" type="button" onClick={copyArchiveItem}><Icon name="copy"/> Копировать</button>
                     <button className="button ghost" type="button" onClick={() => void openPublicationDraft({ title: archiveEditorItem.title, body: archiveEditorItem.body, generationId: archiveEditorItem.id })}>В публикацию</button>
                     <button className="button ghost" type="button" onClick={restoreArchiveOriginal} disabled={!archiveEditorDirty || archiveEditorSaving || archiveEditorBusy}>Вернуть</button>
@@ -5085,7 +5067,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   {archiveEditorError && <p className="generation-error" role="alert">{archiveEditorError}</p>}
                 </article>
                 <aside className="archive-transform-panel">
-                  <span>Редакторы КЛИО</span><h3>{activeArchivePlan.title}</h3><p>{activeArchivePlan.result}. {archiveTransformGoal === "deepen" ? "КЛИО добавит только краткую проверяемую фактуру из одного серверного поиска." : "Все остальные режимы используют сохранённый материал как единственный источник фактов."}</p>
+                  <span>Редакторы КЛИО</span><h3>{activeArchivePlan.title}</h3><p>{activeArchivePlan.result}. {archiveTransformGoal === "deepen" ? "КЛИО изучит сайт бренда и добавит проверяемую фактуру из внешнего поиска; без результатов поиска режим не запустится." : ["brand_voice", "change_tone"].includes(archiveTransformGoal) ? "Режим меняет подачу по исходнику и профилю бренда, не добавляя новые факты." : "КЛИО использует исходник, профиль бренда, снимок сайта и один ограниченный внешний поиск фактов."}</p>
                   <div className="archive-transform-tools">{adaptationGoals.map((item) => {
                     const active = archiveTransformGoal === item.id;
                     return <article className={active ? "active" : ""} key={item.id}>

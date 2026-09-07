@@ -164,7 +164,12 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // (proofread vs. full SEO rebuild) — the route picks reasoningEffort
   // per goal (see adaptationReasoningEffort below); this entry is the
   // fallback/default for the majority of goals (rewrite, shorten, tone…).
-  adapt_text: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 6_000, structuredOutput: true, retryable: true, useWebSearch: false },
+  // DeepSeek counts hidden reasoning and the visible edited text against the
+  // same output ceiling. The old 6k limit regularly ended a valid "Глубина"
+  // pass with status=incomplete before the JSON message was emitted. The
+  // route now chooses a source-sized budget below this ceiling and owns one
+  // overall deadline, so a failed full edit is never replayed invisibly.
+  adapt_text: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 16_000, structuredOutput: true, retryable: false, useWebSearch: false },
   // Long fix history compressed to the point that matters (git blame has
   // the rest if it's ever needed): every failure chased on this operation
   // — a reasoning item draft-rejecting-redrafting its own topic list for

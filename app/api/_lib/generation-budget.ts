@@ -1,5 +1,5 @@
 import { AiCallError } from "./ai-router";
-import { OPERATION_CONFIG, type AiOperation } from "./ai-config";
+import { OPERATION_CONFIG, type AiOperation, type ReasoningEffort } from "./ai-config";
 
 export function materialOutputTokenBudget(targetCharacters: number, operation: AiOperation) {
   const config = OPERATION_CONFIG[operation];
@@ -8,6 +8,15 @@ export function materialOutputTokenBudget(targetCharacters: number, operation: A
   // Add headroom for thinking instead of taking it from the text allowance.
   const thinkingHeadroom = config.reasoningEffort === "none" ? 0 : targetCharacters <= 2000 ? 2048 : 4096;
   return Math.min(config.maxOutputTokens, textBudget + thinkingHeadroom);
+}
+
+export function adaptationOutputTokenBudget(sourceCharacters: number, reasoningEffort: ReasoningEffort) {
+  // An editor normally returns roughly the source length plus six compact
+  // metadata fields. DeepSeek's max_output_tokens also includes its hidden
+  // reasoning, so reserve that separately for judgement-heavy modes.
+  const visibleTextBudget = Math.max(2_200, Math.min(10_000, Math.ceil(sourceCharacters / 2.2) + 1_200));
+  const thinkingHeadroom = reasoningEffort === "none" ? 0 : 4_096;
+  return Math.min(OPERATION_CONFIG.adapt_text.maxOutputTokens, visibleTextBudget + thinkingHeadroom);
 }
 
 export function createGenerationBudget(totalMs = 150_000) {
