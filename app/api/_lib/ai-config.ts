@@ -4,6 +4,8 @@
 // or a price — see ai-router.ts for the call site that reads this config,
 // and every app/api/*/route.ts for the operations that use it.
 
+import type { AdaptationPlan } from "../../content-plans";
+
 export type AiProvider = "openai" | "deepseek";
 
 // One env var switches every operation at once — see ai-router.ts's
@@ -160,7 +162,7 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   generate_ad_copy: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 16_000, structuredOutput: true, retryable: false, useWebSearch: false },
   generate_landing: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 16_000, structuredOutput: true, retryable: false, useWebSearch: false },
   generate_quick_material: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 16_000, structuredOutput: true, retryable: false, useWebSearch: false },
-  // adapt_text spans 12 KLIO editor goals with very different weight
+  // adapt_text spans 15 KLIO editor goals with very different weight
   // (proofread vs. full SEO rebuild) — the route picks reasoningEffort
   // per goal (see adaptationReasoningEffort below); this entry is the
   // fallback/default for the majority of goals (rewrite, shorten, tone…).
@@ -243,10 +245,10 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   condense_overflow: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 8_000, structuredOutput: true, retryable: false, useWebSearch: false },
 };
 
-// adapt_text's 14 KLIO editor goals (see app/content-plans.ts
+// adapt_text's 15 KLIO editor goals (see app/content-plans.ts
 // ADAPTATION_PLANS) don't share one reasoning weight — a spelling pass
 // and a full SEO rebuild are not the same amount of work.
-const ADAPT_GOAL_REASONING: Record<string, ReasoningEffort> = {
+const ADAPT_GOAL_REASONING: Record<AdaptationPlan, ReasoningEffort> = {
   proofread: "none",
   clarity: "none",
   shorten: "none",
@@ -269,6 +271,6 @@ const ADAPT_GOAL_REASONING: Record<string, ReasoningEffort> = {
   brand_voice: "low",
 };
 
-export function adaptationReasoningEffort(goal: string): ReasoningEffort {
-  return ADAPT_GOAL_REASONING[goal] ?? "none";
+export function adaptationReasoningEffort(goal: AdaptationPlan): ReasoningEffort {
+  return ADAPT_GOAL_REASONING[goal];
 }

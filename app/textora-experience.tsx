@@ -5067,7 +5067,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   {archiveEditorError && <p className="generation-error" role="alert">{archiveEditorError}</p>}
                 </article>
                 <aside className="archive-transform-panel">
-                  <span>Редакторы КЛИО</span><h3>{activeArchivePlan.title}</h3><p>{activeArchivePlan.result}. {archiveTransformGoal === "deepen" ? "КЛИО изучит сайт бренда и добавит проверяемую фактуру из внешнего поиска; без результатов поиска режим не запустится." : ["brand_voice", "change_tone"].includes(archiveTransformGoal) ? "Режим меняет подачу по исходнику и профилю бренда, не добавляя новые факты." : "КЛИО использует исходник, профиль бренда, снимок сайта и один ограниченный внешний поиск фактов."}</p>
+                  <span>Редакторы КЛИО</span><h3>{activeArchivePlan.title}</h3><p>{activeArchivePlan.result}. {archiveTransformGoal === "deepen" ? "КЛИО изучит сайт бренда и добавит проверяемую фактуру из внешнего поиска; без результатов поиска режим не запустится." : ["rewrite", "seo", "landing", "review", "cold_email"].includes(archiveTransformGoal) ? "КЛИО использует исходник, профиль бренда, снимок сайта и один ограниченный внешний поиск фактов." : "Режим работает с исходником и профилем бренда без внешнего поиска, чтобы не менять факты и не увеличивать время простой правки."}</p>
                   <div className="archive-transform-tools">{adaptationGoals.map((item) => {
                     const active = archiveTransformGoal === item.id;
                     return <article className={active ? "active" : ""} key={item.id}>

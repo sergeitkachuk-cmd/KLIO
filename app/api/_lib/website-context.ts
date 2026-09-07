@@ -12,6 +12,12 @@ const EMPTY_CONTEXT: WebsiteContext = {
   text: "",
 };
 
+const WEBSITE_CACHE_MAX_ENTRIES = 100;
+const WEBSITE_CACHE_TTL_MS = 60 * 60 * 1000;
+const WEBSITE_FAILURE_CACHE_TTL_MS = 2 * 60 * 1000;
+const websiteContextCache = new Map<string, { expiresAt: number; value: WebsiteContext }>();
+const websiteContextInFlight = new Map<string, Promise<WebsiteContext>>();
+
 function isPrivateIpv4(hostname: string) {
   const parts = hostname.split(".").map(Number);
   if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false;
@@ -151,7 +157,7 @@ async function fetchPublicHtml(url: URL) {
   return null;
 }
 
-export async function readWebsiteContext(value: string): Promise<WebsiteContext> {
+async function loadWebsiteContext(value: string): Promise<WebsiteContext> {
   const requestedUrl = value.trim();
   if (!requestedUrl) return EMPTY_CONTEXT;
   const url = normalizePublicUrl(requestedUrl);
@@ -189,6 +195,34 @@ export async function readWebsiteContext(value: string): Promise<WebsiteContext>
   } catch {
     return { ...EMPTY_CONTEXT, requestedUrl, resolvedUrl: url.toString(), status: "unavailable" };
   }
+}
+
+export async function readWebsiteContext(value: string): Promise<WebsiteContext> {
+  const requestedUrl = value.trim();
+  if (!requestedUrl) return EMPTY_CONTEXT;
+  const normalized = normalizePublicUrl(requestedUrl);
+  if (!normalized) return { ...EMPTY_CONTEXT, requestedUrl, status: "blocked" };
+  const key = normalized.toString();
+  const cached = websiteContextCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+  if (cached) websiteContextCache.delete(key);
+
+  const active = websiteContextInFlight.get(key);
+  if (active) return active;
+
+  const pending = loadWebsiteContext(requestedUrl).then((context) => {
+    if (websiteContextCache.size >= WEBSITE_CACHE_MAX_ENTRIES) {
+      const oldestKey = websiteContextCache.keys().next().value;
+      if (oldestKey) websiteContextCache.delete(oldestKey);
+    }
+    const ttl = context.status === "loaded" ? WEBSITE_CACHE_TTL_MS : WEBSITE_FAILURE_CACHE_TTL_MS;
+    websiteContextCache.set(key, { value: context, expiresAt: Date.now() + ttl });
+    return context;
+  }).finally(() => {
+    websiteContextInFlight.delete(key);
+  });
+  websiteContextInFlight.set(key, pending);
+  return pending;
 }
 
 export function websiteSourceLabel(context: WebsiteContext) {

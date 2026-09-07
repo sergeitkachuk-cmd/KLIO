@@ -83,19 +83,20 @@ const deepRewriteGoals = new Set<AdaptationGoal>(["deepen", "rewrite", "seo", "s
 // when the requested facts had already been added.
 const distinctRewriteGoals = new Set<AdaptationGoal>(["rewrite", "seo", "social", "landing", "ads", "shorten", "cold_email"]);
 
-// brand_voice and change_tone are, by definition, "change nothing but the
-// voice/tone" - the entire point of picking one of them is that content
-// stays put. Every other editor may enrich the source with verified facts
-// from web_research (site owner: real facts "add weight" to a text, and
-// this should apply broadly, not just to КЛИО Глубина).
-const voiceOnlyGoals = new Set<AdaptationGoal>(["brand_voice", "change_tone"]);
+// Only editors whose contract benefits from independent evidence receive a
+// search digest. Mechanical modes must preserve the supplied facts, and an
+// unnecessary advanced search made even proofreading wait up to 12 seconds.
+const researchGoals = new Set<AdaptationGoal>(["deepen", "rewrite", "seo", "landing", "review", "cold_email"]);
+const requiredResearchGoals = new Set<AdaptationGoal>(["deepen"]);
+const websiteContextGoals = new Set<AdaptationGoal>([...researchGoals, "brand_voice"]);
 
 function coreRulesFor(goal: AdaptationGoal): readonly string[] {
-  if (voiceOnlyGoals.has(goal)) return ADAPTATION_CORE_RULES;
+  if (!researchGoals.has(goal)) return ADAPTATION_CORE_RULES;
   const relaxed = ADAPTATION_CORE_RULES.filter((rule) => !rule.startsWith("Используй только сведения") && !rule.startsWith("Не дополняй исходник фактами"));
   return [
     ...relaxed,
     "Если передано поле web_research, его сведения так же надёжны, как исходник и профиль бренда: используй их, чтобы заменить общие формулировки конкретными проверяемыми фактами, цифрами, критериями или примерами там, где это уместно для выбранного сценария. Не меняй ради этого объём, формат или композицию сильнее, чем требует сам сценарий, и не отмечай пробел в editorial_comment, если нужный факт в web_research уже есть.",
+    "Если использовал сведения из web_research, перечисли соответствующие URL в editorial_comment для редакторской проверки; в title, subtitle, body и SEO-полях ссылок быть не должно.",
     "Не добавляй факт, которого нет ни в исходнике, ни в профиле бренда, ни в web_research; никогда не выдавай предположение за проверенный факт.",
   ];
 }
@@ -215,12 +216,14 @@ export async function POST(request: Request) {
 
     await assertSecondaryQuotaAvailable("editor");
 
-    // Includes site reading, one bounded Tavily request and every possible
-    // model pass. The previous route could spend ~90 seconds on the first
-    // answer and start a fresh 90-second correction afterward.
-    const budget = createGenerationBudget(90_000);
     const identity = await workspaceIdentity();
-    const brandWebsite = input.useBrand ? clean(input.brand.website, 220) : "";
+    const reasoningEffort = adaptationReasoningEffort(input.goal);
+    // Fast modes have no reasoning phase and must finish sooner. Research
+    // and judgement-heavy modes keep more room, while every editor remains
+    // under one deadline including a possible correction pass.
+    const totalBudgetMs = reasoningEffort === "none" ? 70_000 : 90_000;
+    const budget = createGenerationBudget(totalBudgetMs);
+    const brandWebsite = input.useBrand && websiteContextGoals.has(input.goal) ? clean(input.brand.website, 220) : "";
     const sourceHeading = input.sourceText.split(/\r?\n/, 1)[0]?.slice(0, 240) ?? "";
     // Leave room for researchAdaptationFacts' evidence qualifiers after
     // tavilySearch applies its 700-character request limit.
@@ -228,15 +231,14 @@ export async function POST(request: Request) {
       || input.sourceText.slice(0, 430);
     const [website, webResearch] = await Promise.all([
       readWebsiteContext(brandWebsite),
-      voiceOnlyGoals.has(input.goal) ? Promise.resolve(null) : researchAdaptationFacts(researchTopic),
+      researchGoals.has(input.goal) ? researchAdaptationFacts(researchTopic) : Promise.resolve(null),
     ]);
-    if (input.goal === "deepen" && !webResearch) {
+    if (requiredResearchGoals.has(input.goal) && !webResearch) {
       return Response.json({
         error: "Сейчас не удалось получить внешнюю фактуру для «КЛИО Глубина». Исходный текст не изменён и редакторское действие не списано — повторите запрос чуть позже.",
         code: "RESEARCH_UNAVAILABLE",
       }, { status: 503 });
     }
-    const reasoningEffort = adaptationReasoningEffort(input.goal);
     const plan = ADAPTATION_PLANS[input.goal];
     const toneRules = TONE_PLANS[input.tone];
     const transformationDirective = deepRewriteGoals.has(input.goal)
@@ -265,12 +267,11 @@ export async function POST(request: Request) {
       website_snapshot: input.useBrand && website.status === "loaded"
         ? { url: website.resolvedUrl, text: website.text }
         : null,
-      // Was slice(0, 3) against a 5-result search — researchAdaptationFacts
-      // now returns up to 6, and all of them go through: the model, not
-      // this route, is in the best position to judge which are actually
-      // relevant to the gap it's trying to fill. Every goal except the two
-      // voice-only ones gets this now, not just deepen — see coreRulesFor.
-      web_research: !voiceOnlyGoals.has(input.goal) && webResearch
+      // researchAdaptationFacts returns up to 6 results, and all of them go
+      // through for the evidence-aware modes above. Mechanical editors do
+      // not receive this field, so they cannot expand the fact set by
+      // accident and do not wait for an irrelevant search.
+      web_research: researchGoals.has(input.goal) && webResearch
         ? webResearch.results.map(({ title, url, content }) => ({ title, url, fact: content }))
         : null,
     };
@@ -280,7 +281,7 @@ export async function POST(request: Request) {
       const call = await callAiModel<Record<string, unknown>>({
         operation: "adapt_text",
         reasoningEffortOverride: reasoningEffort,
-        requestTimeoutMs: budget.timeoutMs(78_000),
+        requestTimeoutMs: budget.timeoutMs(reasoningEffort === "none" ? 62_000 : 78_000),
         maxOutputTokensOverride: adaptationOutputTokenBudget(input.sourceText.length, reasoningEffort),
         ownerEmail: identity.email,
         schemaName: "klio_adapted_material",
@@ -362,7 +363,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "AI‑редактор не прошёл проверку формата. Исходный текст сохранён; повторите попытку или уточните задачу." }, { status: 422 });
     }
     const usage = await recordEditorialAction();
-    return Response.json({ material, mode: "ai", model: usedModel, sources: { website: website.status, webResearch: input.goal === "deepen" ? webResearch?.results.length ?? 0 : 0 }, usage });
+    return Response.json({ material, mode: "ai", model: usedModel, sources: { website: website.status, webResearch: webResearch?.results.length ?? 0 }, usage });
   } catch (error) {
     if (error instanceof WorkspaceAccessError) return workspaceErrorResponse(error);
     console.error("Adaptation route failed", error);
