@@ -131,6 +131,13 @@ select:focus-visible {
      top of it should carry, so a CTA looks the same wherever it appears. */
   border-radius: 999px;
   background: transparent;
+  /* No line-height anywhere before this inherited the body font's own
+     "normal" metric, which reads as noticeably loose once a label wraps
+     to two lines in a narrow spot (site owner: "Открыть редакцию" on a
+     narrow hero on mobile) - a button is never meant to hold a real
+     paragraph, so a tight fixed value reads better than any font's
+     idea of "normal" here. */
+  line-height: 1.2;
   font-weight: 650;
   cursor: pointer;
   text-decoration: none;
@@ -4075,6 +4082,7 @@ footer nav a {
   box-shadow: 0 9px 23px rgba(83, 43, 184, 0.25);
   font-size: 12px;
   font-weight: 760;
+  line-height: 1.2;
   text-decoration: none;
   transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
 }
