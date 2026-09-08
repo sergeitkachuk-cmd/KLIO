@@ -957,7 +957,11 @@ select:focus-visible {
     radial-gradient(circle at 100% 0%, rgba(139, 92, 246, 0.11), transparent 38%),
     linear-gradient(145deg, rgba(255, 255, 255, 0.76), rgba(246, 244, 252, 0.48));
   box-shadow: 0 24px 68px rgba(38, 27, 65, 0.08), inset 0 1px rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(11px) saturate(135%);
+  /* No backdrop-filter (was blur(11px) saturate(135%)) - one of several
+     of these cards on screen together; dropped along with every other
+     repeated card/button's blur across the app to cut simultaneous
+     GPU-compositing load (site owner: severe stutter/blank-render on
+     both Mac browsers, confirmed not Safari-specific). */
   transition: border-color 220ms ease, transform 220ms ease, box-shadow 220ms ease;
 }
 
@@ -3115,7 +3119,8 @@ textarea[data-autosize="true"] {
   border-radius: 4px 38px 4px 4px;
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.78), rgba(247, 247, 252, 0.5));
   box-shadow: 0 25px 70px rgba(28, 24, 48, 0.08), inset 0 1px rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(10px);
+  /* No backdrop-filter (was blur(10px)) - repeated card, see the note
+     on .audience-grid article above. */
   transition: transform 220ms ease, box-shadow 220ms ease;
 }
 
@@ -3414,7 +3419,8 @@ textarea[data-autosize="true"] {
   border-radius: 4px 38px 4px 4px;
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.79), rgba(247, 247, 252, 0.48));
   box-shadow: 0 27px 75px rgba(29, 24, 52, 0.09), inset 0 1px rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(11px) saturate(135%);
+  /* No backdrop-filter (was blur(11px) saturate(135%)) - repeated card
+     (3 pricing tiers), see the note on .audience-grid article above. */
 }
 
 .price-card.popular {
@@ -6833,7 +6839,11 @@ footer nav a {
 .competitor-actionbar {
   border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow: 0 24px 70px rgba(3, 12, 26, 0.28), inset 0 1px rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(13px) saturate(145%);
+  /* No backdrop-filter (was blur(13px) saturate(145%)) - all four of
+     these selectors' own backgrounds (defined separately per selector
+     below/elsewhere) turn out to be opaque hex gradients too, same as
+     the module shells fixed earlier - missed in that pass since the
+     background and backdrop-filter live in different rules here. */
 }
 
 .competitor-setup-card {
@@ -9283,7 +9293,9 @@ footer nav a {
   color: rgba(255, 255, 255, 0.78);
   background: rgba(255, 255, 255, 0.05);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(9px) saturate(145%);
+  /* No backdrop-filter (was blur(9px) saturate(145%)) - 15 of these
+     render on screen at once (see the note on .audience-grid article
+     above); that's 15 simultaneous blur layers for one picker. */
   text-align: left;
   cursor: pointer;
   transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
@@ -12406,7 +12418,8 @@ input[type="radio"] {
   color: #fff;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.095), rgba(124, 58, 237, 0.08));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.1), 0 10px 24px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(8px) saturate(145%);
+  /* No backdrop-filter (was blur(8px) saturate(145%)) - repeated
+     button, see the note on .audience-grid article above. */
   text-align: left;
   cursor: pointer;
 }
@@ -12709,7 +12722,9 @@ input[type="radio"] {
   color: #fff;
   background: rgba(255, 255, 255, 0.09);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(8px) saturate(145%);
+  /* No backdrop-filter (was blur(8px) saturate(145%)) - repeated per
+     material card in the list, see the note on .audience-grid article
+     above. */
   font-size: 11px;
   white-space: nowrap;
 }
@@ -12747,7 +12762,8 @@ input[type="radio"] {
   color: rgba(255, 255, 255, 0.78);
   background: rgba(255, 255, 255, 0.06);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(8px) saturate(140%);
+  /* No backdrop-filter (was blur(8px) saturate(140%)) - repeated
+     filter chip, see the note on .audience-grid article above. */
   cursor: pointer;
 }
 
@@ -12883,7 +12899,8 @@ input[type="radio"] {
   color: #6b6574;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(229, 222, 244, 0.44));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.92), 0 7px 18px rgba(49, 35, 81, 0.055);
-  backdrop-filter: blur(7px) saturate(140%);
+  /* No backdrop-filter (was blur(7px) saturate(140%)) - repeated tone
+     option, see the note on .audience-grid article above. */
   font-size: 11px;
   font-weight: 650;
   cursor: pointer;
@@ -14637,7 +14654,8 @@ input[type="radio"] {
   font-size: 10px;
   font-weight: 690;
   cursor: pointer;
-  backdrop-filter: blur(8px) saturate(145%);
+  /* No backdrop-filter (was blur(8px) saturate(145%)) - repeated
+     action-bar button, see the note on .audience-grid article above. */
 }
 
 .module-material-bar button:disabled,
