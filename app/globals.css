@@ -13955,7 +13955,16 @@ input[type="radio"] {
     overflow-x: auto; -webkit-overflow-scrolling: touch;
     overscroll-behavior-inline: contain;
     scroll-padding-inline: 14px;
-    scroll-snap-type: x proximity;
+    /* scroll-snap-type removed (was x proximity) - with 9 snap points
+       (scroll-snap-align on every button below) packed into one bar,
+       this is a well-known source of exactly the site owner's Android
+       report: a fling gets re-evaluated against the nearest snap point
+       repeatedly as it decelerates, cutting a long flick short well
+       before it would otherwise glide to the far end, so getting from
+       the first module to the last took several separate swipes. A
+       tab bar like this reads fine as a plain free-scrolling list -
+       losing the settle-on-a-button alignment is a minor tradeoff
+       against actually being able to scroll it in one motion. */
     scrollbar-width: none;
     border-top: 1px solid rgba(151, 190, 234, 0.16);
     background: linear-gradient(180deg, rgba(4, 12, 24, 0.88), rgba(4, 12, 24, 0.98));
@@ -13991,7 +14000,6 @@ input[type="radio"] {
        corner this bar carried before - these items act as buttons here,
        not as sidebar list rows. */
     border-radius: 999px;
-    scroll-snap-align: start;
   }
 
   .workspace-sidebar nav i {
