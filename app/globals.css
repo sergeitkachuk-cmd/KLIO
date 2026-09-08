@@ -12631,8 +12631,19 @@ input[type="radio"] {
 .brand-menu-list {
   position: absolute;
   top: calc(100% + 8px);
-  right: 0;
   left: 0;
+  /* Desktop only - was right: 0/left: 0, matching the trigger's own
+     width (the ~220px sidebar column minus its padding). Fine on
+     mobile, where that column is nearly the full viewport, but on
+     desktop it squeezed every brand name/URL down to an unreadable
+     "Санаторий «Мар…" (site owner: "ужасно скомкано"). A fixed width
+     lets the menu float wider than its narrow trigger without
+     affecting layout - it's position: absolute, so nothing else
+     reflows. The ≤820px block below restores the old right: 0/left: 0/
+     full-width behavior, which the site owner confirmed already works
+     well there. */
+  right: auto;
+  width: 380px;
   z-index: 100;
   display: grid;
   gap: 5px;
@@ -13986,6 +13997,13 @@ input[type="radio"] {
 
   .workspace-project .brand-menu-list {
     top: calc(100% + 6px);
+    /* Restores the pre-desktop-fix right: 0/left: 0/full-width
+       behavior - on mobile .workspace-project spans nearly the whole
+       viewport, so this already reads as a proper full-width sheet;
+       only desktop's narrow sidebar column needed the fixed width
+       above. */
+    right: 0;
+    width: auto;
   }
 
   .workspace-sidebar nav {
