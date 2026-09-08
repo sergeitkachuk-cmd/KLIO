@@ -39,6 +39,20 @@ const WORKSPACE_MODULES = new Set<WorkspaceModule>(["start", "brand", "generator
 function isWorkspaceModule(value: string | null): value is WorkspaceModule {
   return value !== null && WORKSPACE_MODULES.has(value as WorkspaceModule);
 }
+// Matches every sidebar/bottom-nav <a href="#..."> exactly - see the
+// nav markup and openModule/the hash-sync effect below. Kept as one map
+// instead of scattering the mapping across those three places.
+const WORKSPACE_MODULE_HASH: Record<WorkspaceModule, string> = {
+  start: "#start",
+  brand: "#brand-profile",
+  generator: "#generator",
+  "content-plan": "#content-plan",
+  adaptation: "#adaptation",
+  semantics: "#semantics",
+  competitors: "#competitors",
+  publications: "#publications",
+  history: "#history",
+};
 type ContentPlanStatus = "Запланировано" | "В работе" | "Готово";
 const CONTENT_PLAN_STATUS_OPTIONS = [
   { value: "Запланировано", label: "Запланировано" },
@@ -1621,8 +1635,21 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // same way, so there's no separate toggle-to-close behavior anywhere.
   const [activeModule, setActiveModule] = useState<WorkspaceModule>("start");
   const [workspaceModuleRestored, setWorkspaceModuleRestored] = useState(false);
+  // Also pushes a browser history entry (via the hash) so the phone/
+  // browser back button steps between modules instead of leaving the
+  // page entirely - previously nothing here ever touched history, so
+  // opening a module the user reached as a detour (Материалы chief
+  // among them) and then pressing back skipped straight past the app to
+  // whatever was open before it, reading as the site itself closing
+  // (site owner: "переходишь на закрытие вкладки сайта"). The
+  // hashchange effect below is what turns that same back/forward
+  // navigation back into the matching setActiveModule call.
   function openModule(id: WorkspaceModule) {
     setActiveModule(id);
+    if (workspace) {
+      const hash = WORKSPACE_MODULE_HASH[id];
+      if (window.location.hash !== hash) window.location.hash = hash;
+    }
   }
 
   // Keep the same workspace tool open when this browser tab is refreshed.
@@ -1635,7 +1662,17 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     }
     try {
       const saved = window.sessionStorage.getItem(WORKSPACE_MODULE_STORAGE_KEY);
-      if (isWorkspaceModule(saved)) setActiveModule(saved);
+      if (isWorkspaceModule(saved)) {
+        setActiveModule(saved);
+        // Sync the *current* history entry's hash to match - replaceState,
+        // not openModule's pushState-via-hash-assignment, so a refresh
+        // doesn't itself add a step to walk back through. Without this,
+        // refreshing mid-module then opening another one left the entry
+        // being returned to on back mismatched (empty hash, "start")
+        // against the module actually restored here.
+        const hash = WORKSPACE_MODULE_HASH[saved];
+        if (window.location.hash !== hash) window.history.replaceState(null, "", hash);
+      }
     } catch {
       // Private browsing can reject storage; the default "start" is safe.
     }
@@ -2687,17 +2724,35 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }, [workspace]);
 
   useEffect(() => {
-    // Calls setActiveModule directly (not the openModule helper) so this
-    // effect has no reason to depend on anything but the stable setter -
-    // it only needs to run once, on mount, and again on each hashchange.
+    // Calls setActiveModule directly (not the openModule helper, which
+    // would just set the same hash again) so this effect has no reason
+    // to depend on anything but the stable setter - it only needs to run
+    // once, on mount, and again on each hashchange. That hashchange is
+    // also what fires on a plain browser back/forward between two
+    // module hashes openModule pushed - this is the other half of that:
+    // the empty-hash case below is what a phone's back button lands on
+    // after leaving the very first module opened this visit, so it goes
+    // to "Начните здесь" instead of falling out of the app.
+    //
+    // The very first call (on mount) skips an empty hash rather than
+    // forcing "start": a plain reload has no hash to restore from, and
+    // this runs after the sessionStorage-restore effect above - treating
+    // "no hash yet" as "go to start" here would stomp on whatever module
+    // that effect just restored. Only a later, real hashchange back to
+    // empty (the user actually navigating back with the phone/browser
+    // button) should reset to "start".
+    let mounting = true;
     const openFromHash = () => {
-      if (window.location.hash === "#brand-profile") setActiveModule("brand");
-      if (window.location.hash === "#generator") setActiveModule("generator");
-      if (window.location.hash === "#semantics") setActiveModule("semantics");
-      if (window.location.hash === "#competitors") setActiveModule("competitors");
-      if (window.location.hash === "#content-plan") setActiveModule("content-plan");
-      if (window.location.hash === "#adaptation") setActiveModule("adaptation");
-      if (window.location.hash === "#publications") setActiveModule("publications");
+      const hash = window.location.hash;
+      if (!hash) {
+        if (!mounting) setActiveModule("start");
+        mounting = false;
+        return;
+      }
+      mounting = false;
+      const entry = (Object.entries(WORKSPACE_MODULE_HASH) as [WorkspaceModule, string][])
+        .find(([, value]) => value === hash);
+      if (entry) setActiveModule(entry[0]);
     };
     openFromHash();
     window.addEventListener("hashchange", openFromHash);
@@ -4990,13 +5045,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           <nav aria-label="Рабочие модули">
             <a href="#start" className={activeModule === "start" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("start"); }}><i><Icon name="home"/></i><span><b>Начните здесь</b></span></a>
             <a href="#brand-profile" className={activeModule === "brand" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("brand"); }}><i><Icon name="building"/></i><span><b>Профиль бренда</b></span></a>
+            <a href="#history" className={activeModule === "history" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("history"); }}><i><Icon name="folder"/></i><span><b>Материалы</b></span></a>
             <a href="#generator" className={activeModule === "generator" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("generator"); }}><i><Icon name="spark"/></i><span><b>Генератор материалов</b></span></a>
             <a href="#content-plan" className={activeModule === "content-plan" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("content-plan"); }}><i><Icon name="list"/></i><span><b>Контент‑план</b></span></a>
             <a href="#adaptation" className={activeModule === "adaptation" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("adaptation"); }}><i><Icon name="edit"/></i><span><b>Редакторы КЛИО</b></span></a>
             <a href="#semantics" className={activeModule === "semantics" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("semantics"); }}><i><Icon name="search"/></i><span><b>Семантика</b></span></a>
             <a href="#competitors" className={activeModule === "competitors" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("competitors"); }}><i><Icon name="barChart"/></i><span><b>Конкуренты</b></span></a>
             <a href="#publications" className={activeModule === "publications" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("publications"); }}><i><Icon name="calendar"/></i><span><b>Публикации</b></span></a>
-            <a href="#history" className={activeModule === "history" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("history"); }}><i><Icon name="folder"/></i><span><b>Материалы</b></span></a>
           </nav>
           <div className="workspace-stage workspace-quota-stage"><span>Ваш тариф</span><b>{workspaceAccount.planName}</b><div className="workspace-quota-list"><p><span>Материалы</span><em>{workspaceAccount.generationsRemaining} / {workspaceAccount.generationLimit}</em><i><u style={{ width: `${generationProgress}%` }}/></i></p><p><span>Исследования</span><em>{workspaceAccount.researchRemaining} / {workspaceAccount.researchLimit}</em><i><u style={{ width: `${researchProgress}%` }}/></i></p><p><span>AI‑редактура</span><em>{workspaceAccount.editorActionsRemaining} / {workspaceAccount.editorActionLimit}</em><i><u style={{ width: `${editorProgress}%` }}/></i></p></div></div>
         </aside>
