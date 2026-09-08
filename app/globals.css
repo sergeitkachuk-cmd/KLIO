@@ -2449,7 +2449,10 @@ select:focus-visible {
     radial-gradient(circle at 85% -10%, rgba(124, 58, 237, 0.4), transparent 42%),
     linear-gradient(155deg, #051a31 0%, #0c3459 55%, #041225 100%);
   box-shadow: 0 22px 55px rgba(2, 10, 22, 0.5), inset 0 1px rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
+  /* No backdrop-filter here (was blur(12px)) - the base linear-gradient
+     is solid hex color with no alpha at any point, so nothing behind
+     this dropdown was ever visible through it; the blur bought nothing
+     while this list scrolls its own up-to-10-row option set. */
   scrollbar-width: thin;
   scrollbar-color: rgba(124, 58, 237, 0.45) transparent;
 }
@@ -4242,7 +4245,8 @@ footer nav a {
     radial-gradient(circle at 85% -10%, rgba(124, 58, 237, 0.4), transparent 42%),
     linear-gradient(155deg, #051a31 0%, #0c3459 55%, #041225 100%);
   box-shadow: 0 22px 55px rgba(2, 10, 22, 0.5), inset 0 1px rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
+  /* No backdrop-filter (was blur(12px)) - opaque hex gradient, nothing
+     behind it was ever visible. */
 }
 
 .account-menu-list button,
@@ -5159,7 +5163,7 @@ footer nav a {
   color: #fff;
   background: radial-gradient(circle at 90% 0%, rgba(124, 58, 237, 0.26), transparent 34%), linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
   box-shadow: 0 16px 42px rgba(3, 12, 26, 0.24), inset 0 1px rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
+  /* No backdrop-filter (was blur(10px)) - opaque hex gradient. */
 }
 
 /* Base dot color is amber — meant to read as "in progress" (loading the
@@ -5224,7 +5228,7 @@ footer nav a {
   color: #fff;
   background: radial-gradient(circle at 12% 0%, rgba(124, 58, 237, 0.34), transparent 40%), linear-gradient(135deg, #1a1330, #241a3e 60%, #17112a 100%);
   box-shadow: 0 14px 36px rgba(20, 12, 40, 0.22), inset 0 1px rgba(255, 255, 255, 0.09);
-  backdrop-filter: blur(10px);
+  /* No backdrop-filter (was blur(10px)) - opaque hex gradient. */
 }
 
 .workspace-brand-pill.is-off {
@@ -5336,7 +5340,16 @@ footer nav a {
     radial-gradient(circle at 92% 3%, rgba(124, 58, 237, 0.26), transparent 32%),
     linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
   box-shadow: 0 28px 82px rgba(3, 12, 26, 0.3), inset 0 1px rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(14px) saturate(145%);
+  /* No backdrop-filter (was blur(14px) saturate(145%)) - the base
+     linear-gradient is solid hex color with no alpha anywhere, so this
+     was 100% invisible while still costing a full-panel recomposite.
+     This shell can run several screens tall (a long semantic result),
+     and Safari re-tiles/re-rasterizes a blurred layer as new parts of
+     it scroll into view - not just sticky/fixed elements pay that cost,
+     a tall one does too. Matches the site owner's report: severe
+     stutter/blank-white-patch rendering on macOS specifically on the
+     structurally identical Редакторы КЛИО shell (.adaptation-shell,
+     same pattern, fixed alongside this one). */
 }
 
 .semantic-search-card {
@@ -9120,7 +9133,15 @@ footer nav a {
     radial-gradient(circle at 96% 0%, rgba(124, 58, 237, 0.26), transparent 32%),
     linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
   box-shadow: 0 28px 82px rgba(3, 12, 26, 0.3), inset 0 1px rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(14px) saturate(145%);
+  /* No backdrop-filter (was blur(14px) saturate(145%)) - the base
+     linear-gradient is solid hex with no alpha at any point, so it was
+     100% invisible - and this is very likely the main source of the
+     site owner's macOS report on this exact module: white blank
+     patches, flicker and freezes while scrolling. This shell grows
+     several screens tall (a full generated article sits inside it), so
+     Safari has to re-tile/re-rasterize the blur as new parts scroll
+     into view, not just once - a tall element pays this cost same as a
+     sticky one, which the earlier passes here didn't account for. */
 }
 
 .adaptation-input-card,
@@ -12612,7 +12633,8 @@ input[type="radio"] {
     radial-gradient(circle at 85% -10%, rgba(124, 58, 237, 0.4), transparent 42%),
     linear-gradient(155deg, #051a31 0%, #0c3459 55%, #041225 100%);
   box-shadow: 0 22px 55px rgba(2, 10, 22, 0.5), inset 0 1px rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
+  /* No backdrop-filter (was blur(12px)) - opaque hex gradient, nothing
+     behind it was ever visible. */
   /* scrollbar-width: thin alone leaves Firefox's native (light grey)
      thumb/track colors - scrollbar-color is required to actually theme
      it, same treatment as .module-select-list above. Chromium/Safari
@@ -15438,7 +15460,8 @@ input[type="radio"] {
     radial-gradient(circle at 88% 0%, rgba(124, 58, 237, 0.29), transparent 35%),
     linear-gradient(120deg, #04162b, #0a3155 66%, #071f38);
   box-shadow: 0 24px 64px rgba(3, 17, 34, 0.25), inset 0 1px rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px) saturate(145%);
+  /* No backdrop-filter (was blur(12px) saturate(145%)) - opaque hex
+     gradient base, nothing behind it was ever visible. */
 }
 
 .workspace-start-hero-copy {
