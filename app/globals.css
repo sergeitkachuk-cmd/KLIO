@@ -5060,7 +5060,7 @@ footer nav a {
   border: 1px solid transparent;
   /* Matches the site's shared .button capsule shape - "кнопки названия
      модулей в боковом меню... тоже закруглить". */
-  border-radius: 999px;
+  border-radius: 14px;
   color: rgba(255, 255, 255, 0.68);
   background: transparent;
   text-align: left;
