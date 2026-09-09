@@ -2528,6 +2528,42 @@ select:focus-visible {
   font-weight: 760;
 }
 
+/* One geometry for every open/close chevron. Text glyphs such as `⌄` use
+   different baselines in different fonts, which made the control appear to
+   jump up or down from one module to another. A small CSS-drawn chevron keeps
+   the stroke, box, and rotation identical everywhere. */
+.ui-chevron {
+  display: inline-grid;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  position: relative;
+  place-items: center;
+  font-size: 0 !important;
+  font-style: normal;
+  line-height: 1;
+  transform: none !important;
+}
+
+.ui-chevron::before {
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  content: "";
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 160ms ease;
+}
+
+.ui-chevron.is-expanded::before,
+.module-select.is-open .module-select-trigger > em.ui-chevron::before,
+.account-menu.is-open .workspace-account > em.ui-chevron::before,
+.brand-menu.is-open .brand-menu-trigger > em.ui-chevron::before,
+.semantic-geo-picker.is-open .semantic-geo-trigger > em > i.ui-chevron::before,
+.material-plan-more button.is-expanded > i.ui-chevron::before {
+  transform: translateY(2px) rotate(225deg);
+}
+
 .custom-length {
   margin-top: -6px;
 }
@@ -4833,6 +4869,28 @@ footer nav a {
   font-size: 15px;
   font-style: normal;
   line-height: 1;
+}
+
+/* The plan card predates `.ui-chevron` and still carries its direction as
+   text inside the i element. Hide that font-dependent glyph while keeping the
+   same CSS-drawn control until old cached markup is gone. */
+.material-plan-more button > i:not(.ui-chevron) {
+  position: relative;
+  font-size: 0;
+}
+
+.material-plan-more button > i:not(.ui-chevron)::before {
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  content: "";
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 160ms ease;
+}
+
+.material-plan-more button.is-expanded > i:not(.ui-chevron)::before {
+  transform: translateY(2px) rotate(225deg);
 }
 
 .material-plan-more button:hover,

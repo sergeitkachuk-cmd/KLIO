@@ -1466,7 +1466,7 @@ function ModuleSelect({ label, value, options, onChange, help }: {
     <span className="field-label-help">{label}{help && <HelpTip label={label} text={help}/>}</span>
     <button type="button" ref={triggerRef} className="module-select-trigger" onClick={toggleOpen} aria-haspopup="listbox" aria-expanded={open}>
       <b>{activeOption?.label || value}</b>
-      <em>⌄</em>
+      <em className="ui-chevron" aria-hidden="true" />
     </button>
     {open && menuRect && createPortal(
       <div className="module-select-list" role="listbox" aria-label={label} ref={listRef} style={{ position: "fixed", top: menuRect.top, left: menuRect.left, width: menuRect.width, maxHeight: menuRect.maxHeight }}>
@@ -5017,7 +5017,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"} title={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"}><Icon name={theme === "dark" ? "sun" : "moon"}/></button>
           <div className={`account-menu ${accountMenuOpen ? "is-open" : ""}`} ref={accountMenuRef}>
             <button type="button" className="workspace-account" onClick={() => setAccountMenuOpen((value) => !value)} aria-haspopup="menu" aria-expanded={accountMenuOpen}>
-              <i>{nameInitials(workspaceUserName)}</i><b>{workspaceUserName}</b><small>{workspaceAccount.planName} · 1 пользователь</small><em>⌄</em>
+              <i>{nameInitials(workspaceUserName)}</i><b>{workspaceUserName}</b><small>{workspaceAccount.planName} · 1 пользователь</small><em className="ui-chevron" aria-hidden="true" />
             </button>
             {accountMenuOpen && <div className="account-menu-list" role="menu">
               <Link href="/account" role="menuitem">Личный кабинет</Link>
@@ -5035,7 +5035,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <button className="brand-menu-trigger" type="button" onClick={() => workspaceBrands.length ? setBrandMenuOpen((value) => !value) : setBrandCreatorOpen(true)} disabled={brandSwitchBusy} aria-haspopup={workspaceBrands.length ? "listbox" : undefined} aria-expanded={workspaceBrands.length ? brandMenuOpen : undefined}>
                 <i>{workspaceBrands.length ? (activeWorkspaceBrand?.name || brand.name || "К").trim().charAt(0).toLocaleUpperCase("ru-RU") : "+"}</i>
                 <span><b>{workspaceBrands.length ? (activeWorkspaceBrand?.name || brand.name || "Выберите бренд") : "Добавить первый бренд"}</b><small>{workspaceBrands.length ? (activeWorkspaceBrand?.website || "Профиль компании") : "Создайте профиль компании"}</small></span>
-                <em>{workspaceBrands.length ? "⌄" : "→"}</em>
+                <em className={workspaceBrands.length ? "ui-chevron" : "brand-menu-arrow"} aria-hidden="true">{workspaceBrands.length ? "" : "→"}</em>
               </button>
               {brandMenuOpen && <button type="button" className="brand-menu-backdrop" aria-label="Закрыть меню брендов" onClick={() => setBrandMenuOpen(false)} />}
               {brandMenuOpen && <div className="brand-menu-list" role="listbox" aria-label="Выбор бренда">
@@ -5449,7 +5449,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     onClick={() => setSemanticGeoOpen((current) => !current)}
                   >
                     <span><i>География спроса</i><b>{semanticGeoSummary}</b><small>Округа, регионы и города можно выбирать одновременно</small></span>
-                    <em>{selectedGeoScopes.length ? `${selectedGeoScopes.length} выбрано` : "Без ограничений"}<i>⌄</i></em>
+                    <em>{selectedGeoScopes.length ? `${selectedGeoScopes.length} выбрано` : "Без ограничений"}<i className="ui-chevron" aria-hidden="true" /></em>
                   </button>
 
                   {selectedGeoScopes.length > 0 && <div className="semantic-geo-chips" aria-label="Выбранная география">
@@ -5470,7 +5470,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                         return <section className="semantic-geo-district" key={district.name}>
                           <div className="semantic-geo-node district-node" role="treeitem" aria-expanded={districtExpanded} aria-selected={districtState.checked || districtState.mixed}>
                             <button type="button" className={`semantic-geo-checkbox ${districtState.checked ? "is-checked" : ""} ${districtState.mixed ? "is-mixed" : ""}`} role="checkbox" aria-checked={districtState.mixed ? "mixed" : districtState.checked} aria-label={`Выбрать ${district.name}`} onClick={() => updateSemanticGeo(districtIds)}><i>{districtState.mixed ? "−" : districtState.checked ? "✓" : ""}</i></button>
-                            <button type="button" className="semantic-geo-node-label" onClick={() => toggleGeoDistrictOpen(district.name)}><span><b>{district.name}</b><small>{district.regions.length} регионов</small></span><i className={districtExpanded ? "is-expanded" : ""}>⌄</i></button>
+                          <button type="button" className="semantic-geo-node-label" onClick={() => toggleGeoDistrictOpen(district.name)}><span><b>{district.name}</b><small>{district.regions.length} регионов</small></span><i className={`ui-chevron ${districtExpanded ? "is-expanded" : ""}`} aria-hidden="true" /></button>
                           </div>
                           {districtExpanded && <div className="semantic-geo-regions" role="group">
                             {district.regions.map((region) => {
@@ -5480,7 +5480,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                               return <div className="semantic-geo-region" key={region.name}>
                                 <div className="semantic-geo-node region-node" role="treeitem" aria-expanded={regionExpanded} aria-selected={regionState.checked || regionState.mixed}>
                                   <button type="button" className={`semantic-geo-checkbox ${regionState.checked ? "is-checked" : ""} ${regionState.mixed ? "is-mixed" : ""}`} role="checkbox" aria-checked={regionState.mixed ? "mixed" : regionState.checked} aria-label={`Выбрать ${region.name}`} onClick={() => updateSemanticGeo(regionIds)}><i>{regionState.mixed ? "−" : regionState.checked ? "✓" : ""}</i></button>
-                                  <button type="button" className="semantic-geo-node-label" onClick={() => toggleGeoRegionOpen(region.name)}><span><b>{region.name}</b><small>{region.cities.length} {region.cities.length === 1 ? "город" : region.cities.length < 5 ? "города" : "городов"}</small></span><i className={regionExpanded ? "is-expanded" : ""}>⌄</i></button>
+                                  <button type="button" className="semantic-geo-node-label" onClick={() => toggleGeoRegionOpen(region.name)}><span><b>{region.name}</b><small>{region.cities.length} {region.cities.length === 1 ? "город" : region.cities.length < 5 ? "города" : "городов"}</small></span><i className={`ui-chevron ${regionExpanded ? "is-expanded" : ""}`} aria-hidden="true" /></button>
                                 </div>
                                 {regionExpanded && <div className="semantic-geo-cities" role="group">
                                   {region.cities.map((city) => {
