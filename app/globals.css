@@ -339,6 +339,12 @@ select:focus-visible {
 }
 
 /* Navigation */
+/* Yandex understands the noindex element, while display:contents keeps it
+   neutral for the visual layout of the wrapped navigation and cover. */
+.search-excluded {
+  display: contents;
+}
+
 .site-header {
   position: fixed;
   z-index: 60;
