@@ -400,7 +400,15 @@ function topicCoverage(material: GeneratedMaterial, input: ReturnType<typeof nor
   const matchedTerms = terms.filter((term) => tokenMentioned(material.body, term));
   const matchingSections = sections.filter((section) => terms.some((term) => tokenMentioned(section, term))).length;
   const requiredSections = input.length >= 4500 ? 3 : input.length >= 1100 ? 2 : 1;
-  const requiredTermCount = Math.max(1, Math.ceil(terms.length * 0.6));
+  // Short social posts and ad copy often express one subject through two
+  // natural grammatical forms instead of repeating three literal topic
+  // tokens. Requiring 60% of the first five tokens made a valid 1,000-
+  // character post fail intermittently after it had already been generated.
+  // Keep the stronger coverage bar for long-form SEO/landing copy, while
+  // asking short formats for two meaningful matches at most.
+  const requiredTermCount = input.length <= 1400 || input.format === "social" || input.format === "ads"
+    ? Math.min(2, Math.max(1, Math.ceil(terms.length * 0.6)))
+    : Math.max(1, Math.ceil(terms.length * 0.6));
   return {
     terms,
     matchedTerms,
