@@ -10620,6 +10620,52 @@ input[type="radio"] {
   }
 }
 
+/* The examples heading has one more child than the shared two-column
+   heading: the previous/next controls. Give that third child a real column
+   so the arrows stay visible on desktop instead of falling into an
+   unnoticeable second grid row. On narrower screens the description spans
+   the full row and the controls remain beside the title. */
+@media (min-width: 941px) {
+  .use-cases-heading {
+    grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.65fr) auto;
+    gap: clamp(24px, 4vw, 68px);
+  }
+
+  .use-cases-controls {
+    align-self: end;
+    margin-bottom: 4px;
+  }
+}
+
+@media (min-width: 701px) and (max-width: 940px) {
+  .use-cases-heading {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 24px 32px;
+  }
+
+  .use-cases-heading > div {
+    grid-column: 1;
+  }
+
+  .use-cases-heading > p {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .use-cases-controls {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: end;
+    justify-self: end;
+  }
+}
+
+@media (max-width: 700px) {
+  .use-cases-heading {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 700px) {
   .cover-intro {
     padding: 24px 20px;
