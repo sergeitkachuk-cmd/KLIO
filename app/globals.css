@@ -351,7 +351,10 @@ select:focus-visible {
   top: 18px;
   left: 50%;
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  /* Keep the logo and CTA group at their intrinsic widths. The old
+     1fr/auto/1fr tracks let the nav's min-content width squeeze the two
+     outer tracks until the logo and right-hand controls visually collided. */
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   width: min(calc(100% - 44px), 1500px);
   height: 64px;
@@ -373,6 +376,8 @@ select:focus-visible {
 
 .site-header nav {
   gap: 24px;
+  min-width: 0;
+  justify-content: center;
 }
 
 .site-header nav a {
@@ -380,11 +385,13 @@ select:focus-visible {
   font-weight: 570;
   letter-spacing: 0.045em;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .site-header > div {
   justify-content: flex-end;
   gap: 8px;
+  min-width: 0;
 }
 
 .wordmark {
@@ -10477,6 +10484,36 @@ input[type="radio"] {
 
 @keyframes marquee {
   to { transform: translateX(-50%); }
+}
+
+@media (max-width: 1500px) and (min-width: 1181px) {
+  .site-header {
+    width: calc(100% - 32px);
+    gap: 16px;
+    padding-inline: 14px;
+  }
+
+  .site-header nav {
+    gap: clamp(12px, 1.55vw, 22px);
+  }
+
+  .site-header nav a {
+    font-size: 13px;
+    letter-spacing: 0.02em;
+  }
+
+  .site-header > div {
+    gap: 6px;
+  }
+
+  .telegram-header-link {
+    padding-inline: 11px;
+    font-size: 11px;
+  }
+
+  .site-header > div > .button {
+    padding-inline: 14px;
+  }
 }
 
 @media (max-width: 1180px) {
