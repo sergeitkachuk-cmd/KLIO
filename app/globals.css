@@ -12650,20 +12650,14 @@ input[type="radio"] {
      well there. */
   right: auto;
   width: 380px;
-  z-index: 100;
+  z-index: 300;
   display: grid;
   gap: 5px;
-  max-height: 330px;
+  /* Open to the full height of all brand buttons. The page remains the
+     only vertical scroll container. */
+  max-height: none;
   padding: 7px;
-  overflow-y: auto; -webkit-overflow-scrolling: touch;
-  /* Setting only overflow-y makes the UA compute overflow-x as auto too
-     (per spec, once either axis leaves "visible"), so anything inside
-     that ran even 1px wider than the menu - a long site URL in a brand
-     row, the delete button's calc() width - opened an unstyled native
-     horizontal scrollbar nobody intended (site owner: "горизонтального
-     вообще не должно быть"). This menu only ever needs to scroll
-     vertically. */
-  overflow-x: hidden;
+  overflow: visible;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 15px;
   color: #fff;
@@ -12673,29 +12667,6 @@ input[type="radio"] {
   box-shadow: 0 22px 55px rgba(2, 10, 22, 0.5), inset 0 1px rgba(255, 255, 255, 0.1);
   /* No backdrop-filter (was blur(12px)) - opaque hex gradient, nothing
      behind it was ever visible. */
-  /* scrollbar-width: thin alone leaves Firefox's native (light grey)
-     thumb/track colors - scrollbar-color is required to actually theme
-     it, same treatment as .module-select-list above. Chromium/Safari
-     need the separate ::-webkit-scrollbar rules below regardless. */
-  scrollbar-width: thin;
-  scrollbar-color: rgba(124, 58, 237, 0.45) transparent;
-}
-
-.brand-menu-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.brand-menu-list::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.brand-menu-list::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: rgba(124, 58, 237, 0.45);
-}
-
-.brand-menu-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(124, 58, 237, 0.65);
 }
 
 .brand-menu-list > button {
@@ -13459,6 +13430,7 @@ input[type="radio"] {
 .workspace-sidebar {
   position: sticky;
   top: 76px;
+  z-index: 120;
   align-self: start;
   display: flex;
   flex-direction: column;
