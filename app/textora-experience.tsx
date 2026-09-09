@@ -5019,7 +5019,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
       <div className="workspace-layout">
         <aside className="workspace-sidebar">
-          <div className="workspace-project brand-project-switcher">
+          <div className={`workspace-project brand-project-switcher${brandMenuOpen ? " brand-menu-layer-open" : ""}`}>
             <span>Активный бренд</span>
             <div className={`brand-menu ${brandMenuOpen ? "is-open" : ""}`} ref={brandPickerRef}>
               <button className="brand-menu-trigger" type="button" onClick={() => workspaceBrands.length ? setBrandMenuOpen((value) => !value) : setBrandCreatorOpen(true)} disabled={brandSwitchBusy} aria-haspopup={workspaceBrands.length ? "listbox" : undefined} aria-expanded={workspaceBrands.length ? brandMenuOpen : undefined}>
@@ -5027,6 +5027,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <span><b>{workspaceBrands.length ? (activeWorkspaceBrand?.name || brand.name || "Выберите бренд") : "Добавить первый бренд"}</b><small>{workspaceBrands.length ? (activeWorkspaceBrand?.website || "Профиль компании") : "Создайте профиль компании"}</small></span>
                 <em>{workspaceBrands.length ? "⌄" : "→"}</em>
               </button>
+              {brandMenuOpen && <button type="button" className="brand-menu-backdrop" aria-label="Закрыть меню брендов" onClick={() => setBrandMenuOpen(false)} />}
               {brandMenuOpen && <div className="brand-menu-list" role="listbox" aria-label="Выбор бренда">
                 {workspaceBrands.map((item) => <button type="button" role="option" aria-selected={item.id === activeBrandId} className={item.id === activeBrandId ? "active" : ""} onClick={() => void switchWorkspaceBrand(item.id)} key={item.id}>
                   <i>{item.name.trim().charAt(0).toLocaleUpperCase("ru-RU") || "К"}</i>

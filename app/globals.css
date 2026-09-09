@@ -12566,6 +12566,33 @@ input[type="radio"] {
   transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
 }
 
+.brand-menu-trigger {
+  position: relative;
+  z-index: 2;
+}
+
+/* A focused backdrop belongs to the open menu rather than to the whole
+   workspace. It softens the interface behind the picker, keeps the trigger
+   and list crisp, and closes the picker when the user clicks outside it. */
+.brand-menu-backdrop {
+  position: fixed;
+  z-index: 1;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: rgba(3, 12, 28, 0.28);
+  -webkit-backdrop-filter: blur(9px) saturate(88%);
+  backdrop-filter: blur(9px) saturate(88%);
+  cursor: default;
+}
+
+.brand-menu-layer-open {
+  z-index: 150;
+}
+
 .brand-menu-trigger:hover,
 .brand-menu.is-open .brand-menu-trigger {
   border-color: rgba(216, 255, 101, 0.38);
