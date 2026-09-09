@@ -12587,6 +12587,7 @@ input[type="radio"] {
   -webkit-backdrop-filter: blur(9px) saturate(88%);
   backdrop-filter: blur(9px) saturate(88%);
   cursor: default;
+  animation: brandMenuBackdropReveal 180ms ease-out both;
 }
 
 .brand-menu-layer-open {
@@ -12692,6 +12693,8 @@ input[type="radio"] {
     radial-gradient(circle at 85% -10%, rgba(124, 58, 237, 0.42), transparent 42%),
     linear-gradient(155deg, rgba(5, 26, 49, 0.88) 0%, rgba(12, 52, 89, 0.84) 55%, rgba(4, 18, 37, 0.91) 100%);
   box-shadow: 0 22px 55px rgba(2, 10, 22, 0.55), inset 0 1px rgba(255, 255, 255, 0.13);
+  transform-origin: top left;
+  animation: brandMenuReveal 240ms cubic-bezier(0.22, 0.75, 0.22, 1) both;
 }
 
 .brand-menu-list > button {
@@ -12708,6 +12711,51 @@ input[type="radio"] {
   background: rgba(255, 255, 255, 0.035);
   text-align: left;
   cursor: pointer;
+  animation: brandMenuItemReveal 190ms ease-out both;
+}
+
+.brand-menu-list > button:nth-child(1) { animation-delay: 35ms; }
+.brand-menu-list > button:nth-child(2) { animation-delay: 55ms; }
+.brand-menu-list > button:nth-child(3) { animation-delay: 75ms; }
+.brand-menu-list > button:nth-child(4) { animation-delay: 95ms; }
+.brand-menu-list > button:nth-child(5) { animation-delay: 115ms; }
+.brand-menu-list > button:nth-child(6) { animation-delay: 135ms; }
+
+@keyframes brandMenuBackdropReveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes brandMenuReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scaleY(0.84);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+@keyframes brandMenuItemReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-menu-backdrop,
+  .brand-menu-list,
+  .brand-menu-list > button {
+    animation: none;
+  }
 }
 
 .brand-menu-list > button:hover,
