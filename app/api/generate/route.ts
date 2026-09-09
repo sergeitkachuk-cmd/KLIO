@@ -404,10 +404,12 @@ function topicCoverage(material: GeneratedMaterial, input: ReturnType<typeof nor
   // natural grammatical forms instead of repeating three literal topic
   // tokens. Requiring 60% of the first five tokens made a valid 1,000-
   // character post fail intermittently after it had already been generated.
-  // Keep the stronger coverage bar for long-form SEO/landing copy, while
-  // asking short formats for two meaningful matches at most.
+  // Keep the stronger coverage bar for long-form SEO/landing copy. A short
+  // post needs one meaningful subject match in its single main section; a
+  // second model pass for the other literal words is too expensive and can
+  // time out after the usable draft is already complete.
   const requiredTermCount = input.length <= 1400 || input.format === "social" || input.format === "ads"
-    ? Math.min(2, Math.max(1, Math.ceil(terms.length * 0.6)))
+    ? 1
     : Math.max(1, Math.ceil(terms.length * 0.6));
   return {
     terms,
