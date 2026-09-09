@@ -3,5 +3,5 @@ import { requireCurrentUser } from "../identity";
 
 export default async function WorkspacePage() {
   await requireCurrentUser("/workspace");
-  return <TextoraExperience workspace />;
+  return <TextoraExperience key="workspace" workspace />;
 }

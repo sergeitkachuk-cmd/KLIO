@@ -2729,11 +2729,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
   useEffect(() => {
     // Calls setActiveModule directly (not the openModule helper, which
-    // would just set the same hash again) so this effect has no reason
-    // to depend on anything but the stable setter - it only needs to run
-    // once, on mount, and again on each hashchange. That hashchange is
-    // also what fires on a plain browser back/forward between two
-    // module hashes openModule pushed - this is the other half of that:
+    // would just set the same hash again). Re-run this when the shared
+    // component changes between the public page and /workspace: Next can
+    // preserve the component instance during a client-side back/forward,
+    // so a listener initialized only on the first mount would miss the
+    // workspace hash that appears in the address bar after returning.
+    // Hashchange is also what fires on a plain browser back/forward between
+    // two module hashes openModule pushed - this is the other half of that:
     // the empty-hash case below is what a phone's back button lands on
     // after leaving the very first module opened this visit, so it goes
     // to "Начните здесь" instead of falling out of the app.
@@ -2761,7 +2763,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     openFromHash();
     window.addEventListener("hashchange", openFromHash);
     return () => window.removeEventListener("hashchange", openFromHash);
-  }, []);
+  }, [workspace]);
 
   useEffect(() => {
     if (workspace) return;
