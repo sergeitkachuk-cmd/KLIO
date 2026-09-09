@@ -2260,6 +2260,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [materialsDateRange, setMaterialsDateRange] = useState<MaterialsDateRange>("all");
   const [moduleMaterialSources, setModuleMaterialSources] = useState<Partial<Record<SavedMaterialType, string>>>({});
   const [materialSavingType, setMaterialSavingType] = useState<SavedMaterialType | null>(null);
+  // Keep topic-status writes for one saved plan in order. Without a small
+  // per-material queue, clicking several topics quickly makes concurrent
+  // read-modify-write requests overwrite one another in the database.
+  const savedPlanStatusQueue = useRef(new Map<string, Promise<void>>());
   // Which saved content-plan card (if any) has its full topic list expanded
   // in the Материалы list — see the material-content_plan card below. Only
   // one at a time; "В модуль" already exists for reopening the whole plan,
@@ -4570,19 +4574,25 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // to finish the action; only a toast marks it if the status patch
   // itself didn't stick.
   async function updateSavedPlanItemStatus(material: SavedWorkspaceMaterial, itemId: string, status: ContentPlanStatus) {
-    try {
-      const response = await fetch("/api/workspace", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "update_material_item_status", id: material.id, itemId, status }),
-      });
-      const payload = await safeJson(response) as { error?: string; material?: SavedWorkspaceMaterial };
-      if (!response.ok || !payload.material) throw new Error(payload.error || "Не удалось обновить статус темы.");
-      const saved = payload.material;
-      setWorkspaceMaterials((current) => current.map((entry) => entry.id === material.id ? saved : entry));
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : "Не удалось обновить статус темы в сохранённом материале.");
-    }
+    const previous = savedPlanStatusQueue.current.get(material.id) || Promise.resolve();
+    const next = previous.catch(() => undefined).then(async () => {
+      try {
+        const response = await fetch("/api/workspace", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "update_material_item_status", id: material.id, itemId, status }),
+        });
+        const payload = await safeJson(response) as { error?: string; material?: SavedWorkspaceMaterial };
+        if (!response.ok || !payload.material) throw new Error(payload.error || "Не удалось обновить статус темы.");
+        const saved = payload.material;
+        setWorkspaceMaterials((current) => current.map((entry) => entry.id === material.id ? saved : entry));
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : "Не удалось обновить статус темы в сохранённом материале.");
+      }
+    });
+    savedPlanStatusQueue.current.set(material.id, next);
+    await next;
+    if (savedPlanStatusQueue.current.get(material.id) === next) savedPlanStatusQueue.current.delete(material.id);
   }
 
   // Same handoff as sendPlanItemToGenerator, callable straight from a saved
@@ -5093,8 +5103,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 // needs its own label here rather than falling back to the raw
                 // string like an actually-unrecognized value would.
                 const formatLabel = item.format === "external" ? "Добавлено вручную" : formats.find((candidate) => candidate.id === item.format)?.label || item.format;
-                const materialLabel = item.origin === "editor" ? `РЕД. · ${formatLabel}` : formatLabel;
-                return <article className={`material-card material-article ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><span>{materialLabel}</span><small>{archiveDate(item.createdAt)}</small></div><h3>{item.title}</h3><p>{item.topic}</p><footer><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал">Удалить</button><button type="button" className="material-archive" onClick={() => void archiveArchiveItem(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" onClick={() => openArchiveItem(item)}>В редактор <Icon name="arrow"/></button></div></footer></article>;
+                return <article className={`material-card material-article ${item.origin === "editor" ? "is-editor" : ""} ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><div className="material-card-badges"><span className="material-format-badge">{formatLabel}</span>{item.origin === "editor" && <span className="material-origin-badge">РЕД</span>}</div><small>{archiveDate(item.createdAt)}</small></div><h3>{item.title}</h3><p>{item.topic}</p><footer><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал">Удалить</button><button type="button" className="material-archive" onClick={() => void archiveArchiveItem(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" onClick={() => openArchiveItem(item)}>В редактор <Icon name="arrow"/></button></div></footer></article>;
               }
               const typeLabel = item.type === "content_plan" ? "Контент‑план" : item.type === "semantics" ? "Семантика" : "Анализ конкурентов";
               // Full items (not just title strings) so each topic can be sent
@@ -5107,9 +5116,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 ? normalizeStoredContentPlanResult((item.payload as BrandWorkspaceSnapshot["contentPlan"])?.result)?.items || []
                 : [];
               const planTopics = planItems.map((planItem) => planItem.title.trim()).filter(Boolean);
+              const planStatusCounts = planItems.reduce((counts, planItem) => {
+                if (planItem.status === "Готово") counts.ready += 1;
+                if (planItem.status === "В работе") counts.working += 1;
+                return counts;
+              }, { ready: 0, working: 0 });
+              const planTotalLabel = `${planTopics.length} ${planTopics.length === 1 ? "тема" : planTopics.length >= 2 && planTopics.length <= 4 ? "темы" : "тем"}`;
               const planExpanded = expandedPlanMaterialId === item.id;
               const visiblePlanItems = planExpanded ? planItems : planItems.slice(0, 3);
-              return <article className={`material-card material-${item.type} ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><span>{typeLabel}</span><small>{archiveDate(item.createdAt)} · версия {item.versionNumber}</small></div>{item.type === "content_plan" && planTopics.length ? <><h3 className="material-plan-heading">Темы в плане</h3><ul className="material-plan-preview">{visiblePlanItems.map((planItem, index) => <li key={planItem.id || `${item.id}-${index}`} title={planItem.title}><span>{planItem.title}</span><button type="button" className="material-plan-send" onClick={() => sendSavedPlanTopicToGenerator(item, planItem)} title="Отправить эту тему в генератор" aria-label={`Отправить в генератор: ${planItem.title}`}><Icon name="arrow"/></button></li>)}{planTopics.length > 3 && <li className="material-plan-more"><button type="button" className={planExpanded ? "is-expanded" : ""} onClick={() => setExpandedPlanMaterialId(planExpanded ? null : item.id)}>{planExpanded ? "Свернуть" : planTopics.length - 3 === 1 ? "Ещё одна тема" : `Ещё ${planTopics.length - 3} тем`}</button></li>}</ul></> : <h3>{item.title}</h3>}<p>{item.type === "content_plan" && planTopics.length ? `${planTopics.length} тем · ${item.status}` : item.status}</p><footer><div><button type="button" className="material-delete" onClick={() => void deleteSavedMaterial(item)} aria-label="Удалить материал">Удалить</button><button type="button" className="material-archive" onClick={() => void archiveSavedMaterial(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" className="material-export" onClick={() => exportSavedMaterial(item)}>Скачать</button><button type="button" onClick={() => openSavedMaterial(item)}>В модуль <Icon name="arrow"/></button></div></footer></article>;
+              return <article className={`material-card material-${item.type} ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><span>{typeLabel}</span><small>{archiveDate(item.createdAt)} · версия {item.versionNumber}</small></div>{item.type === "content_plan" && planTopics.length ? <><h3 className="material-plan-heading">Темы в плане</h3><ul className="material-plan-preview">{visiblePlanItems.map((planItem, index) => <li key={planItem.id || `${item.id}-${index}`} title={planItem.title}><span>{planItem.title}</span><button type="button" className="material-plan-send" onClick={() => sendSavedPlanTopicToGenerator(item, planItem)} title="Отправить эту тему в генератор" aria-label={`Отправить в генератор: ${planItem.title}`}><Icon name="arrow"/></button></li>)}{planTopics.length > 3 && <li className="material-plan-more"><button type="button" className={planExpanded ? "is-expanded" : ""} onClick={() => setExpandedPlanMaterialId(planExpanded ? null : item.id)} aria-expanded={planExpanded}><span>{planExpanded ? "Свернуть темы" : `Показать ещё ${planTopics.length - 3} ${planTopics.length - 3 === 1 ? "тему" : "тем"}`}</span><i aria-hidden="true">{planExpanded ? "⌃" : "⌄"}</i></button></li>}</ul></> : <h3>{item.title}</h3>}<p className={item.type === "content_plan" && planTopics.length ? "material-plan-status-summary" : ""}>{item.type === "content_plan" && planTopics.length ? `${planTotalLabel} · ${planStatusCounts.ready} готово · ${planStatusCounts.working} в работе` : item.status}</p><footer><div><button type="button" className="material-delete" onClick={() => void deleteSavedMaterial(item)} aria-label="Удалить материал">Удалить</button><button type="button" className="material-archive" onClick={() => void archiveSavedMaterial(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" className="material-export" onClick={() => exportSavedMaterial(item)}>Скачать</button><button type="button" onClick={() => openSavedMaterial(item)}>В модуль <Icon name="arrow"/></button></div></footer></article>;
             })}</div> : <div className="workspace-history-empty"><i>Аа</i><div><h3>{activeMaterialCount > 0 ? "Нет материалов за выбранный период" : "У этого бренда пока нет материалов"}</h3><p>{activeMaterialCount > 0 ? "Попробуйте выбрать другой период или фильтр." : "Сгенерированные тексты появятся здесь автоматически. Семантику, анализ конкурентов и контент‑планы можно зафиксировать кнопкой «Сохранить в материалы»."}</p></div></div>}
           </section>}
 

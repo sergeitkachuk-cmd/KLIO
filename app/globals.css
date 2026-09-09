@@ -4606,6 +4606,27 @@ footer nav a {
   color: #cabdf6;
 }
 
+.workspace-history-list .material-article.is-editor {
+  border-color: rgba(236, 112, 165, 0.62);
+  background: linear-gradient(135deg, #35152e, #2c1b43 60%, #15213a);
+}
+
+.workspace-history-list .material-article.is-editor > div span.material-origin-badge {
+  border-color: rgba(255, 160, 202, 0.72);
+  background: rgba(236, 112, 165, 0.24);
+  color: #ffd2e5;
+  font-weight: 820;
+  letter-spacing: 0.08em;
+}
+
+.material-card-badges {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
 .workspace-history-list .material-content_plan {
   border-color: rgba(94, 234, 212, 0.45);
   background: linear-gradient(135deg, #082d43, #073247 60%, #061c34);
@@ -4655,6 +4676,12 @@ footer nav a {
   margin: 0 0 11px;
   color: rgba(255, 255, 255, 0.62);
   font-size: 12px;
+}
+
+.workspace-history-list p.material-plan-status-summary {
+  color: rgba(131, 243, 223, 0.86);
+  font-weight: 680;
+  letter-spacing: 0.01em;
 }
 
 .workspace-history-list .material-plan-heading {
@@ -4755,20 +4782,26 @@ footer nav a {
 }
 
 .material-plan-more button {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: rgba(255, 255, 255, 0.62);
+  display: flex;
+  width: 100%;
+  min-height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 7px 5px 10px;
+  border: 1px solid rgba(94, 234, 212, 0.34);
+  border-radius: 10px;
+  background: rgba(45, 212, 191, 0.1);
+  color: #b9fff0;
   font: inherit;
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 760;
   cursor: pointer;
+  transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
 }
 
 .material-plan-more button::before {
-  margin-right: 4px;
-  color: rgba(255, 255, 255, 0.62);
-  content: "+";
+  display: none;
 }
 
 .material-plan-more button.is-expanded::before {
@@ -4777,6 +4810,36 @@ footer nav a {
 
 .material-plan-more button:hover {
   color: #fff;
+}
+
+.material-plan-more button span {
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.material-plan-more button i {
+  display: grid;
+  flex: 0 0 auto;
+  width: 21px;
+  height: 21px;
+  place-items: center;
+  border: 1px solid rgba(131, 243, 223, 0.46);
+  border-radius: 999px;
+  color: #d7fff7;
+  background: rgba(3, 24, 42, 0.3);
+  font-size: 15px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.material-plan-more button:hover,
+.material-plan-more button:focus-visible {
+  border-color: rgba(131, 243, 223, 0.72);
+  color: #fff;
+  background: rgba(45, 212, 191, 0.18);
 }
 
 .workspace-history-list footer {
@@ -20468,6 +20531,33 @@ input[type="radio"] {
   border-color: rgba(255, 255, 255, 0.38);
   color: #fff;
   background: rgba(255, 255, 255, 0.14);
+}
+
+[data-theme="light"] .workspace-history-list .material-article.is-editor {
+  border-color: #c65c8b;
+  background: linear-gradient(115deg, #6d2853 0%, #70407f 58%, #9f6bb8 100%);
+}
+
+[data-theme="light"] .workspace-history-list .material-article.is-editor > div span.material-origin-badge {
+  border-color: rgba(255, 224, 239, 0.72);
+  color: #fff0f7;
+  background: rgba(236, 112, 165, 0.3);
+}
+
+[data-theme="light"] .material-plan-more button {
+  border-color: rgba(255, 255, 255, 0.42);
+  color: #eafffb;
+  background: rgba(10, 88, 83, 0.42);
+}
+
+[data-theme="light"] .material-plan-more button i {
+  border-color: rgba(255, 255, 255, 0.56);
+  color: #fff;
+  background: rgba(0, 49, 51, 0.28);
+}
+
+[data-theme="light"] .workspace-history-list p.material-plan-status-summary {
+  color: #d1fff6;
 }
 
 [data-theme="light"] .workspace-history-list .material-card footer {
