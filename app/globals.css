@@ -2551,7 +2551,7 @@ select:focus-visible {
   border-right: 2px solid currentColor;
   border-bottom: 2px solid currentColor;
   content: "";
-  transform: translateY(-2px) rotate(45deg);
+  transform: rotate(45deg);
   transition: transform 160ms ease;
 }
 
@@ -2561,7 +2561,7 @@ select:focus-visible {
 .brand-menu.is-open .brand-menu-trigger > em.ui-chevron::before,
 .semantic-geo-picker.is-open .semantic-geo-trigger > em > i.ui-chevron::before,
 .material-plan-more button.is-expanded > i.ui-chevron::before {
-  transform: translateY(2px) rotate(225deg);
+  transform: rotate(225deg);
 }
 
 .custom-length {
@@ -4773,7 +4773,11 @@ footer nav a {
 
 .workspace-history-list.is-content-plan-filter .material-plan-preview li {
   font-size: 13px;
-  line-height: 1.42;
+  line-height: 1.25;
+}
+
+.workspace-history-list.is-content-plan-filter .material-plan-preview {
+  gap: 9px;
 }
 
 .material-plan-preview li::before {
@@ -4800,14 +4804,17 @@ footer nav a {
 .material-plan-send {
   display: grid;
   flex: 0 0 auto;
+  align-self: center;
   place-items: center;
   width: 20px;
   height: 20px;
   margin-left: auto;
+  padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 999px;
   color: rgba(255, 255, 255, 0.6);
   background: rgba(255, 255, 255, 0.05);
+  line-height: 0;
   cursor: pointer;
   transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
 }
@@ -4820,6 +4827,7 @@ footer nav a {
 }
 
 .material-plan-send svg {
+  display: block;
   width: 11px;
   height: 11px;
 }
