@@ -39,8 +39,11 @@ const OPENAI_MODELS = {
 } as const;
 
 const DEEPSEEK_MODELS = {
-  CONTENT: "deepseek-v4-pro",
-  UTILITY: "deepseek-v4-flash",
+  // DeepSeek V4.1 Flash replaced both prior text tiers on 2026-09-10.
+  // Use the new canonical id instead of relying on temporary routing from
+  // deepseek-v4-pro / deepseek-v4-flash.
+  CONTENT: "deepseek-flash",
+  UTILITY: "deepseek-flash",
 } as const;
 
 // Resolved once per process start from AI_PROVIDER. Every OPERATION_CONFIG
@@ -62,8 +65,7 @@ export type AiModelId =
 export const FALLBACKS: Record<AiModelId, AiModelId | null> = {
   "gpt-5.4-nano": "gpt-5.6-luna",
   "gpt-5.6-luna": null,
-  "deepseek-v4-flash": "deepseek-v4-pro",
-  "deepseek-v4-pro": null,
+  "deepseek-flash": null,
 };
 
 type ModelPricing = {
@@ -79,15 +81,11 @@ type ModelPricing = {
 export const MODEL_PRICING: Record<AiModelId, ModelPricing> = {
   "gpt-5.6-luna": { inputPerMillion: 1, cachedInputPerMillion: 0.1, outputPerMillion: 6 },
   "gpt-5.4-nano": { inputPerMillion: 0.2, cachedInputPerMillion: 0.02, outputPerMillion: 1.25 },
-  // Rates effective 2026-08-16 16:00 UTC (DeepSeek's move to peak/off-peak
-  // billing) — see https://api-docs.deepseek.com/quick_start/pricing.
-  "deepseek-v4-pro": {
-    inputPerMillion: 0.66, cachedInputPerMillion: 0.022, outputPerMillion: 1.98,
-    peak: { inputPerMillion: 1.32, cachedInputPerMillion: 0.044, outputPerMillion: 3.96 },
-  },
-  "deepseek-v4-flash": {
-    inputPerMillion: 0.22, cachedInputPerMillion: 0.007, outputPerMillion: 0.66,
-    peak: { inputPerMillion: 0.44, cachedInputPerMillion: 0.014, outputPerMillion: 1.32 },
+  // V4.1 Flash rates effective 2026-09-10 04:00 UTC; peak/off-peak windows
+  // remain in effect — see https://api-docs.deepseek.com/quick_start/pricing.
+  "deepseek-flash": {
+    inputPerMillion: 0.15, cachedInputPerMillion: 0.003, outputPerMillion: 0.6,
+    peak: { inputPerMillion: 0.3, cachedInputPerMillion: 0.006, outputPerMillion: 1.2 },
   },
 };
 

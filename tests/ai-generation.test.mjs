@@ -52,12 +52,25 @@ const message = (text, phase = "final_answer") => ({
 });
 const json = (body) => Response.json({ status: "completed", ...body });
 
+test("all DeepSeek operations use the canonical V4.1 Flash model and current pricing", () => {
+  const h = harness(() => json({ output_text: '{"body":"article"}' }));
+  assert.equal(h.config.AI_MODELS.CONTENT, "deepseek-flash");
+  assert.equal(h.config.AI_MODELS.UTILITY, "deepseek-flash");
+  assert.ok(Object.values(h.config.OPERATION_CONFIG).every(({ model }) => model === "deepseek-flash"));
+  assert.equal(h.config.estimateCostUsd("deepseek-flash", {
+    inputTokens: 1_000_000,
+    cachedInputTokens: 0,
+    outputTokens: 1_000_000,
+  }, new Date("2026-09-10T00:00:00Z")), 0.75);
+});
+
 test("5600-character article keeps thinking with extra headroom and externally supplied research", async () => {
   const h = harness(() => json({ output_text: '{"body":"article"}' }));
   const result = await h.callAiModel({ ...params, maxOutputTokensOverride: h.materialOutputTokenBudget(5600, "generate_seo_article") });
   assert.equal(result.result.body, "article");
   assert.equal(h.calls.length, 1);
   assert.equal(h.calls[0].body.reasoning.effort, "low");
+  assert.equal(h.calls[0].body.model, "deepseek-flash");
   assert.equal(h.calls[0].body.tools, undefined);
   assert.equal(h.calls[0].body.max_output_tokens, 7542);
   assert.ok(h.calls[0].signal);
