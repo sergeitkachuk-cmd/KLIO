@@ -11,7 +11,7 @@ export async function GET() {
   return Response.json({ connected }, { headers: {
     "Cache-Control": "no-store",
     "X-Klio-Ai-Release": "2026-09-10-v4-1-output-budget-v2",
-    "X-Klio-Ui-Release": "2026-09-10-centered-chevrons-topic-spacing",
+    "X-Klio-Ui-Release": "2026-09-10-larger-material-topic-titles",
     "X-Klio-Admin-Release": "2026-09-07-ai-latency-visible",
     "X-Klio-Editor-Release": "2026-09-07-search-fallback-v3",
     "X-Klio-Generator-Release": "2026-09-07-bounded-latency-v2",
