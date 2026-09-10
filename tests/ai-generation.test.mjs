@@ -72,7 +72,7 @@ test("5600-character article keeps thinking with extra headroom and externally s
   assert.equal(h.calls[0].body.reasoning.effort, "low");
   assert.equal(h.calls[0].body.model, "deepseek-flash");
   assert.equal(h.calls[0].body.tools, undefined);
-  assert.equal(h.calls[0].body.max_output_tokens, 7542);
+  assert.equal(h.calls[0].body.max_output_tokens, 10000);
   assert.ok(h.calls[0].signal);
 });
 
@@ -84,9 +84,20 @@ test("reasoning-only empty response is billed once, including retryable utility 
   }
 });
 
-test("incomplete output is never accepted even if it contains parseable JSON", async () => {
-  const h = harness(() => json({ status: "incomplete", incomplete_details: { reason: "max_output_tokens" }, output_text: '{"body":"partial"}' }));
-  await assert.rejects(h.callAiModel(params), { status: 502 });
+test("incomplete output is never accepted and retains exact provider diagnostics", async () => {
+  const h = harness(() => json({
+    status: "incomplete",
+    incomplete_details: { reason: "max_output_tokens" },
+    output_text: '{"body":"partial"}',
+    usage: { input_tokens: 15614, output_tokens: 3676, total_tokens: 19290, output_tokens_details: { reasoning_tokens: 3600 } },
+  }));
+  await assert.rejects(h.callAiModel(params), (error) => {
+    assert.equal(error.status, 502);
+    assert.match(error.diagnosticMessage, /reason=max_output_tokens/);
+    assert.match(error.diagnosticMessage, /output_tokens=3676/);
+    assert.match(error.diagnosticMessage, /reasoning_tokens=3600/);
+    return true;
+  });
   assert.equal(h.calls.length, 1);
 });
 
@@ -153,7 +164,11 @@ test("generation passes share one deadline instead of resetting the budget", () 
 
 function routeHarness(h, quick = false) {
   const records = [];
+  const jobs = [];
   const prefix = quick ? "../../_lib/" : "../_lib/";
+  class TestAiResponseError extends Error {
+    constructor(message, status = 502) { super(message); this.status = status; }
+  }
   const dependencies = {
     [`${prefix}ai-router`]: h,
     [`${prefix}ai-config`]: h.config,
@@ -165,13 +180,29 @@ function routeHarness(h, quick = false) {
       workspaceIdentity: async () => ({ email: "test@example.invalid" }),
       recordGeneration: async (record) => { records.push(record); return { archive: { id: "test" } }; },
       WorkspaceAccessError: class extends Error {},
+      workspaceErrorResponse: (error) => Response.json({ error: error.message }, { status: 403 }),
     },
     [`${prefix}website-context`]: { readWebsiteContext: async () => ({ status: "not_provided" }) },
     [`${prefix}tavily`]: { researchMaterialWeb: async () => ({ results: Array.from({ length: 5 }, (_, i) => ({ title: `Source ${i}`, url: `https://example.invalid/${i}`, content: `Verified context ${i}` })) }) },
+    [`${prefix}openai-response`]: { AiResponseError: TestAiResponseError },
+    [`${prefix}async-jobs`]: {
+      claimAsyncJob: async () => ({ id: "test-job", reused: false }),
+      markAsyncJobProcessing: async () => {},
+      completeAsyncJob: async (id, payload) => { jobs.push({ id, status: "done", payload }); },
+      failAsyncJob: async (id, errorMessage) => { jobs.push({ id, status: "failed", errorMessage }); },
+    },
     "../../content-plans": loadTs("app/content-plans.ts", h.globals),
   };
   const route = loadTs(`app/api/generate/${quick ? "quick/" : ""}route.ts`, { ...h.globals, Response }, dependencies);
-  return { ...route, records };
+  return { ...route, records, jobs };
+}
+
+async function waitForJob(route) {
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    if (route.jobs.length) return route.jobs[0];
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  throw new Error("Background generation did not settle in the test harness");
 }
 
 test("every advanced format returns and records material with thinking and external research in one provider call", async () => {
@@ -181,8 +212,12 @@ test("every advanced format returns and records material with thinking and exter
     const h = harness(() => json({ output_text: JSON.stringify(draft) }));
     const route = routeHarness(h);
     const response = await route.POST(new Request("https://example.invalid/api/generate", { method: "POST", body: JSON.stringify({ format, length, topic: "Кофе", useBrand: false }) }));
-    const result = await response.json();
-    assert.equal(response.status, 200, JSON.stringify(result));
+    const accepted = await response.json();
+    assert.equal(response.status, 200, JSON.stringify(accepted));
+    assert.equal(accepted.jobId, "test-job");
+    const job = await waitForJob(route);
+    assert.equal(job.status, "done", job.errorMessage);
+    const result = job.payload;
     assert.ok(result.material.body.length > length * 0.85);
     assert.equal(result.mode, "ai");
     assert.ok(result.coverage);
@@ -196,12 +231,15 @@ test("every advanced format returns and records material with thinking and exter
   }
 });
 
-test("empty provider response returns an API error without recording a generation", async () => {
+test("empty provider response fails the background job without recording a generation", async () => {
   const h = harness(() => json({ output: [] }));
   const route = routeHarness(h);
   const response = await route.POST(new Request("https://example.invalid/api/generate", { method: "POST", body: JSON.stringify({ format: "seo", length: 5600, topic: "Кофе" }) }));
-  assert.equal(response.status, 502);
-  assert.ok((await response.json()).error);
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).jobId, "test-job");
+  const job = await waitForJob(route);
+  assert.equal(job.status, "failed");
+  assert.match(job.errorMessage, /пустой ответ/i);
   assert.equal(route.records.length, 0);
   assert.equal(h.calls.length, 1);
 });
@@ -235,8 +273,10 @@ test("quick generation supplies bounded research and keeps the draft when conden
 test("thinking headroom applies to every writing format but not mechanical condensing", () => {
   const h = harness(() => {});
   for (const operation of ["generate_seo_article", "generate_social_post", "generate_ad_copy", "generate_landing", "generate_quick_material", "revise_content"]) {
-    assert.equal(h.materialOutputTokenBudget(1000, operation), 3403);
-    assert.equal(h.materialOutputTokenBudget(5600, operation), 7542);
+    assert.equal(h.materialOutputTokenBudget(500, operation), 10000);
+    assert.equal(h.materialOutputTokenBudget(1000, operation), 10000);
+    assert.equal(h.materialOutputTokenBudget(1600, operation), 10000);
+    assert.equal(h.materialOutputTokenBudget(5600, operation), 10000);
     assert.ok(h.materialOutputTokenBudget(30000, operation) <= h.config.OPERATION_CONFIG[operation].maxOutputTokens);
     assert.equal(h.config.OPERATION_CONFIG[operation].retryable, false);
   }

@@ -10,7 +10,7 @@ export async function GET() {
   // the release with bounded, reasoning-enabled material generation.
   return Response.json({ connected }, { headers: {
     "Cache-Control": "no-store",
-    "X-Klio-Ai-Release": "2026-09-10-deepseek-v4-1-flash",
+    "X-Klio-Ai-Release": "2026-09-10-v4-1-output-budget-v2",
     "X-Klio-Ui-Release": "2026-09-07-volume-control-removed",
     "X-Klio-Admin-Release": "2026-09-07-ai-latency-visible",
     "X-Klio-Editor-Release": "2026-09-07-search-fallback-v3",

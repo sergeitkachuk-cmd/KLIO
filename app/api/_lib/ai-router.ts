@@ -25,6 +25,7 @@ const PROVIDER_ENDPOINTS: Record<ReturnType<typeof activeProvider>, string> = {
 
 export class AiCallError extends Error {
   status: number;
+  diagnosticMessage?: string;
 
   constructor(message: string, status = 502) {
     super(message);
@@ -74,6 +75,7 @@ type CallAiModelResult<T> = {
     inputTokens: number;
     cachedInputTokens: number;
     outputTokens: number;
+    reasoningTokens: number;
     totalTokens: number;
     durationMs: number;
     retryCount: number;
@@ -139,9 +141,13 @@ function extractUsage(response: unknown) {
   const details = usage.input_tokens_details && typeof usage.input_tokens_details === "object"
     ? usage.input_tokens_details as Record<string, unknown>
     : {};
+  const outputDetails = usage.output_tokens_details && typeof usage.output_tokens_details === "object"
+    ? usage.output_tokens_details as Record<string, unknown>
+    : {};
   const cachedInputTokens = typeof details.cached_tokens === "number" ? details.cached_tokens : 0;
+  const reasoningTokens = typeof outputDetails.reasoning_tokens === "number" ? outputDetails.reasoning_tokens : 0;
   const requestId = typeof source.id === "string" ? source.id : null;
-  return { inputTokens, outputTokens, totalTokens, cachedInputTokens, requestId };
+  return { inputTokens, outputTokens, reasoningTokens, totalTokens, cachedInputTokens, requestId };
 }
 
 function sleep(ms: number) {
@@ -274,13 +280,25 @@ async function requestOnce(params: {
   const usage = extractUsage(body);
   const { text, refused } = outputText(body);
   if (body.status === "incomplete" || body.status === "failed" || body.error) {
+    const incompleteDetails = body.incomplete_details && typeof body.incomplete_details === "object"
+      ? body.incomplete_details as Record<string, unknown>
+      : {};
+    const incompleteReason = typeof incompleteDetails.reason === "string" ? incompleteDetails.reason : "unknown";
     console.error(`${provider} incomplete response`, JSON.stringify({
       status: body.status, incomplete_details: body.incomplete_details,
-      requestId: usage.requestId, outputTokens: usage.outputTokens,
+      requestId: usage.requestId, outputTokens: usage.outputTokens, reasoningTokens: usage.reasoningTokens,
       output: summarizeOutputItems(body.output),
     }));
     const error = new AiCallError("ИИ не завершил материал. Повторите запрос чуть позже.", 502);
-    (error as { usage?: typeof usage }).usage = usage;
+    (error as { usage?: typeof usage; diagnosticMessage?: string }).usage = usage;
+    error.diagnosticMessage = [
+      error.message,
+      `provider_status=${String(body.status || "unknown")}`,
+      `reason=${incompleteReason}`,
+      `output_tokens=${usage.outputTokens}`,
+      `reasoning_tokens=${usage.reasoningTokens}`,
+      usage.requestId ? `request_id=${usage.requestId}` : "",
+    ].filter(Boolean).join("; ");
     throw error;
   }
   // From here on, every throw follows a real, billed provider response —
@@ -431,6 +449,7 @@ export async function callAiModel<T = Record<string, unknown>>(
           inputTokens: outcome.usage.inputTokens,
           cachedInputTokens: outcome.usage.cachedInputTokens,
           outputTokens: outcome.usage.outputTokens,
+          reasoningTokens: outcome.usage.reasoningTokens,
           totalTokens: outcome.usage.totalTokens,
           durationMs: Date.now() - startedAt,
           retryCount: transientRetries + invalidOutputRetries,
@@ -460,12 +479,14 @@ export async function callAiModel<T = Record<string, unknown>>(
           operation: params.operation,
           model: attemptModel,
           reasoningEffort,
-          usage: attemptUsage ?? { inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, totalTokens: 0, requestId: null },
+          usage: attemptUsage ?? { inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, reasoningTokens: 0, totalTokens: 0, requestId: null },
           durationMs: Date.now() - startedAt,
           retryCount: transientRetries + invalidOutputRetries,
           status: "failed",
           fallbackFrom,
-          errorMessage: error instanceof Error ? error.message : String(error),
+          errorMessage: error instanceof AiCallError && error.diagnosticMessage
+            ? error.diagnosticMessage
+            : error instanceof Error ? error.message : String(error),
         });
       }
       // Note: a genuine transient 503 from OpenAI (server.status >= 500 in

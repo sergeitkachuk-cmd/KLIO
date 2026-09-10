@@ -762,11 +762,11 @@ async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>,
   // Repair only a genuinely unusable draft; formatting is sanitized below
   // and an overshoot is handled by the deterministic trim backstop.
   const needsModelCorrection = publicationCharacters(material) < Math.floor(minimumCharacters * 0.55) || !subjectCheck.passes;
-  if (needsModelCorrection && budget.remainingMs() >= 15_000) {
+  if (needsModelCorrection && budget.remainingMs() >= 20_000) {
     try {
       const correctionCall = await callAiModel<Record<string, unknown>>({
         operation: "revise_content",
-        requestTimeoutMs: budget.timeoutMs(20_000),
+        requestTimeoutMs: budget.timeoutMs(30_000),
         maxOutputTokensOverride: materialOutputTokenBudget(input.length, "revise_content"),
         ownerEmail,
         brandId: input.useBrand ? input.brandId : undefined,

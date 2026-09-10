@@ -5,9 +5,14 @@ export function materialOutputTokenBudget(targetCharacters: number, operation: A
   const config = OPERATION_CONFIG[operation];
   const textBudget = Math.max(1_100, Math.min(10_000, Math.ceil(targetCharacters / 2.2) + 900));
   // The provider has a combined ceiling, not separate enforceable quotas.
-  // Add headroom for thinking instead of taking it from the text allowance.
-  const thinkingHeadroom = config.reasoningEffort === "none" ? 0 : targetCharacters <= 2000 ? 2048 : 4096;
-  return Math.min(config.maxOutputTokens, textBudget + thinkingHeadroom);
+  // DeepSeek can spend more than 2k tokens on low-effort reasoning even for
+  // a short post. The old target-sized ceiling made 1,600 characters map to
+  // exactly 3,676 output tokens; a real provider response consumed all 3,676
+  // and ended as incomplete before emitting the final JSON. Keep reasoning,
+  // but give every reasoning-enabled material a safe 10k combined floor.
+  const thinkingHeadroom = config.reasoningEffort === "none" ? 0 : targetCharacters <= 2000 ? 8192 : 4096;
+  const combinedBudget = textBudget + thinkingHeadroom;
+  return Math.min(config.maxOutputTokens, config.reasoningEffort === "none" ? combinedBudget : Math.max(10_000, combinedBudget));
 }
 
 export function adaptationOutputTokenBudget(sourceCharacters: number, reasoningEffort: ReasoningEffort) {
