@@ -4573,6 +4573,12 @@ footer nav a {
   gap: 8px;
 }
 
+@media (min-width: 701px) {
+  .workspace-history-list.is-content-plan-filter {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .workspace-history-list article {
   display: grid;
   align-content: start;
@@ -4729,6 +4735,10 @@ footer nav a {
   text-transform: uppercase;
 }
 
+.workspace-history-list.is-content-plan-filter .material-plan-heading {
+  font-size: 12px;
+}
+
 .material-plan-preview {
   display: grid;
   /* Explicit minmax(0, 1fr), not a bare implicit column: with no
@@ -4759,6 +4769,11 @@ footer nav a {
   color: rgba(255, 255, 255, 0.86);
   font-size: 11px;
   line-height: 1.35;
+}
+
+.workspace-history-list.is-content-plan-filter .material-plan-preview li {
+  font-size: 13px;
+  line-height: 1.42;
 }
 
 .material-plan-preview li::before {
@@ -4834,6 +4849,10 @@ footer nav a {
   font-weight: 760;
   cursor: pointer;
   transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+}
+
+.workspace-history-list.is-content-plan-filter .material-plan-more button {
+  font-size: 12px;
 }
 
 .material-plan-more button::before {
