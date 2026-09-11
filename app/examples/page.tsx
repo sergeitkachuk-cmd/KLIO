@@ -1,4 +1,12 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Примеры работы КЛИО — от темы до публикации",
+  description: "Как КЛИО помогает находить темы, составлять контент-планы и готовить материалы для сайта и соцсетей.",
+  alternates: { canonical: "/examples" },
+  openGraph: { title: "Примеры работы КЛИО", url: "/examples" },
+};
 
 const scenarios = [
   {

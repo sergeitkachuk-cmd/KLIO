@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import YandexIcon from "../yandex-icon";
 import VkSignIn from "../vk-signin";
+import { safeReturnPath } from "../api/_lib/safe-return-path";
 
 function safeReturnTo(): string {
   if (typeof window === "undefined") return "/workspace";
   const target = new URLSearchParams(window.location.search).get("return_to");
-  if (target && target.startsWith("/") && !target.startsWith("//")) return target;
-  return "/workspace";
+  return safeReturnPath(target);
 }
 
 function initialVerifyError(): string {

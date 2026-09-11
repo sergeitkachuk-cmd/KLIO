@@ -1,3 +1,5 @@
+import { fetchPublicResource, PublicFetchError } from "./public-fetch";
+
 export type WebsiteContext = {
   requestedUrl: string;
   resolvedUrl: string;
@@ -123,38 +125,8 @@ function extractInternalPageLinks(html: string, baseUrl: string) {
   return links;
 }
 
-const MAX_REDIRECTS = 5;
-
-// Follows redirects manually (redirect: "manual") so every hop — not just
-// the URL the visitor typed — is re-checked against normalizePublicUrl().
-// With redirect: "follow", a public-looking URL that later 30x's to a
-// private/internal address (loopback, link-local metadata, LAN) would be
-// fetched server-side without ever re-running the private-IP guard.
 async function fetchPublicHtml(url: URL) {
-  let current = url;
-  for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
-    const response = await fetch(current, {
-      method: "GET",
-      redirect: "manual",
-      headers: {
-        Accept: "text/html,application/xhtml+xml",
-        "User-Agent": "KLIO-Brand-Context/1.0",
-      },
-      signal: AbortSignal.timeout(4_500),
-    });
-
-    if (response.status >= 300 && response.status < 400) {
-      const location = response.headers.get("location");
-      if (!location) return response;
-      const next = normalizePublicUrl(new URL(location, current).toString());
-      if (!next) return null;
-      current = next;
-      continue;
-    }
-
-    return response;
-  }
-  return null;
+  return fetchPublicResource(url, { maxBytes: 600_000, timeoutMs: 4500, truncate: true, accept: "text/html,application/xhtml+xml" });
 }
 
 async function loadWebsiteContext(value: string): Promise<WebsiteContext> {
@@ -192,8 +164,8 @@ async function loadWebsiteContext(value: string): Promise<WebsiteContext> {
       status: text ? "loaded" : "unavailable",
       text,
     };
-  } catch {
-    return { ...EMPTY_CONTEXT, requestedUrl, resolvedUrl: url.toString(), status: "unavailable" };
+  } catch (error) {
+    return { ...EMPTY_CONTEXT, requestedUrl, resolvedUrl: url.toString(), status: error instanceof PublicFetchError && error.code === "blocked" ? "blocked" : "unavailable" };
   }
 }
 

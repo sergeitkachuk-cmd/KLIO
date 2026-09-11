@@ -58,6 +58,8 @@
 // fresh KLIO upload after deployment before touching ACL or Bucket Policy.
 
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { createHash } from "node:crypto";
+import { imageContentType } from "./image-type";
 
 export class StorageError extends Error {
   status: number;
@@ -151,9 +153,11 @@ export async function uploadPublicationImage(file: File, ownerEmail: string): Pr
   }
 
   const bytes = new Uint8Array(await file.arrayBuffer());
+  if (imageContentType(bytes) !== file.type) throw new StorageError("Содержимое файла не соответствует формату картинки.", 400);
   // Namespaced by owner so two accounts can never collide or overwrite
   // each other's file, without needing a database lookup to check.
-  const key = `publications/${ownerEmail.toLowerCase()}/${crypto.randomUUID()}.${extension}`;
+  const ownerKey = createHash("sha256").update(ownerEmail.trim().toLowerCase()).digest("hex");
+  const key = `publications/${ownerKey}/${crypto.randomUUID()}.${extension}`;
 
   try {
     await client().send(new PutObjectCommand({

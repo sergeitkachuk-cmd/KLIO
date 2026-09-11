@@ -1,18 +1,11 @@
-// Building public links from `request.url` is unreliable behind Render's
-// proxy — the Next.js process sees its own internal bind address
-// (0.0.0.0:10000), not the public hostname, so emailed verification links
-// ended up pointing at http://0.0.0.0:10000/... Prefer an explicit
-// APP_BASE_URL; fall back to standard forwarded-proto/-host headers, and
-// only use request.url's origin as a last resort (correct for local dev).
+import { SITE_BASE_URL } from "../../site-url";
+
+// Never let caller-controlled Host/Forwarded headers change email or OAuth
+// destinations. Production has a configured/fixed public origin.
 export function resolveBaseUrl(request: Request): string {
   const configured = process.env.APP_BASE_URL?.trim();
   if (configured) return configured.replace(/\/+$/, "");
 
-  const forwardedHost = request.headers.get("x-forwarded-host");
-  if (forwardedHost) {
-    const forwardedProto = request.headers.get("x-forwarded-proto") || "https";
-    return `${forwardedProto}://${forwardedHost}`;
-  }
-
+  if (process.env.NODE_ENV === "production") return SITE_BASE_URL;
   return new URL(request.url).origin;
 }

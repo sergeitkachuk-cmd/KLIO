@@ -12,11 +12,15 @@
 
 import { uploadPublicationImage, StorageError } from "../_lib/storage";
 import { workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
+import { readBoundedBody, RequestBodyError } from "../_lib/request-body";
+import { isRateLimited } from "../_lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
     const user = await workspaceIdentity();
-    const form = await request.formData();
+    if (isRateLimited(`upload:${user.email}`, 20, 60 * 60_000)) return Response.json({ error: "Слишком много загрузок. Попробуйте позже." }, { status: 429 });
+    const bytes = await readBoundedBody(request, 8 * 1024 * 1024 + 64 * 1024, 30_000);
+    const form = await new Response(new Uint8Array(bytes), { headers: { "Content-Type": request.headers.get("content-type") || "" } }).formData();
     const file = form.get("file");
     if (!(file instanceof File)) {
       return Response.json({ error: "Файл не передан." }, { status: 400 });
@@ -24,6 +28,7 @@ export async function POST(request: Request) {
     const url = await uploadPublicationImage(file, user.email);
     return Response.json({ url }, { status: 201 });
   } catch (error) {
+    if (error instanceof RequestBodyError) return Response.json({ error: error.message }, { status: error.status });
     if (error instanceof StorageError) return Response.json({ error: error.message }, { status: error.status });
     if (error instanceof WorkspaceAccessError) return workspaceErrorResponse(error);
     return workspaceErrorResponse(error);

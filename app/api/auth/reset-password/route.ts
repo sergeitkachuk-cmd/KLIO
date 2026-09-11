@@ -1,9 +1,14 @@
 import { hashPassword } from "../../_lib/password";
 import { consumePasswordReset } from "../../_lib/password-reset";
 import { workspaceDatabaseAvailable } from "../../_lib/workspace-account";
+import { readBoundedBody, RequestBodyError } from "../../_lib/request-body";
+import { isRateLimited, clientIp } from "../../_lib/rate-limit";
 
 export async function POST(request: Request) {
-  const payload = await request.json().catch(() => null) as { token?: unknown; password?: unknown } | null;
+  if (isRateLimited(`reset-password:${clientIp(request)}`, 10, 15 * 60_000)) return Response.json({ error: "Слишком много попыток. Попробуйте позже." }, { status: 429 });
+  let payload: { token?: unknown; password?: unknown } | null;
+  try { payload = JSON.parse(new TextDecoder().decode(await readBoundedBody(request, 4096))); }
+  catch (error) { return Response.json({ error: "Некорректный запрос." }, { status: error instanceof RequestBodyError ? error.status : 400 }); }
   const token = typeof payload?.token === "string" ? payload.token.trim() : "";
   const password = typeof payload?.password === "string" ? payload.password : "";
   if (!/^[a-f0-9]{64}$/.test(token) || password.length < 8 || password.length > 256) return Response.json({ error: "Ссылка недействительна или длина пароля вне диапазона 8–256 символов." }, { status: 400 });

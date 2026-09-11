@@ -7,6 +7,8 @@
 // this reads.
 
 import { request as httpsRequest } from "node:https";
+import { fetchPublicResource } from "./public-fetch";
+import { imageContentType } from "./image-type";
 import {
   PLATFORM_TEXT_LIMITS,
   VK_API_VERSION,
@@ -68,14 +70,16 @@ function postToTelegramApi(url: string, body: object): Promise<TelegramApiRespon
 }
 
 async function fetchImageBytes(imageUrl: string): Promise<Blob> {
-  let response: Response;
   try {
-    response = await fetch(imageUrl);
-  } catch {
+    const response = await fetchPublicResource(imageUrl, { maxBytes: 10 * 1024 * 1024, timeoutMs: 15_000, accept: "image/*" });
+    if (!response.ok) throw new PublishError(`Не удалось загрузить картинку по ссылке (HTTP ${response.status}).`, true);
+    const type = imageContentType(response.bytes);
+    if (!type) throw new PublishError("Ссылка должна вести на изображение JPEG, PNG, WebP или GIF.", false);
+    return new Blob([new Uint8Array(response.bytes)], { type });
+  } catch (error) {
+    if (error instanceof PublishError) throw error;
     throw new PublishError("Не удалось загрузить картинку по ссылке перед публикацией.", true);
   }
-  if (!response.ok) throw new PublishError(`Не удалось загрузить картинку по ссылке (HTTP ${response.status}).`, true);
-  return response.blob();
 }
 
 type TelegramMessagePayload = { ok: boolean; result?: { message_id: number }; description?: string; error_code?: number };
