@@ -62,9 +62,13 @@ export async function POST(request: Request) {
 
     const now = new Date().toISOString();
     if (!invoice.paidAt) {
-      const [account] = await db.select().from(accounts).where(eq(accounts.email, invoice.ownerEmail)).limit(1);
+      await db.transaction(async (tx) => {
+      const [currentInvoice] = await tx.select().from(invoices).where(eq(invoices.id, invoice.id)).limit(1).for("update");
+      if (!currentInvoice || currentInvoice.paidAt) return;
+      const [account] = await tx.select().from(accounts).where(eq(accounts.email, invoice.ownerEmail)).limit(1).for("update");
+      if (!account) throw new Error("Invoice account is missing.");
       const activatedPlanId = invoice.planId === "test" ? "start" : invoice.planId;
-      await db.update(accounts).set({
+      await tx.update(accounts).set({
         planId: activatedPlanId,
         planExpiresAt: subscriptionExpiry(account?.planExpiresAt, invoice.billing as BillingPeriod, new Date(now)),
         generationsUsed: 0,
@@ -74,7 +78,8 @@ export async function POST(request: Request) {
         quotaPeriodEndsAt: nextQuotaPeriodEnd(new Date(now)),
         updatedAt: now,
       }).where(eq(accounts.email, invoice.ownerEmail));
-      await db.update(invoices).set({ paymentStatus, paidAt: now, updatedAt: now }).where(eq(invoices.id, invoice.id));
+      await tx.update(invoices).set({ paymentStatus, paidAt: now, updatedAt: now }).where(eq(invoices.id, invoice.id));
+      });
     }
 
     const amount = invoice.amountKopecks / 100;

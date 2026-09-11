@@ -61,7 +61,8 @@ export async function POST(request: Request) {
     await db.transaction(async (tx) => {
       const [current] = await tx.select().from(payments).where(eq(payments.id, paymentLinkId)).limit(1);
       if (!current || current.status === "paid" || current.status === "refunded") return;
-      const [account] = await tx.select().from(accounts).where(eq(accounts.email, current.ownerEmail)).limit(1);
+      const [account] = await tx.select().from(accounts).where(eq(accounts.email, current.ownerEmail)).limit(1).for("update");
+      if (!account) throw new Error("Payment account is missing.");
       const [confirmedPayment] = await tx.update(payments).set({ status: "paid", paidAt: now.toISOString(), updatedAt: now.toISOString() }).where(and(eq(payments.id, paymentLinkId), eq(payments.status, "pending"))).returning();
       if (!confirmedPayment) return;
       await tx.update(accounts).set({ planId: confirmedPayment.planId, planExpiresAt: subscriptionExpiry(account?.planExpiresAt, confirmedPayment.billing as BillingPeriod, now), generationsUsed: 0, researchUsed: 0, editorActionsUsed: 0, generationMonth: `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`, quotaPeriodEndsAt: nextQuotaPeriodEnd(now), updatedAt: now.toISOString() }).where(eq(accounts.email, confirmedPayment.ownerEmail));

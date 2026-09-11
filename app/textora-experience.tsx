@@ -1705,7 +1705,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // A different case is selected for every new visit. While the overview is
   // open it advances on its own, so the marketing block stays useful rather
   // than becoming a static list of features.
-  const [useCaseIndex, setUseCaseIndex] = useState(() => Math.floor(Math.random() * WORKSPACE_USE_CASES.length));
+  const [useCaseIndex, setUseCaseIndex] = useState(0);
   useEffect(() => {
     if (activeModule !== "start") return;
     const timer = window.setInterval(() => setUseCaseIndex((current) => current + 1), 16000);

@@ -8,14 +8,25 @@ export class TochkaConfigError extends Error {}
 type TochkaWebhookClaims = Record<string, unknown>;
 
 let webhookKeyPromise: Promise<NodeJsonWebKey> | undefined;
+let webhookKeyExpiresAt = 0;
 
 async function webhookKey() {
-  webhookKeyPromise ??= fetch(TOCHKA_WEBHOOK_KEY_URL, { cache: "no-store" })
+  if (webhookKeyPromise && Date.now() >= webhookKeyExpiresAt) webhookKeyPromise = undefined;
+  if (!webhookKeyPromise) {
+    webhookKeyExpiresAt = Date.now() + 5 * 60_000;
+    webhookKeyPromise = fetch(TOCHKA_WEBHOOK_KEY_URL, { cache: "no-store", signal: AbortSignal.timeout(5000) })
     .then(async (response) => {
       if (!response.ok) throw new Error(`Tochka public key request failed (${response.status}).`);
       const value = await response.json() as NodeJsonWebKey | { keys?: NodeJsonWebKey[] };
-      return "keys" in value && Array.isArray(value.keys) ? value.keys[0] : value as NodeJsonWebKey;
+      const key = "keys" in value && Array.isArray(value.keys) ? value.keys[0] : value as NodeJsonWebKey;
+      if (!key || key.kty !== "RSA" || !key.n || !key.e) throw new Error("Invalid Tochka webhook public key.");
+      createPublicKey({ key, format: "jwk" });
+      return key;
+    }).catch((error) => {
+      webhookKeyPromise = undefined;
+      throw error;
     });
+  }
   return webhookKeyPromise;
 }
 

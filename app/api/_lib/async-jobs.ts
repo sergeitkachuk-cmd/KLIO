@@ -2,6 +2,8 @@ import { and, desc, eq, inArray, lt } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { asyncJobs } from "../../../db/schema";
+import { isDeepStrictEqual } from "node:util";
+import { WorkspaceAccessError } from "./workspace-account";
 
 // Background-job bookkeeping for AI work that can legitimately take
 // several minutes (content-plan generation today) — too long to trust a
@@ -46,6 +48,11 @@ export async function claimAsyncJob(kind: string, ownerEmail: string, input: unk
     if (active) {
       const updatedAt = Date.parse(active.updatedAt);
       if (!maxAgeMs || !Number.isFinite(updatedAt) || Date.now() - updatedAt <= maxAgeMs) {
+        let previousInput: unknown;
+        try { previousInput = JSON.parse(active.inputJson); } catch { previousInput = undefined; }
+        if (!isDeepStrictEqual(previousInput, JSON.parse(JSON.stringify(input)))) {
+          throw new WorkspaceAccessError("Предыдущая задача ещё выполняется. Дождитесь её завершения перед запуском другой.", 409);
+        }
         return { id: active.id, reused: true };
       }
       await tx.update(asyncJobs).set({
@@ -133,7 +140,7 @@ export async function failAsyncJob(id: string, errorMessage: string) {
     status: "failed",
     errorMessage: errorMessage.slice(0, 500),
     updatedAt: sql`CURRENT_TIMESTAMP`,
-  }).where(eq(asyncJobs.id, id));
+  }).where(and(eq(asyncJobs.id, id), inArray(asyncJobs.status, ["pending", "processing"])));
 }
 
 export async function getAsyncJob(id: string, ownerEmail: string) {

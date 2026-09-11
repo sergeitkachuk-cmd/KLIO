@@ -6,7 +6,7 @@ export async function POST(request: Request) {
   const payload = await request.json().catch(() => null) as { token?: unknown; password?: unknown } | null;
   const token = typeof payload?.token === "string" ? payload.token.trim() : "";
   const password = typeof payload?.password === "string" ? payload.password : "";
-  if (!token || password.length < 8) return Response.json({ error: "Ссылка недействительна или пароль короче 8 символов." }, { status: 400 });
+  if (!/^[a-f0-9]{64}$/.test(token) || password.length < 8 || password.length > 256) return Response.json({ error: "Ссылка недействительна или длина пароля вне диапазона 8–256 символов." }, { status: 400 });
   if (!await workspaceDatabaseAvailable()) return Response.json({ error: "Хранилище кабинета временно недоступно." }, { status: 503 });
   try {
     const valid = await consumePasswordReset(token, await hashPassword(password));

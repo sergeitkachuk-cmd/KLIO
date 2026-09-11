@@ -1,4 +1,4 @@
-import { and, eq, lt, sql } from "drizzle-orm";
+import { and, eq, isNull, lt, sql } from "drizzle-orm";
 import { accounts, brands, generations } from "../../../db/schema";
 import { getDb } from "../../../db";
 import type { ChatGPTUser } from "../../chatgpt-auth";
@@ -84,19 +84,16 @@ export async function ensureAccount(user: ChatGPTUser) {
       lifetimeGenerationsUsed: 0,
       lifetimeResearchUsed: 0,
       lifetimeEditorActionsUsed: 0,
-    }).returning();
+    }).onConflictDoNothing({ target: accounts.email }).returning();
+    if (!account) [account] = await db.select().from(accounts).where(eq(accounts.email, user.email)).limit(1);
   } else if (quotaPeriodElapsed(account, now)) {
-    // Payment-anchored accounts advance from their own previous anchor (not
-    // from `now`) so the reset day-of-month stays pinned to the original
-    // payment date even if nobody visits exactly on the boundary; a visit
-    // that's overdue by more than one period catches up fully on the next
-    // request after this one (each step is a harmless no-op once counters
-    // are already zero). Only the three period counters reset here —
-    // lifetimeGenerationsUsed/lifetimeResearchUsed/lifetimeEditorActionsUsed
-    // are deliberately absent from this set() so the rollover never touches
-    // them.
-    const nextAnchor = account.quotaPeriodEndsAt ? nextQuotaPeriodEnd(new Date(account.quotaPeriodEndsAt)) : null;
-    [account] = await db.update(accounts).set({
+    // Catch up in one reset. A compare-and-swap prevents a second request
+    // from erasing usage recorded after the first request's rollover.
+    let nextAnchor = account.quotaPeriodEndsAt;
+    while (nextAnchor && new Date(nextAnchor).getTime() <= now.getTime()) {
+      nextAnchor = nextQuotaPeriodEnd(new Date(nextAnchor));
+    }
+    const [rolledOver] = await db.update(accounts).set({
       displayName: user.displayName,
       generationMonth: currentMonth,
       quotaPeriodEndsAt: nextAnchor,
@@ -104,7 +101,13 @@ export async function ensureAccount(user: ChatGPTUser) {
       researchUsed: 0,
       editorActionsUsed: 0,
       updatedAt: sql`CURRENT_TIMESTAMP`,
-    }).where(eq(accounts.email, user.email)).returning();
+    }).where(and(
+      eq(accounts.email, user.email),
+      eq(accounts.generationMonth, account.generationMonth),
+      account.quotaPeriodEndsAt ? eq(accounts.quotaPeriodEndsAt, account.quotaPeriodEndsAt) : isNull(accounts.quotaPeriodEndsAt),
+    )).returning();
+    if (rolledOver) account = rolledOver;
+    else [account] = await db.select().from(accounts).where(eq(accounts.email, user.email)).limit(1);
   } else if (account.displayName !== user.displayName) {
     [account] = await db.update(accounts).set({
       displayName: user.displayName,
@@ -317,7 +320,8 @@ export async function recordGeneration(material: ArchiveMaterial) {
   const current = await ensureAccount(user);
   assertPlanActive(current);
   const rule = planRule(current.planId);
-  const [updated] = await db.update(accounts).set({
+  return db.transaction(async (tx) => {
+  const [updated] = await tx.update(accounts).set({
     generationsUsed: sql`${accounts.generationsUsed} + 1`,
     lifetimeGenerationsUsed: sql`${accounts.lifetimeGenerationsUsed} + 1`,
     updatedAt: sql`CURRENT_TIMESTAMP`,
@@ -332,14 +336,15 @@ export async function recordGeneration(material: ArchiveMaterial) {
 
   let brandId: string | null = null;
   if (material.brandId) {
-    const [ownedBrand] = await db.select({ id: brands.id }).from(brands).where(and(
+    const [ownedBrand] = await tx.select({ id: brands.id }).from(brands).where(and(
       eq(brands.id, material.brandId),
       eq(brands.ownerEmail, user.email),
     )).limit(1);
-    brandId = ownedBrand?.id ?? null;
+    if (!ownedBrand) throw new WorkspaceAccessError("Бренд не найден или недоступен.", 404);
+    brandId = ownedBrand.id;
   }
 
-  const [archive] = await db.insert(generations).values({
+  const [archive] = await tx.insert(generations).values({
     id: crypto.randomUUID(),
     ownerEmail: user.email,
     brandId,
@@ -357,8 +362,9 @@ export async function recordGeneration(material: ArchiveMaterial) {
     targetLength: material.targetLength,
   }).returning();
 
-  const [{ count: brandCount = 0 } = { count: 0 }] = await db.select({ count: sql<number>`count(*)` }).from(brands).where(eq(brands.ownerEmail, user.email));
+  const [{ count: brandCount = 0 } = { count: 0 }] = await tx.select({ count: sql<number>`count(*)` }).from(brands).where(eq(brands.ownerEmail, user.email));
   return { account: accountSummary(updated, Number(brandCount)), archive };
+  });
 }
 
 export function workspaceErrorResponse(error: unknown) {

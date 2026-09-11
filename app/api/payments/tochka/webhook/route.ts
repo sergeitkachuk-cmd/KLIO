@@ -53,7 +53,8 @@ export async function POST(request: Request) {
         updatedAt: new Date().toISOString(),
       }).where(and(eq(payments.id, paymentLinkId), eq(payments.status, "pending"))).returning();
       if (!confirmedPayment) { outcome = "already_processed"; return; }
-      const [account] = await tx.select().from(accounts).where(eq(accounts.email, payment.ownerEmail)).limit(1);
+      const [account] = await tx.select().from(accounts).where(eq(accounts.email, payment.ownerEmail)).limit(1).for("update");
+      if (!account) throw new Error("Payment account is missing.");
       const paidAt = new Date();
       await tx.update(accounts).set({
         planId: confirmedPayment.planId,
