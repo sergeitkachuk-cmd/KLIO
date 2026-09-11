@@ -1,4 +1,3 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 export type ChatGPTUser = {
@@ -7,44 +6,20 @@ export type ChatGPTUser = {
   fullName: string | null;
 };
 
-const USER_EMAIL_HEADER = "oai-authenticated-user-email";
-const USER_FULL_NAME_HEADER = "oai-authenticated-user-full-name";
-const USER_FULL_NAME_ENCODING_HEADER =
-  "oai-authenticated-user-full-name-encoding";
-const PERCENT_ENCODED_UTF8 = "percent-encoded-utf-8";
 const SIGN_IN_PATH = "/signin-with-chatgpt";
 const SIGN_OUT_PATH = "/signout-with-chatgpt";
 const CALLBACK_PATH = "/callback";
 
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get(USER_EMAIL_HEADER);
-  if (!email) {
-    // APP_USER_EMAIL is a local/dev convenience only — it used to double as
-    // a way for the site owner to reach /workspace outside ChatGPT before
-    // real visitor accounts existed. In production, real login (site-auth.ts)
-    // or the ChatGPT embed header are the only ways in; letting this fallback
-    // apply in production would silently log every anonymous visitor into
-    // the same shared account.
-    if (process.env.NODE_ENV === "production") return null;
-    const renderEmail = process.env.APP_USER_EMAIL?.trim();
-    if (!renderEmail) return null;
-    const renderName = process.env.APP_USER_NAME?.trim() || renderEmail;
-    return { displayName: renderName, email: renderEmail, fullName: renderName };
-  }
-
-  const encodedFullName = requestHeaders.get(USER_FULL_NAME_HEADER);
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get(USER_FULL_NAME_ENCODING_HEADER) === PERCENT_ENCODED_UTF8
-      ? safeDecodeURIComponent(encodedFullName)
-      : null;
-
-  return {
-    displayName: fullName ?? email,
-    email,
-    fullName,
-  };
+  // Public request headers are caller-controlled, never identity proof.
+  // Production authentication must use the verified site session, including
+  // sessions issued after server-side OAuth verification. Fail closed for any
+  // environment other than explicitly selected development/test.
+  if (process.env.NODE_ENV !== "development" && process.env.NODE_ENV !== "test") return null;
+  const email = process.env.APP_USER_EMAIL?.trim();
+  if (!email) return null;
+  const name = process.env.APP_USER_NAME?.trim() || email;
+  return { displayName: name, email, fullName: name };
 }
 
 export async function requireChatGPTUser(
@@ -87,12 +62,4 @@ function isReservedAuthPath(pathname: string): boolean {
     pathname === SIGN_OUT_PATH ||
     pathname === CALLBACK_PATH
   );
-}
-
-function safeDecodeURIComponent(value: string): string | null {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return null;
-  }
 }

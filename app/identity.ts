@@ -4,10 +4,9 @@ import { getSiteSessionUser } from "./site-auth";
 
 export type CurrentUser = { email: string; displayName: string };
 
-// Resolution order: a real visitor account (site-auth session) wins first,
-// then the ChatGPT embed header (when KLIO runs inside a ChatGPT App),
-// then — only outside production — the APP_USER_EMAIL dev fallback that
-// getChatGPTUser() already applies internally.
+// Verified site sessions are the only production identity. The legacy helper
+// supplies an environment-configured local developer identity only; it never
+// trusts HTTP headers.
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   const siteUser = await getSiteSessionUser();
   if (siteUser) return siteUser;
