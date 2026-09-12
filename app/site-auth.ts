@@ -53,8 +53,11 @@ export async function destroySiteSession() {
 // null (never throws) whenever no valid, non-expired session is found —
 // callers treat that as "not logged in".
 export async function getSiteSessionUser(): Promise<SiteUser | null> {
-  if (!databaseAvailable()) return null;
+  // Always read request state before checking runtime configuration. Build
+  // containers may have no database URL; returning before cookies() would
+  // prerender and cache the anonymous redirect for authenticated visitors.
   const jar = await cookies();
+  if (!databaseAvailable()) return null;
   const token = jar.get(SESSION_COOKIE)?.value;
   if (!token) return null;
 

@@ -2,5 +2,5 @@ import { getCurrentUser } from "../../../identity";
 
 export async function GET() {
   const user = await getCurrentUser();
-  return Response.json({ user });
+  return Response.json({ user }, { headers: { "Cache-Control": "private, no-store" } });
 }

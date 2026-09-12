@@ -35,6 +35,16 @@ function harness(mode, session = null) {
   return { legacy, identity, admin };
 }
 
+test("session lookup remains request-time even without build database configuration", async () => {
+  let reads = 0;
+  const auth = load("app/site-auth.ts", { NODE_ENV: "production" }, {
+    "node:crypto": {}, "drizzle-orm": {}, "../db": {}, "../db/schema": {},
+    "next/headers": { cookies: async () => { reads++; return { get: () => undefined }; } },
+  });
+  assert.equal(await auth.getSiteSessionUser(), null);
+  assert.equal(reads, 1, "must opt out of static prerendering before environment fallback");
+});
+
 test("forged identity headers cannot authenticate or grant admin in production", async () => {
   const h = harness("production");
   assert.equal(await h.legacy.getChatGPTUser(), null);
