@@ -15,6 +15,7 @@ type WorkspacePayload = {
   action?: unknown;
   brandId?: unknown;
   expectedUpdatedAt?: unknown;
+  expectedGeneration?: unknown;
   profile?: unknown;
   workspace?: unknown;
   generation?: unknown;
@@ -223,6 +224,11 @@ export async function POST(request: Request) {
 
     if (action === "update_generation") {
       const generation = cleanGenerationUpdate(payload.generation);
+      const expected = payload.expectedGeneration as Record<string, unknown> | undefined;
+      const fields = ["title", "body", "subtitle", "metaTitle", "metaDescription", "editorialComment", "tone"] as const;
+      if (!expected || fields.some(field => typeof expected[field] !== "string")) {
+        return Response.json({ code: "GENERATION_VERSION_REQUIRED", error: "Открыта старая версия редактора. Скопируйте правки и обновите страницу перед сохранением." }, { status: 428 });
+      }
       if (!generation.id || !generation.title || !generation.body) {
         return Response.json({ error: "Для сохранения нужны заголовок и текст материала." }, { status: 400 });
       }
@@ -234,8 +240,13 @@ export async function POST(request: Request) {
         metaDescription: generation.metaDescription,
         editorialComment: generation.editorialComment,
         tone: generation.tone || undefined,
-      }).where(and(eq(generations.id, generation.id), eq(generations.ownerEmail, user.email))).returning();
-      if (!saved) return Response.json({ error: "Материал не найден или недоступен." }, { status: 404 });
+      }).where(and(
+        eq(generations.id, generation.id), eq(generations.ownerEmail, user.email),
+        // Compare the exact snapshot the editor opened, not sanitized input.
+        // Checking and writing in one UPDATE also catches simultaneous saves.
+        ...fields.map(field => eq(generations[field], expected[field] as string)),
+      )).returning();
+      if (!saved) return Response.json({ code: "GENERATION_VERSION_CONFLICT", error: "Материал изменён в другой вкладке или больше недоступен. Ваш текст остался в редакторе, но не сохранён. Нажмите «Сохранить копию», чтобы не потерять свои правки." }, { status: 409 });
       return Response.json({ generation: saved });
     }
 

@@ -3188,6 +3188,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: mode === "copy" ? "copy_generation" : "update_generation",
+          expectedGeneration: mode === "update" ? archiveEditorOriginal : undefined,
           generation: {
             id: archiveEditorItem.id,
             title: archiveEditorItem.title,

@@ -4,11 +4,13 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
 
-function harness({ failDelete = false } = {}) {
+function harness({ failDelete = false, generation = false } = {}) {
   let row = { id: "brand", ownerEmail: "owner", updatedAt: "v1", name: "Initial" };
+  if (generation) Object.assign(row, { title: "Initial", body: "Body", subtitle: "", metaTitle: "", metaDescription: "", editorialComment: "", tone: "" });
   let writes = 0;
   const brands = { id: "id", ownerEmail: "ownerEmail", updatedAt: "updatedAt" };
   const tables = { brands, publications: {}, socialChannels: {}, materials: {}, generations: {} };
+  for (const field of ["id", "ownerEmail", "title", "body", "subtitle", "metaTitle", "metaDescription", "editorialComment", "tone"]) tables.generations[field] = field;
   let deleted = [];
   const db = {
     select: () => ({ from: () => ({ where: () => ({ then: resolve => Promise.resolve([{ count: 1 }]).then(resolve), limit: async () => [row] }) }) }),
@@ -22,7 +24,7 @@ function harness({ failDelete = false } = {}) {
     },
     update: () => ({ set: values => ({ where: predicate => ({ returning: async () => {
       if (!predicate(row)) return [];
-      row = { ...row, ...values, updatedAt: `v${++writes + 1}` };
+      row = { ...row, ...Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined)), updatedAt: `v${++writes + 1}` };
       return [row];
     } }) }) }),
   };
@@ -48,6 +50,7 @@ function harness({ failDelete = false } = {}) {
     row: () => row, writes: () => writes,
     remove: () => exports.POST({ json: async () => ({ action: "delete_brand", brandId: "brand" }) }),
     deleted: () => deleted.length,
+    edit: (expected, title) => exports.POST({ json: async () => ({ action: "update_generation", expectedGeneration: expected, generation: { ...expected, id: "brand", title, body: "Edited body" } }) }),
   };
 }
 
@@ -77,4 +80,19 @@ test("successful brand deletion commits all five scoped deletions", async () => 
   const h = harness();
   assert.equal((await h.remove()).status, 200);
   assert.equal(h.deleted(), 5);
+});
+
+test("material editor rejects a stale second tab and accepts the next edit of the saved version", async () => {
+  const h = harness({ generation: true });
+  const original = { ...h.row() };
+  assert.equal((await h.edit(original, "First tab")).status, 200);
+  assert.equal((await h.edit(original, "Second tab")).status, 409);
+  assert.equal(h.row().title, "First tab");
+  assert.equal((await h.edit({ ...h.row() }, "Next edit")).status, 200);
+});
+
+test("material editor refuses saves without the original snapshot", async () => {
+  const h = harness({ generation: true });
+  assert.equal((await h.edit(undefined, "Old client")).status, 428);
+  assert.equal(h.writes(), 0);
 });
