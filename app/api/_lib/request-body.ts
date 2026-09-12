@@ -2,6 +2,17 @@ export class RequestBodyError extends Error {
   constructor(message: string, readonly status: number) { super(message); }
 }
 
+export async function readBoundedJson(request: Request, maxBytes = 16_384): Promise<Record<string, unknown>> {
+  const bytes = await readBoundedBody(request, maxBytes);
+  try {
+    const value: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("object required");
+    return value as Record<string, unknown>;
+  } catch {
+    throw new RequestBodyError("Некорректный запрос.", 400);
+  }
+}
+
 export async function readBoundedBody(request: Request, maxBytes: number, timeoutMs = 10_000): Promise<Uint8Array> {
   const declared = request.headers.get("content-length");
   if (declared && (!/^\d+$/.test(declared) || Number(declared) > maxBytes)) throw new RequestBodyError("Запрос слишком большой.", 413);

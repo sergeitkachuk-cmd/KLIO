@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { readBoundedJson, RequestBodyError } from "../../_lib/request-body";
 import { accounts } from "../../../../db/schema";
 import { hashPassword } from "../../_lib/password";
 import { resolveBaseUrl } from "../../_lib/base-url";
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Отправка писем ещё не настроена. Обратитесь к администратору сайта." }, { status: 503 });
     }
 
-    const payload = await request.json() as SignupPayload;
+    const payload = await readBoundedJson(request) as SignupPayload;
     const email = typeof payload.email === "string" ? payload.email.trim().toLowerCase().slice(0, 320) : "";
     const password = typeof payload.password === "string" ? payload.password : "";
     const displayName = typeof payload.displayName === "string" ? payload.displayName.trim().slice(0, 160) : "";
@@ -31,8 +32,8 @@ export async function POST(request: Request) {
     if (!EMAIL_PATTERN.test(email)) {
       return Response.json({ error: "Укажите корректный email." }, { status: 400 });
     }
-    if (password.length < 8) {
-      return Response.json({ error: "Пароль должен быть не короче 8 символов." }, { status: 400 });
+    if (password.length < 8 || password.length > 256) {
+      return Response.json({ error: "Пароль должен содержать от 8 до 256 символов." }, { status: 400 });
     }
 
     const name = displayName || email.split("@")[0];
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
 
     return Response.json({ status: "verify_email", email }, { status: 201 });
   } catch (error) {
+    if (error instanceof RequestBodyError) return Response.json({ error: error.message }, { status: error.status });
     return workspaceErrorResponse(error);
   }
 }

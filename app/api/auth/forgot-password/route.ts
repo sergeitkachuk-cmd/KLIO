@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { readBoundedJson, RequestBodyError } from "../../_lib/request-body";
 import { resolveBaseUrl } from "../../_lib/base-url";
 import { emailDeliveryAvailable, sendPasswordResetEmail } from "../../_lib/email";
 import { isRateLimited, clientIp } from "../../_lib/rate-limit";
@@ -11,7 +12,9 @@ const GENERIC_OK = { ok: true, message: "Если аккаунт существ�
 
 export async function POST(request: Request) {
   if (isRateLimited(`forgot-password:${clientIp(request)}`, 5, 15 * 60 * 1000)) return Response.json(GENERIC_OK);
-  const payload = await request.json().catch(() => null) as { email?: unknown } | null;
+  let payload: { email?: unknown };
+  try { payload = await readBoundedJson(request, 4096); }
+  catch (error) { return Response.json({ error: "Некорректный запрос." }, { status: error instanceof RequestBodyError ? error.status : 400 }); }
   const email = typeof payload?.email === "string" ? payload.email.trim().toLowerCase().slice(0, 320) : "";
   if (!email || !await workspaceDatabaseAvailable() || !emailDeliveryAvailable()) return Response.json(GENERIC_OK);
 

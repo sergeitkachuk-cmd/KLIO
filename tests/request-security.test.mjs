@@ -8,7 +8,7 @@ function load(path, dependencies = {}, env = { NODE_ENV: "production" }) {
   const exports = {};
   const source = readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
   vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, {
-    exports, URL, setTimeout, clearTimeout, process: { env },
+    exports, URL, TextDecoder, setTimeout, clearTimeout, process: { env },
     require: name => { if (!(name in dependencies)) throw new Error(name); return dependencies[name]; },
   });
   return exports;
@@ -43,6 +43,14 @@ test("request bodies are bounded even without Content-Length", async () => {
   await assert.rejects(readBoundedBody(new Request("https://klio.example", { method: "POST", body: "123456789" }), 4), error => error.status === 413);
   const bytes = await readBoundedBody(new Request("https://klio.example", { method: "POST", body: "1234" }), 4);
   assert.equal(new TextDecoder().decode(bytes), "1234");
+});
+
+test("bounded JSON rejects non-object, invalid and oversized authentication payloads", async () => {
+  const { readBoundedJson } = load("app/api/_lib/request-body.ts");
+  const request = body => new Request("https://klio.example", { method: "POST", body });
+  for (const body of ["null", "[]", "42", "{invalid"]) await assert.rejects(readBoundedJson(request(body)), error => error.status === 400);
+  await assert.rejects(readBoundedJson(request('{"password":"' + "x".repeat(100) + '"}'), 32), error => error.status === 413);
+  assert.equal((await readBoundedJson(request('{"email":"test@example.invalid"}'))).email, "test@example.invalid");
 });
 
 test("stalled upload is cancelled within its request deadline", async () => {

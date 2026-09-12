@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { readBoundedJson, RequestBodyError } from "../../_lib/request-body";
 import { accounts } from "../../../../db/schema";
 import { resolveBaseUrl } from "../../_lib/base-url";
 import { emailDeliveryAvailable, sendVerificationEmail } from "../../_lib/email";
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
       return Response.json(GENERIC_OK);
     }
 
-    const payload = await request.json() as ResendPayload;
+    const payload = await readBoundedJson(request, 4096) as ResendPayload;
     const email = typeof payload.email === "string" ? payload.email.trim().toLowerCase().slice(0, 320) : "";
     if (!email) return Response.json(GENERIC_OK);
 
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
 
     return Response.json(GENERIC_OK);
   } catch (error) {
+    if (error instanceof RequestBodyError) return Response.json({ error: error.message }, { status: error.status });
     return workspaceErrorResponse(error);
   }
 }

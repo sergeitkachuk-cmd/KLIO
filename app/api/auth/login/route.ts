@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { readBoundedJson, RequestBodyError } from "../../_lib/request-body";
 import { accounts } from "../../../../db/schema";
 import { verifyPassword } from "../../_lib/password";
 import { clientIp, isRateLimited } from "../../_lib/rate-limit";
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Хранилище кабинета недоступно." }, { status: 503 });
     }
 
-    const payload = await request.json() as LoginPayload;
+    const payload = await readBoundedJson(request) as LoginPayload;
     const email = typeof payload.email === "string" ? payload.email.trim().toLowerCase().slice(0, 320) : "";
     const password = typeof payload.password === "string" ? payload.password : "";
     if (!email || !password) return Response.json(INVALID_CREDENTIALS, { status: 401 });
@@ -40,6 +41,7 @@ export async function POST(request: Request) {
     await createSiteSession(email);
     return Response.json({ user: { email: account.email, displayName: account.displayName } });
   } catch (error) {
+    if (error instanceof RequestBodyError) return Response.json({ error: error.message }, { status: error.status });
     return workspaceErrorResponse(error);
   }
 }
