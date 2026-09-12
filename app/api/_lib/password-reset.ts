@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, sql } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { accounts, passwordResets, sessions } from "../../../db/schema";
 
@@ -12,12 +12,16 @@ function hashToken(token: string) {
 export async function createPasswordReset(email: string): Promise<string> {
   const token = randomBytes(32).toString("hex");
   const db = getDb();
-  // A new request invalidates older links for the same account.
-  await db.delete(passwordResets).where(eq(passwordResets.email, email));
-  await db.insert(passwordResets).values({
-    id: hashToken(token),
-    email,
-    expiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_MS).toISOString(),
+  await db.transaction(async (tx) => {
+    // Serialize issuance across containers, including when no previous token
+    // exists. Transaction-scoped locks are released on commit or rollback.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`password-reset:${email}`}, 0))`);
+    await tx.delete(passwordResets).where(eq(passwordResets.email, email));
+    await tx.insert(passwordResets).values({
+      id: hashToken(token),
+      email,
+      expiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_MS).toISOString(),
+    });
   });
   return token;
 }

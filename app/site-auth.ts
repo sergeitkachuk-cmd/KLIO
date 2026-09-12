@@ -50,8 +50,8 @@ export async function destroySiteSession() {
 }
 
 // Reads the session cookie and resolves it against the database. Returns
-// null (never throws) whenever no valid, non-expired session is found —
-// callers treat that as "not logged in".
+// null whenever no valid, non-expired session is found. Database errors
+// propagate as availability failures rather than pretending to log out.
 export async function getSiteSessionUser(): Promise<SiteUser | null> {
   // Always read request state before checking runtime configuration. Build
   // containers may have no database URL; returning before cookies() would
@@ -59,16 +59,16 @@ export async function getSiteSessionUser(): Promise<SiteUser | null> {
   const jar = await cookies();
   if (!databaseAvailable()) return null;
   const token = jar.get(SESSION_COOKIE)?.value;
-  if (!token) return null;
+  if (!token || !/^[a-f0-9]{64}$/.test(token)) return null;
 
   const db = getDb();
   const tokenHash = hashToken(token);
   const [session] = await db.select().from(sessions).where(eq(sessions.id, tokenHash)).limit(1);
   if (!session) return null;
-  if (new Date(session.expiresAt).getTime() < Date.now()) {
-    await db.delete(sessions).where(eq(sessions.id, tokenHash));
-    return null;
-  }
+  const expiresAt = new Date(session.expiresAt).getTime();
+  // A malformed timestamp must never turn an expired session into a
+  // perpetual one. Reading identity does not require a cleanup write.
+  if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return null;
 
   const [account] = await db.select().from(accounts).where(eq(accounts.email, session.email)).limit(1);
   if (!account) return null;
