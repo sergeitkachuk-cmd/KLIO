@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent as ReactMouseEvent, TextareaHTMLAttributes } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
 import { ProfileField } from "./profile-field";
+import { createWorkspaceSaveQueue } from "./workspace-save-queue";
 import { HelpTip } from "./help-tip";
 import { FOUNDATION_FIELDS, VOICE_FIELDS, mergeProfileFill, missingVoiceFoundation } from "./brand-profile-fill";
 import { russianGeoTree } from "./geo-data";
@@ -2249,6 +2250,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     period: "",
   });
   const [workspaceBrands, setWorkspaceBrands] = useState<WorkspaceBrand[]>([]);
+  const workspaceSaveQueue = useRef(createWorkspaceSaveQueue());
+  const workspaceVersions = useRef(new Map<string, string>());
   const [workspaceHistory, setWorkspaceHistory] = useState<GenerationArchiveItem[]>([]);
   const [workspaceMaterials, setWorkspaceMaterials] = useState<SavedWorkspaceMaterial[]>([]);
   const [workspaceUserName, setWorkspaceUserName] = useState("Сергей");
@@ -2873,33 +2876,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     return () => window.clearInterval(timer);
   }, [busy]);
 
+  const autosaveWorkspace = useEffectEvent(() => { void saveActiveWorkspaceBrand(false, true); });
+
   useEffect(() => {
     if (!workspace || !workspaceReady || !activeBrandId || brandSwitchBusy) return;
-    const timer = window.setTimeout(async () => {
-      setWorkspaceSaving(true);
-      try {
-        const response = await fetch("/api/workspace", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "save_brand",
-            brandId: activeBrandId,
-            profile: effectiveBrand,
-            workspace: JSON.parse(workspaceSnapshotJson),
-          }),
-        });
-        const payload = await safeJson(response) as { error?: string; brand?: unknown; account?: WorkspaceAccount };
-        if (!response.ok) throw new Error(payload.error || "Не удалось сохранить изменения.");
-        const saved = normalizeWorkspaceBrand(payload.brand);
-        if (saved) setWorkspaceBrands((current) => current.map((item) => item.id === saved.id ? saved : item));
-        if (payload.account) setWorkspaceAccount(payload.account);
-        setBrandSaved(true);
-        setWorkspaceDataError("");
-      } catch (error) {
-        setWorkspaceDataError(error instanceof Error ? error.message : "Не удалось сохранить изменения.");
-      } finally {
-        setWorkspaceSaving(false);
-      }
+    const timer = window.setTimeout(() => {
+      autosaveWorkspace();
     }, 1100);
     return () => window.clearTimeout(timer);
   }, [activeBrandId, brandSwitchBusy, effectiveBrand, workspace, workspaceReady, workspaceSnapshotJson]);
@@ -3083,18 +3065,24 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     window.requestAnimationFrame(() => setWorkspaceReady(true));
   }
 
-  async function saveActiveWorkspaceBrand(showConfirmation = false) {
+  async function saveActiveWorkspaceBrand(showConfirmation = false, silent = false) {
     if (!activeBrandId) return true;
+    // Capture this render's brand and snapshot; a later brand switch must
+    // never change the destination of an already queued save.
+    const snapshot = { action: "save_brand", brandId: activeBrandId, profile: effectiveBrand, workspace: workspaceSnapshot };
+    const initialVersion = workspaceBrands.find(item => item.id === activeBrandId)?.updatedAt;
+    return workspaceSaveQueue.current(async () => {
     setWorkspaceSaving(true);
     try {
       const response = await fetch("/api/workspace", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "save_brand", brandId: activeBrandId, profile: effectiveBrand, workspace: workspaceSnapshot }),
+        body: JSON.stringify({ ...snapshot, expectedUpdatedAt: workspaceVersions.current.get(snapshot.brandId) ?? initialVersion }),
       });
       const payload = await safeJson(response) as { error?: string; brand?: unknown; account?: WorkspaceAccount };
       if (!response.ok) throw new Error(payload.error || "Не удалось сохранить бренд.");
       const saved = normalizeWorkspaceBrand(payload.brand);
+      if (saved) workspaceVersions.current.set(saved.id, saved.updatedAt);
       if (saved) setWorkspaceBrands((current) => current.map((item) => item.id === saved.id ? saved : item));
       if (payload.account) setWorkspaceAccount(payload.account);
       setBrandSaved(true);
@@ -3103,12 +3091,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Не удалось сохранить бренд.";
+      setBrandSaved(false);
       setWorkspaceDataError(message);
-      showToast(message);
+      if (!silent) showToast(message);
       return false;
     } finally {
       setWorkspaceSaving(false);
     }
+    });
   }
 
   async function switchWorkspaceBrand(id: string) {
@@ -3138,7 +3128,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     const blankProfile = emptyBrandProfile(name);
     setBrandSwitchBusy(true);
     try {
-      await saveActiveWorkspaceBrand(false);
+      if (!await saveActiveWorkspaceBrand(false)) return;
       const response = await fetch("/api/workspace", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -5029,6 +5019,18 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         </div>
       </header>
 
+      {workspaceDataError && activeBrandId && <section role="alert" style={{ margin: "12px 20px", padding: 16, border: "2px solid #c65819", borderRadius: 12, background: "#fff4e8", color: "#512900" }}>
+        <p>{workspaceDataError}</p>
+        <button type="button" className="button ghost" onClick={() => {
+          const blob = new Blob([JSON.stringify({ brandId: activeBrandId, profile: effectiveBrand, workspace: workspaceSnapshot }, null, 2)], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = "klio-unsaved-brand.json";
+          link.click();
+          window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }}>Скачать копию правок</button>
+      </section>}
       <div className="workspace-layout">
         <aside className="workspace-sidebar">
           <div className={`workspace-project brand-project-switcher${brandMenuOpen ? " brand-menu-layer-open" : ""}`}>

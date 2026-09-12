@@ -14,6 +14,7 @@ import {
 type WorkspacePayload = {
   action?: unknown;
   brandId?: unknown;
+  expectedUpdatedAt?: unknown;
   profile?: unknown;
   workspace?: unknown;
   generation?: unknown;
@@ -183,6 +184,8 @@ export async function POST(request: Request) {
 
     if (action === "save_brand") {
       const brandId = clean(payload.brandId, 100);
+      const expectedUpdatedAt = clean(payload.expectedUpdatedAt, 100);
+      if (!expectedUpdatedAt) return Response.json({ code: "BRAND_VERSION_REQUIRED", error: "Открыта старая версия кабинета. Скопируйте несохранённые правки и обновите страницу." }, { status: 428 });
       const profile = cleanProfile(payload.profile);
       const workspace = cleanWorkspace(payload.workspace);
       const [saved] = await db.update(brands).set({
@@ -190,9 +193,10 @@ export async function POST(request: Request) {
         website: profile.website,
         profileJson: JSON.stringify(profile),
         workspaceJson: JSON.stringify(workspace),
-        updatedAt: sql`CURRENT_TIMESTAMP`,
-      }).where(and(eq(brands.id, brandId), eq(brands.ownerEmail, user.email))).returning();
-      if (!saved) return Response.json({ error: "Бренд не найден или недоступен." }, { status: 404 });
+        // Strictly increasing even for writes within the same millisecond.
+        updatedAt: sql`GREATEST(clock_timestamp(), ${brands.updatedAt}::timestamptz + interval '1 microsecond')::text`,
+      }).where(and(eq(brands.id, brandId), eq(brands.ownerEmail, user.email), eq(brands.updatedAt, expectedUpdatedAt))).returning();
+      if (!saved) return Response.json({ code: "BRAND_VERSION_CONFLICT", error: "Бренд изменён в другой вкладке или больше недоступен. Ваши правки остались на экране, но не сохранены. Скачайте копию правок перед обновлением страницы." }, { status: 409 });
       return Response.json({ brand: { ...saved, profile, workspace }, account: accountSummary(account, brandCount) });
     }
 
@@ -205,12 +209,15 @@ export async function POST(request: Request) {
       if (!ownedBrand) return Response.json({ error: "Бренд не найден или недоступен." }, { status: 404 });
 
       // A brand is an isolated cabinet. Delete its dependent workspace data
-      // first, but never the user's account or billing history.
-      await db.delete(publications).where(and(eq(publications.brandId, brandId), eq(publications.ownerEmail, user.email)));
-      await db.delete(socialChannels).where(and(eq(socialChannels.brandId, brandId), eq(socialChannels.ownerEmail, user.email)));
-      await db.delete(materials).where(and(eq(materials.brandId, brandId), eq(materials.ownerEmail, user.email)));
-      await db.delete(generations).where(and(eq(generations.brandId, brandId), eq(generations.ownerEmail, user.email)));
-      await db.delete(brands).where(and(eq(brands.id, brandId), eq(brands.ownerEmail, user.email)));
+      // first, but never the user's account or billing history. A failed
+      // deletion must roll back every preceding step, not leave half a brand.
+      await db.transaction(async (tx) => {
+        await tx.delete(publications).where(and(eq(publications.brandId, brandId), eq(publications.ownerEmail, user.email)));
+        await tx.delete(socialChannels).where(and(eq(socialChannels.brandId, brandId), eq(socialChannels.ownerEmail, user.email)));
+        await tx.delete(materials).where(and(eq(materials.brandId, brandId), eq(materials.ownerEmail, user.email)));
+        await tx.delete(generations).where(and(eq(generations.brandId, brandId), eq(generations.ownerEmail, user.email)));
+        await tx.delete(brands).where(and(eq(brands.id, brandId), eq(brands.ownerEmail, user.email)));
+      });
       return Response.json({ account: accountSummary(account, Math.max(0, brandCount - 1)) });
     }
 

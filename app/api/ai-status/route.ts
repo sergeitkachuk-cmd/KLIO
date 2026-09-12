@@ -12,6 +12,7 @@ export async function GET() {
     "Cache-Control": "no-store",
     "X-Klio-Audit-Release": "2026-09-12-ai-publish-safety-v3",
     "X-Klio-Auth-Release": "2026-09-12-request-time-session-v2",
+    "X-Klio-Workspace-Release": "2026-09-12-versioned-saves-v1",
     "X-Klio-Ai-Release": "2026-09-10-v4-1-output-budget-v2",
     "X-Klio-Ui-Release": "2026-09-10-larger-material-topic-titles",
     "X-Klio-Admin-Release": "2026-09-07-ai-latency-visible",
