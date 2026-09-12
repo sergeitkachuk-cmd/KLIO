@@ -125,11 +125,33 @@ async function accountAndBrandCount(email: string, displayName: string) {
   return { account, brandCount: Number(count) };
 }
 
-export async function GET() {
+export async function GET(request?: Request) {
   try {
     if (!await workspaceDatabaseAvailable()) return Response.json({ error: "Хранилище кабинета недоступно." }, { status: 503 });
     const user = await workspaceIdentity();
     const db = await getWorkspaceDb();
+    const query = request ? new URL(request.url).searchParams : null;
+    const archiveBrandId = query?.get("archiveBrandId");
+    if (archiveBrandId) {
+      const [owned] = await db.select({ id: brands.id }).from(brands).where(and(eq(brands.id, archiveBrandId), eq(brands.ownerEmail, user.email))).limit(1);
+      if (!owned) return Response.json({ error: "Бренд не найден или недоступен." }, { status: 404 });
+      const readPage = async (table: typeof generations | typeof materials, raw: string | null) => {
+        if (raw === "done") return { rows: [], next: null };
+        let before;
+        if (raw) {
+          let cursor: unknown;
+          try { cursor = JSON.parse(raw); } catch { throw new WorkspaceAccessError("Некорректная страница архива.", 400); }
+          if (!Array.isArray(cursor) || cursor.length !== 2 || typeof cursor[0] !== "string" || cursor[0].length > 100 || !Number.isFinite(Date.parse(cursor[0])) || typeof cursor[1] !== "string" || cursor[1].length > 100) throw new WorkspaceAccessError("Некорректная страница архива.", 400);
+          before = sql`(${table.createdAt}::timestamptz, ${table.id}) < (${cursor[0]}::timestamptz, ${cursor[1]})`;
+        }
+        const rows = await db.select().from(table).where(and(eq(table.ownerEmail, user.email), eq(table.brandId, archiveBrandId), before)).orderBy(sql`${table.createdAt}::timestamptz DESC`, desc(table.id)).limit(41);
+        const page = rows.slice(0, 40);
+        const last = page.at(-1);
+        return { rows: page, next: rows.length > 40 && last ? JSON.stringify([last.createdAt, last.id]) : null };
+      };
+      const [articles, research] = await Promise.all([readPage(generations, query!.get("historyBefore")), readPage(materials, query!.get("materialsBefore"))]);
+      return Response.json({ history: articles.rows, materials: research.rows.map(item => materialResponse(item as typeof materials.$inferSelect)), next: { history: articles.next, materials: research.next } }, { headers: { "Cache-Control": "private, no-store" } });
+    }
     const { account, brandCount } = await accountAndBrandCount(user.email, user.displayName);
     const brandRows = await db.select().from(brands).where(eq(brands.ownerEmail, user.email)).orderBy(desc(brands.updatedAt), desc(brands.createdAt));
     const archiveRows = await db.select().from(generations).where(eq(generations.ownerEmail, user.email)).orderBy(desc(generations.createdAt)).limit(60);

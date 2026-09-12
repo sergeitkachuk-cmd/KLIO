@@ -2259,6 +2259,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [, setWorkspaceSaving] = useState(false);
   const [workspaceDataError, setWorkspaceDataError] = useState("");
   const historyOpen = activeModule === "history";
+  const [archivePage, setArchivePage] = useState<{ brandId: string; history: string | null; materials: string | null } | null>(null);
+  const [archiveLoading, setArchiveLoading] = useState(false);
+  const [archiveLoadError, setArchiveLoadError] = useState("");
+  const archiveRequest = useRef(0);
   const [materialsFilter, setMaterialsFilter] = useState<MaterialsFilter>("all");
   const [materialsDateRange, setMaterialsDateRange] = useState<MaterialsDateRange>("all");
   const [moduleMaterialSources, setModuleMaterialSources] = useState<Partial<Record<SavedMaterialType, string>>>({});
@@ -2877,6 +2881,40 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }, [busy]);
 
   const autosaveWorkspace = useEffectEvent(() => { void saveActiveWorkspaceBrand(false, true); });
+
+  async function loadArchivePage(brandId: string, next: typeof archivePage = null) {
+    const requestId = ++archiveRequest.current;
+    setArchiveLoading(true);
+    setArchiveLoadError("");
+    try {
+      const params = new URLSearchParams({ archiveBrandId: brandId });
+      if (next) {
+        params.set("historyBefore", next.history ?? "done");
+        params.set("materialsBefore", next.materials ?? "done");
+      }
+      const response = await fetch(`/api/workspace?${params}`, { cache: "no-store" });
+      const payload = await safeJson(response) as { error?: string; history?: GenerationArchiveItem[]; materials?: SavedWorkspaceMaterial[]; next?: { history: string | null; materials: string | null } };
+      if (!response.ok || !payload.next) throw new Error(payload.error || "Не удалось загрузить архив.");
+      if (requestId !== archiveRequest.current) return;
+      // A late page must not undo a locally saved edit.
+      setWorkspaceHistory(current => [...current, ...(payload.history ?? []).filter(row => !current.some(item => item.id === row.id))]);
+      setWorkspaceMaterials(current => [...current, ...(payload.materials ?? []).filter(row => !current.some(item => item.id === row.id))]);
+      setArchivePage({ brandId, ...payload.next });
+    } catch (error) {
+      if (requestId === archiveRequest.current) setArchiveLoadError(error instanceof Error ? error.message : "Не удалось загрузить архив.");
+    } finally {
+      if (requestId === archiveRequest.current) setArchiveLoading(false);
+    }
+  }
+  const openArchivePage = useEffectEvent((brandId: string) => { void loadArchivePage(brandId); });
+  useEffect(() => {
+    if (!workspace || !historyOpen || !activeBrandId) return;
+    openArchivePage(activeBrandId);
+    // This is a request generation counter, not a DOM ref. Invalidate the
+    // most recent request, including a subsequent "load more" operation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { archiveRequest.current++; };
+  }, [workspace, historyOpen, activeBrandId]);
 
   useEffect(() => {
     if (!workspace || !workspaceReady || !activeBrandId || brandSwitchBusy) return;
@@ -5093,6 +5131,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
 
           {historyOpen && <section className="workspace-history" id="history">
+            {archiveLoading && <p role="status">Загружаем материалы бренда…</p>}
+            {archiveLoadError && <p role="alert">{archiveLoadError} <button type="button" onClick={() => void loadArchivePage(activeBrandId, archivePage?.brandId === activeBrandId ? archivePage : null)}>Повторить</button></p>}
+            {archivePage?.brandId === activeBrandId && (archivePage.history || archivePage.materials) && <div><p>Показана часть архива. Счётчики и фильтры относятся к загруженным материалам.</p><button className="button ghost" type="button" disabled={archiveLoading} onClick={() => void loadArchivePage(activeBrandId, archivePage)}>Загрузить ещё материалы</button></div>}
             <div className="workspace-history-head"><div><span>Кабинет бренда · {activeWorkspaceBrand?.name || brand.name}</span><h2>Материалы</h2><p>Здесь хранятся только статьи, планы и исследования текущего бренда. Сохранённый результат можно открыть в своём модуле и продолжить работу.</p></div><button type="button" onClick={() => openModule("start")} aria-label="Закрыть материалы"><span>Закрыть</span><i aria-hidden="true">×</i></button></div>
             {activeMaterialCount > 0 && <div className="workspace-history-toolbar">
               <div className="workspace-history-filters" role="group" aria-label="Фильтр материалов по типу">

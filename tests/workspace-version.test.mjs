@@ -4,16 +4,20 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
 
-function harness({ failDelete = false, generation = false } = {}) {
+function harness({ failDelete = false, generation = false, archiveRows = null } = {}) {
   let row = { id: "brand", ownerEmail: "owner", updatedAt: "v1", name: "Initial" };
   if (generation) Object.assign(row, { title: "Initial", body: "Body", subtitle: "", metaTitle: "", metaDescription: "", editorialComment: "", tone: "" });
   let writes = 0;
   const brands = { id: "id", ownerEmail: "ownerEmail", updatedAt: "updatedAt" };
   const tables = { brands, publications: {}, socialChannels: {}, materials: {}, generations: {} };
-  for (const field of ["id", "ownerEmail", "title", "body", "subtitle", "metaTitle", "metaDescription", "editorialComment", "tone"]) tables.generations[field] = field;
+  for (const table of [tables.generations, tables.materials]) for (const field of ["id", "ownerEmail", "brandId", "createdAt", "title", "body", "subtitle", "metaTitle", "metaDescription", "editorialComment", "tone"]) table[field] = field;
   let deleted = [];
   const db = {
-    select: () => ({ from: () => ({ where: () => ({ then: resolve => Promise.resolve([{ count: 1 }]).then(resolve), limit: async () => [row] }) }) }),
+    select: () => ({ from: table => ({ where: predicate => ({
+      then: resolve => Promise.resolve([{ count: 1 }]).then(resolve),
+      limit: async () => predicate(row) ? [row] : [],
+      orderBy: () => ({ limit: async limit => (table === tables.generations ? archiveRows ?? [] : []).filter(predicate).sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id)).slice(0, limit) }),
+    }) }) }),
     delete: table => ({ where: async () => {
       if (failDelete && table === tables.materials) throw new Error("storage failure");
       deleted.push(table);
@@ -29,7 +33,7 @@ function harness({ failDelete = false, generation = false } = {}) {
     } }) }) }),
   };
   const dependencies = {
-    "drizzle-orm": { eq: (key, value) => row => row[key] === value, and: (...checks) => row => checks.every(check => check(row)), desc: () => null, sql: () => null },
+    "drizzle-orm": { eq: (key, value) => row => row[key] === value, and: (...checks) => row => checks.filter(Boolean).every(check => check(row)), desc: () => null, sql: (parts, ...values) => parts.join("").includes(" < ") ? row => row.createdAt < values[2] || row.createdAt === values[2] && row.id < values[3] : null },
     "../../../db/schema": tables,
     "../../plans": { planRule: () => ({ brandLimit: 5 }) },
     "../_lib/workspace-account": {
@@ -41,7 +45,7 @@ function harness({ failDelete = false, generation = false } = {}) {
   const exports = {};
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../app/api/workspace/route.ts", import.meta.url), "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-  }).outputText, { exports, Response, require: name => {
+  }).outputText, { exports, Response, URL, require: name => {
     if (!(name in dependencies)) throw new Error(name);
     return dependencies[name];
   } });
@@ -51,6 +55,7 @@ function harness({ failDelete = false, generation = false } = {}) {
     remove: () => exports.POST({ json: async () => ({ action: "delete_brand", brandId: "brand" }) }),
     deleted: () => deleted.length,
     edit: (expected, title) => exports.POST({ json: async () => ({ action: "update_generation", expectedGeneration: expected, generation: { ...expected, id: "brand", title, body: "Edited body" } }) }),
+    page: (query = "") => exports.GET({ url: `https://example.invalid/api/workspace?archiveBrandId=brand${query}` }),
   };
 }
 
@@ -95,4 +100,16 @@ test("material editor refuses saves without the original snapshot", async () => 
   const h = harness({ generation: true });
   assert.equal((await h.edit(undefined, "Old client")).status, 428);
   assert.equal(h.writes(), 0);
+});
+
+test("archive pages are brand scoped and traverse identical timestamps without duplicates", async () => {
+  const archiveRows = Array.from({ length: 55 }, (_, i) => ({ id: String(i).padStart(3, "0"), ownerEmail: "owner", brandId: "brand", createdAt: "2026-09-12T12:00:00Z" }));
+  archiveRows.push({ ...archiveRows[0], id: "foreign", ownerEmail: "another" }, { ...archiveRows[0], id: "other-brand", brandId: "another" });
+  const h = harness({ archiveRows });
+  const first = await (await h.page()).json();
+  assert.equal(first.history.length, 40);
+  const second = await (await h.page(`&historyBefore=${encodeURIComponent(first.next.history)}&materialsBefore=done`)).json();
+  assert.equal(second.history.length, 15);
+  assert.equal(second.next.history, null);
+  assert.equal(new Set([...first.history, ...second.history].map(row => row.id)).size, 55);
 });
