@@ -36,18 +36,24 @@ export async function attemptPublish(publicationId: string, ownerEmail: string, 
     updatedAt: sql`CURRENT_TIMESTAMP`,
   }).where(and(
     eq(publications.id, publicationId),
+    eq(publications.ownerEmail, ownerEmail),
     inArray(publications.status, ["scheduled", "failed"]),
   )).returning();
   if (!publication) return null;
 
-  const [generation] = await db.select().from(generations).where(eq(generations.id, publication.generationId)).limit(1);
-  const [channel] = await db.select().from(socialChannels).where(eq(socialChannels.id, publication.channelId)).limit(1);
+  const [generation] = await db.select().from(generations).where(and(eq(generations.id, publication.generationId), eq(generations.ownerEmail, ownerEmail))).limit(1);
+  const [channel] = await db.select().from(socialChannels).where(and(eq(socialChannels.id, publication.channelId), eq(socialChannels.ownerEmail, ownerEmail))).limit(1);
   if (!generation || !channel) {
     const errorMessage = "Материал или подключённый канал больше не существует.";
     await db.update(publications).set({ status: "failed", errorMessage, updatedAt: sql`CURRENT_TIMESTAMP` }).where(eq(publications.id, publicationId));
     return { status: "failed", errorMessage };
   }
 
+  let confirmedPostId: string | undefined;
+  const persistSuccess = (providerPostId: string) => db.update(publications).set({
+    status: "published", providerPostId, publishedAt: new Date().toISOString(),
+    errorMessage: null, updatedAt: sql`CURRENT_TIMESTAMP`,
+  }).where(and(eq(publications.id, publicationId), eq(publications.ownerEmail, ownerEmail), eq(publications.status, "publishing")));
   try {
     const result = await publishToChannel({
       platform: channel.platform,
@@ -55,17 +61,19 @@ export async function attemptPublish(publicationId: string, ownerEmail: string, 
       text: `${generation.title}\n\n${generation.body}`.trim(),
       imageUrl: publication.telegramDeliveryMode === "text_only" ? null : generation.imageUrl || null,
     });
-    await db.update(publications).set({
-      status: "published",
-      providerPostId: result.providerPostId,
-      publishedAt: new Date().toISOString(),
-      errorMessage: null,
-      updatedAt: sql`CURRENT_TIMESTAMP`,
-    }).where(eq(publications.id, publicationId));
+    confirmedPostId = result.providerPostId;
+    await persistSuccess(confirmedPostId);
     return { status: "published", providerPostId: result.providerPostId };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Неизвестная ошибка публикации.";
-    const retryable = error instanceof PublishError ? error.retryable : true;
+    if (confirmedPostId) {
+      // Retry only the local receipt write, never the already-confirmed
+      // external publication. If storage is still down, recovery marks
+      // the old processing row uncertain instead of resending the post.
+      await persistSuccess(confirmedPostId);
+      return { status: "published", providerPostId: confirmedPostId };
+    }
+    const errorMessage = error instanceof PublishError ? error.message : "Не удалось подтвердить итог публикации. Перед повторной отправкой проверьте канал: запись могла быть опубликована.";
+    const retryable = error instanceof PublishError ? error.retryable : false;
     const nextRetryCount = publication.retryCount + 1;
     const giveUp = !retryable || nextRetryCount >= MAX_PUBLISH_RETRIES;
 
@@ -73,6 +81,7 @@ export async function attemptPublish(publicationId: string, ownerEmail: string, 
       status: giveUp ? "failed" : "scheduled",
       retryCount: nextRetryCount,
       errorMessage,
+      ...(error instanceof PublishError && error.providerPostId ? { providerPostId: error.providerPostId } : {}),
       updatedAt: sql`CURRENT_TIMESTAMP`,
     }).where(eq(publications.id, publicationId));
 

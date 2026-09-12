@@ -5433,7 +5433,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <div className="semantic-search-card">
                 <div className="semantic-search-head">
                   <div><span>Шаг 1</span><h3>О чём могут искать ваши будущие клиенты?</h3><p>Напишите тему и выберите географию. КЛИО покажет реальные варианты запросов и сама разделит их на понятные группы.</p></div>
-                  <span className={`semantic-mode semantic-mode-${aiConnection === "connected" ? "ai" : "idle"}`}><i/>{aiConnection === "connected" ? "ИИ подключён" : aiConnection === "disconnected" ? "ИИ не подключён · генерация отключена" : "Проверяем AI‑подключение"}</span>
+                  <span className={`semantic-mode semantic-mode-${aiConnection === "connected" ? "ai" : "idle"}`} title="Проверяется наличие настроек подключения. Доступность провайдера определяется при выполнении запроса."><i/>{aiConnection === "connected" ? "ИИ настроен" : aiConnection === "disconnected" ? "ИИ не настроен · генерация отключена" : "Проверяем настройки ИИ"}</span>
                 </div>
                 <div className="semantic-primary-query">
                   <label>

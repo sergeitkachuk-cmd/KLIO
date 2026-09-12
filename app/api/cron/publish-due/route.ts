@@ -12,7 +12,7 @@
 // duplicate call just finds nothing left to claim on the rows the first
 // call already picked up.
 
-import { and, asc, eq, lte } from "drizzle-orm";
+import { and, asc, eq, lte, sql } from "drizzle-orm";
 import { publications } from "../../../../db/schema";
 import { getWorkspaceDb, workspaceDatabaseAvailable } from "../../_lib/workspace-account";
 import { attemptPublish } from "../../_lib/publish-attempt";
@@ -35,6 +35,13 @@ export async function POST(request: Request) {
 
   const db = await getWorkspaceDb();
   const nowIso = new Date().toISOString();
+  // A stopped container cannot report its last outbound request's outcome.
+  // Recover visibility, never replay an uncertain external side effect.
+  await db.update(publications).set({
+    status: "failed",
+    errorMessage: "Подтверждение публикации не получено после остановки или зависания обработки. Сначала проверьте канал; автоматическая повторная отправка отключена.",
+    updatedAt: nowIso,
+  }).where(and(eq(publications.status, "publishing"), sql`${publications.updatedAt}::timestamptz <= CURRENT_TIMESTAMP - INTERVAL '15 minutes'`));
   // Only ever "scheduled" — a "failed" row (retries already exhausted) is
   // never picked back up by the poller, only by a person explicitly
   // rescheduling it (see the "update" action's reQueue logic in

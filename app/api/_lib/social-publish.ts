@@ -24,6 +24,7 @@ export class PublishError extends Error {
   // obviously-permanent problem like a revoked token gains nothing from
   // three more identical attempts over the following minutes).
   retryable: boolean;
+  providerPostId?: string;
 
   constructor(message: string, retryable: boolean) {
     super(message);
@@ -42,7 +43,7 @@ type TelegramApiResponse = {
 // portable way to pin just this request family, so use the native client for
 // Telegram only. This is still one request: no hidden resend that could
 // duplicate a post when Telegram received it but its response was lost.
-function postToTelegramApi(url: string, body: object): Promise<TelegramApiResponse> {
+function postToTelegramApi(url: string, body: object, signal: AbortSignal): Promise<TelegramApiResponse> {
   const endpoint = new URL(url);
   const payload = JSON.stringify(body);
   return new Promise((resolve, reject) => {
@@ -53,13 +54,19 @@ function postToTelegramApi(url: string, body: object): Promise<TelegramApiRespon
       path: `${endpoint.pathname}${endpoint.search}`,
       method: "POST",
       family: 4,
+      signal,
       headers: {
         "Content-Type": "application/json",
         "Content-Length": Buffer.byteLength(payload),
       },
     }, (response) => {
       const chunks: Buffer[] = [];
-      response.on("data", (chunk: Buffer) => chunks.push(Buffer.from(chunk)));
+      let size = 0;
+      response.on("data", (chunk: Buffer) => {
+        size += chunk.length;
+        if (size > 256 * 1024) { response.destroy(new Error("Telegram response is too large.")); return; }
+        chunks.push(Buffer.from(chunk));
+      });
       response.on("end", () => resolve({ status: response.statusCode ?? 0, body: Buffer.concat(chunks).toString("utf8") }));
       response.on("error", reject);
     });
@@ -100,17 +107,18 @@ function splitTelegramText(text: string, limit: number): string[] {
 
 async function publishToTelegram(creds: TelegramCredentials, text: string, imageUrl: string | null): Promise<{ providerPostId: string }> {
   const base = `https://api.telegram.org/bot${creds.botToken}`;
+  const signal = AbortSignal.timeout(120_000);
   async function send(method: "sendPhoto" | "sendMessage", body: object): Promise<TelegramMessagePayload> {
     let response: TelegramApiResponse;
     try {
-      response = await postToTelegramApi(`${base}/${method}`, body);
+      response = await postToTelegramApi(`${base}/${method}`, body, signal);
     } catch (error) {
       const cause = error instanceof Error ? error.cause : undefined;
       console.error("Telegram publish request failed", {
         message: error instanceof Error ? error.message : String(error),
         cause: cause instanceof Error ? cause.message : undefined,
       });
-      throw new PublishError("Telegram не ответил на запрос публикации.", true);
+      throw new PublishError("Telegram не подтвердил результат отправки. Автоматический повтор остановлен: сначала проверьте канал, чтобы не создать дубликат.", false);
     }
     const payload = (() => {
       try { return JSON.parse(response.body); } catch { return null; }
@@ -119,7 +127,7 @@ async function publishToTelegram(creds: TelegramCredentials, text: string, image
       const permanent = response.status === 401 || response.status === 403 || response.status === 400;
       throw new PublishError(
         payload?.description ? `Telegram отклонил публикацию: ${payload.description}` : `Telegram отклонил публикацию (HTTP ${response.status}).`,
-        !permanent,
+        payload?.ok === false && !permanent,
       );
     }
     return payload;
@@ -135,7 +143,14 @@ async function publishToTelegram(creds: TelegramCredentials, text: string, image
   const remaining = imageUrl
     ? captionParts.slice(1).flatMap((part) => splitTelegramText(part, PLATFORM_TEXT_LIMITS.telegram.textOnly))
     : splitTelegramText(text, PLATFORM_TEXT_LIMITS.telegram.textOnly).slice(1);
-  for (const part of remaining) await send("sendMessage", { chat_id: creds.chatId, text: part });
+  let sent = 1;
+  try {
+    for (const part of remaining) { await send("sendMessage", { chat_id: creds.chatId, text: part }); sent++; }
+  } catch (error) {
+    const partial = new PublishError(`Telegram принял ${sent} ч. публикации, но отправка не завершена. Автоматический повтор остановлен. Проверьте канал перед повторной отправкой. ${error instanceof Error ? error.message : ""}`, false);
+    partial.providerPostId = String(first.result?.message_id);
+    throw partial;
+  }
   return { providerPostId: String(first.result?.message_id) };
 }
 
@@ -146,9 +161,10 @@ async function vkCall(method: string, params: Record<string, string>): Promise<R
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ ...params, v: VK_API_VERSION }),
+      signal: AbortSignal.timeout(25_000),
     });
   } catch {
-    throw new PublishError("VK не ответил на запрос публикации.", true);
+    throw new PublishError(method === "wall.post" ? "VK не подтвердил результат отправки. Сначала проверьте стену сообщества: автоматический повтор остановлен во избежание дубликата." : "VK не ответил на запрос подготовки публикации.", method !== "wall.post");
   }
   const payload = await response.json().catch(() => null) as
     | { response?: unknown; error?: { error_code: number; error_msg: string } }
@@ -161,7 +177,7 @@ async function vkCall(method: string, params: Record<string, string>): Promise<R
     const permanent = code === 5 || code === 15 || code === 27;
     throw new PublishError(
       payload?.error ? `VK отклонил запрос: ${payload.error.error_msg}` : "VK вернул пустой ответ.",
-      !permanent,
+      !permanent && (Boolean(payload?.error) || method !== "wall.post"),
     );
   }
   return payload.response as Record<string, unknown>;
@@ -193,7 +209,7 @@ async function uploadPhotoForWall(creds: VkCredentials, imageUrl: string): Promi
 
   let uploadResponse: Response;
   try {
-    uploadResponse = await fetch(uploadUrl, { method: "POST", body: form });
+    uploadResponse = await fetch(uploadUrl, { method: "POST", body: form, signal: AbortSignal.timeout(25_000) });
   } catch {
     throw new PublishError("Не удалось загрузить картинку на сервер VK.", true);
   }

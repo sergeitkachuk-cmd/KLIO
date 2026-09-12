@@ -27,7 +27,7 @@ export async function getWorkspaceDb() {
 export async function workspaceIdentity(): Promise<ChatGPTUser> {
   const user = await getCurrentUser();
   if (user) return { ...user, fullName: user.displayName };
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test") {
     return { displayName: "Сергей", email: "preview@klio.local", fullName: "Сергей" };
   }
   throw new WorkspaceAccessError("Войдите в КЛИО, чтобы открыть личный кабинет.", 401);
@@ -265,11 +265,16 @@ async function consumeSecondaryQuota(kind: "research" | "editor") {
 // counter — called before the (costly) OpenAI request in /api/generate so
 // an account that's already over its monthly limit doesn't still burn a
 // real generation call only to have recordGeneration() reject it afterward.
-export async function assertGenerationQuotaAvailable() {
+export async function assertGenerationQuotaAvailable(brandId?: string) {
   if (!await workspaceDatabaseAvailable()) return;
   const user = await workspaceIdentity();
   const current = await ensureAccount(user);
   assertPlanActive(current);
+  if (brandId) {
+    const db = await getWorkspaceDb();
+    const [brand] = await db.select({ id: brands.id }).from(brands).where(and(eq(brands.id, brandId), eq(brands.ownerEmail, user.email))).limit(1);
+    if (!brand) throw new WorkspaceAccessError("Бренд не найден или недоступен.", 404);
+  }
   const rule = planRule(current.planId);
   if (current.generationsUsed >= rule.generationLimit) {
     throw new WorkspaceAccessError(`Лимит тарифа «${rule.name}» исчерпан: ${rule.generationLimit} материалов ${rule.periodLabel}.`, 429);

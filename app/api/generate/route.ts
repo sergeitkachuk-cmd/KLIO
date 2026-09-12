@@ -12,6 +12,7 @@ import {
 } from "../../content-plans";
 import { readWebsiteContext } from "../_lib/website-context";
 import { researchMaterialWeb } from "../_lib/tavily";
+import { researchEditorialNote, researchProvenance } from "../_lib/research-provenance";
 import { assertGenerationQuotaAvailable, recordGeneration, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 import { AiCallError, callAiModel } from "../_lib/ai-router";
 import { aiConfigured } from "../_lib/ai-config";
@@ -906,6 +907,7 @@ async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>,
     throw new AiResponseError(`AI‑редакция не раскрыла предмет темы «${input.topic}» в основном тексте. Материал не принят — запустите генерацию ещё раз.`, 422);
   }
 
+  material = { ...material, editorialComment: [material.editorialComment, researchEditorialNote(webResearch)].filter(Boolean).join("\n\n") };
   const usage = await recordGeneration({
     brandId: input.brandId,
     format: input.format,
@@ -920,7 +922,7 @@ async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>,
     tone: input.tone,
     targetLength: input.length,
   });
-  return { material, mode: "ai" as const, model: usedModel, coverage: coverageSummary(material, input), sources: { website: website.status, geography: input.geography.map((item) => item.label) }, usage };
+  return { material, mode: "ai" as const, model: usedModel, coverage: coverageSummary(material, input), sources: { website: website.status, geography: input.geography.map((item) => item.label), research: researchProvenance(webResearch) }, usage };
 }
 
 // Runs the generation in the background and writes the outcome to the job
@@ -954,7 +956,7 @@ export async function POST(request: Request) {
     // Checked up front, synchronously, so an account that's already over its
     // limit gets a clean 429 immediately instead of a job that's created
     // only to fail a few seconds later.
-    await assertGenerationQuotaAvailable();
+    await assertGenerationQuotaAvailable(input.brandId);
 
     if (!aiConfigured()) {
       return Response.json({

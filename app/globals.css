@@ -56,7 +56,12 @@ body {
 @media (max-width: 640px) {
   .cookie-consent { right: 12px; bottom: 12px; flex-direction: column; align-items: stretch; gap: 14px; padding: 16px; border-radius: 16px; }
   .cookie-consent-actions { display: grid; grid-template-columns: 1fr 1fr; }
-  .cookie-consent-actions button { width: 100%; }
+  .cookie-consent-actions button { width: 100%; min-height: 44px; }
+  body:has(.cookie-consent) { padding-bottom: var(--cookie-consent-space, 220px); }
+  html:has(.cookie-consent) { scroll-padding-bottom: var(--cookie-consent-space, 220px); }
+  body:has(.workspace-sidebar) .cookie-consent { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+  body:has(.workspace-sidebar):has(.cookie-consent) { padding-bottom: calc(var(--cookie-consent-space, 220px) + 76px); }
+  html:has(.workspace-sidebar):has(.cookie-consent) { scroll-padding-bottom: calc(var(--cookie-consent-space, 220px) + 76px); }
 }
 
 /* Public use-case gallery: a visual route for business owners who start
@@ -11826,7 +11831,7 @@ input[type="radio"] {
 
 .publications-weekday {
   padding: 4px 6px 10px;
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.75);
   font-size: 11px;
   font-weight: 700;
   text-align: center;
@@ -11850,7 +11855,7 @@ input[type="radio"] {
 }
 
 .publications-day.is-outside {
-  opacity: 0.35;
+  opacity: 0.78;
 }
 
 .publications-day.is-today {
@@ -11895,8 +11900,19 @@ input[type="radio"] {
   transition: opacity 120ms ease, background 120ms ease, color 120ms ease;
 }
 
-.publications-day:hover .publications-day-head > button {
+.publications-day:hover .publications-day-head > button,
+.publications-day:focus-within .publications-day-head > button {
   opacity: 1;
+}
+
+.publications-day-head > button:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--module-accent, #a78bfa);
+  outline-offset: 3px;
+}
+
+@media (min-width: 768px) {
+  .publications-day-head > button { width: 30px; height: 30px; font-size: 18px; color: rgba(255, 255, 255, 0.8); }
 }
 
 .publications-day-head > button:hover {
@@ -18701,7 +18717,7 @@ input[type="radio"] {
 }
 
 [data-theme="light"] .publications-weekday {
-  color: rgba(13, 27, 49, 0.45);
+  color: rgba(13, 27, 49, 0.75);
 }
 
 [data-theme="light"] .publications-day {
@@ -18718,7 +18734,7 @@ input[type="radio"] {
 }
 
 [data-theme="light"] .publications-day-head > button {
-  color: rgba(13, 27, 49, 0.4);
+  color: rgba(13, 27, 49, 0.8);
 }
 
 [data-theme="light"] .publications-chip {

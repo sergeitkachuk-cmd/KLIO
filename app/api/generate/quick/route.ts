@@ -1,4 +1,5 @@
 import { assertGenerationQuotaAvailable, recordGeneration, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../../_lib/workspace-account";
+import { researchEditorialNote, researchProvenance } from "../../_lib/research-provenance";
 import { AiCallError, callAiModel } from "../../_lib/ai-router";
 import { createGenerationBudget, materialOutputTokenBudget } from "../../_lib/generation-budget";
 import { researchMaterialWeb } from "../../_lib/tavily";
@@ -124,7 +125,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Опишите задачу чуть подробнее — тему, бренд или сайт и что нужно написать." }, { status: 400 });
     }
 
-    await assertGenerationQuotaAvailable();
+    await assertGenerationQuotaAvailable(typeof payload.brandId === "string" ? payload.brandId : undefined);
 
     if (!aiConfigured()) {
       return Response.json({
@@ -307,6 +308,7 @@ export async function POST(request: Request) {
 
     const targetLength = material.body.trim().length;
 
+    material = { ...material, editorialComment: [material.editorialComment, researchEditorialNote(webResearch)].filter(Boolean).join("\n\n") };
     const usage = await recordGeneration({
       brandId,
       format,
@@ -329,7 +331,7 @@ export async function POST(request: Request) {
     // inferred from the free-text prompt, before generation) so the client
     // can sync its display instead of comparing this result against
     // leftover Advanced-tab state.
-    return Response.json({ material, mode: "ai", model: usedModel, format, tone, targetLength: brief.targetLength, usage });
+    return Response.json({ material, mode: "ai", model: usedModel, format, tone, targetLength: brief.targetLength, sources: { research: researchProvenance(webResearch) }, usage });
   } catch (error) {
     if (error instanceof WorkspaceAccessError) return workspaceErrorResponse(error);
     console.error("Quick generation route failed", error);

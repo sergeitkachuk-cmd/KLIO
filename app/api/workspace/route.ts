@@ -76,7 +76,7 @@ function cleanGenerationUpdate(value: unknown) {
     subtitle: clean(source.subtitle, 600),
     metaTitle: clean(source.metaTitle, 500),
     metaDescription: clean(source.metaDescription, 1200),
-    editorialComment: clean(source.editorialComment, 2400),
+    editorialComment: clean(source.editorialComment, 12_000),
     tone: clean(source.tone, 120),
   };
 }

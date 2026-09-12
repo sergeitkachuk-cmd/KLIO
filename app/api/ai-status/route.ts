@@ -8,9 +8,9 @@ export async function GET() {
   const connected = aiConfigured();
   // Deployment marker: a healthy old container must not be mistaken for
   // the release with bounded, reasoning-enabled material generation.
-  return Response.json({ connected }, { headers: {
+  return Response.json({ connected, configured: connected, health: "unknown" }, { headers: {
     "Cache-Control": "no-store",
-    "X-Klio-Audit-Release": "2026-09-11-public-fetch-origin-v2",
+    "X-Klio-Audit-Release": "2026-09-12-ai-publish-safety-v3",
     "X-Klio-Auth-Release": "2026-09-11-session-only",
     "X-Klio-Ai-Release": "2026-09-10-v4-1-output-budget-v2",
     "X-Klio-Ui-Release": "2026-09-10-larger-material-topic-titles",

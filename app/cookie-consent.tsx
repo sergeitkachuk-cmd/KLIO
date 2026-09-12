@@ -1,11 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CONSENT_KEY, broadcastConsentChange } from "./analytics-consent";
 
 export default function CookieConsent() {
   const [visible, setVisible] = useState(false);
+  const banner = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!visible || !banner.current) return;
+    const element = banner.current;
+    const measure = () => document.documentElement.style.setProperty("--cookie-consent-space", `${Math.ceil(element.getBoundingClientRect().height) + 28}px`);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => { observer.disconnect(); document.documentElement.style.removeProperty("--cookie-consent-space"); };
+  }, [visible]);
 
   useEffect(() => {
     // Deferred a tick purely to satisfy react-hooks/set-state-in-effect
@@ -35,7 +46,7 @@ export default function CookieConsent() {
   if (!visible) return null;
 
   return (
-    <aside className="cookie-consent" role="dialog" aria-label="Настройки cookies">
+    <aside ref={banner} className="cookie-consent" role="dialog" aria-label="Настройки cookies">
       <div className="cookie-consent-copy">
         <strong>Настройки cookies</strong>
         <p>КЛИО использует необходимые cookies для входа, безопасности и работы личного кабинета. Подробнее — в <Link href="/legal/privacy">политике обработки данных</Link>.</p>

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
+import Ajv from "ajv";
 
 // Execute the real TS modules with only HTTP, credentials and DB isolated.
 // No API keys, paid model calls or application records are used by tests.
@@ -26,7 +27,7 @@ function harness(fetchImpl, clock = Date) {
   const calls = [];
   const globals = {
     process: { env: { AI_PROVIDER: "deepseek", DEEPSEEK_API_KEY: "test-only" } },
-    Date: clock, AbortSignal, DOMException, setTimeout,
+    Date: clock, AbortSignal, DOMException, setTimeout, URL,
     console: { error() {} },
     fetch: async (url, init) => {
       calls.push({ url, body: JSON.parse(init.body), signal: init.signal });
@@ -35,6 +36,7 @@ function harness(fetchImpl, clock = Date) {
   };
   const config = loadTs("app/api/_lib/ai-config.ts", globals);
   const router = loadTs("app/api/_lib/ai-router.ts", globals, {
+    "./ai-output-validation": loadTs("app/api/_lib/ai-output-validation.ts", globals, { ajv: { default: Ajv } }),
     "./ai-config": config,
     "../../../db": { getDb() { throw new Error("DB access forbidden"); } },
     "../../../db/schema": {},
@@ -51,6 +53,16 @@ const message = (text, phase = "final_answer") => ({
   type: "message", phase, content: [{ type: "output_text", text }],
 });
 const json = (body) => Response.json({ status: "completed", ...body });
+
+test("schema-invalid material is rejected once with billed usage retained", async () => {
+  const h = harness(() => json({ output_text: '{"body":42}', usage: { input_tokens: 100, output_tokens: 20 } }));
+  await assert.rejects(h.callAiModel(params), error => {
+    assert.equal(error.status, 502);
+    assert.equal(error.usage.outputTokens, 20);
+    return true;
+  });
+  assert.equal(h.calls.length, 1);
+});
 
 test("all DeepSeek operations use the canonical V4.1 Flash model and current pricing", () => {
   const h = harness(() => json({ output_text: '{"body":"article"}' }));
@@ -174,6 +186,7 @@ function routeHarness(h, quick = false) {
     [`${prefix}ai-config`]: h.config,
     [`${prefix}generation-budget`]: h,
     [`${prefix}text-length`]: loadTs("app/api/_lib/text-length.ts", h.globals),
+    [`${prefix}research-provenance`]: loadTs("app/api/_lib/research-provenance.ts", h.globals),
     [`${prefix}rate-limit`]: { isAiRateLimited: () => false },
     [`${prefix}workspace-account`]: {
       assertGenerationQuotaAvailable: async () => {},
@@ -218,6 +231,8 @@ test("every advanced format returns and records material with thinking and exter
     const job = await waitForJob(route);
     assert.equal(job.status, "done", job.errorMessage);
     const result = job.payload;
+    assert.equal(result.sources.research.sources.length, 5);
+    assert.ok(route.records[0].editorialComment.includes("https://example.invalid/4"));
     assert.ok(result.material.body.length > length * 0.85);
     assert.equal(result.mode, "ai");
     assert.ok(result.coverage);
@@ -254,7 +269,7 @@ test("quick generation supplies bounded research and keeps the draft when conden
     }
     // The provider returned a valid draft just as the total budget expired.
     now = 90_000;
-    return json({ output_text: JSON.stringify({ title: "Кофе", body: "Кофе раскрывает аромат после помола. ".repeat(50), format: "social", tone: "Экспертный" }) });
+    return json({ output_text: JSON.stringify({ title: "Кофе", body: "Кофе раскрывает аромат после помола. ".repeat(50), subtitle: "", meta_title: "", meta_description: "", editorial_comment: "", format: "social", tone: "Экспертный" }) });
   }, Clock);
   const route = routeHarness(h, true);
   const response = await route.POST(new Request("https://example.invalid/api/generate/quick", { method: "POST", body: JSON.stringify({ prompt: "Напиши пост о приготовлении кофе", lengthHint: 1000 }) }));
@@ -281,6 +296,18 @@ test("thinking headroom applies to every writing format but not mechanical conde
     assert.equal(h.config.OPERATION_CONFIG[operation].retryable, false);
   }
   assert.equal(h.materialOutputTokenBudget(5600, "condense_overflow"), 3446);
+});
+
+test("research provenance reports missing search and rejects unsafe links", () => {
+  const helper = loadTs("app/api/_lib/research-provenance.ts", { URL });
+  assert.equal(helper.researchProvenance(null).status, "unavailable");
+  assert.match(helper.researchEditorialNote(null), /проверьте фактические утверждения/);
+  const result = helper.researchProvenance({ results: [
+    { title: "unsafe", url: "javascript:alert(1)" },
+    { title: "source", url: "https://example.com/article" },
+  ] });
+  assert.equal(result.sources.length, 1);
+  assert.equal(result.sources[0].url, "https://example.com/article");
 });
 
 test("material research retains substantial source passages and caches separately from content plans", async () => {
