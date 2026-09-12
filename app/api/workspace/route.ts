@@ -1,5 +1,5 @@
 import { and, desc, eq, sql } from "drizzle-orm";
-import { brands, generations, materials, publications, socialChannels } from "../../../db/schema";
+import { accounts, brands, generations, materials, publications, socialChannels } from "../../../db/schema";
 import { planRule } from "../../plans";
 import {
   accountSummary,
@@ -185,13 +185,18 @@ export async function POST(request: Request) {
     const { account, brandCount } = await accountAndBrandCount(user.email, user.displayName);
 
     if (action === "create_brand") {
-      const rule = planRule(account.planId);
-      if (brandCount >= rule.brandLimit) {
-        return Response.json({ error: `Тариф «${rule.name}» поддерживает до ${rule.brandLimit} ${rule.brandLimit === 1 ? "бренда" : "брендов"}.` }, { status: 409 });
-      }
       const profile = cleanProfile(payload.profile);
       const workspace = cleanWorkspace(payload.workspace);
-      const [created] = await db.insert(brands).values({
+      return await db.transaction(async (tx) => {
+      // The same account lock is used by billing. Check the current plan and
+      // count only after acquiring it; concurrent creations cannot both win.
+      const [lockedAccount] = await tx.select().from(accounts).where(eq(accounts.email, user.email)).for("update").limit(1);
+      if (!lockedAccount) throw new WorkspaceAccessError("Аккаунт не найден.", 401);
+      const rule = planRule(lockedAccount.planId);
+      const [countRow] = await tx.select({ count: sql<number>`count(*)` }).from(brands).where(eq(brands.ownerEmail, user.email));
+      const currentCount = Number(countRow?.count ?? 0);
+      if (currentCount >= rule.brandLimit) throw new WorkspaceAccessError(`Тариф «${rule.name}» поддерживает до ${rule.brandLimit} брендов.`, 409);
+      const [created] = await tx.insert(brands).values({
         id: crypto.randomUUID(),
         ownerEmail: user.email,
         name: profile.name,
@@ -201,8 +206,9 @@ export async function POST(request: Request) {
       }).returning();
       return Response.json({
         brand: { ...created, profile, workspace },
-        account: accountSummary(account, brandCount + 1),
+        account: accountSummary(lockedAccount, currentCount + 1),
       }, { status: 201 });
+      });
     }
 
     if (action === "save_brand") {

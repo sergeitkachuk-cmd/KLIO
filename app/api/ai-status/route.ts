@@ -17,6 +17,7 @@ export async function GET() {
     "X-Klio-Session-Release": "2026-09-12-reset-atomic-v1",
     "X-Klio-Archive-Release": "2026-09-12-brand-pagination-v1",
     "X-Klio-Request-Release": "2026-09-12-bounded-auth-v1",
+    "X-Klio-Brand-Release": "2026-09-12-atomic-brand-limit-v1",
     "X-Klio-Ai-Release": "2026-09-10-v4-1-output-budget-v2",
     "X-Klio-Ui-Release": "2026-09-10-larger-material-topic-titles",
     "X-Klio-Admin-Release": "2026-09-07-ai-latency-visible",

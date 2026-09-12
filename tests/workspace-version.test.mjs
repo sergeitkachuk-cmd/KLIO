@@ -3,18 +3,22 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
+import { randomUUID } from "node:crypto";
 
-function harness({ failDelete = false, generation = false, archiveRows = null } = {}) {
+function harness({ failDelete = false, generation = false, archiveRows = null, brandLimit = 5 } = {}) {
   let row = { id: "brand", ownerEmail: "owner", updatedAt: "v1", name: "Initial" };
   if (generation) Object.assign(row, { title: "Initial", body: "Body", subtitle: "", metaTitle: "", metaDescription: "", editorialComment: "", tone: "" });
   let writes = 0;
   const brands = { id: "id", ownerEmail: "ownerEmail", updatedAt: "updatedAt" };
-  const tables = { brands, publications: {}, socialChannels: {}, materials: {}, generations: {} };
+  const tables = { accounts: { email: "email" }, brands, publications: {}, socialChannels: {}, materials: {}, generations: {} };
   for (const table of [tables.generations, tables.materials]) for (const field of ["id", "ownerEmail", "brandId", "createdAt", "title", "body", "subtitle", "metaTitle", "metaDescription", "editorialComment", "tone"]) table[field] = field;
   let deleted = [];
+  let created = 0;
+  let transactionQueue = Promise.resolve();
   const db = {
     select: () => ({ from: table => ({ where: predicate => ({
-      then: resolve => Promise.resolve([{ count: 1 }]).then(resolve),
+      then: resolve => Promise.resolve([{ count: created }]).then(resolve),
+      for: () => ({ limit: async () => [{ email: "owner", planId: "trial" }] }),
       limit: async () => predicate(row) ? [row] : [],
       orderBy: () => ({ limit: async limit => (table === tables.generations ? archiveRows ?? [] : []).filter(predicate).sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id)).slice(0, limit) }),
     }) }) }),
@@ -22,9 +26,14 @@ function harness({ failDelete = false, generation = false, archiveRows = null } 
       if (failDelete && table === tables.materials) throw new Error("storage failure");
       deleted.push(table);
     } }),
-    transaction: async work => {
+    insert: () => ({ values: value => ({ returning: async () => { created++; return [value]; } }) }),
+    transaction: work => {
+      const result = transactionQueue.then(async () => {
       const before = [...deleted];
       try { return await work(db); } catch (error) { deleted = before; throw error; }
+      });
+      transactionQueue = result.catch(() => {});
+      return result;
     },
     update: () => ({ set: values => ({ where: predicate => ({ returning: async () => {
       if (!predicate(row)) return [];
@@ -35,17 +44,18 @@ function harness({ failDelete = false, generation = false, archiveRows = null } 
   const dependencies = {
     "drizzle-orm": { eq: (key, value) => row => row[key] === value, and: (...checks) => row => checks.filter(Boolean).every(check => check(row)), desc: () => null, sql: (parts, ...values) => parts.join("").includes(" < ") ? row => row.createdAt < values[2] || row.createdAt === values[2] && row.id < values[3] : null },
     "../../../db/schema": tables,
-    "../../plans": { planRule: () => ({ brandLimit: 5 }) },
+    "../../plans": { planRule: () => ({ brandLimit }) },
     "../_lib/workspace-account": {
       workspaceDatabaseAvailable: async () => true, workspaceIdentity: async () => ({ email: "owner", displayName: "Owner" }),
       getWorkspaceDb: async () => db, ensureAccount: async () => ({}), accountSummary: () => ({}),
       workspaceErrorResponse: error => { throw error; },
+      WorkspaceAccessError: class extends Error { constructor(message, status) { super(message); this.status = status; } },
     },
   };
   const exports = {};
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL("../app/api/workspace/route.ts", import.meta.url), "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-  }).outputText, { exports, Response, URL, require: name => {
+  }).outputText, { exports, Response, URL, crypto: { randomUUID }, require: name => {
     if (!(name in dependencies)) throw new Error(name);
     return dependencies[name];
   } });
@@ -56,6 +66,8 @@ function harness({ failDelete = false, generation = false, archiveRows = null } 
     deleted: () => deleted.length,
     edit: (expected, title) => exports.POST({ json: async () => ({ action: "update_generation", expectedGeneration: expected, generation: { ...expected, id: "brand", title, body: "Edited body" } }) }),
     page: (query = "") => exports.GET({ url: `https://example.invalid/api/workspace?archiveBrandId=brand${query}` }),
+    create: () => exports.POST({ json: async () => ({ action: "create_brand", profile: { name: "New" }, workspace: {} }) }),
+    created: () => created,
   };
 }
 
@@ -112,4 +124,14 @@ test("archive pages are brand scoped and traverse identical timestamps without d
   assert.equal(second.history.length, 15);
   assert.equal(second.next.history, null);
   assert.equal(new Set([...first.history, ...second.history].map(row => row.id)).size, 55);
+});
+
+test("concurrent brand creations cannot exceed the plan limit", async () => {
+  const h = harness({ brandLimit: 1 });
+  const results = await Promise.allSettled([h.create(), h.create()]);
+  assert.equal(results[0].status, "fulfilled");
+  assert.equal(results[0].value.status, 201);
+  assert.equal(results[1].status, "rejected");
+  assert.equal(results[1].reason.status, 409);
+  assert.equal(h.created(), 1);
 });
