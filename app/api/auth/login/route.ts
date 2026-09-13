@@ -23,6 +23,10 @@ export async function POST(request: Request) {
     const email = typeof payload.email === "string" ? payload.email.trim().toLowerCase().slice(0, 320) : "";
     const password = typeof payload.password === "string" ? payload.password : "";
     if (!email || !password) return Response.json(INVALID_CREDENTIALS, { status: 401 });
+    // Also bound attempts against one account when callers rotate IPs.
+    if (isRateLimited(`login-account:${email}`, 30, 10 * 60 * 1000)) {
+      return Response.json({ error: "Слишком много попыток входа. Попробуйте через несколько минут." }, { status: 429 });
+    }
 
     const db = await getWorkspaceDb();
     const [account] = await db.select().from(accounts).where(eq(accounts.email, email)).limit(1);

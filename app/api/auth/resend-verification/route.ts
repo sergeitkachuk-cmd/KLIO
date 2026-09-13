@@ -25,6 +25,7 @@ export async function POST(request: Request) {
     const payload = await readBoundedJson(request, 4096) as ResendPayload;
     const email = typeof payload.email === "string" ? payload.email.trim().toLowerCase().slice(0, 320) : "";
     if (!email) return Response.json(GENERIC_OK);
+    if (isRateLimited(`resend-account:${email}`, 3, 10 * 60 * 1000)) return Response.json(GENERIC_OK);
 
     const db = await getWorkspaceDb();
     const [account] = await db.select().from(accounts).where(eq(accounts.email, email)).limit(1);

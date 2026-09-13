@@ -17,6 +17,7 @@ export async function POST(request: Request) {
   catch (error) { return Response.json({ error: "Некорректный запрос." }, { status: error instanceof RequestBodyError ? error.status : 400 }); }
   const email = typeof payload?.email === "string" ? payload.email.trim().toLowerCase().slice(0, 320) : "";
   if (!email || !await workspaceDatabaseAvailable() || !emailDeliveryAvailable()) return Response.json(GENERIC_OK);
+  if (isRateLimited(`forgot-account:${email}`, 3, 15 * 60 * 1000)) return Response.json(GENERIC_OK);
 
   try {
     const db = getDb();
