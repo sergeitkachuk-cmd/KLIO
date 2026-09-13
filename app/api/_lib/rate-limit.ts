@@ -1,7 +1,5 @@
-// In-memory, single-instance rate limiter. KLIO's web service runs with
-// WEB_CONCURRENCY=1 on Render, so a module-level Map is a real (if modest)
-// speed bump against signup/login bots — not a distributed solution, but
-// cheap defense-in-depth alongside email verification.
+// In-memory, per-process defense in depth. Counters are not shared between
+// replicas and reset on restart; this is not a distributed rate limiter.
 const buckets = new Map<string, { count: number; resetAt: number }>();
 
 // Bounds unbounded growth from spoofed/varying IPs; buckets are tiny.
@@ -11,27 +9,24 @@ export function isRateLimited(key: string, limit: number, windowMs: number): boo
   const now = Date.now();
   const bucket = buckets.get(key);
 
-  if (!bucket || bucket.resetAt < now) {
+  if (!bucket || bucket.resetAt <= now) {
     // Evict only entries that have actually expired, oldest first — a full
     // buckets.clear() here would let an attacker who inflates the map past
     // MAX_TRACKED_KEYS (e.g. by cycling spoofed IPs) reset every other
     // key's counter, including their own, defeating the throttle.
     if (buckets.size >= MAX_TRACKED_KEYS) {
       for (const [trackedKey, trackedBucket] of buckets) {
-        if (trackedBucket.resetAt < now) buckets.delete(trackedKey);
+        if (trackedBucket.resetAt <= now) buckets.delete(trackedKey);
       }
-      // Still full after clearing expired entries (all buckets legitimately
-      // live): drop the oldest one rather than every one.
-      if (buckets.size >= MAX_TRACKED_KEYS) {
-        const oldestKey = buckets.keys().next().value;
-        if (oldestKey !== undefined) buckets.delete(oldestKey);
-      }
+      // Never evict an active counter: flooding new keys must not reset
+      // an existing caller's allowance. Deny new keys until space expires.
+      if (buckets.size >= MAX_TRACKED_KEYS) return true;
     }
     buckets.set(key, { count: 1, resetAt: now + windowMs });
     return false;
   }
 
-  bucket.count += 1;
+  bucket.count = Math.min(bucket.count + 1, limit + 1);
   return bucket.count > limit;
 }
 
