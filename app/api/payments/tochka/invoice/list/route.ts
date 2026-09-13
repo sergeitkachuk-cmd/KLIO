@@ -1,4 +1,5 @@
 import { and, desc, eq, isNull, ne } from "drizzle-orm";
+import { readBoundedJson, RequestBodyError } from "../../../../_lib/request-body";
 import { invoices } from "../../../../../../db/schema";
 import { getWorkspaceDb, WorkspaceAccessError, workspaceIdentity } from "../../../../_lib/workspace-account";
 
@@ -18,7 +19,7 @@ export async function DELETE(request: Request) {
   try {
     const user = await workspaceIdentity();
     const db = await getWorkspaceDb();
-    const body = await request.json().catch(() => ({}));
+    const body = await readBoundedJson(request, 4096);
     const removable = and(
       eq(invoices.ownerEmail, user.email),
       isNull(invoices.paidAt),
@@ -32,6 +33,7 @@ export async function DELETE(request: Request) {
     const deleted = await db.delete(invoices).where(condition).returning({ id: invoices.id });
     return Response.json({ deleted: deleted.length });
   } catch (error) {
+    if (error instanceof RequestBodyError) return Response.json({ error: error.message }, { status: error.status });
     if (error instanceof WorkspaceAccessError) return Response.json({ error: error.message }, { status: error.status });
     return Response.json({ error: "Не удалось удалить счета." }, { status: 500 });
   }

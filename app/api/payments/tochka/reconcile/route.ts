@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { readBoundedJson, RequestBodyError } from "../../../_lib/request-body";
 import { accounts, payments } from "../../../../../db/schema";
 import { getWorkspaceDb, workspaceIdentity, WorkspaceAccessError } from "../../../_lib/workspace-account";
 import { tochkaRequest, TochkaConfigError } from "../../../_lib/tochka";
@@ -16,7 +17,7 @@ function statusOf(value: unknown): string | undefined {
 export async function POST(request: Request) {
   try {
     const user = await workspaceIdentity();
-    const input = await request.json().catch(() => ({}));
+    const input = await readBoundedJson(request, 4096);
     const paymentLinkId = typeof input.paymentLinkId === "string" ? input.paymentLinkId : "";
     if (!paymentLinkId) return Response.json({ error: "Не указан идентификатор платежа." }, { status: 400 });
     const db = await getWorkspaceDb();
@@ -69,6 +70,7 @@ export async function POST(request: Request) {
     });
     return Response.json({ status: "paid" });
   } catch (error) {
+    if (error instanceof RequestBodyError) return Response.json({ error: error.message }, { status: error.status });
     if (error instanceof WorkspaceAccessError || error instanceof TochkaConfigError) return Response.json({ error: error.message }, { status: error instanceof WorkspaceAccessError ? error.status : 503 });
     console.error("Tochka payment reconciliation failed", error instanceof Error ? error.message : "unknown error");
     return Response.json({ error: "Не удалось проверить оплату." }, { status: 502 });

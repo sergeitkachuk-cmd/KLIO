@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { readBoundedJson, RequestBodyError } from "../../../../_lib/request-body";
 import { accounts, invoices } from "../../../../../../db/schema";
 import { getWorkspaceDb, WorkspaceAccessError, workspaceIdentity } from "../../../../_lib/workspace-account";
 import { discoverTochkaIds, tochkaRequest, TochkaConfigError } from "../../../../_lib/tochka";
@@ -24,7 +25,7 @@ function findString(value: unknown, key: string): string | undefined {
 export async function POST(request: Request) {
   try {
     const user = await workspaceIdentity();
-    const input = await request.json().catch(() => ({}));
+    const input = await readBoundedJson(request, 4096);
     const id = text(input?.invoiceId, 80);
     if (!id) return Response.json({ error: "Не указан счёт." }, { status: 400 });
     const db = await getWorkspaceDb();
@@ -119,6 +120,7 @@ export async function POST(request: Request) {
     await db.update(invoices).set({ paymentStatus, paidAt: invoice.paidAt || now, closingDocumentId, closingStatus: "created", closingSentAt, updatedAt: now }).where(eq(invoices.id, invoice.id));
     return Response.json({ status: paymentStatus, invoiceId: invoice.id, closingDocumentId, closingSentAt, closingUrl: `/api/payments/tochka/closing/${encodeURIComponent(closingDocumentId)}` });
   } catch (error) {
+    if (error instanceof RequestBodyError) return Response.json({ error: error.message }, { status: error.status });
     if (error instanceof WorkspaceAccessError || error instanceof TochkaConfigError) return Response.json({ error: error.message }, { status: error instanceof WorkspaceAccessError ? error.status : 503 });
     console.error("Tochka invoice status failed");
     return Response.json({ error: "Не удалось проверить счёт." }, { status: 502 });
