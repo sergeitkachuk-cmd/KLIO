@@ -5402,10 +5402,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <ol className="publications-channel-steps">
                   <li>В своём сообществе VK: «Управление» → «Дополнительно» → «Работа с API» → «Ключи доступа» → «Создать ключ».</li>
                   <li>Для ключа сообщества отметьте права <b>«Стена»</b> и <b>«Сообщения»</b>.</li>
-                  <li>Id сообщества — число из адресной строки в разделе управления (или там же, на странице «Работа с API»).</li>
+                  <li>Id сообщества — можно вписать и красивое имя из адреса (<code>vk.com/kliopress</code> → <code>kliopress</code>), и числовой id из «Работа с API»: КЛИО сам определит нужное число.</li>
                   <li><b>Изображения для VK временно не поддерживаются</b>: ключ сообщества публикует текстовые посты.</li>
                 </ol>
-                <label className="publications-editor-field"><span>Id сообщества</span><input type="text" value={pubChannelVk.groupId} onChange={(event) => setPubChannelVk((current) => ({ ...current, groupId: event.target.value }))} placeholder="123456789"/></label>
+                <label className="publications-editor-field"><span>Id сообщества</span><input type="text" value={pubChannelVk.groupId} onChange={(event) => setPubChannelVk((current) => ({ ...current, groupId: event.target.value }))} placeholder="kliopress или 123456789"/></label>
                 <label className="publications-editor-field"><span>Токен сообщества — для текста</span><input type="text" value={pubChannelVk.accessToken} onChange={(event) => setPubChannelVk((current) => ({ ...current, accessToken: event.target.value }))} placeholder="vk1.a…"/></label>
               </>}
               {pubChannelError && <p className="generation-error" role="alert">{pubChannelError}</p>}

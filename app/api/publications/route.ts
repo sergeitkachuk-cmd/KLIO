@@ -190,13 +190,19 @@ export async function POST(request: Request) {
       }
 
       const credentials = credentialsFromPayload(platform, payload);
-      let info: { label: string; avatarUrl: string };
+      let info: { label: string; avatarUrl: string; resolvedGroupId?: string };
       try {
         info = await describeChannel(credentials);
       } catch (error) {
         if (error instanceof ChannelValidationError) return Response.json({ error: error.message }, { status: 400 });
         throw error;
       }
+      // VK: save the numeric id VK itself resolved, not whatever was
+      // typed — a "красивое" screen name (vk.com/kliopress) works fine for
+      // groups.getById above but breaks wall.post later (see the comment
+      // on describeVkChannel), so this is what makes typing a pretty name
+      // actually work end to end instead of just passing the connect step.
+      if (credentials.platform === "vk" && info.resolvedGroupId) credentials.vk.groupId = info.resolvedGroupId;
 
       const [created] = await db.insert(socialChannels).values({
         id: crypto.randomUUID(),

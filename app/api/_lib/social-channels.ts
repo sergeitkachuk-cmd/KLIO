@@ -70,21 +70,22 @@ async function describeTelegramChannel(telegram: { botToken: string; chatId: str
   }
 }
 
-async function describeVkChannel(vk: { groupId: string; accessToken: string }): Promise<{ label: string; avatarUrl: string }> {
+async function describeVkChannel(vk: { groupId: string; accessToken: string }): Promise<{ label: string; avatarUrl: string; resolvedGroupId: string }> {
   if (!vk.groupId.trim() || !vk.accessToken.trim()) {
     throw new ChannelValidationError("Укажите id сообщества и токен доступа.");
   }
-  // groups.getById below happily resolves a screen name/vanity URL too
-  // (VK accepts either), so connecting with one looked fine here and only
-  // broke later at the first real wall.post - that call needs a real
-  // positive integer to negate into owner_id (see vkGroupIdNumber in
-  // social-publish.ts) and silently sent VK a "NaN" instead, which came
-  // back as the opaque "owner_id not integer" with no hint the saved id
-  // itself was the problem. Reject the non-numeric case right here, before
-  // a channel row with a broken id is ever saved.
-  if (!/^\d+$/.test(vk.groupId.trim())) {
-    throw new ChannelValidationError("ID сообщества должен быть числом (например, 123456789) — без букв, ссылок и знака минус.");
-  }
+  // groups.getById accepts a screen name/vanity URL (vk.com/kliopress) just
+  // as well as the raw numeric id — and a "красивое" screen name is VK's
+  // own product feature, not an edge case, so requiring the numeric id up
+  // front (an earlier version of this function did exactly that) locked
+  // out most real communities. wall.post further down the pipeline still
+  // needs a real integer to negate into owner_id (see vkGroupIdNumber in
+  // social-publish.ts), so instead of asking the person to go dig it out
+  // of "Работа с API" themselves, resolve it here from VK's own answer —
+  // group.id in the groups.getById response is always the numeric id,
+  // regardless of which form was typed in — and save that instead of
+  // whatever was typed. The typed value (name or number) still round-trips
+  // through this same call as validation that it's real and reachable.
   let response: Response;
   try {
     response = await fetch("https://api.vk.com/method/groups.getById", {
@@ -114,14 +115,23 @@ async function describeVkChannel(vk: { groupId: string; accessToken: string }): 
   const groups = Array.isArray(raw) ? raw : (raw && typeof raw === "object" ? (raw as { groups?: unknown[] }).groups : undefined);
   const group = Array.isArray(groups) ? groups[0] as Record<string, unknown> : undefined;
   if (!group || typeof group.name !== "string") throw new ChannelValidationError("VK не нашёл сообщество с этим id.");
-  return { label: group.name, avatarUrl: typeof group.photo_200 === "string" ? group.photo_200 : "" };
+  if (typeof group.id !== "number" || !Number.isInteger(group.id) || group.id <= 0) {
+    throw new ChannelValidationError("VK не вернул числовой id сообщества — попробуйте другой способ его указать.");
+  }
+  return { label: group.name, avatarUrl: typeof group.photo_200 === "string" ? group.photo_200 : "", resolvedGroupId: String(group.id) };
 }
 
 // Throws ChannelValidationError (safe to show verbatim to the user) on
 // anything wrong with the credentials themselves; anything else (network,
 // malformed platform response) is wrapped into the same error type so the
 // connect route has exactly one error shape to handle.
-export async function describeChannel(credentials: ChannelCredentials): Promise<{ label: string; avatarUrl: string }> {
+//
+// resolvedGroupId (VK only) is the numeric id VK itself returned for
+// whatever was typed (screen name or number) — the connect route should
+// save this instead of the raw input so every later publish always works
+// with a guaranteed-numeric id. Absent for Telegram, which has no
+// equivalent name/id duality.
+export async function describeChannel(credentials: ChannelCredentials): Promise<{ label: string; avatarUrl: string; resolvedGroupId?: string }> {
   if (credentials.platform === "telegram") return describeTelegramChannel(credentials.telegram);
   return describeVkChannel(credentials.vk);
 }
