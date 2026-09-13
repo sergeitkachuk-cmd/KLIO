@@ -14,13 +14,17 @@ function load(path, deps = {}, globals = {}) {
   return exports;
 }
 
-function harness(replies) {
+function harness(replies, connecting) {
   const sent = [];
   const request = (_options, callback) => {
     const req = new EventEmitter(); req.setTimeout = () => {};
     req.end = body => {
       const reply = replies[sent.length]; sent.push(JSON.parse(body));
       queueMicrotask(() => {
+        if (connecting !== undefined) {
+          const socket = new EventEmitter(); socket.connecting = connecting;
+          req.emit("socket", socket);
+        }
         if (reply instanceof Error) { req.emit("error", reply); return; }
         const response = new EventEmitter(); response.statusCode = reply.status || 200;
         callback(response);
@@ -52,6 +56,14 @@ test("lost Telegram acknowledgement is treated as unknown, not retried", async (
   const h = harness([new Error("socket reset")]);
   await assert.rejects(h.send("text"), error => error.retryable === false);
   assert.equal(h.sent.length, 1);
+});
+
+test("Telegram retries only a known unconnected socket, never a reused connection", async () => {
+  for (const connecting of [true, false]) {
+    const h = harness([new Error("transport failed")], connecting);
+    await assert.rejects(h.send("text"), error => error.retryable === connecting);
+    assert.equal(h.sent.length, 1);
+  }
 });
 
 test("explicit rate limit before any delivery remains safely retryable", async () => {

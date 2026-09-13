@@ -69,7 +69,9 @@ function postToTelegramApi(url: string, body: object, signal: AbortSignal): Prom
   const endpoint = new URL(url);
   const payload = JSON.stringify(body);
   return new Promise((resolve, reject) => {
-    let connected = false;
+    // Unknown transport state is not proof of non-delivery. In particular,
+    // keep-alive sockets do not emit another connect event when reused.
+    let connected = true;
     const request = httpsRequest({
       protocol: endpoint.protocol,
       hostname: endpoint.hostname,
@@ -97,6 +99,7 @@ function postToTelegramApi(url: string, body: object, signal: AbortSignal): Prom
     // timeout, reset mid-read) can no longer prove Telegram never received
     // the request — only the pre-connect window can.
     request.on("socket", (socket) => {
+      connected = !socket.connecting;
       socket.once("connect", () => { connected = true; });
     });
     request.setTimeout(25_000, () => request.destroy(new TelegramTransportError("Telegram API connection timed out after 25 seconds.", connected)));
