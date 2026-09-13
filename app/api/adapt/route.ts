@@ -215,7 +215,7 @@ const ADAPTATION_TIMEOUT_MS = 90_000;
 // AiResponseError/WorkspaceAccessError on failure; never returns a
 // Response, since there is no live request to answer by the time most of
 // this runs (see runAdaptationJob below).
-async function runAdaptation(input: ReturnType<typeof normalizePayload>, ownerEmail: string) {
+async function runAdaptation(input: ReturnType<typeof normalizePayload>, ownerEmail: string, jobId?: string) {
   const reasoningEffort = adaptationReasoningEffort(input.goal);
   // Fast modes have no reasoning phase and must finish sooner. Research
   // and judgement-heavy modes keep more room, while every editor remains
@@ -353,8 +353,9 @@ async function runAdaptation(input: ReturnType<typeof normalizePayload>, ownerEm
       material.editorialComment,
     ].filter(Boolean).join(" ");
   }
-  const usage = await recordEditorialAction();
-  return { material, mode: "ai" as const, model: usedModel, sources: { website: website.status, webResearch: webResearch?.results.length ?? 0, researchProvider: webResearch?.provider ?? null }, usage };
+  const result = { material, mode: "ai" as const, model: usedModel, sources: { website: website.status, webResearch: webResearch?.results.length ?? 0, researchProvider: webResearch?.provider ?? null } };
+  const usage = await recordEditorialAction(jobId ? { id: jobId, result } : undefined);
+  return { ...result, usage };
 }
 
 // Runs the editor pass in the background and writes the outcome to the job
@@ -364,7 +365,7 @@ async function runAdaptation(input: ReturnType<typeof normalizePayload>, ownerEm
 async function runAdaptationJob(jobId: string, input: ReturnType<typeof normalizePayload>, ownerEmail: string) {
   try {
     await markAsyncJobProcessing(jobId);
-    const payload = await runAdaptation(input, ownerEmail);
+    const payload = await runAdaptation(input, ownerEmail, jobId);
     await completeAsyncJob(jobId, payload);
   } catch (error) {
     const message = error instanceof WorkspaceAccessError || error instanceof AiResponseError || error instanceof AiCallError

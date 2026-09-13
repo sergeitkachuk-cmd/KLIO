@@ -327,7 +327,7 @@ function validatePlan(plan: AiPlan, input: ReturnType<typeof normalizePayload>, 
 // The actual AI call + validation + quota debit, extracted out of the
 // route handler so it can run after the response has already gone back
 // to the client (see async-jobs.ts for why that's safe on this host).
-async function runContentPlanGeneration(input: ReturnType<typeof normalizePayload>, ownerEmail: string) {
+async function runContentPlanGeneration(input: ReturnType<typeof normalizePayload>, ownerEmail: string, jobId?: string) {
   const historicalTitles = await recentCompletedContentPlanTitles(ownerEmail, PLAN_EXISTING_TITLES_LIMIT);
   input = { ...input, existingTitles: unique([...input.existingTitles, ...historicalTitles]).slice(0, PLAN_EXISTING_TITLES_LIMIT) };
   const currentIndustryFocus = isCurrentIndustryFocus(input.query);
@@ -431,7 +431,6 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
   });
 
   const items = validatePlan(aiPlan, input, availablePlanSources(input, website?.status === "loaded", Boolean(webResearch)));
-  const usage = await recordResearch();
   const baseDataNote = input.semantics.length
     ? "План построен по карте подтверждённого спроса: каждая тема привязана к одному кластеру и отдельной задаче читателя. В приоритете — небрендовые и смежные запросы для привлечения новой аудитории; брендовый спрос вынесен в отдельную конверсионную ветку."
     : "План создан AI‑стратегом по текущей теме и подключённым источникам. Подключите семантику, чтобы приоритизировать темы по подтверждённому спросу.";
@@ -441,10 +440,9 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
     website?.status === "loaded" ? `Сайт бренда прочитан (${websiteSourceLabel(website)}).` : "",
     webResearch ? "Веб-поиск Tavily выполнен в ограниченном режиме и добавлен как справочный слой." : "",
   ].filter(Boolean).join(" ");
-  return {
+  const result = {
     mode: "ai" as const,
     model,
-    usage,
     result: {
       query: input.query,
       items,
@@ -452,6 +450,8 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       dataNote: `${baseDataNote}${groundingNote ? ` ${groundingNote}` : ""}`,
     },
   };
+  const usage = await recordResearch(jobId ? { id: jobId, result } : undefined);
+  return { ...result, usage };
 }
 
 // Runs the generation in the background and writes the outcome to the job
@@ -459,7 +459,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
 async function runContentPlanJob(jobId: string, input: ReturnType<typeof normalizePayload>, ownerEmail: string) {
   try {
     await markAsyncJobProcessing(jobId);
-    const payload = await runContentPlanGeneration(input, ownerEmail);
+    const payload = await runContentPlanGeneration(input, ownerEmail, jobId);
     await completeAsyncJob(jobId, payload);
   } catch (error) {
     const message = error instanceof WorkspaceAccessError || error instanceof AiResponseError || error instanceof AiCallError

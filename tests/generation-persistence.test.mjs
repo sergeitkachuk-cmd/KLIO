@@ -36,7 +36,28 @@ function harness({ failInsert = false, ownedBrand = true, jobStatus = "processin
     exports, crypto: { randomUUID }, process: { env: { NODE_ENV: "production", DATABASE_URL: "configured" } },
     require: name => { if (!(name in deps)) throw new Error(name); return deps[name]; },
   });
-  return { record: (job = false) => exports.recordGeneration({ brandId: "brand", title: "Title", body: "Body" }, job ? { id: "job", result: { material: "result" } } : undefined), used: () => used, archived: () => archived, status: () => status };
+  return { secondary: kind => exports[kind]({ id: "job", result: { material: "result" } }), record: (job = false) => exports.recordGeneration({ brandId: "brand", title: "Title", body: "Body" }, job ? { id: "job", result: { material: "result" } } : undefined), used: () => used, archived: () => archived, status: () => status };
+}
+
+for (const kind of ["recordResearch", "recordEditorialAction"]) {
+  test(`${kind} receipt failure rolls back the quota debit`, async () => {
+    const h = harness({ failReceipt: true });
+    await assert.rejects(h.secondary(kind), /receipt failed/);
+    assert.equal(h.used(), 0);
+    assert.equal(h.status(), "processing");
+  });
+  test(`${kind} rejects expired work without spending quota`, async () => {
+    const h = harness({ jobStatus: "failed" });
+    await assert.rejects(h.secondary(kind), error => error.status === 409);
+    assert.equal(h.used(), 0);
+  });
+  test(`${kind} completes and spends quota only once`, async () => {
+    const h = harness();
+    await h.secondary(kind);
+    assert.equal(h.status(), "done");
+    await assert.rejects(h.secondary(kind), error => error.status === 409);
+    assert.equal(h.used(), 1);
+  });
 }
 
 test("failed material persistence rolls back quota debit", async () => {

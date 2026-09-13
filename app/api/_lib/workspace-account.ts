@@ -202,12 +202,6 @@ export function accountSummary(account: typeof accounts.$inferSelect, brandCount
   };
 }
 
-async function currentBrandCount(email: string) {
-  const db = await getWorkspaceDb();
-  const [{ count = 0 } = { count: 0 }] = await db.select({ count: sql<number>`count(*)` }).from(brands).where(eq(brands.ownerEmail, email));
-  return Number(count);
-}
-
 function assertTrialActive(account: typeof accounts.$inferSelect) {
   if (!isTrialExpired(account)) return;
   throw new WorkspaceAccessError(
@@ -226,7 +220,9 @@ function assertPlanActive(account: typeof accounts.$inferSelect) {
   }
 }
 
-async function consumeSecondaryQuota(kind: "research" | "editor") {
+type JobResult = { id: string; result: Record<string, unknown> };
+
+async function consumeSecondaryQuota(kind: "research" | "editor", job?: JobResult) {
   if (!await workspaceDatabaseAvailable()) return null;
   const user = await workspaceIdentity();
   const db = await getWorkspaceDb();
@@ -234,8 +230,16 @@ async function consumeSecondaryQuota(kind: "research" | "editor") {
   assertPlanActive(current);
   const rule = planRule(current.planId);
 
+  return db.transaction(async (tx) => {
+  if (job) {
+    const [active] = await tx.update(asyncJobs).set({ updatedAt: sql`CURRENT_TIMESTAMP` }).where(and(
+      eq(asyncJobs.id, job.id), eq(asyncJobs.ownerEmail, user.email), eq(asyncJobs.status, "processing"),
+      eq(asyncJobs.kind, kind === "research" ? "content_plan" : "adapt_text"),
+    )).returning({ id: asyncJobs.id });
+    if (!active) throw new WorkspaceAccessError("Задание уже завершено или закрыто. Повторное сохранение не выполнено.", 409);
+  }
   const [updated] = kind === "research"
-    ? await db.update(accounts).set({
+    ? await tx.update(accounts).set({
       researchUsed: sql`${accounts.researchUsed} + 1`,
       lifetimeResearchUsed: sql`${accounts.lifetimeResearchUsed} + 1`,
       updatedAt: sql`CURRENT_TIMESTAMP`,
@@ -243,7 +247,7 @@ async function consumeSecondaryQuota(kind: "research" | "editor") {
       eq(accounts.email, user.email),
       lt(accounts.researchUsed, rule.researchLimit),
     )).returning()
-    : await db.update(accounts).set({
+    : await tx.update(accounts).set({
       editorActionsUsed: sql`${accounts.editorActionsUsed} + 1`,
       lifetimeEditorActionsUsed: sql`${accounts.lifetimeEditorActionsUsed} + 1`,
       updatedAt: sql`CURRENT_TIMESTAMP`,
@@ -258,7 +262,11 @@ async function consumeSecondaryQuota(kind: "research" | "editor") {
     throw new WorkspaceAccessError(`Лимит тарифа «${rule.name}» исчерпан: ${limit} ${label} ${rule.periodLabel}.`, 429);
   }
 
-  return { account: accountSummary(updated, await currentBrandCount(user.email)) };
+  const [{ count: brandCount = 0 } = { count: 0 }] = await tx.select({ count: sql<number>`count(*)` }).from(brands).where(eq(brands.ownerEmail, user.email));
+  const usage = { account: accountSummary(updated, Number(brandCount)) };
+  if (job) await tx.update(asyncJobs).set({ status: "done", resultJson: JSON.stringify({ ...job.result, usage }), updatedAt: sql`CURRENT_TIMESTAMP` }).where(and(eq(asyncJobs.id, job.id), eq(asyncJobs.ownerEmail, user.email)));
+  return usage;
+  });
 }
 
 // Mirrors assertSecondaryQuotaAvailable but for the primary "generation"
@@ -295,12 +303,12 @@ export async function assertSecondaryQuotaAvailable(kind: "research" | "editor")
   }
 }
 
-export async function recordResearch() {
-  return consumeSecondaryQuota("research");
+export async function recordResearch(job?: JobResult) {
+  return consumeSecondaryQuota("research", job);
 }
 
-export async function recordEditorialAction() {
-  return consumeSecondaryQuota("editor");
+export async function recordEditorialAction(job?: JobResult) {
+  return consumeSecondaryQuota("editor", job);
 }
 
 export type ArchiveMaterial = {
