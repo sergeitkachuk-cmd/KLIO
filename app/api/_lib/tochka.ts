@@ -134,8 +134,11 @@ function findRetailerId(value: unknown): string | undefined {
 
 export async function tochkaRequest<T>(path: string, init: RequestInit = {}) {
   const { token, clientId } = credentials();
+  const deadline = AbortSignal.timeout(30_000);
+  const signal = init.signal ? AbortSignal.any([init.signal, deadline]) : deadline;
   const response = await fetch(`${TOCHKA_BASE_URL}${path}`, {
     ...init,
+    signal,
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
@@ -145,7 +148,11 @@ export async function tochkaRequest<T>(path: string, init: RequestInit = {}) {
     },
     cache: "no-store",
   });
-  const body = await response.json().catch(() => null);
+  const body = await response.json().catch((error: unknown) => {
+    if (signal.aborted) throw error;
+    return null;
+  });
+  signal.throwIfAborted();
   if (!response.ok) {
     const message = body && typeof body === "object" && "message" in body && typeof body.message === "string"
       ? body.message : `Точка вернула ошибку ${response.status} для ${path}.`;
@@ -160,6 +167,7 @@ export async function tochkaRequest<T>(path: string, init: RequestInit = {}) {
 export async function tochkaFileRequest(path: string) {
   const { token, clientId } = credentials();
   const response = await fetch(`${TOCHKA_BASE_URL}${path}`, {
+    signal: AbortSignal.timeout(60_000),
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: "application/pdf",

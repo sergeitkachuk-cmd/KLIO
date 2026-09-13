@@ -16,6 +16,38 @@ function load(path, dependencies, globals = {}) {
   return exports;
 }
 
+test("bank requests preserve cancellation and never replay POST after body timeout", async () => {
+  const controller = new AbortController();
+  let calls = 0;
+  const loaded = load("app/api/_lib/tochka.ts", { "node:crypto": crypto }, {
+    process: { env: { TOCHKA_JWT_TOKEN: "test", TOCHKA_CLIENT_ID: "test" } },
+    fetch: async (_url, options) => {
+      calls++;
+      assert.equal(options.method, "POST");
+      assert.ok(options.signal);
+      return { ok: true, json: async () => {
+        controller.abort(new Error("test cancellation"));
+        assert.equal(options.signal.aborted, true);
+        throw new Error("body cancelled");
+      } };
+    },
+  });
+  await assert.rejects(loaded.tochkaRequest("/test", { method: "POST", signal: controller.signal }), /body cancelled/);
+  assert.equal(calls, 1);
+});
+
+test("bank JSON and PDF requests use finite provider deadlines", async () => {
+  const deadlines = [];
+  const loaded = load("app/api/_lib/tochka.ts", { "node:crypto": crypto }, {
+    process: { env: { TOCHKA_JWT_TOKEN: "test", TOCHKA_CLIENT_ID: "test" } },
+    AbortSignal: { timeout: ms => { deadlines.push(ms); return new AbortController().signal; } },
+    fetch: async (_url, options) => { assert.ok(options.signal); return { ok: true, json: async () => ({ ok: true }) }; },
+  });
+  await loaded.tochkaRequest("/test");
+  await loaded.tochkaFileRequest("/test.pdf");
+  assert.deepEqual(deadlines, [30000, 60000]);
+});
+
 test("webhook key lookup recovers after an outage and verifies real RSA signatures", async () => {
   const { publicKey, privateKey } = crypto.generateKeyPairSync("rsa", { modulusLength: 2048 });
   const encode = value => Buffer.from(JSON.stringify(value)).toString("base64url");

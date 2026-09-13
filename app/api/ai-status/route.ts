@@ -30,6 +30,7 @@ export async function GET() {
     "X-Klio-Invoice-Guard": "2026-09-13-owner-check-v1",
     "X-Klio-Payment-Input": "2026-09-13-bounded-json-v1",
     "X-Klio-Upd-Guard": "2026-09-13-single-claim-v1",
+    "X-Klio-Bank-Deadline": "2026-09-13-bounded-provider-v1",
     "X-Klio-Ai-Release": "2026-09-10-v4-1-output-budget-v2",
     "X-Klio-Ui-Release": "2026-09-10-larger-material-topic-titles",
     "X-Klio-Admin-Release": "2026-09-07-ai-latency-visible",
