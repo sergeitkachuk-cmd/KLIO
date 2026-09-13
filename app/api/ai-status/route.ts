@@ -20,6 +20,7 @@ export async function GET() {
     "X-Klio-Brand-Release": "2026-09-12-atomic-brand-limit-v1",
     "X-Klio-Generation-Guard": "2026-09-13-shared-mode-gate-v1",
     "X-Klio-Generation-Commit": "2026-09-13-atomic-result-v1",
+    "X-Klio-Job-Lifecycle": "2026-09-13-guarded-transitions-v1",
     "X-Klio-Ai-Release": "2026-09-10-v4-1-output-budget-v2",
     "X-Klio-Ui-Release": "2026-09-10-larger-material-topic-titles",
     "X-Klio-Admin-Release": "2026-09-07-ai-latency-visible",

@@ -31,11 +31,12 @@ export async function GET(request: Request) {
     const updatedAt = Date.parse(job.updatedAt);
     if (Number.isFinite(updatedAt) && Date.now() - updatedAt > 130_000) {
       const message = "Генерация материала превысила лимит времени. Запустите её ещё раз — предыдущий запрос не будет повторён автоматически.";
-      await failAsyncJob(job.id, message);
+      await failAsyncJob(job.id, message, job.updatedAt);
       // Completion may have committed after our initial read. Never report
       // a saved, atomically completed result as a timeout.
       const settled = await getAsyncJob(job.id, identity.email);
       if (settled?.status === "done") return Response.json({ status: "done", ...JSON.parse(settled.resultJson ?? "{}") });
+      if (settled?.status === "pending" || settled?.status === "processing") return Response.json({ status: settled.status });
       return Response.json({ status: "failed", error: message }, { status: 504 });
     }
     return Response.json({ status: job.status });

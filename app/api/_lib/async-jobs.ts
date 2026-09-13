@@ -55,11 +55,17 @@ export async function claimAsyncJob(kind: string, ownerEmail: string, input: unk
         }
         return { id: active.id, reused: true };
       }
-      await tx.update(asyncJobs).set({
+      const [expired] = await tx.update(asyncJobs).set({
         status: "failed",
-        errorMessage: "Сборка контент‑плана превысила лимит времени. Запустите её ещё раз.",
+        errorMessage: "Задание превысило лимит времени. Запустите его ещё раз.",
         updatedAt: sql`CURRENT_TIMESTAMP`,
-      }).where(eq(asyncJobs.id, active.id));
+      }).where(and(eq(asyncJobs.id, active.id), inArray(asyncJobs.status, ["pending", "processing"]), eq(asyncJobs.updatedAt, active.updatedAt))).returning({ id: asyncJobs.id });
+      if (!expired) {
+        const [latest] = await tx.select().from(asyncJobs).where(eq(asyncJobs.id, active.id)).limit(1);
+        if (latest && (latest.status === "pending" || latest.status === "processing")) {
+          throw new WorkspaceAccessError("Предыдущая задача ещё выполняется. Дождитесь её завершения.", 409);
+        }
+      }
     }
 
     const id = crypto.randomUUID();
@@ -120,7 +126,8 @@ export async function findActiveAsyncJob(kind: string, ownerEmail: string, maxAg
 
 export async function markAsyncJobProcessing(id: string) {
   const db = getDb();
-  await db.update(asyncJobs).set({ status: "processing", updatedAt: sql`CURRENT_TIMESTAMP` }).where(eq(asyncJobs.id, id));
+  const [started] = await db.update(asyncJobs).set({ status: "processing", updatedAt: sql`CURRENT_TIMESTAMP` }).where(and(eq(asyncJobs.id, id), eq(asyncJobs.status, "pending"))).returning({ id: asyncJobs.id });
+  if (!started) throw new WorkspaceAccessError("Задание уже запущено или закрыто. Повторный запуск отклонён.", 409);
 }
 
 export async function completeAsyncJob(id: string, result: unknown) {
@@ -134,13 +141,13 @@ export async function completeAsyncJob(id: string, result: unknown) {
   }).where(and(eq(asyncJobs.id, id), eq(asyncJobs.status, "processing")));
 }
 
-export async function failAsyncJob(id: string, errorMessage: string) {
+export async function failAsyncJob(id: string, errorMessage: string, expectedUpdatedAt?: string) {
   const db = getDb();
   await db.update(asyncJobs).set({
     status: "failed",
     errorMessage: errorMessage.slice(0, 500),
     updatedAt: sql`CURRENT_TIMESTAMP`,
-  }).where(and(eq(asyncJobs.id, id), inArray(asyncJobs.status, ["pending", "processing"])));
+  }).where(and(eq(asyncJobs.id, id), inArray(asyncJobs.status, ["pending", "processing"]), expectedUpdatedAt === undefined ? undefined : eq(asyncJobs.updatedAt, expectedUpdatedAt)));
 }
 
 export async function getAsyncJob(id: string, ownerEmail: string) {

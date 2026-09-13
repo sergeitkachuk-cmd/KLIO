@@ -54,3 +54,61 @@ test("active AI job is reused only for identical input, including brand", async 
   active.inputJson = "corrupted";
   await assert.rejects(loaded.claimAsyncJob("generation", "test@example.invalid", { topic: "topic", brandId: "brand-a" }, 60000), error => error.status === 409);
 });
+
+function lifecycleHarness(status, refreshOnRead = false) {
+  class WorkspaceAccessError extends Error { constructor(message, status) { super(message); this.status = status; } }
+  const oldTime = new Date(0).toISOString();
+  const row = { id: "job", status, updatedAt: oldTime, inputJson: "{}" };
+  let inserts = 0;
+  const columns = Object.fromEntries(["id", "status", "updatedAt", "kind", "ownerEmail"].map(key => [key, key]));
+  const tx = {
+    execute: async () => {},
+    select: () => ({ from: () => ({ where: () => ({
+      orderBy: () => ({ limit: async () => {
+        const stale = { ...row, status: "processing", updatedAt: oldTime };
+        if (refreshOnRead) row.updatedAt = new Date().toISOString();
+        return [stale];
+      } }),
+      limit: async () => [{ ...row }],
+    }) }) }),
+    update: () => ({ set: values => ({ where: predicate => ({ returning: async () => {
+      if (!predicate(row)) return [];
+      Object.assign(row, values);
+      return [{ id: row.id }];
+    } }) }) }),
+    insert: () => ({ values: async () => { inserts++; } }),
+  };
+  const loaded = load("app/api/_lib/async-jobs.ts", {
+    "node:util": util,
+    "drizzle-orm": { and: (...conditions) => row => conditions.every(condition => condition(row)), eq: (key, value) => row => row[key] === value, inArray: (key, values) => row => values.includes(row[key]), desc: () => null, lt: () => null, sql: () => "now" },
+    "../../../db": { getDb: () => ({ ...tx, transaction: fn => fn(tx) }) },
+    "../../../db/schema": { asyncJobs: columns }, "./workspace-account": { WorkspaceAccessError },
+  }, { crypto });
+  return { ...loaded, row, inserts: () => inserts };
+}
+
+test("job processing cannot resurrect failed or completed work or launch twice", async () => {
+  for (const status of ["failed", "done", "processing"]) {
+    const h = lifecycleHarness(status);
+    await assert.rejects(h.markAsyncJobProcessing("job"), error => error.status === 409);
+    assert.equal(h.row.status, status);
+  }
+  const h = lifecycleHarness("pending");
+  await h.markAsyncJobProcessing("job");
+  assert.equal(h.row.status, "processing");
+  await assert.rejects(h.markAsyncJobProcessing("job"), error => error.status === 409);
+});
+
+test("stale claim does not overwrite a concurrently completed result", async () => {
+  const h = lifecycleHarness("done");
+  await h.claimAsyncJob("material_generation", "owner", {}, 1000);
+  assert.equal(h.row.status, "done");
+  assert.equal(h.inserts(), 1);
+});
+
+test("a refreshed running job prevents another claim from launching parallel work", async () => {
+  const h = lifecycleHarness("processing", true);
+  await assert.rejects(h.claimAsyncJob("material_generation", "owner", {}, 1000), error => error.status === 409);
+  assert.equal(h.row.status, "processing");
+  assert.equal(h.inserts(), 0);
+});
