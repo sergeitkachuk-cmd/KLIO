@@ -226,6 +226,24 @@ async function vkCall(method: string, params: Record<string, string>): Promise<R
   return payload.response as Record<string, unknown>;
 }
 
+// The connect-channel form asks for a plain positive number (see its own
+// "Id сообщества — число из адресной строки" instructions), but nothing
+// enforced that: groups.getById at connect time (social-channels.ts)
+// happily resolves a screen name/vanity URL too, VK-side, so a community
+// saved by its alias instead of its numeric id looked connected and
+// working right up until the first real publish. wall.post's owner_id
+// silently computed from Number(alias) as NaN, and VK's only feedback was
+// the opaque "owner_id not integer" - no indication anything was wrong
+// with the saved channel itself. Centralized here so every VK call site
+// below fails the same clear way instead of forwarding NaN.
+function vkGroupIdNumber(groupId: string): number {
+  const value = Number(groupId.trim());
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new PublishError("ID сообщества VK сохранён некорректно (не число). Отключите канал и подключите его заново, указав числовой ID сообщества из адресной строки.", false);
+  }
+  return value;
+}
+
 // VK won't attach an arbitrary external URL to a wall post — the image has
 // to be uploaded into VK's own storage first, in three calls: get this
 // community's upload endpoint, POST the actual bytes there, then register
@@ -240,7 +258,7 @@ async function uploadPhotoForWall(creds: VkCredentials, imageUrl: string): Promi
     throw new PublishError("Для публикации VK с картинкой добавьте пользовательский токен для фото с правами «Стена» и «Фотографии».", false);
   }
   const uploadServer = await vkCall("photos.getWallUploadServer", {
-    group_id: creds.groupId,
+    group_id: String(vkGroupIdNumber(creds.groupId)),
     access_token: photoAccessToken,
   });
   const uploadUrl = uploadServer.upload_url;
@@ -262,7 +280,7 @@ async function uploadPhotoForWall(creds: VkCredentials, imageUrl: string): Promi
   if (!uploadResult?.photo || !uploadResult.hash) throw new PublishError("VK не принял загруженную картинку.", true);
 
   const saved = await vkCall("photos.saveWallPhoto", {
-    group_id: creds.groupId,
+    group_id: String(vkGroupIdNumber(creds.groupId)),
     photo: uploadResult.photo,
     server: String(uploadResult.server ?? ""),
     hash: uploadResult.hash,
@@ -285,7 +303,7 @@ async function publishToVk(creds: VkCredentials, text: string, imageUrl: string 
     // above) works with the plain positive community id VK's own admin
     // panel shows, so the negation happens right here at the one call site
     // that actually needs it.
-    owner_id: String(-Number(creds.groupId)),
+    owner_id: String(-vkGroupIdNumber(creds.groupId)),
     from_group: "1",
     message: truncateForPlatform("vk", text, hasImage),
     ...(attachment ? { attachments: attachment } : {}),

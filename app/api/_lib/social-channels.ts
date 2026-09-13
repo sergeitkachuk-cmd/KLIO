@@ -74,6 +74,17 @@ async function describeVkChannel(vk: { groupId: string; accessToken: string }): 
   if (!vk.groupId.trim() || !vk.accessToken.trim()) {
     throw new ChannelValidationError("Укажите id сообщества и токен доступа.");
   }
+  // groups.getById below happily resolves a screen name/vanity URL too
+  // (VK accepts either), so connecting with one looked fine here and only
+  // broke later at the first real wall.post - that call needs a real
+  // positive integer to negate into owner_id (see vkGroupIdNumber in
+  // social-publish.ts) and silently sent VK a "NaN" instead, which came
+  // back as the opaque "owner_id not integer" with no hint the saved id
+  // itself was the problem. Reject the non-numeric case right here, before
+  // a channel row with a broken id is ever saved.
+  if (!/^\d+$/.test(vk.groupId.trim())) {
+    throw new ChannelValidationError("ID сообщества должен быть числом (например, 123456789) — без букв, ссылок и знака минус.");
+  }
   let response: Response;
   try {
     response = await fetch("https://api.vk.com/method/groups.getById", {
