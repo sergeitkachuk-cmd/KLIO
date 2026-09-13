@@ -25,6 +25,7 @@ export async function GET() {
     "X-Klio-Verification": "2026-09-13-single-use-v1",
     "X-Klio-Rate-Limit": "2026-09-13-preserve-active-v1",
     "X-Klio-Account-Throttle": "2026-09-13-account-buckets-v1",
+    "X-Klio-Vk-Guard": "2026-09-13-bounded-login-v1",
     "X-Klio-Ai-Release": "2026-09-10-v4-1-output-budget-v2",
     "X-Klio-Ui-Release": "2026-09-10-larger-material-topic-titles",
     "X-Klio-Admin-Release": "2026-09-07-ai-latency-visible",

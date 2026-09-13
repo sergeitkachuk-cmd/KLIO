@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { readBoundedJson, RequestBodyError } from "../../../_lib/request-body";
 import { accounts } from "../../../../../db/schema";
 import { safeReturnPath } from "../../../_lib/safe-return-path";
 import { VK_USER_INFO_URL, vkOAuthConfigured, type VkUserInfo } from "../../../_lib/vk-oauth";
@@ -23,12 +24,13 @@ export async function POST(request: Request) {
       return Response.json({ error: "Вход через VK временно недоступен." }, { status: 503 });
     }
 
-    const payload = await request.json().catch(() => null) as SessionPayload | null;
+    const payload = await readBoundedJson(request) as SessionPayload;
     const accessToken = typeof payload?.accessToken === "string" ? payload.accessToken.trim() : "";
     const returnTo = safeReturnPath(typeof payload?.returnTo === "string" ? payload.returnTo : null);
     if (!accessToken) return Response.json({ error: "Не удалось войти через VK." }, { status: 400 });
 
     const infoResponse = await fetch(VK_USER_INFO_URL, {
+      signal: AbortSignal.timeout(15_000),
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
@@ -75,6 +77,10 @@ export async function POST(request: Request) {
     await createSiteSession(email);
     return Response.json({ ok: true, returnTo });
   } catch (error) {
+    if (error instanceof RequestBodyError) return Response.json({ error: error.message }, { status: error.status });
+    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+      return Response.json({ error: "VK не ответил вовремя. Попробуйте войти ещё раз." }, { status: 504 });
+    }
     return workspaceErrorResponse(error);
   }
 }
