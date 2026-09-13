@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { invoices } from "../../../../../db/schema";
+import { readBoundedJson, RequestBodyError } from "../../../_lib/request-body";
 import { ensureAccount, getWorkspaceDb, WorkspaceAccessError, workspaceIdentity } from "../../../_lib/workspace-account";
 import { discoverTochkaIds, tochkaRequest, TochkaConfigError } from "../../../_lib/tochka";
 import { requireAdminUser } from "../../../_lib/admin";
@@ -20,8 +21,8 @@ function dateInDays(days: number) {
 export async function POST(request: Request) {
   try {
     const user = await workspaceIdentity();
+    const input = await readBoundedJson(request, 4096);
     await ensureAccount(user);
-    const input = await request.json().catch(() => ({}));
     const requestedPlanId = typeof input?.planId === "string" ? input.planId : "";
     const isTestInvoice = requestedPlanId === TEST_PLAN_ID;
     const planId = requestedPlanId as PlanId;
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Неизвестный тариф." }, { status: 400 });
     }
 
-    const buyer = input?.buyer && typeof input.buyer === "object" ? input.buyer : {};
+    const buyer = input.buyer && typeof input.buyer === "object" && !Array.isArray(input.buyer) ? input.buyer as Record<string, unknown> : {};
     const type = buyer.type === "ip" ? "ip" : "company";
     const name = text(buyer.name);
     const inn = text(buyer.inn, 20);
@@ -101,6 +102,7 @@ export async function POST(request: Request) {
     });
     return Response.json({ documentId, invoiceNumber: documentNumber, paymentPurpose, invoiceUrl: `/api/payments/tochka/invoice/${encodeURIComponent(documentId)}`, amount, planId: isTestInvoice ? TEST_PLAN_ID : planId, billing });
   } catch (error) {
+    if (error instanceof RequestBodyError) return Response.json({ error: error.message }, { status: error.status });
     if (error instanceof WorkspaceAccessError || error instanceof TochkaConfigError) return Response.json({ error: error.message }, { status: error instanceof WorkspaceAccessError ? error.status : 503 });
     console.error("Tochka invoice failed");
     return Response.json({ error: "Не удалось создать счёт." }, { status: 502 });

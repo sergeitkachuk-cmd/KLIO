@@ -9,7 +9,7 @@ function load(path, globals = {}) {
   vm.runInNewContext(ts.transpileModule(readFileSync(new URL(path, import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, { exports, Response, TextDecoder, Uint8Array, setTimeout, clearTimeout, ...globals });
   return exports;
 }
-for (const [path, method] of [["reconcile", "POST"], ["invoice/status", "POST"], ["invoice/list", "DELETE"]]) {
+for (const [path, method] of [["create", "POST"], ["invoice", "POST"], ["reconcile", "POST"], ["invoice/status", "POST"], ["invoice/list", "DELETE"]]) {
   test(`${path} rejects malformed and oversized bodies before DB operations`, async () => {
     const body = load("../app/api/_lib/request-body.ts");
     const route = load(`../app/api/payments/tochka/${path}/route.ts`, { require: name => {

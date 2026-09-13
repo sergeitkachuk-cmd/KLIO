@@ -1,29 +1,24 @@
 ﻿import { workspaceIdentity, WorkspaceAccessError } from "../../../_lib/workspace-account";
 import { discoverTochkaIds, extractOperationId, extractPaymentUrl, tochkaRequest, TochkaConfigError } from "../../../_lib/tochka";
 import { eq } from "drizzle-orm";
+import { readBoundedJson, RequestBodyError } from "../../../_lib/request-body";
 import { isPlanId, type PlanId } from "../../../../plans";
 import { payments } from "../../../../../db/schema";
 import { ensureAccount } from "../../../_lib/workspace-account";
 import { getWorkspaceDb } from "../../../_lib/workspace-account";
-import { isBillingPeriod, periodAmount, billingDescription } from "../../../../billing-pricing";
+import { isBillingPeriod, periodAmount, billingDescription, PLAN_PRICES } from "../../../../billing-pricing";
 import { PAYMENT_LINK_TTL_MINUTES } from "../../../../payment-link";
-
-const PRICES: Record<Exclude<PlanId, "trial">, { monthly: number; yearly: number; name: string }> = {
-  start: { monthly: 1190, yearly: 950, name: "Старт" },
-  pro: { monthly: 2750, yearly: 2200, name: "Профи" },
-  agency: { monthly: 6590, yearly: 5290, name: "Агентство" },
-};
 
 export async function POST(request: Request) {
   try {
     const user = await workspaceIdentity();
+    const input = await readBoundedJson(request, 4096);
     await ensureAccount(user);
-    const input = await request.json().catch(() => ({}));
     const planId = input?.planId as PlanId;
     const mode = input?.mode === "card" ? "card" : "sbp";
     const billing = isBillingPeriod(input?.billing) ? input.billing : "monthly";
-    if (!isPlanId(planId) || planId === "trial" || !PRICES[planId]) return Response.json({ error: "Неизвестный тариф." }, { status: 400 });
-    const price = PRICES[planId];
+    if (!isPlanId(planId) || planId === "trial" || !PLAN_PRICES[planId]) return Response.json({ error: "Неизвестный тариф." }, { status: 400 });
+    const price = PLAN_PRICES[planId];
     const amount = periodAmount(price.monthly, price.yearly, billing);
     const { customerCode, merchantId } = await discoverTochkaIds();
     const baseUrl = process.env.APP_BASE_URL?.trim() || new URL(request.url).origin;
@@ -82,6 +77,7 @@ export async function POST(request: Request) {
     if (operationId) await db.update(payments).set({ operationId, updatedAt: new Date().toISOString() }).where(eq(payments.id, paymentLinkId));
     return Response.json({ paymentUrl, paymentLinkId, planId, amount, billing, mode });
   } catch (error) {
+    if (error instanceof RequestBodyError) return Response.json({ error: error.message }, { status: error.status });
     if (error instanceof WorkspaceAccessError || error instanceof TochkaConfigError) return Response.json({ error: error.message }, { status: error instanceof WorkspaceAccessError ? error.status : 503 });
     console.error("Tochka payment link failed");
     return Response.json({ error: "Не удалось создать платёжную ссылку." }, { status: 502 });
