@@ -16,6 +16,6 @@ export async function GET(_request: Request, context: { params: Promise<{ docume
     return new Response(response.body, { status: 200, headers: { "Content-Type": response.headers.get("content-type") || "application/pdf", "Content-Disposition": response.headers.get("content-disposition") || "attachment; filename=klio-upd.pdf", "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof WorkspaceAccessError || error instanceof TochkaConfigError) return Response.json({ error: error.message }, { status: error instanceof WorkspaceAccessError ? error.status : 503 });
-    return Response.json({ error: error instanceof Error ? error.message : "Не удалось скачать УПД." }, { status: 502 });
+    return Response.json({ error: "Не удалось скачать УПД." }, { status: 502 });
   }
 }

@@ -400,6 +400,6 @@ export function workspaceErrorResponse(error: unknown) {
   }
   // Do not log the complete database connection error: postgres may include
   // DATABASE_URL (including its password) in the error object.
-  console.error("Workspace persistence failed", error instanceof Error ? error.message : "unknown error");
+  console.error("Workspace persistence failed");
   return Response.json({ error: "Не удалось сохранить данные кабинета." }, { status: 500 });
 }

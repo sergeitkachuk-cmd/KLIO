@@ -102,8 +102,8 @@ export async function POST(request: Request) {
     return Response.json({ documentId, invoiceNumber: documentNumber, paymentPurpose, invoiceUrl: `/api/payments/tochka/invoice/${encodeURIComponent(documentId)}`, amount, planId: isTestInvoice ? TEST_PLAN_ID : planId, billing });
   } catch (error) {
     if (error instanceof WorkspaceAccessError || error instanceof TochkaConfigError) return Response.json({ error: error.message }, { status: error instanceof WorkspaceAccessError ? error.status : 503 });
-    console.error("Tochka invoice failed", error instanceof Error ? error.message : "unknown error");
-    return Response.json({ error: error instanceof Error ? error.message : "Не удалось создать счёт." }, { status: 502 });
+    console.error("Tochka invoice failed");
+    return Response.json({ error: "Не удалось создать счёт." }, { status: 502 });
   }
 }
 

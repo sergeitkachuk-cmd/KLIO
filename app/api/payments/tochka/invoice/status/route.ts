@@ -120,7 +120,7 @@ export async function POST(request: Request) {
     return Response.json({ status: paymentStatus, invoiceId: invoice.id, closingDocumentId, closingSentAt, closingUrl: `/api/payments/tochka/closing/${encodeURIComponent(closingDocumentId)}` });
   } catch (error) {
     if (error instanceof WorkspaceAccessError || error instanceof TochkaConfigError) return Response.json({ error: error.message }, { status: error instanceof WorkspaceAccessError ? error.status : 503 });
-    console.error("Tochka invoice status failed", error instanceof Error ? error.message : "unknown error");
-    return Response.json({ error: error instanceof Error ? error.message : "Не удалось проверить счёт." }, { status: 502 });
+    console.error("Tochka invoice status failed");
+    return Response.json({ error: "Не удалось проверить счёт." }, { status: 502 });
   }
 }

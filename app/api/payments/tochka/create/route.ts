@@ -83,7 +83,7 @@ export async function POST(request: Request) {
     return Response.json({ paymentUrl, paymentLinkId, planId, amount, billing, mode });
   } catch (error) {
     if (error instanceof WorkspaceAccessError || error instanceof TochkaConfigError) return Response.json({ error: error.message }, { status: error instanceof WorkspaceAccessError ? error.status : 503 });
-    console.error("Tochka payment link failed", error instanceof Error ? error.message : "unknown error");
-    return Response.json({ error: error instanceof Error ? error.message : "Не удалось создать платёжную ссылку." }, { status: 502 });
+    console.error("Tochka payment link failed");
+    return Response.json({ error: "Не удалось создать платёжную ссылку." }, { status: 502 });
   }
 }
