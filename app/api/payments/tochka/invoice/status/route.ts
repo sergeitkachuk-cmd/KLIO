@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { claimInvoiceClosing } from "../../../../_lib/invoice-closing";
 import { readBoundedJson, RequestBodyError } from "../../../../_lib/request-body";
 import { accounts, invoices } from "../../../../../../db/schema";
 import { getWorkspaceDb, WorkspaceAccessError, workspaceIdentity } from "../../../../_lib/workspace-account";
@@ -87,6 +88,11 @@ export async function POST(request: Request) {
     const subscriptionPlanId = invoice.planId === "test" ? "start" : invoice.planId;
     const subscriptionName = `Подписка КЛИО. Цифровая редакция — тариф «${planRule(subscriptionPlanId).name}», ${billingDescription(invoice.billing as BillingPeriod)}`;
     const number = `UPD-${String(Date.now()).slice(-10)}`;
+    if (!await claimInvoiceClosing(invoice.id, user.email)) {
+      const [latest] = await db.select().from(invoices).where(and(eq(invoices.id, invoice.id), eq(invoices.ownerEmail, user.email))).limit(1);
+      if (latest?.closingDocumentId) return Response.json({ status: paymentStatus, invoiceId: invoice.id, closingDocumentId: latest.closingDocumentId, closingUrl: `/api/payments/tochka/closing/${encodeURIComponent(latest.closingDocumentId)}` });
+      return Response.json({ error: "Создание УПД уже запускалось. Документ ещё формируется либо требуется сверка с банком. Повторная отправка остановлена, чтобы не создать дубликат. Если документ не появился, обратитесь в поддержку." }, { status: 409 });
+    }
     const response = await tochkaRequest<unknown>("/invoice/v1.0/closing-documents", {
       method: "POST",
       body: JSON.stringify({ Data: {
@@ -105,17 +111,20 @@ export async function POST(request: Request) {
     });
     const closingDocumentId = findString(response, "documentId");
     if (!closingDocumentId) throw new Error("Точка не вернула идентификатор УПД.");
+    // Save the bank receipt before email delivery. A later mail failure must
+    // not discard the document or permit another creation request.
+    await db.update(invoices).set({ closingDocumentId, closingStatus: "created", updatedAt: now }).where(and(eq(invoices.id, invoice.id), eq(invoices.ownerEmail, user.email)));
     let closingSentAt: string | null = null;
     try {
       await tochkaRequest(`/invoice/v1.0/closing-documents/${encodeURIComponent(customerCode)}/${encodeURIComponent(closingDocumentId)}/email`, {
         method: "POST", body: JSON.stringify({ Data: { email: invoice.buyerEmail } }),
       });
       closingSentAt = now;
-    } catch (sendError) {
+    } catch {
       // The PDF remains available even if the bank's email delivery is
       // temporarily unavailable; do not turn a successfully created UPD into
       // a failed reconciliation.
-      console.error("Tochka closing document email failed", sendError instanceof Error ? sendError.message : "unknown error");
+      console.error("Tochka closing document email failed");
     }
     await db.update(invoices).set({ paymentStatus, paidAt: invoice.paidAt || now, closingDocumentId, closingStatus: "created", closingSentAt, updatedAt: now }).where(eq(invoices.id, invoice.id));
     return Response.json({ status: paymentStatus, invoiceId: invoice.id, closingDocumentId, closingSentAt, closingUrl: `/api/payments/tochka/closing/${encodeURIComponent(closingDocumentId)}` });
