@@ -40,8 +40,10 @@ export async function GET(request: Request) {
   }
 
   try {
+    const signal = AbortSignal.timeout(20_000);
     const redirectUri = new URL("/api/auth/vk/callback", baseUrl).href;
     const tokenResponse = await fetch(VK_TOKEN_URL, {
+      signal,
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
@@ -59,6 +61,7 @@ export async function GET(request: Request) {
     if (!accessToken) throw new Error("token exchange returned no access_token");
 
     const infoResponse = await fetch(VK_USER_INFO_URL, {
+      signal,
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
