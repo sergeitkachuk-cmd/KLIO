@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { accounts, emailVerifications } from "../../../db/schema";
 
@@ -15,10 +15,14 @@ export async function createEmailVerification(email: string): Promise<string> {
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + VERIFICATION_TTL_MS);
   const db = getDb();
-  await db.insert(emailVerifications).values({
+  await db.transaction(async (tx) => {
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`email-verification:${email}`}, 0))`);
+  await tx.delete(emailVerifications).where(eq(emailVerifications.email, email));
+  await tx.insert(emailVerifications).values({
     id: hashToken(token),
     email,
     expiresAt: expiresAt.toISOString(),
+  });
   });
   return token;
 }
@@ -26,14 +30,19 @@ export async function createEmailVerification(email: string): Promise<string> {
 // Validates and burns a verification token (single use). On success, marks
 // the matching account as verified and returns its email; otherwise null.
 export async function consumeEmailVerification(token: string): Promise<string | null> {
+  if (!/^[a-f0-9]{64}$/.test(token)) return null;
   const db = getDb();
   const tokenHash = hashToken(token);
-  const [record] = await db.select().from(emailVerifications).where(eq(emailVerifications.id, tokenHash)).limit(1);
+  return db.transaction(async (tx) => {
+  // DELETE RETURNING gives simultaneous consumers a single winner. A failed
+  // account update rolls back token consumption, allowing a safe retry.
+  const [record] = await tx.delete(emailVerifications).where(eq(emailVerifications.id, tokenHash)).returning();
   if (!record) return null;
 
-  await db.delete(emailVerifications).where(eq(emailVerifications.id, tokenHash));
-  if (new Date(record.expiresAt).getTime() < Date.now()) return null;
+  const expiresAt = Date.parse(record.expiresAt);
+  if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return null;
 
-  await db.update(accounts).set({ emailVerified: true }).where(eq(accounts.email, record.email));
-  return record.email;
+  const [updated] = await tx.update(accounts).set({ emailVerified: true }).where(eq(accounts.email, record.email)).returning({ email: accounts.email });
+  return updated?.email ?? null;
+  });
 }
