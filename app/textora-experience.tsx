@@ -6114,7 +6114,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         </div>
         <div className="hero-visual">
           <div className="visual-orbit"/>
-          <div className="cover-story" aria-label="Пример готового материала"><span className="story-no">01</span><span className="story-label">Материал номера</span><h2>Как превратить<br/>поисковый запрос<br/><i>в историю бренда</i></h2><p>Аналитика на входе. Редакционный уровень на выходе.</p></div>
+          <div className="cover-story" aria-label="Пример готового материала"><span className="story-no">01</span><span className="story-label">Материал номера</span><h2>Хорошие бренды<br/>говорят<br/><i>постоянно</i></h2><p>Аналитика на входе. Редакционный уровень на выходе.</p></div>
           <div className="floating-leaf leaf-one"><small>ГОЛОС БРЕНДА</small><b>Точно<br/>и узнаваемо</b><span>Профиль изучен ✓</span></div>
           <div className="floating-leaf leaf-two"><span>ПОИСКОВЫЙ СПРОС</span><b>8 420</b><small>запросов в месяц</small></div>
         </div>
