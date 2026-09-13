@@ -320,6 +320,7 @@ export async function POST(request: Request) {
     const targetLength = material.body.trim().length;
 
     material = { ...material, editorialComment: [material.editorialComment, researchEditorialNote(webResearch)].filter(Boolean).join("\n\n") };
+    const resultBase = { material, mode: "ai", model: usedModel, format, tone, targetLength: brief.targetLength, sources: { research: researchProvenance(webResearch) } };
     const usage = await recordGeneration({
       brandId,
       format,
@@ -333,7 +334,7 @@ export async function POST(request: Request) {
       keywords: "",
       tone,
       targetLength,
-    });
+    }, { id: job.id, result: resultBase });
 
     // The client's length/keyword coverage widgets are shared with the
     // Advanced generator and default to whatever was last set there. Quick
@@ -342,7 +343,7 @@ export async function POST(request: Request) {
     // inferred from the free-text prompt, before generation) so the client
     // can sync its display instead of comparing this result against
     // leftover Advanced-tab state.
-    const result = { material, mode: "ai", model: usedModel, format, tone, targetLength: brief.targetLength, sources: { research: researchProvenance(webResearch) }, usage };
+    const result = { ...resultBase, usage };
     // The material is already saved. A bookkeeping failure must not turn
     // success into a client retry of another paid generation.
     await completeAsyncJob(job.id, result).catch(() => console.error("Quick generation receipt could not be finalized"));

@@ -1,5 +1,5 @@
 import { and, eq, isNull, lt, sql } from "drizzle-orm";
-import { accounts, brands, generations } from "../../../db/schema";
+import { accounts, brands, generations, asyncJobs } from "../../../db/schema";
 import { getDb } from "../../../db";
 import type { ChatGPTUser } from "../../chatgpt-auth";
 import { getCurrentUser } from "../../identity";
@@ -318,7 +318,7 @@ export type ArchiveMaterial = {
   targetLength: number;
 };
 
-export async function recordGeneration(material: ArchiveMaterial) {
+export async function recordGeneration(material: ArchiveMaterial, job?: { id: string; result: Record<string, unknown> }) {
   if (!await workspaceDatabaseAvailable()) return null;
   const user = await workspaceIdentity();
   const db = await getWorkspaceDb();
@@ -326,6 +326,14 @@ export async function recordGeneration(material: ArchiveMaterial) {
   assertPlanActive(current);
   const rule = planRule(current.planId);
   return db.transaction(async (tx) => {
+  if (job) {
+    // Lock the still-active owned task before any quota debit or archive
+    // insert. Expiration and another completion contend on this same row.
+    const [active] = await tx.update(asyncJobs).set({ updatedAt: sql`CURRENT_TIMESTAMP` }).where(and(
+      eq(asyncJobs.id, job.id), eq(asyncJobs.ownerEmail, user.email), eq(asyncJobs.status, "processing"),
+    )).returning({ id: asyncJobs.id });
+    if (!active) throw new WorkspaceAccessError("Задание уже завершено или закрыто. Повторное сохранение не выполнено.", 409);
+  }
   const [updated] = await tx.update(accounts).set({
     generationsUsed: sql`${accounts.generationsUsed} + 1`,
     lifetimeGenerationsUsed: sql`${accounts.lifetimeGenerationsUsed} + 1`,
@@ -368,7 +376,9 @@ export async function recordGeneration(material: ArchiveMaterial) {
   }).returning();
 
   const [{ count: brandCount = 0 } = { count: 0 }] = await tx.select({ count: sql<number>`count(*)` }).from(brands).where(eq(brands.ownerEmail, user.email));
-  return { account: accountSummary(updated, Number(brandCount)), archive };
+  const usage = { account: accountSummary(updated, Number(brandCount)), archive };
+  if (job) await tx.update(asyncJobs).set({ status: "done", resultJson: JSON.stringify({ ...job.result, usage }), updatedAt: sql`CURRENT_TIMESTAMP` }).where(and(eq(asyncJobs.id, job.id), eq(asyncJobs.ownerEmail, user.email)));
+  return usage;
   });
 }
 

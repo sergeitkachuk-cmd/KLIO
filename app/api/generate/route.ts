@@ -589,7 +589,7 @@ const MATERIAL_GENERATION_TIMEOUT_MS = 110_000;
 // Throws AiCallError/AiResponseError/WorkspaceAccessError on failure; never
 // returns a Response itself, since there is no live request to answer by
 // the time most of this runs.
-async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>, ownerEmail: string) {
+async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>, ownerEmail: string, jobId: string) {
   // Keep the whole job below its own UX boundary. Research and website
   // reading happen in parallel before the single full-quality draft; any
   // repair pass must fit inside the same deadline.
@@ -908,6 +908,7 @@ async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>,
   }
 
   material = { ...material, editorialComment: [material.editorialComment, researchEditorialNote(webResearch)].filter(Boolean).join("\n\n") };
+  const result = { material, mode: "ai" as const, model: usedModel, coverage: coverageSummary(material, input), sources: { website: website.status, geography: input.geography.map((item) => item.label), research: researchProvenance(webResearch) } };
   const usage = await recordGeneration({
     brandId: input.brandId,
     format: input.format,
@@ -921,8 +922,8 @@ async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>,
     keywords: input.keywords,
     tone: input.tone,
     targetLength: input.length,
-  });
-  return { material, mode: "ai" as const, model: usedModel, coverage: coverageSummary(material, input), sources: { website: website.status, geography: input.geography.map((item) => item.label), research: researchProvenance(webResearch) }, usage };
+  }, { id: jobId, result });
+  return { ...result, usage };
 }
 
 // Runs the generation in the background and writes the outcome to the job
@@ -932,7 +933,7 @@ async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>,
 async function runMaterialGenerationJob(jobId: string, input: ReturnType<typeof normalizePayload>, ownerEmail: string) {
   try {
     await markAsyncJobProcessing(jobId);
-    const payload = await runMaterialGeneration(input, ownerEmail);
+    const payload = await runMaterialGeneration(input, ownerEmail, jobId);
     await completeAsyncJob(jobId, payload);
   } catch (error) {
     const message = error instanceof WorkspaceAccessError || error instanceof AiResponseError || error instanceof AiCallError
