@@ -174,10 +174,12 @@ test("generation passes share one deadline instead of resetting the budget", () 
   assert.throws(() => budget.timeoutMs(20_000), { status: 504 });
 });
 
-function routeHarness(h, quick = false) {
+function routeHarness(h, quick = false, options = {}) {
   const records = [];
   const jobs = [];
   const prefix = quick ? "../../_lib/" : "../_lib/";
+  let quotaChecks = 0;
+  class TestWorkspaceAccessError extends Error {}
   class TestAiResponseError extends Error {
     constructor(message, status = 502) { super(message); this.status = status; }
   }
@@ -189,17 +191,17 @@ function routeHarness(h, quick = false) {
     [`${prefix}research-provenance`]: loadTs("app/api/_lib/research-provenance.ts", h.globals),
     [`${prefix}rate-limit`]: { isAiRateLimited: () => false },
     [`${prefix}workspace-account`]: {
-      assertGenerationQuotaAvailable: async () => {},
+      assertGenerationQuotaAvailable: async () => { quotaChecks++; if (options.quotaLost && quotaChecks === 2) throw new TestWorkspaceAccessError("quota changed"); },
       workspaceIdentity: async () => ({ email: "test@example.invalid" }),
       recordGeneration: async (record) => { records.push(record); return { archive: { id: "test" } }; },
-      WorkspaceAccessError: class extends Error {},
+      WorkspaceAccessError: TestWorkspaceAccessError,
       workspaceErrorResponse: (error) => Response.json({ error: error.message }, { status: 403 }),
     },
     [`${prefix}website-context`]: { readWebsiteContext: async () => ({ status: "not_provided" }) },
     [`${prefix}tavily`]: { researchMaterialWeb: async () => ({ results: Array.from({ length: 5 }, (_, i) => ({ title: `Source ${i}`, url: `https://example.invalid/${i}`, content: `Verified context ${i}` })) }) },
     [`${prefix}openai-response`]: { AiResponseError: TestAiResponseError },
     [`${prefix}async-jobs`]: {
-      claimAsyncJob: async () => ({ id: "test-job", reused: false }),
+      claimAsyncJob: async (kind) => { assert.equal(kind, "material_generation"); return { id: "test-job", reused: Boolean(options.reused) }; },
       markAsyncJobProcessing: async () => {},
       completeAsyncJob: async (id, payload) => { jobs.push({ id, status: "done", payload }); },
       failAsyncJob: async (id, errorMessage) => { jobs.push({ id, status: "failed", errorMessage }); },
@@ -217,6 +219,36 @@ async function waitForJob(route) {
   }
   throw new Error("Background generation did not settle in the test harness");
 }
+
+test("quick duplicate does not start another provider call or fail the existing job", async () => {
+  const h = harness(() => { throw new Error("must not call provider"); });
+  const route = routeHarness(h, true, { reused: true });
+  const response = await route.POST(new Request("https://example.invalid/api/generate/quick", { method: "POST", body: JSON.stringify({ prompt: "Напиши пост о приготовлении кофе" }) }));
+  assert.equal(response.status, 409);
+  assert.equal(route.records.length, 0);
+  assert.equal(route.jobs.length, 0);
+});
+
+test("an early quick provider error releases the owned job gate", async () => {
+  const h = harness(() => json({ output_text: "" }));
+  const route = routeHarness(h, true);
+  const response = await route.POST(new Request("https://example.invalid/api/generate/quick", { method: "POST", body: JSON.stringify({ prompt: "Напиши пост о приготовлении кофе" }) }));
+  assert.ok(response.status >= 400);
+  assert.equal(route.jobs.length, 1);
+  assert.equal(route.jobs[0].status, "failed");
+  assert.equal(route.records.length, 0);
+});
+
+test("quota lost before acquiring the generation gate prevents paid work in either mode", async () => {
+  for (const quick of [false, true]) {
+    const h = harness(() => { throw new Error("must not call provider"); });
+    const route = routeHarness(h, quick, { quotaLost: true });
+    const response = await route.POST(new Request("https://example.invalid/api/generate", { method: "POST", body: JSON.stringify(quick ? { prompt: "Напиши пост о приготовлении кофе" } : { topic: "Кофе", format: "social" }) }));
+    assert.equal(response.status, 403);
+    assert.equal(route.records.length, 0);
+    assert.equal(route.jobs[0].status, "failed");
+  }
+});
 
 test("every advanced format returns and records material with thinking and external research in one provider call", async () => {
   for (const [format, length] of [["seo", 5600], ["social", 1000], ["ads", 700], ["landing", 3500]]) {
@@ -279,6 +311,7 @@ test("quick generation supplies bounded research and keeps the draft when conden
   assert.ok(result.material.body.length <= 1150);
   assert.equal(h.calls.length, 2);
   assert.equal(route.records.length, 1);
+  assert.equal(route.jobs[0].status, "done");
   assert.ok(h.calls[1].body.input.includes("Verified context"));
   assert.ok(h.calls[1].body.input.includes("Verified context 4"));
   assert.equal(h.calls[1].body.reasoning.effort, "low");

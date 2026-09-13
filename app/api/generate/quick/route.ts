@@ -1,4 +1,6 @@
 import { assertGenerationQuotaAvailable, recordGeneration, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../../_lib/workspace-account";
+import { claimAsyncJob, markAsyncJobProcessing, completeAsyncJob, failAsyncJob } from "../../_lib/async-jobs";
+import { isAiRateLimited } from "../../_lib/rate-limit";
 import { researchEditorialNote, researchProvenance } from "../../_lib/research-provenance";
 import { AiCallError, callAiModel } from "../../_lib/ai-router";
 import { createGenerationBudget, materialOutputTokenBudget } from "../../_lib/generation-budget";
@@ -118,7 +120,9 @@ function normalizeBrief(parsed: Record<string, unknown>): QuickBrief {
 }
 
 export async function POST(request: Request) {
+  let ownedJobId: string | undefined;
   try {
+    if (isAiRateLimited(request, "generate", 4)) return Response.json({ error: "Слишком много запусков подряд. Подождите минуту и повторите." }, { status: 429 });
     const payload = await request.json() as QuickPayload;
     const prompt = typeof payload.prompt === "string" ? payload.prompt.trim().slice(0, 4000) : "";
     if (prompt.split(/\s+/).filter(Boolean).length < 4) {
@@ -136,6 +140,13 @@ export async function POST(request: Request) {
 
     const identity = await workspaceIdentity();
     const brandId = typeof payload.brandId === "string" ? payload.brandId : undefined;
+    // Share the same database-backed owner gate as advanced generation.
+    // An existing quick request must not be repeated by another HTTP caller.
+    const job = await claimAsyncJob("material_generation", identity.email, { mode: "quick", input: payload }, 120_000);
+    if (job.reused) return Response.json({ error: "Предыдущая генерация ещё выполняется. Дождитесь результата." }, { status: 409 });
+    ownedJobId = job.id;
+    await markAsyncJobProcessing(job.id);
+    await assertGenerationQuotaAvailable(brandId);
     // Only present when the workspace's "Использовать бренд" toggle is on
     // (the client omits `brand` entirely otherwise) — Quick mode stays just
     // as usable for one-off topics unrelated to any brand.
@@ -331,10 +342,19 @@ export async function POST(request: Request) {
     // inferred from the free-text prompt, before generation) so the client
     // can sync its display instead of comparing this result against
     // leftover Advanced-tab state.
-    return Response.json({ material, mode: "ai", model: usedModel, format, tone, targetLength: brief.targetLength, sources: { research: researchProvenance(webResearch) }, usage });
+    const result = { material, mode: "ai", model: usedModel, format, tone, targetLength: brief.targetLength, sources: { research: researchProvenance(webResearch) }, usage };
+    // The material is already saved. A bookkeeping failure must not turn
+    // success into a client retry of another paid generation.
+    await completeAsyncJob(job.id, result).catch(() => console.error("Quick generation receipt could not be finalized"));
+    ownedJobId = undefined;
+    return Response.json(result);
   } catch (error) {
     if (error instanceof WorkspaceAccessError) return workspaceErrorResponse(error);
     console.error("Quick generation route failed", error);
     return Response.json({ error: "Не удалось сформировать материал. Попробуйте ещё раз." }, { status: 500 });
+  } finally {
+    // Includes early error responses from brief/material generation, not
+    // only exceptions caught by the outer handler.
+    if (ownedJobId) await failAsyncJob(ownedJobId, "Быстрая генерация не завершена.").catch(() => console.error("Quick generation failure could not be recorded"));
   }
 }

@@ -968,6 +968,12 @@ export async function POST(request: Request) {
     const identity = await workspaceIdentity();
     const job = await claimAsyncJob("material_generation", identity.email, input, MATERIAL_GENERATION_TIMEOUT_MS + 10_000);
     if (job.reused) return Response.json({ jobId: job.id, reused: true });
+    // Quota may have changed while waiting for the owner's job gate.
+    try { await assertGenerationQuotaAvailable(input.brandId); }
+    catch (error) {
+      await failAsyncJob(job.id, "Не удалось подтвердить доступную квоту.").catch(() => {});
+      throw error;
+    }
     // Intentionally not awaited — see async-jobs.ts for why this keeps
     // running after the response below is sent on this host.
     void runMaterialGenerationJob(job.id, input, identity.email);
