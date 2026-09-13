@@ -43,10 +43,33 @@ type TelegramApiResponse = {
 // portable way to pin just this request family, so use the native client for
 // Telegram only. This is still one request: no hidden resend that could
 // duplicate a post when Telegram received it but its response was lost.
+//
+// That connect-timeout class of failure kept recurring even with the pin
+// above (site owner: publish still failing, both scheduled and "Опубликовать
+// сейчас", weeks after this fix first shipped) — the network path to
+// api.telegram.org is evidently still unreliable from this host sometimes,
+// not a one-time bug. send()'s catch below used to treat every failure here
+// identically as "maybe Telegram got it, don't auto-retry" — safe, but it
+// meant a routine connect blip needed a person to notice and press retry by
+// hand every single time, on top of whatever's actually flaky about the
+// route. A connect-phase failure specifically (rejected here before the
+// socket ever connects) means Telegram's server never saw this request at
+// all, so unlike a failure after connecting, it's provably safe to let the
+// cron's own retry loop pick back up automatically — see the `connected`
+// flag threaded through the rejection below and read in send()'s catch.
+class TelegramTransportError extends Error {
+  connected: boolean;
+  constructor(message: string, connected: boolean, options?: { cause?: unknown }) {
+    super(message, options);
+    this.connected = connected;
+  }
+}
+
 function postToTelegramApi(url: string, body: object, signal: AbortSignal): Promise<TelegramApiResponse> {
   const endpoint = new URL(url);
   const payload = JSON.stringify(body);
   return new Promise((resolve, reject) => {
+    let connected = false;
     const request = httpsRequest({
       protocol: endpoint.protocol,
       hostname: endpoint.hostname,
@@ -68,10 +91,16 @@ function postToTelegramApi(url: string, body: object, signal: AbortSignal): Prom
         chunks.push(Buffer.from(chunk));
       });
       response.on("end", () => resolve({ status: response.statusCode ?? 0, body: Buffer.concat(chunks).toString("utf8") }));
-      response.on("error", reject);
+      response.on("error", (error) => reject(new TelegramTransportError(error.message, true, { cause: error })));
     });
-    request.setTimeout(25_000, () => request.destroy(new Error("Telegram API connection timed out after 25 seconds.")));
-    request.on("error", reject);
+    // Once the socket actually connects, a subsequent failure (response
+    // timeout, reset mid-read) can no longer prove Telegram never received
+    // the request — only the pre-connect window can.
+    request.on("socket", (socket) => {
+      socket.once("connect", () => { connected = true; });
+    });
+    request.setTimeout(25_000, () => request.destroy(new TelegramTransportError("Telegram API connection timed out after 25 seconds.", connected)));
+    request.on("error", (error) => reject(error instanceof TelegramTransportError ? error : new TelegramTransportError(error.message, connected, { cause: error })));
     request.end(payload);
   });
 }
@@ -117,8 +146,22 @@ async function publishToTelegram(creds: TelegramCredentials, text: string, image
       console.error("Telegram publish request failed", {
         message: error instanceof Error ? error.message : String(error),
         cause: cause instanceof Error ? cause.message : undefined,
+        connected: error instanceof TelegramTransportError ? error.connected : "unknown",
       });
-      throw new PublishError("Telegram не подтвердил результат отправки. Автоматический повтор остановлен: сначала проверьте канал, чтобы не создать дубликат.", false);
+      // Only a failure after the socket connected is genuinely ambiguous
+      // (Telegram may have received and processed the request before the
+      // response was lost) - that case alone stops automatic retries and
+      // asks for a manual channel check. A failure before any connection
+      // was ever established provably never reached Telegram, so the
+      // cron's own retry loop can safely pick this row back up on its next
+      // pass instead of it silently sitting "failed" until someone notices.
+      const connected = !(error instanceof TelegramTransportError) || error.connected;
+      throw new PublishError(
+        connected
+          ? "Telegram не подтвердил результат отправки. Автоматический повтор остановлен: сначала проверьте канал, чтобы не создать дубликат."
+          : "Telegram временно недоступен: не удалось установить соединение. Публикация повторится автоматически.",
+        !connected,
+      );
     }
     const payload = (() => {
       try { return JSON.parse(response.body); } catch { return null; }
