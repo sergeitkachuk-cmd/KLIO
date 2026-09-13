@@ -12,6 +12,7 @@ import { FOUNDATION_FIELDS, VOICE_FIELDS, mergeProfileFill, missingVoiceFoundati
 import { russianGeoTree } from "./geo-data";
 import { ADAPTATION_PLANS, FORMAT_PLANS, TONE_PLANS } from "./content-plans";
 import { PLAN_RULES, type PlanId } from "./plans";
+import { BILLING_PERIODS, PLAN_PRICES, periodAmount, type BillingPeriod } from "./billing-pricing";
 
 // startViewTransition isn't in every TS lib.dom.d.ts snapshot yet and
 // isn't implemented in every browser either (Safari/Firefox caught up
@@ -1022,36 +1023,51 @@ const faq = [
   },
 ];
 
+// Prices themselves come from PLAN_PRICES (billing-pricing.ts) — the same
+// source the account cabinet and /invoice use — so this marketing copy can
+// never drift from what a customer is actually charged there. Only the
+// landing-page-only fields (description, limit, features) live here.
 const pricing = [
   {
-    name: "Старт",
+    name: PLAN_PRICES.start.name,
     description: "Для эксперта и небольшого проекта",
-    monthly: 1190,
-    yearly: 950,
+    monthly: PLAN_PRICES.start.monthly,
+    yearly: PLAN_PRICES.start.yearly,
     limit: "25 материалов · 5 исследований · 100 AI‑правок",
     planId: "start" as PlanId,
     features: ["Все форматы контента", "1 профиль бренда", "1 пользователь", "Семантика, контент‑план и конкуренты", "Редакторы КЛИО, материалы и экспорт"],
   },
   {
-    name: "Профи",
+    name: PLAN_PRICES.pro.name,
     description: "Для маркетолога и контент‑команды",
-    monthly: 2750,
-    yearly: 2200,
+    monthly: PLAN_PRICES.pro.monthly,
+    yearly: PLAN_PRICES.pro.yearly,
     limit: "125 материалов · 20 исследований · 500 AI‑правок",
     planId: "pro" as PlanId,
     features: ["Все форматы контента", "5 профилей бренда", "1 пользователь", "Семантика, контент‑план и конкуренты", "Редакторы КЛИО, материалы и экспорт"],
   },
   {
-    name: "Агентство",
+    name: PLAN_PRICES.agency.name,
     description: "Для нескольких клиентов и процессов",
-    monthly: 6590,
-    yearly: 5290,
+    monthly: PLAN_PRICES.agency.monthly,
+    yearly: PLAN_PRICES.agency.yearly,
     planId: "agency" as PlanId,
     limit: "300 материалов · 60 исследований · 1 000 AI‑правок",
     features: ["Все форматы контента", "10 профилей бренда", "1 пользователь", "Семантика, контент‑план и конкуренты", "Редакторы КЛИО, материалы и экспорт"],
     popular: true,
   },
 ];
+
+// Short labels for the 4-way billing-period toggle — BILLING_PERIODS'
+// own .label ("3 месяца", "12 месяцев"...) reads fine as a single dropdown
+// option (see account/billing-actions.tsx) but is too wide for four
+// side-by-side segments here.
+const BILLING_TOGGLE_LABELS: Record<BillingPeriod, string> = {
+  monthly: "Месяц",
+  quarterly: "3 мес",
+  halfyear: "6 мес",
+  annual: "Год",
+};
 
 const marqueeItems = ["SEO‑СТАТЬИ", "ПОСТЫ", "РЕКЛАМА", "КОНТЕНТ‑ПЛАН", "АНАЛИЗ КОНКУРЕНТОВ", "ПРОФИЛЬ БРЕНДА"];
 
@@ -2214,7 +2230,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [generationMode, setGenerationMode] = useState<GenerationMode>("example");
   const [generationError, setGenerationError] = useState("");
   const [toast, setToast] = useState("");
-  const [annual, setAnnual] = useState(false);
+  // All 4 real billing periods (1/3/6/12 months, 0/5/10/20% discount) —
+  // was just a monthly/annual boolean, which is where the landing page's
+  // pricing drifted from the account cabinet's actual picker (same
+  // BILLING_PERIODS import there, see billing-actions.tsx) and hid two
+  // real, cheaper options (3 and 6 months) from a visitor comparing plans
+  // before ever reaching the cabinet.
+  const [billing, setBilling] = useState<BillingPeriod>("monthly");
   // Bumped on every completed generation (quick, advanced, or from
   // semantics/competitors) so the result-panel scroll effect below can
   // tell "a fresh result just landed" apart from every other re-render.
@@ -6181,8 +6203,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     </section>
 
     <section className="pricing section" id="pricing">
-      <div className="section-heading pricing-heading"><div><p className="kicker">Глава 04 / Тарифы</p><h2>Выберите объём<br/><em>редакционной работы<span className="klio-mark-dot">.</span></em></h2></div><div className="billing-toggle" role="group" aria-label="Период оплаты"><button type="button" className={!annual ? "active" : ""} onClick={() => setAnnual(false)}>Ежемесячно</button><button type="button" className={annual ? "active" : ""} onClick={() => setAnnual(true)}>За год <span>−20%</span></button></div></div>
-      <p className="pricing-trial-note">Новый аккаунт начинается с бесплатного 48‑часового периода. Платный тариф можно выбрать и оплатить в личном кабинете.</p><div className="price-grid">{pricing.map((plan) => <article className={`price-card ${plan.popular ? "popular" : ""}`} key={plan.name}>{plan.popular && <span className="popular-label">Полный доступ</span>}<p className="price-index">КЛИО / {plan.name}</p><h3>{plan.name}</h3><p className="price-description">{plan.description}</p><div className="price"><strong>{(annual ? plan.yearly : plan.monthly).toLocaleString("ru-RU")} ₽</strong><span>/ месяц</span></div><small>{annual ? "при оплате за 12 месяцев" : "оплата помесячно"}</small><b className="plan-limit">{plan.limit}</b><ul>{plan.features.map((feature) => <li key={feature}><Icon name="check"/>{feature}</li>)}</ul><a className="trial-plan-button" href="/signup?return_to=%2Fworkspace">Начать бесплатный период</a></article>)}</div>
+      <div className="section-heading pricing-heading"><div><p className="kicker">Глава 04 / Тарифы</p><h2>Выберите объём<br/><em>редакционной работы<span className="klio-mark-dot">.</span></em></h2></div><div className="billing-toggle" role="group" aria-label="Период оплаты">{BILLING_PERIODS.map((period) => <button type="button" key={period.id} className={billing === period.id ? "active" : ""} onClick={() => setBilling(period.id)}>{BILLING_TOGGLE_LABELS[period.id]}{period.discount > 0 && <span>−{period.discount}%</span>}</button>)}</div></div>
+      <p className="pricing-trial-note">Новый аккаунт начинается с бесплатного 48‑часового периода. Платный тариф можно выбрать и оплатить в личном кабинете.</p><div className="price-grid">{pricing.map((plan) => { const period = BILLING_PERIODS.find((item) => item.id === billing) ?? BILLING_PERIODS[0]; const total = periodAmount(plan.monthly, plan.yearly, billing); const perMonth = Math.round(total / period.months); return <article className={`price-card ${plan.popular ? "popular" : ""}`} key={plan.name}>{plan.popular && <span className="popular-label">Полный доступ</span>}<p className="price-index">КЛИО / {plan.name}</p><h3>{plan.name}</h3><p className="price-description">{plan.description}</p><div className="price"><strong>{perMonth.toLocaleString("ru-RU")} ₽</strong><span>/ месяц</span></div><small>{billing === "monthly" ? "оплата помесячно" : `${total.toLocaleString("ru-RU")} ₽ при оплате за ${period.label}`}</small><b className="plan-limit">{plan.limit}</b><ul>{plan.features.map((feature) => <li key={feature}><Icon name="check"/>{feature}</li>)}</ul><a className="trial-plan-button" href="/signup?return_to=%2Fworkspace">Начать бесплатный период</a></article>; })}</div>
       <div className="pricing-single-cta"><a className="trial-plan-button" href="/signup?return_to=%2Fworkspace">Начать бесплатный период</a><p>Сначала попробуйте КЛИО бесплатно, а тариф выберите позже в личном кабинете.</p></div><div className="payment-note"><span>МИР</span><span>СБП</span><span>₽</span><p>Оплата российскими картами и по СБП · документы для юридических лиц</p></div>
     </section>
 

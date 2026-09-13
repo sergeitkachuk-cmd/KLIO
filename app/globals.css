@@ -3433,9 +3433,12 @@ textarea[data-autosize="true"] {
 
 .billing-toggle {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* 4 segments now (1/3/6/12 months), not 2 (month/year) - was
+     min(100%, 340px), sized for two wide buttons; widened so each of
+     the four has room for its label and discount badge. */
+  grid-template-columns: repeat(4, 1fr);
   justify-self: end;
-  width: min(100%, 340px);
+  width: min(100%, 460px);
   padding: 5px;
   border: 1px solid rgba(255, 255, 255, 0.78);
   border-radius: 16px;
@@ -3445,12 +3448,17 @@ textarea[data-autosize="true"] {
 }
 
 .billing-toggle button {
+  display: grid;
+  place-items: center;
+  gap: 2px;
   min-height: 45px;
+  padding: 4px 2px;
   border: 0;
   border-radius: 12px;
   background: transparent;
   font-size: 14px;
   font-weight: 620;
+  line-height: 1.2;
   cursor: pointer;
 }
 
@@ -3461,6 +3469,8 @@ textarea[data-autosize="true"] {
 
 .billing-toggle span {
   color: #a3d92f;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .price-grid {
