@@ -1801,6 +1801,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // prepared post instead of dropping them back onto an empty calendar.
   const [pubPendingDraft, setPubPendingDraft] = useState<{ title: string; body: string; generationId: string | null } | null>(null);
   const [pubImageUploadBusy, setPubImageUploadBusy] = useState(false);
+  const [pubImageUploadError, setPubImageUploadError] = useState("");
   // null = closed. `id` set means editing an already-scheduled row (single
   // channel, reassignable); `id` null means composing a new one, where
   // channelIds can hold several — one `publications` row gets created per
@@ -2096,16 +2097,21 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // editor and the publish pipeline never need to know which path a URL
   // came from.
   async function uploadPubImage(file: File) {
+    setPubImageUploadError("");
     setPubImageUploadBusy(true);
     try {
       const form = new FormData();
       form.append("file", file);
-      const response = await fetch("/api/uploads", { method: "POST", body: form });
+      const response = await fetch("/api/uploads", { method: "POST", body: form, signal: AbortSignal.timeout(60_000) });
       const payload = await safeJson(response) as { error?: string; url?: string };
       if (!response.ok || !payload.url) throw new Error(payload.error || "Не удалось загрузить картинку.");
       setPubEditor((current) => current && { ...current, imageUrl: payload.url as string });
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Не удалось загрузить картинку.");
+      const message = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")
+        ? "Загрузка картинки не завершилась за минуту. Проверьте соединение и попробуйте снова."
+        : error instanceof Error ? error.message : "Не удалось загрузить картинку.";
+      setPubImageUploadError(message);
+      showToast(message);
     } finally {
       setPubImageUploadBusy(false);
     }
@@ -5331,7 +5337,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   </label>
                 </div>
               </div>
-              {pubEditor.imageUrl && <Image unoptimized width={1200} height={800} style={{ height: "auto" }} className="publications-editor-preview" src={pubEditor.imageUrl} alt="Превью картинки" onError={(event) => { (event.target as HTMLImageElement).style.display = "none"; }}/>}
+              {pubImageUploadError && <p role="alert">{pubImageUploadError}</p>}
+              {pubEditor.imageUrl && <Image key={pubEditor.imageUrl} unoptimized width={1200} height={800} style={{ height: "auto" }} className="publications-editor-preview" src={pubEditor.imageUrl} alt="Превью картинки" onLoad={() => setPubImageUploadError("")} onError={() => setPubImageUploadError("Картинка по указанному адресу недоступна. Проверьте ссылку или загрузите файл заново.")}/>}
               {pubEditor.imageUrl && pubEditor.channelIds.some((id) => pubChannels.find((channel) => channel.id === id)?.platform === "telegram") && `${pubEditor.title}\n\n${pubEditor.body}`.trim().length > 1024 && <div className="publications-telegram-length-choice">
                 <strong>Текст длинный для публикации вместе с картинкой</strong>
                 <p>Выберите, как отправить пост в Telegram. Текст не будет потерян.</p>

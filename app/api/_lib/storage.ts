@@ -166,7 +166,7 @@ export async function uploadPublicationImage(file: File, ownerEmail: string): Pr
       Body: bytes,
       ContentType: file.type,
       ACL: "public-read",
-    }));
+    }), { abortSignal: AbortSignal.timeout(40_000) });
   } catch (error) {
     if (error instanceof StorageError) throw error;
     console.error("S3 upload failed", error instanceof Error ? error.message : error);
