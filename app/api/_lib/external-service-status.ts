@@ -1,3 +1,5 @@
+import { request as httpsRequest } from "node:https";
+
 type ServiceState = "connected" | "needs_setup" | "unavailable";
 
 export type ExternalServiceStatus = {
@@ -29,12 +31,54 @@ function numeric(value: unknown): number | null {
   return null;
 }
 
-async function request(url: string, headers: HeadersInit): Promise<Response> {
-  return fetch(url, {
-    headers,
-    cache: "no-store",
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+// Timeweb can prefer an unusable IPv6 route to a specific external host
+// while its IPv4 endpoint works fine — confirmed for api.telegram.org
+// (postToTelegramApi in social-publish.ts) and again for api.deepseek.com/
+// api.openai.com (postJsonPinnedIPv4 in ai-router.ts), both the same
+// connect-timeout signature, and evidently a Timeweb-wide network
+// condition rather than one bad container (site owner: a brand-new
+// Timeweb server showed the same symptom). Every check below shares that
+// exact risk with whatever host it happens to be pointed at — pin all of
+// them here once instead of waiting to rediscover this per service.
+// Doubles as the fix for the actual monitoring gap this incident exposed:
+// unpinned, this check could time out (or hang past its own deadline)
+// through the same broken route real traffic did, but a plain page render
+// has nobody around to notice it silently went red - the point of a
+// health check is to catch exactly this class of failure, not share it.
+function requestPinnedIPv4(url: string, headers: Record<string, string>, signal: AbortSignal): Promise<{ status: number; ok: boolean; json: () => Promise<unknown> }> {
+  const endpoint = new URL(url);
+  return new Promise((resolve, reject) => {
+    const req = httpsRequest({
+      protocol: endpoint.protocol,
+      hostname: endpoint.hostname,
+      port: endpoint.port || 443,
+      path: `${endpoint.pathname}${endpoint.search}`,
+      method: "GET",
+      family: 4,
+      signal,
+      headers,
+    }, (response) => {
+      const chunks: Buffer[] = [];
+      let size = 0;
+      response.on("data", (chunk: Buffer) => {
+        size += chunk.length;
+        if (size > 5 * 1024 * 1024) { response.destroy(new Error("Response is too large.")); return; }
+        chunks.push(Buffer.from(chunk));
+      });
+      response.on("end", () => {
+        const status = response.statusCode ?? 0;
+        const text = Buffer.concat(chunks).toString("utf8");
+        resolve({ status, ok: status >= 200 && status < 300, json: async () => JSON.parse(text) });
+      });
+      response.on("error", reject);
+    });
+    req.on("error", reject);
+    req.end();
   });
+}
+
+async function request(url: string, headers: Record<string, string>): Promise<{ status: number; ok: boolean; json: () => Promise<unknown> }> {
+  return requestPinnedIPv4(url, headers, AbortSignal.timeout(REQUEST_TIMEOUT_MS));
 }
 
 async function deepseekStatus(): Promise<ExternalServiceStatus> {
