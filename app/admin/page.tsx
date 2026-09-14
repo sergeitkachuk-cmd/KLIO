@@ -11,6 +11,7 @@ import { getExternalServiceStatuses } from "../api/_lib/external-service-status"
 import { AdminThemeToggle } from "./admin-theme-toggle";
 import { AdminAccountControls } from "./admin-account-controls";
 import { AdminUsersTable, type AdminUserRow } from "./admin-users-table";
+import { AdminShell, type AdminSection } from "./admin-shell";
 
 export const metadata = { title: "КЛИО / Админка" };
 
@@ -229,25 +230,18 @@ export default async function AdminPage() {
   const last30 = last30Rows[0] ?? { totalCostUsd: 0, totalCalls: 0 };
   const verifiedCount = users.filter((item) => item.emailVerified).length;
 
-  return (
-    <main className="admin-page">
-      <AdminStyles />
-      <header className="admin-header">
-        <div>
-          <p className="admin-kicker">КЛИО / Служебная страница</p>
-          <h1>Пользователи и расходы на ИИ</h1>
-        </div>
-        <p className="admin-note">Видно только владельцу сайта. Обновляется при каждом заходе на страницу.</p>
-        <AdminThemeToggle />
-      </header>
-
-      <section className="admin-cards">
-        <article><span>Пользователей</span><b>{formatNumber(users.length)}</b><small>{formatNumber(verifiedCount)} с подтверждённой почтой</small></article>
-        <article><span>Расход на ИИ · всего</span><b>{formatUsd(num(totals.totalCostUsd))}</b><small>{formatNumber(num(totals.totalCalls))} запросов, {formatNumber(num(totals.totalTokens))} токенов</small></article>
-        <article><span>Расход на ИИ · 30 дней</span><b>{formatUsd(num(last30.totalCostUsd))}</b><small>{formatNumber(num(last30.totalCalls))} запросов</small></article>
-        <article><span>Тариф</span><b>Старт (у всех)</b><small>оплата подписки пока не подключена</small></article>
-      </section>
-
+  // One section per former top-to-bottom block, now shown one at a time
+  // behind the sidebar (see AdminShell) instead of all stacked on one
+  // page - "Пользователи" and "Последние вызовы ИИ" alone used to push
+  // "Платежи" several screens down. Order matches the original page order
+  // so nothing moves for anyone used to scrolling to find it, just tabs
+  // instead of scroll position now. "Ожидают подтверждения" is appended
+  // below, only when there's something in it, same as before.
+  const sections: AdminSection[] = [];
+  sections.push({
+    id: "services",
+    label: "Внешние сервисы",
+    content: (
       <section className="admin-block admin-integrations-block">
         <div className="admin-block-heading">
           <div>
@@ -270,7 +264,13 @@ export default async function AdminPage() {
           ))}
         </div>
       </section>
-
+    ),
+  });
+  sections.push({
+    id: "spend-model",
+    label: "Расход по модели",
+    badge: String(byModelRows.length),
+    content: (
       <section className="admin-block">
         <h2>Расход по модели</h2>
         <table className="admin-table">
@@ -287,7 +287,13 @@ export default async function AdminPage() {
           </tbody>
         </table>
       </section>
-
+    ),
+  });
+  sections.push({
+    id: "spend-operation",
+    label: "Расход по операциям",
+    badge: String(byOperationRows.length),
+    content: (
       <section className="admin-block">
         <h2>Расход по операциям</h2>
         <table className="admin-table">
@@ -306,7 +312,13 @@ export default async function AdminPage() {
           </tbody>
         </table>
       </section>
-
+    ),
+  });
+  sections.push({
+    id: "recent-calls",
+    label: "Последние вызовы ИИ",
+    badge: String(recentAiRows.length),
+    content: (
       <section className="admin-block">
         <div className="admin-block-heading">
           <div>
@@ -336,7 +348,13 @@ export default async function AdminPage() {
           </table>
         </div>
       </section>
-
+    ),
+  });
+  sections.push({
+    id: "users",
+    label: "Пользователи",
+    badge: String(activeUsers.length),
+    content: (
       <section className="admin-block">
         <h2>Пользователи ({activeUsers.length})</h2>
         <div className="admin-table-scroll admin-legacy-user-table">
@@ -397,6 +415,13 @@ export default async function AdminPage() {
           </table>
         </div>
       </section>
+    ),
+  });
+  sections.push({
+    id: "payments",
+    label: "Платежи",
+    badge: String(paymentRows.length),
+    content: (
       <section className="admin-block">
         <div className="admin-block-heading">
           <div>
@@ -426,17 +451,55 @@ export default async function AdminPage() {
           </table>
         </div>
       </section>
-      {pendingUsers.length > 0 && <section className="admin-block admin-pending-registrations">
-        <h2>Ожидают подтверждения ({pendingUsers.length})</h2>
-        <p className="admin-note">Это ещё не клиенты: аккаунты удаляются автоматически через 48 часов без подтверждения email.</p>
-        <div className="admin-table-scroll">
-          <table className="admin-table">
-            <thead><tr><th>Email</th><th>Имя</th><th>Регистрация</th><th>Статус</th></tr></thead>
-            <tbody>{pendingUsers.map((item) => <tr key={item.email}><td>{item.email}</td><td>{item.displayName}</td><td>{formatDate(item.createdAt)}</td><td>Не подтверждена</td></tr>)}</tbody>
-          </table>
+    ),
+  });
+
+  if (pendingUsers.length > 0) {
+    sections.push({
+      id: "pending",
+      label: "Ожидают подтверждения",
+      badge: String(pendingUsers.length),
+      content: (
+        <section className="admin-block admin-pending-registrations">
+          <h2>Ожидают подтверждения ({pendingUsers.length})</h2>
+          <p className="admin-note">Это ещё не клиенты: аккаунты удаляются автоматически через 48 часов без подтверждения email.</p>
+          <div className="admin-table-scroll">
+            <table className="admin-table">
+              <thead><tr><th>Email</th><th>Имя</th><th>Регистрация</th><th>Статус</th></tr></thead>
+              <tbody>{pendingUsers.map((item) => <tr key={item.email}><td>{item.email}</td><td>{item.displayName}</td><td>{formatDate(item.createdAt)}</td><td>Не подтверждена</td></tr>)}</tbody>
+            </table>
+          </div>
+        </section>
+      ),
+    });
+  }
+
+  sections.push({
+    id: "plans",
+    label: "Управление тарифами",
+    content: <AdminAccountControls users={activeUsers.map((item) => ({ email: item.email, displayName: item.displayName, planId: item.planId, planName: item.planName, planExpiresAt: item.planExpiresAt }))} />,
+  });
+
+  return (
+    <main className="admin-page">
+      <AdminStyles />
+      <header className="admin-header">
+        <div>
+          <p className="admin-kicker">КЛИО / Служебная страница</p>
+          <h1>Пользователи и расходы на ИИ</h1>
         </div>
-      </section>}
-      <AdminAccountControls users={activeUsers.map((item) => ({ email: item.email, displayName: item.displayName, planId: item.planId, planName: item.planName, planExpiresAt: item.planExpiresAt }))} />
+        <p className="admin-note">Видно только владельцу сайта. Обновляется при каждом заходе на страницу.</p>
+        <AdminThemeToggle />
+      </header>
+
+      <section className="admin-cards">
+        <article><span>Пользователей</span><b>{formatNumber(users.length)}</b><small>{formatNumber(verifiedCount)} с подтверждённой почтой</small></article>
+        <article><span>Расход на ИИ · всего</span><b>{formatUsd(num(totals.totalCostUsd))}</b><small>{formatNumber(num(totals.totalCalls))} запросов, {formatNumber(num(totals.totalTokens))} токенов</small></article>
+        <article><span>Расход на ИИ · 30 дней</span><b>{formatUsd(num(last30.totalCostUsd))}</b><small>{formatNumber(num(last30.totalCalls))} запросов</small></article>
+        <article><span>Тариф</span><b>Старт (у всех)</b><small>оплата подписки пока не подключена</small></article>
+      </section>
+
+      <AdminShell sections={sections} />
     </main>
   );
 }
@@ -455,6 +518,24 @@ function AdminStyles() {
       .admin-cards span { display: block; font-size: 12px; color: #6b7280; margin-bottom: 6px; }
       .admin-cards b { display: block; font-size: 22px; }
       .admin-cards small { display: block; margin-top: 4px; font-size: 12px; color: #9ca3af; }
+      .admin-shell { display: grid; grid-template-columns: 220px minmax(0, 1fr); align-items: start; gap: 24px; }
+      .admin-sidebar nav { display: grid; gap: 4px; position: sticky; top: 20px; }
+      .admin-sidebar button { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 10px 12px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: inherit; font: inherit; font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; }
+      .admin-sidebar button:hover { background: rgba(100, 116, 139, 0.08); }
+      .admin-sidebar button.active { border-color: #4f46e5; background: #4f46e5; color: #fff; }
+      .admin-sidebar button em { flex: 0 0 auto; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-style: normal; font-weight: 700; background: rgba(100, 116, 139, 0.14); }
+      .admin-sidebar button.active em { background: rgba(255, 255, 255, 0.22); }
+      .admin-main { min-width: 0; }
+      .admin-main .admin-block:last-child { margin-bottom: 0; }
+      body[data-admin-theme="dark"] .admin-sidebar button:hover, body[data-admin-theme="dark"] .admin-sidebar button em { background: rgba(148, 163, 184, 0.14); }
+      body[data-admin-theme="dark"] .admin-sidebar button.active { background: #4f46e5; }
+      body[data-admin-theme="dark"] .admin-sidebar button.active em { background: rgba(255, 255, 255, 0.22); }
+      @media (prefers-color-scheme: dark) { .admin-sidebar button:hover, .admin-sidebar button em { background: rgba(148, 163, 184, 0.14); } .admin-sidebar button.active em { background: rgba(255, 255, 255, 0.22); } }
+      @media (max-width: 900px) {
+        .admin-shell { grid-template-columns: 1fr; }
+        .admin-sidebar nav { position: static; display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+        .admin-sidebar button { flex: 0 0 auto; white-space: nowrap; }
+      }
       .admin-block { margin-bottom: 32px; }
       .admin-block h2 { font-size: 16px; margin: 0 0 10px; }
       .admin-block-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
