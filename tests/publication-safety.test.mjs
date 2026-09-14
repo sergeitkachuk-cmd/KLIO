@@ -39,6 +39,7 @@ function harness(replies, connecting) {
     "./public-fetch": { fetchPublicResource: () => { throw new Error("Unexpected image download"); } },
     "./image-type": {},
     "./publishing-config": load("app/api/_lib/publishing-config.ts"),
+    "./telegram-proxy": load("app/api/_lib/telegram-proxy.ts", {}, { process: { env: {} } }),
   });
   return { sent, send: text => loaded.publishToChannel({ platform: "telegram", credentialsJson: JSON.stringify({ platform: "telegram", telegram: { chatId: "test", botToken: "test-only" } }), text, imageUrl: null }) };
 }
@@ -162,6 +163,7 @@ test("Telegram channel validation separates transport failures from invalid cred
     const loaded = load("app/api/_lib/social-channels.ts", {
       "./publishing-config": {}, "../../../db/schema": {},
       "node:https": { request },
+      "./telegram-proxy": load("app/api/_lib/telegram-proxy.ts", {}, { process: { env: {} } }),
     }, {
       setTimeout: callback => { callback(); return 0; },
     });

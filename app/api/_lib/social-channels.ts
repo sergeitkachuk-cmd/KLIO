@@ -8,6 +8,7 @@
 import { request as httpsRequest } from "node:https";
 import { VK_API_VERSION, type ChannelCredentials } from "./publishing-config";
 import { socialChannels } from "../../../db/schema";
+import { telegramConnectTarget } from "./telegram-proxy";
 
 export class ChannelValidationError extends Error {}
 
@@ -23,11 +24,13 @@ const telegramLinkPrefixPending = new Map<string, Promise<string | null>>();
 // happens far less often than publishing to one already connected.
 function telegramPostPinnedIPv4(url: string, body: string, signal: AbortSignal): Promise<{ status: number; json: () => Promise<unknown> }> {
   const endpoint = new URL(url);
+  const target = telegramConnectTarget(endpoint.hostname, endpoint.port || 443);
   return new Promise((resolve, reject) => {
     const request = httpsRequest({
       protocol: endpoint.protocol,
-      hostname: endpoint.hostname,
-      port: endpoint.port || 443,
+      hostname: target.hostname,
+      port: target.port,
+      servername: target.servername,
       path: `${endpoint.pathname}${endpoint.search}`,
       method: "POST",
       family: 4,

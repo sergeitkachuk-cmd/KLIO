@@ -9,6 +9,7 @@
 import { request as httpsRequest } from "node:https";
 import { fetchPublicResource } from "./public-fetch";
 import { imageContentType } from "./image-type";
+import { telegramConnectTarget } from "./telegram-proxy";
 import {
   PLATFORM_TEXT_LIMITS,
   VK_API_VERSION,
@@ -68,14 +69,16 @@ class TelegramTransportError extends Error {
 function postToTelegramApi(url: string, body: object, signal: AbortSignal): Promise<TelegramApiResponse> {
   const endpoint = new URL(url);
   const payload = JSON.stringify(body);
+  const target = telegramConnectTarget(endpoint.hostname, endpoint.port || 443);
   return new Promise((resolve, reject) => {
     // Unknown transport state is not proof of non-delivery. In particular,
     // keep-alive sockets do not emit another connect event when reused.
     let connected = true;
     const request = httpsRequest({
       protocol: endpoint.protocol,
-      hostname: endpoint.hostname,
-      port: endpoint.port || 443,
+      hostname: target.hostname,
+      port: target.port,
+      servername: target.servername,
       path: `${endpoint.pathname}${endpoint.search}`,
       method: "POST",
       family: 4,
