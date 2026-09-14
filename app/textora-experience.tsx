@@ -1363,7 +1363,7 @@ function nameInitials(value: string) {
   return (parts.slice(0, 2).map((item) => item[0]?.toLocaleUpperCase("ru-RU") || "").join("") || "К").slice(0, 2);
 }
 
-function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" | "erase" | "sun" | "moon" | "home" | "building" | "list" | "search" | "barChart" | "calendar" | "folder" }) {
+function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" | "erase" | "sun" | "moon" | "home" | "building" | "list" | "search" | "barChart" | "calendar" | "folder" | "image" }) {
   const paths = {
     arrow: <><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></>,
     spark: <><path d="m12 2 1.7 5.3L19 9l-5.3 1.7L12 16l-1.7-5.3L5 9l5.3-1.7L12 2Z"/><path d="m5 16 .7 2.3L8 19l-2.3.7L5 22l-.7-2.3L2 19l2.3-.7L5 16Z"/></>,
@@ -1383,6 +1383,9 @@ function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" | 
     barChart: <><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></>,
     calendar: <><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></>,
     folder: <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/>,
+    // "Генерация изображений. СКОРО" teaser nav item — not a real module
+    // yet (see the nav JSX), just a plain picture glyph.
+    image: <><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></>,
   };
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
@@ -5134,6 +5137,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <a href="#semantics" className={activeModule === "semantics" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("semantics"); }}><i><Icon name="search"/></i><span><b>Семантика</b></span></a>
             <a href="#competitors" className={activeModule === "competitors" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("competitors"); }}><i><Icon name="barChart"/></i><span><b>Конкуренты</b></span></a>
             <a href="#publications" className={activeModule === "publications" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("publications"); }}><i><Icon name="calendar"/></i><span><b>Публикации</b></span></a>
+            {/* Teaser, not a real module (no WorkspaceModule entry, no
+                openModule call) - "показать, что проект развивается", per
+                the site owner. Disabled rather than a dead onClick so it's
+                honest that it doesn't go anywhere yet. */}
+            <button type="button" className="nav-coming-soon" disabled aria-disabled="true">
+              <i><Icon name="image"/></i><span><b>Генерация изображений</b><em>Скоро</em></span>
+            </button>
           </nav>
           <div className="workspace-stage workspace-quota-stage"><span>Ваш тариф</span><b>{workspaceAccount.planName}</b><div className="workspace-quota-list"><p><span>Материалы</span><em>{workspaceAccount.generationsRemaining} / {workspaceAccount.generationLimit}</em><i><u style={{ width: `${generationProgress}%` }}/></i></p><p><span>Исследования</span><em>{workspaceAccount.researchRemaining} / {workspaceAccount.researchLimit}</em><i><u style={{ width: `${researchProgress}%` }}/></i></p><p><span>AI‑редактура</span><em>{workspaceAccount.editorActionsRemaining} / {workspaceAccount.editorActionLimit}</em><i><u style={{ width: `${editorProgress}%` }}/></i></p></div></div>
         </aside>

@@ -5202,6 +5202,40 @@ footer nav a {
   font-size: 11px;
 }
 
+/* "Генерация изображений. СКОРО" teaser item - looks like every other
+   nav row (same grid, icon circle, label) but can't be activated, so it
+   reads as a preview of what's coming rather than a broken link. The
+   badge itself stays full-strength colour precisely because everything
+   else here is dimmed - it's the one thing meant to catch the eye. */
+.workspace-sidebar nav button.nav-coming-soon {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.workspace-sidebar nav button.nav-coming-soon:hover {
+  border-color: rgba(176, 202, 239, 0.2);
+  background: linear-gradient(120deg, rgba(30, 62, 98, 0.78), rgba(19, 46, 76, 0.82));
+}
+
+.workspace-sidebar nav button.nav-coming-soon span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.workspace-sidebar nav button.nav-coming-soon em {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  font-style: normal;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #14210a;
+  background: linear-gradient(90deg, var(--acid), var(--violet));
+}
+
 .workspace-stage {
   margin-top: auto;
   padding: 18px;
