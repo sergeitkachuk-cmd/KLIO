@@ -2716,6 +2716,17 @@ select:focus-visible {
 
 .generate:disabled {
   opacity: 0.65;
+  /* Was cursor: wait for every disabled reason - quota exhausted, AI not
+     connected, workspace still loading - not just the genuine "КЛИО
+     пишет…" busy state (which already gets its own unmistakable
+     sweeping/pulsing animation via .is-busy below). A permanently-stuck
+     button spinning a "please wait" cursor reads as "something is
+     loading, it'll be ready any second" when it won't - not-allowed is
+     the honest default; .is-busy overrides it back to wait below. */
+  cursor: not-allowed;
+}
+
+.generate.is-busy:disabled {
   cursor: wait;
 }
 

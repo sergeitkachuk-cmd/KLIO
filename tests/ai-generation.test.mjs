@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
 import Ajv from "ajv";
+import { EventEmitter } from "node:events";
 
 // Execute the real TS modules with only HTTP, credentials and DB isolated.
 // No API keys, paid model calls or application records are used by tests.
@@ -23,19 +24,52 @@ function loadTs(path, globals, dependencies = {}) {
   return exports;
 }
 
+// ai-router.ts speaks node:https directly now (IPv4-pinned - see the
+// comment on postJsonPinnedIPv4 in that file), not fetch, so it's this
+// fake node:https module - not a fetch global - that every test's
+// fetchImpl(url, init) plugs into below. Reproduces the exact two-stage
+// await the real code does (get the response, *then* separately await its
+// body) via the request/response event pairing postJsonPinnedIPv4 expects,
+// so a fetchImpl whose response.text() itself waits on the abort signal
+// (see "a body that stalls after HTTP headers times out without fallback"
+// below) still exercises the same timeout path it did when this was a
+// plain fetch() call.
+function fakeHttpsModule(fetchImpl, calls) {
+  return {
+    request(options, callback) {
+      const req = new EventEmitter();
+      req.end = (chunk) => {
+        const url = `${options.protocol}//${options.hostname}${options.path}`;
+        const init = { method: options.method, headers: options.headers, body: chunk, signal: options.signal };
+        calls.push({ url, body: JSON.parse(init.body), signal: init.signal });
+        Promise.resolve()
+          .then(() => fetchImpl(url, init))
+          .then((response) => {
+            const res = new EventEmitter();
+            res.statusCode = response.status;
+            callback(res);
+            return Promise.resolve(response.text()).then(
+              (text) => { res.emit("data", Buffer.from(text, "utf8")); res.emit("end"); },
+              (error) => { res.emit("error", error); },
+            );
+          })
+          .catch((error) => { req.emit("error", error); });
+      };
+      return req;
+    },
+  };
+}
+
 function harness(fetchImpl, clock = Date) {
   const calls = [];
   const globals = {
     process: { env: { AI_PROVIDER: "deepseek", DEEPSEEK_API_KEY: "test-only" } },
-    Date: clock, AbortSignal, DOMException, setTimeout, URL,
+    Date: clock, AbortSignal, DOMException, setTimeout, URL, Buffer,
     console: { error() {} },
-    fetch: async (url, init) => {
-      calls.push({ url, body: JSON.parse(init.body), signal: init.signal });
-      return fetchImpl(url, init);
-    },
   };
   const config = loadTs("app/api/_lib/ai-config.ts", globals);
   const router = loadTs("app/api/_lib/ai-router.ts", globals, {
+    "node:https": fakeHttpsModule(fetchImpl, calls),
     "./ai-output-validation": loadTs("app/api/_lib/ai-output-validation.ts", globals, { ajv: { default: Ajv } }),
     "./ai-config": config,
     "../../../db": { getDb() { throw new Error("DB access forbidden"); } },

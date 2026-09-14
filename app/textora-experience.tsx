@@ -2524,7 +2524,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // or inflate its count (the whole point of archiving is that it stops
   // "hanging around" there — see archiveArchiveItem/archiveSavedMaterial).
   const activeBrandArticles = useMemo(
-    () => workspaceHistory.filter((item) => item.brandId === activeBrandId),
+    // item.brandId is nullable (a material generated with no brand active -
+    // now a fully supported path, see generate()/generateQuick() - stores
+    // null), while activeBrandId is always a plain string ("" when no
+    // brand is selected). Comparing them directly left every brandless
+    // material invisible here (null !== "") - it saved fine, just looked
+    // like it vanished from "Материалы" the moment nothing else was
+    // showing it back.
+    () => workspaceHistory.filter((item) => (item.brandId ?? "") === activeBrandId),
     [activeBrandId, workspaceHistory],
   );
   const activeBrandSavedMaterials = useMemo(
@@ -3185,6 +3192,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }
 
   async function createWorkspaceBrand() {
+    if (brandSwitchBusy) return;
     const name = newBrandName.trim();
     if (!name) {
       showToast("Введите название нового бренда");
@@ -5125,7 +5133,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </div>}
             </div>
             <small>{workspaceBrands.length} из {workspaceAccount.brandLimit} брендов · данные раздельны</small>
-            {brandCreatorOpen && <div className="brand-create-form"><input value={newBrandName} onChange={(event) => setNewBrandName(event.target.value)} placeholder="Название бренда" autoFocus autoComplete="off"/><button type="button" onClick={() => void createWorkspaceBrand()}>Создать</button></div>}
+            {brandCreatorOpen && <div className="brand-create-form"><input value={newBrandName} onChange={(event) => setNewBrandName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void createWorkspaceBrand(); }} placeholder="Название бренда" autoFocus autoComplete="off"/><button type="button" onClick={() => void createWorkspaceBrand()} disabled={brandSwitchBusy || !newBrandName.trim()}>{brandSwitchBusy ? "Создаём…" : "Создать"}</button></div>}
           </div>
           <nav aria-label="Рабочие модули">
             <a href="#start" className={activeModule === "start" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("start"); }}><i><Icon name="home"/></i><span><b>Начните здесь</b></span></a>
@@ -5799,7 +5807,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <label className="field"><span className="field-label-help">Опишите задачу для КЛИО<HelpTip label="Опишите задачу для КЛИО" text="Опишите бренд, сайт или тему и что нужно написать — формат, тон и объём КЛИО определит сама. Если назван реальный бренд или сайт, КЛИО проверит факты в вебе, а не будет их выдумывать."/></span><AutoTextarea rows={6} value={quickPrompt} onChange={(event) => setQuickPrompt(event.target.value)} placeholder="Например: напиши SEO-статью про ORCA (сайт theorca.pro) — платформа для трейдеров с no-code сканерами и стратегиями. Аудитория — активные трейдеры."/><small>{generatorBrandReady ? <>Профиль бренда «{effectiveBrand.name}» включён — КЛИО учтёт его факты и голос, если задача с ним связана.</> : "Профиль бренда сейчас не используется — включите его выше и заполните основу, если хотите писать в голосе бренда без пересказа задачи."}</small></label>
                   <ModuleSelect label="Объём" value={quickLength} help="Если оставить «Автоматически», КЛИО сама оценит объём по формату и задаче — например, короткий пост для соцсетей или полноценную статью. Если результат обычно выходит не того размера, выберите объём вручную." options={QUICK_LENGTH_OPTIONS} onChange={setQuickLength}/>
                   {quickError && <p className="generation-error" role="alert">{quickError}</p>}
-                  <button className={`button primary generate ${quickBusy ? "is-busy" : ""}`} type="button" onClick={() => void generateQuick()} disabled={!activeBrandId || quickBusy || aiConnection !== "connected" || workspaceAccount.generationsRemaining <= 0}><Icon name="spark"/>{quickBusy ? "КЛИО пишет…" : !activeBrandId ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
+                  <button className={`button primary generate ${quickBusy ? "is-busy" : ""}`} type="button" onClick={() => void generateQuick()} disabled={!workspaceReady || quickBusy || aiConnection !== "connected" || workspaceAccount.generationsRemaining <= 0}><Icon name="spark"/>{quickBusy ? "КЛИО пишет…" : !workspaceReady ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
                 </div>}
                 {generatorMode === "advanced" && <>
                 <div className="field"><label>Формат</label><div className="format-tabs">{formats.map((item) => <button type="button" className={format === item.id ? "active" : ""} onClick={() => changeFormat(item.id)} key={item.id}>{item.label}</button>)}</div></div>
@@ -5852,7 +5860,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   </div>
                 </div>
                 {generationError && <p className="generation-error" role="alert">{generationError}</p>}
-                <button className={`button primary generate ${busy ? "is-busy" : ""}`} type="button" onClick={generate} disabled={!activeBrandId || busy || aiConnection !== "connected" || workspaceAccount.generationsRemaining <= 0}><Icon name="spark"/>{busy ? busySteps[busyStep] : !activeBrandId ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
+                <button className={`button primary generate ${busy ? "is-busy" : ""}`} type="button" onClick={generate} disabled={!workspaceReady || busy || aiConnection !== "connected" || workspaceAccount.generationsRemaining <= 0}><Icon name="spark"/>{busy ? busySteps[busyStep] : !workspaceReady ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
                 {busy && <>
                   {/* Once the last step lands, this stops being a real
                       progress readout (nothing after it is measured) and
