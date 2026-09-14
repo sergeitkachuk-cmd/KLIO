@@ -507,7 +507,7 @@ export default async function AdminPage() {
 function AdminStyles() {
   return (
     <style>{`
-      .admin-page { max-width: 1440px; margin: 0 auto; padding: 40px 28px 80px; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #1c1f26; }
+      .admin-page { max-width: 1680px; margin: 0 auto; padding: 40px 28px 80px; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #1c1f26; }
       .admin-header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 28px; }
       .admin-kicker { margin: 0 0 4px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; }
       .admin-header h1 { margin: 0; font-size: 26px; }
@@ -518,9 +518,9 @@ function AdminStyles() {
       .admin-cards span { display: block; font-size: 12px; color: #6b7280; margin-bottom: 6px; }
       .admin-cards b { display: block; font-size: 22px; }
       .admin-cards small { display: block; margin-top: 4px; font-size: 12px; color: #9ca3af; }
-      .admin-shell { display: grid; grid-template-columns: 220px minmax(0, 1fr); align-items: start; gap: 24px; }
+      .admin-shell { display: grid; grid-template-columns: 176px minmax(0, 1fr); align-items: start; gap: 18px; }
       .admin-sidebar nav { display: grid; gap: 4px; position: sticky; top: 20px; }
-      .admin-sidebar button { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 10px 12px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: inherit; font: inherit; font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; }
+      .admin-sidebar button { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; padding: 10px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: inherit; font: inherit; font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; }
       .admin-sidebar button:hover { background: rgba(100, 116, 139, 0.08); }
       .admin-sidebar button.active { border-color: #4f46e5; background: #4f46e5; color: #fff; }
       .admin-sidebar button em { flex: 0 0 auto; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-style: normal; font-weight: 700; background: rgba(100, 116, 139, 0.14); }
@@ -563,7 +563,16 @@ function AdminStyles() {
       .admin-payment-status-paid { color: #15803d; background: rgba(74, 222, 128, 0.14); font-weight: 700; }
       .admin-payment-status-refunded { color: #475569; background: rgba(148, 163, 184, 0.16); font-weight: 700; }
       .admin-payment-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
-      .admin-ai-error { max-width: 320px; white-space: normal !important; overflow-wrap: anywhere; }
+      /* min-width matters as much as max-width here: table-layout:auto is
+         free to shrink a wrap-allowed cell all the way down to its longest
+         unbreakable word once the other (nowrap) columns' content already
+         fills the container - that's what turned this into a one-word-per-
+         line, several-hundred-pixel-tall cell in practice ("текст в
+         последней графе растянулся вообще по вертикали"). A min-width is
+         the actual fix: it stops the column collapsing, and pushes the
+         table past the container width instead, which .admin-table-scroll
+         already turns into a horizontal scrollbar rather than a crush. */
+      .admin-ai-error { min-width: 150px; max-width: 320px; white-space: normal !important; overflow-wrap: anywhere; }
       .admin-empty-row { color: #9ca3af; white-space: normal; }
       .admin-table-scroll { overflow-x: auto; border: 1px solid rgba(148, 163, 184, 0.24); border-radius: 16px; scrollbar-color: #64748b transparent; scrollbar-width: thin; }
       .admin-table-scroll::-webkit-scrollbar { height: 8px; }
