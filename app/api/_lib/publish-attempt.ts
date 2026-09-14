@@ -72,10 +72,13 @@ export async function attemptPublish(publicationId: string, ownerEmail: string, 
       await persistSuccess(confirmedPostId);
       return { status: "published", providerPostId: confirmedPostId };
     }
-    const errorMessage = error instanceof PublishError ? error.message : "Не удалось подтвердить итог публикации. Перед повторной отправкой проверьте канал: запись могла быть опубликована.";
+    const reason = error instanceof PublishError ? error.message : "Не удалось подтвердить итог публикации. Перед повторной отправкой проверьте канал: запись могла быть опубликована.";
     const retryable = error instanceof PublishError ? error.retryable : false;
     const nextRetryCount = publication.retryCount + 1;
     const giveUp = !retryable || nextRetryCount >= MAX_PUBLISH_RETRIES;
+    const errorMessage = retryable
+      ? `${reason} ${giveUp ? "Лимит автоматических попыток исчерпан. Пост сохранён; повторную отправку можно запустить вручную." : "Пост сохранён в очереди. Запланирован автоматический повтор."}`
+      : reason;
 
     await db.update(publications).set({
       status: giveUp ? "failed" : "scheduled",

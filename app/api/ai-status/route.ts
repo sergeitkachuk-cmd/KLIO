@@ -10,6 +10,7 @@ export async function GET() {
   // the release with bounded, reasoning-enabled material generation.
   return Response.json({ connected, configured: connected, health: "unknown" }, { headers: {
     "Cache-Control": "no-store",
+    "X-Klio-Publication-Safety": "2026-09-14-network-errors-v1",
     "X-Klio-Audit-Release": "2026-09-12-ai-publish-safety-v3",
     "X-Klio-Auth-Release": "2026-09-12-request-time-session-v2",
     "X-Klio-Workspace-Release": "2026-09-12-versioned-saves-v1",

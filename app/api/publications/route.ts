@@ -365,16 +365,12 @@ export async function POST(request: Request) {
         return Response.json({ publication: await publicationResponse(forkedPublication, forkedGeneration, forkedChannel), forkedFromPublicationId: publication.id });
       }
 
-      // Touching the schedule on a "failed" row re-queues it for the cron
-      // instead of leaving it stuck failed forever — the natural way a
-      // person actually retries is "fix the thing, then move it", not a
-      // separate "retry" button they'd have to notice first.
-      const reQueue = publication.status === "failed" && (payload.scheduledAt !== undefined || payload.channelId !== undefined);
+      // Failed includes uncertain/partial delivery. Saving edits must not
+      // silently turn it into an automatic resend; publish_now is explicit.
       await db.update(publications).set({
         scheduledAt: nextScheduledAt ?? publication.scheduledAt,
         channelId: nextChannelId,
         telegramDeliveryMode: nextTelegramDeliveryMode,
-        ...(reQueue ? { status: "scheduled" as const, retryCount: 0, errorMessage: null } : {}),
         updatedAt: sql`CURRENT_TIMESTAMP`,
       }).where(eq(publications.id, id));
 

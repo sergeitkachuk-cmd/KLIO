@@ -43,9 +43,8 @@ export async function POST(request: Request) {
     updatedAt: nowIso,
   }).where(and(eq(publications.status, "publishing"), sql`${publications.updatedAt}::timestamptz <= CURRENT_TIMESTAMP - INTERVAL '15 minutes'`));
   // Only ever "scheduled" — a "failed" row (retries already exhausted) is
-  // never picked back up by the poller, only by a person explicitly
-  // rescheduling it (see the "update" action's reQueue logic in
-  // api/publications/route.ts).
+  // never picked back up by the poller. Only explicit publish_now retries
+  // it; saving a new date must not replay uncertain/partial delivery.
   const due = await db.select({ id: publications.id, ownerEmail: publications.ownerEmail }).from(publications).where(and(
     eq(publications.status, "scheduled"),
     lte(publications.scheduledAt, nowIso),

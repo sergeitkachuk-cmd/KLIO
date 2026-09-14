@@ -47,6 +47,9 @@ async function describeTelegramChannel(telegram: { botToken: string; chatId: str
     const payload = await response.json().catch(() => null) as
       | { ok: boolean; result?: { title?: string; username?: string; type?: string }; description?: string }
       | null;
+    if (response.status >= 500 || response.status === 429 || !payload) {
+      throw new ChannelValidationError("Telegram временно недоступен или вернул некорректный ответ. Попробуйте подключить канал позже. Это не подтверждает ошибку токена.");
+    }
     if (!payload?.ok || !payload.result) {
       throw new ChannelValidationError(
         payload?.description
@@ -66,7 +69,7 @@ async function describeTelegramChannel(telegram: { botToken: string; chatId: str
     return { label, avatarUrl: "" };
   } catch (error) {
     if (error instanceof ChannelValidationError) throw error;
-    throw new ChannelValidationError("Не удалось связаться с Telegram. Проверьте токен бота.");
+    throw new ChannelValidationError("Не удалось установить связь с Telegram. Попробуйте позже. Проверить токен сейчас не удалось — менять его из-за этой ошибки не нужно.");
   }
 }
 
@@ -175,7 +178,10 @@ export async function telegramPublicationUrl(row: typeof socialChannels.$inferSe
         return prefix;
       })();
       telegramLinkPrefixPending.set(row.id, pending);
-      void pending.finally(() => telegramLinkPrefixPending.delete(row.id));
+      void pending.then(
+        () => telegramLinkPrefixPending.delete(row.id),
+        () => telegramLinkPrefixPending.delete(row.id),
+      );
     }
     const prefix = await pending;
     return prefix ? `${prefix}/${providerPostId}` : null;

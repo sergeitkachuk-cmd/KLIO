@@ -78,9 +78,9 @@ test("successful split Telegram delivery retains every part", async () => {
   assert.equal(h.sent.map(part => part.text).join(" "), original);
 });
 
-test("receipt write failure retries the database, never the external publication", async () => {
+for (const scenario of ["receipt", "connect", "exhausted", "unknown", "partial"]) test(`publication state survives ${scenario} failure`, async () => {
   const schema = Object.fromEntries(["publications", "generations", "socialChannels"].map(name => [name, { id: "id", ownerEmail: "ownerEmail", status: "status" }]));
-  const publication = { id: "post", ownerEmail: "owner", generationId: "material", channelId: "channel", status: "scheduled", retryCount: 0 };
+  const publication = { id: "post", ownerEmail: "owner", generationId: "material", channelId: "channel", status: "scheduled", retryCount: scenario === "exhausted" ? 2 : 0 };
   let externalCalls = 0;
   let receiptWrites = 0;
   const db = {
@@ -101,14 +101,66 @@ test("receipt write failure retries the database, never the external publication
   const loaded = load("app/api/_lib/publish-attempt.ts", {
     "drizzle-orm": { eq: (key, value) => row => row[key] === value, inArray: (key, values) => row => values.includes(row[key]), and: (...predicates) => row => predicates.every(predicate => predicate(row)), sql: () => "now" },
     "../../../db": { getDb: () => db }, "../../../db/schema": schema,
-    "./social-publish": { PublishError, publishToChannel: async () => { externalCalls++; return { providerPostId: "confirmed" }; } },
+    "./social-publish": { PublishError, publishToChannel: async () => {
+      externalCalls++;
+      if (scenario !== "receipt") {
+        const error = new PublishError("Test transport failure");
+        error.retryable = scenario === "connect" || scenario === "exhausted";
+        if (scenario === "partial") error.providerPostId = "first-part";
+        throw error;
+      }
+      return { providerPostId: "confirmed" };
+    } },
     "./publishing-config": { MAX_PUBLISH_RETRIES: 3 },
     "./email": { emailDeliveryAvailable: () => false },
   });
   assert.equal(await loaded.attemptPublish("post", "another-owner", "https://example.com"), null);
   assert.equal(externalCalls, 0);
-  assert.equal((await loaded.attemptPublish("post", "owner", "https://example.com")).status, "published");
+  const result = await loaded.attemptPublish("post", "owner", "https://example.com");
+  if (scenario !== "receipt") {
+    assert.equal(result.status, scenario === "connect" ? "scheduled" : "failed");
+    assert.equal(publication.status, result.status);
+    assert.equal(publication.generationId, "material");
+    assert.equal(publication.channelId, "channel");
+    assert.equal(externalCalls, 1);
+    if (scenario === "connect") assert.match(result.errorMessage, /Запланирован автоматический повтор/);
+    if (scenario === "exhausted") assert.match(result.errorMessage, /Лимит автоматических попыток исчерпан/);
+    if (scenario === "partial") assert.equal(publication.providerPostId, "first-part");
+    return;
+  }
+  assert.equal(result.status, "published");
   assert.equal(receiptWrites, 2);
   assert.equal(externalCalls, 1);
   assert.equal(publication.status, "published");
+});
+
+test("Telegram channel validation separates transport failures from invalid credentials", async () => {
+  for (const kind of ["network", "server", "invalid-json", "unauthorized", "success"]) {
+    const loaded = load("app/api/_lib/social-channels.ts", {
+      "./publishing-config": {}, "../../../db/schema": {},
+    }, {
+      setTimeout: callback => { callback(); return 0; },
+      fetch: async () => {
+        if (kind === "network") throw new Error("connect timeout");
+        return { status: kind === "server" ? 503 : kind === "unauthorized" ? 401 : 200,
+          json: async () => {
+            if (kind === "invalid-json") throw new Error("invalid JSON");
+            return kind === "success" ? { ok: true, result: { title: "Test channel" } } : { ok: false, description: "Unauthorized" };
+          } };
+      },
+    });
+    const request = loaded.describeChannel({ platform: "telegram", telegram: { botToken: "test-only", chatId: "test" } });
+    if (kind === "success") assert.equal((await request).label, "Test channel");
+    else await assert.rejects(request, error => {
+      assert.match(error.message, kind === "unauthorized" ? /Telegram отклонил подключение/ : /не удалось|недоступен/);
+      assert.doesNotMatch(error.message, /Проверьте токен бота/);
+      return true;
+    });
+  }
+});
+
+test("saving a failed publication cannot silently requeue it", () => {
+  const source = readFileSync(new URL("../app/api/publications/route.ts", import.meta.url), "utf8");
+  const update = source.split('if (action === "update")')[1].split('if (action === "delete")')[0];
+  assert.doesNotMatch(update, /reQueue|retryCount:\s*0/);
 });

@@ -162,7 +162,7 @@ async function publishToTelegram(creds: TelegramCredentials, text: string, image
       throw new PublishError(
         connected
           ? "Telegram не подтвердил результат отправки. Автоматический повтор остановлен: сначала проверьте канал, чтобы не создать дубликат."
-          : "Telegram временно недоступен: не удалось установить соединение. Публикация повторится автоматически.",
+          : "Telegram временно недоступен: не удалось установить соединение.",
         !connected,
       );
     }
