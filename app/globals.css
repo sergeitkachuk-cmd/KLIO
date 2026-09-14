@@ -21575,6 +21575,26 @@ input[type="radio"] {
   color: #bfe97b;
 }
 
+/* Distinct from .publications-vk-note above on purpose - that one explains
+   normal, expected behaviour (VK text-only for now); this one flags a real,
+   temporary reliability problem, so it borrows the established dark-theme
+   amber "needs attention" palette (see .brand-profile-body
+   .profile-foundation-warning) instead of the same acid/green tone, so it
+   reads as a caution, not routine product info. */
+.publications-telegram-warning {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(230, 172, 76, 0.12);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.publications-telegram-warning b {
+  color: #f0c674;
+}
+
 .publishing-landing-note a {
   color: #e3d6ff;
   font-weight: 700;
@@ -21797,6 +21817,16 @@ input[type="radio"] {
 
 [data-theme="light"] .publications-vk-note b,
 [data-theme="light"] .publishing-landing-note b { color: #477513; }
+
+/* Light-theme match for .publications-telegram-warning's dark-native amber
+   above - same palette .profile-foundation-warning uses on light (base
+   rule, not the .brand-profile-body dark override). */
+[data-theme="light"] .publications-telegram-warning {
+  color: rgba(13, 27, 49, 0.78);
+  background: rgba(230, 172, 76, 0.17);
+}
+
+[data-theme="light"] .publications-telegram-warning b { color: #93650f; }
 
 /* -----------------------------------------------------------------------
    Public landing: one palette per theme.

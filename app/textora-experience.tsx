@@ -6028,6 +6028,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
             {!activeBrandId ? <p className="publications-empty-note">Сначала выберите или создайте бренд слева — каналы и календарь публикаций привязаны к нему.</p> : <>
               <p className="publications-vk-note"><b>Пока в тестовом режиме:</b> Telegram публикует текст и изображения; VK — только текстовые посты.</p>
+              <p className="publications-telegram-warning"><b>Важно:</b> из-за ограничений на стороне Telegram публикации туда иногда могут срываться. Мы оперативно решаем этот вопрос, чтобы взаимодействие с сервисом стало стабильным.</p>
               <div className="publications-channels-bar">
                 <div className="publications-channels-list">
                   {pubChannels.map((channel) => <span className={`publications-channel-chip publications-channel-chip-${channel.platform}`} key={channel.id}>
