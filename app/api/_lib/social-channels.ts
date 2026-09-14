@@ -5,6 +5,7 @@
 // to the browser (socialChannelSummary strips credentialsJson unconditionally
 // — see the comment on that column in db/schema.ts).
 
+import { request as httpsRequest } from "node:https";
 import { VK_API_VERSION, type ChannelCredentials } from "./publishing-config";
 import { socialChannels } from "../../../db/schema";
 
@@ -13,18 +14,56 @@ export class ChannelValidationError extends Error {}
 const telegramLinkPrefixCache = new Map<string, { prefix: string | null; expiresAt: number }>();
 const telegramLinkPrefixPending = new Map<string, Promise<string | null>>();
 
+// Same Timeweb IPv6-routing risk already fixed for the actual publish call
+// (postToTelegramApi in social-publish.ts) - getChat talks to the exact
+// same api.telegram.org host over plain fetch() and hit the same
+// connect-timeout signature (site owner: connecting a new Telegram channel
+// failed the same day, right after the publish path had already been
+// pinned) - it just went unnoticed until now because connecting a channel
+// happens far less often than publishing to one already connected.
+function telegramPostPinnedIPv4(url: string, body: string, signal: AbortSignal): Promise<{ status: number; json: () => Promise<unknown> }> {
+  const endpoint = new URL(url);
+  return new Promise((resolve, reject) => {
+    const request = httpsRequest({
+      protocol: endpoint.protocol,
+      hostname: endpoint.hostname,
+      port: endpoint.port || 443,
+      path: `${endpoint.pathname}${endpoint.search}`,
+      method: "POST",
+      family: 4,
+      signal,
+      headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) },
+    }, (response) => {
+      const chunks: Buffer[] = [];
+      let size = 0;
+      response.on("data", (chunk: Buffer) => {
+        size += chunk.length;
+        if (size > 1024 * 1024) { response.destroy(new Error("Telegram response is too large.")); return; }
+        chunks.push(Buffer.from(chunk));
+      });
+      response.on("end", () => {
+        const status = response.statusCode ?? 0;
+        const text = Buffer.concat(chunks).toString("utf8");
+        resolve({ status, json: async () => JSON.parse(text) });
+      });
+      response.on("error", reject);
+    });
+    request.on("error", reject);
+    request.end(body);
+  });
+}
+
 // getChat does not change anything in Telegram, so one short retry is safe:
 // it smooths over a transient DNS/TLS failure without risking duplicate posts.
-async function telegramGetChat(botToken: string, chatId: string): Promise<Response> {
+async function telegramGetChat(botToken: string, chatId: string): Promise<{ status: number; json: () => Promise<unknown> }> {
   let lastError: unknown;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      return await fetch(`https://api.telegram.org/bot${botToken}/getChat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: chatId }),
-        signal: AbortSignal.timeout(15_000),
-      });
+      return await telegramPostPinnedIPv4(
+        `https://api.telegram.org/bot${botToken}/getChat`,
+        JSON.stringify({ chat_id: chatId }),
+        AbortSignal.timeout(15_000),
+      );
     } catch (error) {
       lastError = error;
       if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 700));

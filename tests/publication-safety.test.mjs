@@ -135,23 +135,39 @@ for (const scenario of ["receipt", "connect", "exhausted", "unknown", "partial"]
 });
 
 test("Telegram channel validation separates transport failures from invalid credentials", async () => {
+  // social-channels.ts's getChat now speaks node:https (IPv4-pinned - it
+  // hit the exact same Timeweb connect-timeout the publish path already
+  // had fixed, just via a call site that had been missed), not fetch - a
+  // real HTTP response here is status + raw body bytes, so "invalid-json"
+  // is simulated as literally malformed bytes rather than a throwing
+  // json() stand-in, closer to what Telegram would actually send.
   for (const kind of ["network", "server", "invalid-json", "unauthorized", "success"]) {
+    const request = (_options, callback) => {
+      const req = new EventEmitter();
+      req.end = () => {
+        if (kind === "network") { queueMicrotask(() => req.emit("error", new Error("connect timeout"))); return; }
+        const status = kind === "server" ? 503 : kind === "unauthorized" ? 401 : 200;
+        const body = kind === "invalid-json" ? "not json" : JSON.stringify(
+          kind === "success" ? { ok: true, result: { title: "Test channel" } } : { ok: false, description: "Unauthorized" },
+        );
+        const res = new EventEmitter(); res.statusCode = status;
+        queueMicrotask(() => {
+          callback(res);
+          res.emit("data", Buffer.from(body));
+          res.emit("end");
+        });
+      };
+      return req;
+    };
     const loaded = load("app/api/_lib/social-channels.ts", {
       "./publishing-config": {}, "../../../db/schema": {},
+      "node:https": { request },
     }, {
       setTimeout: callback => { callback(); return 0; },
-      fetch: async () => {
-        if (kind === "network") throw new Error("connect timeout");
-        return { status: kind === "server" ? 503 : kind === "unauthorized" ? 401 : 200,
-          json: async () => {
-            if (kind === "invalid-json") throw new Error("invalid JSON");
-            return kind === "success" ? { ok: true, result: { title: "Test channel" } } : { ok: false, description: "Unauthorized" };
-          } };
-      },
     });
-    const request = loaded.describeChannel({ platform: "telegram", telegram: { botToken: "test-only", chatId: "test" } });
-    if (kind === "success") assert.equal((await request).label, "Test channel");
-    else await assert.rejects(request, error => {
+    const request2 = loaded.describeChannel({ platform: "telegram", telegram: { botToken: "test-only", chatId: "test" } });
+    if (kind === "success") assert.equal((await request2).label, "Test channel");
+    else await assert.rejects(request2, error => {
       assert.match(error.message, kind === "unauthorized" ? /Telegram отклонил подключение/ : /не удалось|недоступен/);
       assert.doesNotMatch(error.message, /Проверьте токен бота/);
       return true;
