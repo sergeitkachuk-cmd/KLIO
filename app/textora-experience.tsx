@@ -3410,9 +3410,57 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setManualLengthInput(String(next));
   }
 
+  // The profile module's own "Компания" field (brand-name input) doubles
+  // as a brand name, and its own "Сохранить профиль" button is the only
+  // save action a person filling this out would reasonably try — nothing
+  // here tells them a brand row must exist first via the separate, easy-
+  // to-miss "Добавить бренд" sidebar form. saveActiveWorkspaceBrand
+  // silently no-ops with no activeBrandId (by design, for its other two
+  // call sites — see its own comment), so every field here went
+  // unsaved: the "есть несохранённые изменения" dot never cleared, and a
+  // refresh lost everything just typed (site owner: exactly this — filled
+  // a brand profile, pressed save, nothing happened, refresh wiped it).
+  // Create the brand here instead, from whatever's already been typed,
+  // rather than bouncing them out to a separate control.
+  async function createWorkspaceBrandFromProfile() {
+    const name = effectiveBrand.name.trim();
+    if (!name) {
+      showToast("Укажите название компании в поле «Компания», чтобы сохранить профиль.");
+      return;
+    }
+    if (workspaceBrands.length >= workspaceAccount.brandLimit) {
+      showToast(`На тарифе «${workspaceAccount.planName}» доступно до ${workspaceAccount.brandLimit} брендов`);
+      return;
+    }
+    setWorkspaceSaving(true);
+    try {
+      const response = await fetch("/api/workspace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create_brand", profile: effectiveBrand, workspace: workspaceSnapshot }),
+      });
+      const payload = await safeJson(response) as { error?: string; brand?: unknown; account?: WorkspaceAccount };
+      const created = normalizeWorkspaceBrand(payload.brand);
+      if (!response.ok || !created) throw new Error(payload.error || "Не удалось сохранить профиль.");
+      setWorkspaceBrands((current) => [...current, created]);
+      if (payload.account) setWorkspaceAccount(payload.account);
+      workspaceVersions.current.set(created.id, created.updatedAt);
+      applyWorkspaceBrand(created);
+      showToast(`Бренд «${created.name}» создан, профиль сохранён`);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Не удалось сохранить профиль.");
+    } finally {
+      setWorkspaceSaving(false);
+    }
+  }
+
   async function saveBrand() {
     setBrand(effectiveBrand);
     if (workspace) {
+      if (!activeBrandId) {
+        await createWorkspaceBrandFromProfile();
+        return;
+      }
       await saveActiveWorkspaceBrand(true);
       return;
     }
