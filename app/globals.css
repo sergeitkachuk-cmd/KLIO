@@ -15700,6 +15700,25 @@ input[type="radio"] {
   line-height: 1.5;
 }
 
+/* A trailing sentence inside .auth-subtitle went unnoticed (site owner:
+   a real signup missed their verification email sitting in spam) — its
+   own bordered callout instead, same amber "needs attention" palette used
+   elsewhere for a real reliability caveat, not routine copy. */
+.auth-spam-note {
+  margin: -14px 0 26px;
+  padding: 10px 12px;
+  border: 1px solid rgba(230, 172, 76, 0.35);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(230, 172, 76, 0.12);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.auth-spam-note b {
+  color: #f0c674;
+}
+
 .auth-card form {
   display: block;
 }

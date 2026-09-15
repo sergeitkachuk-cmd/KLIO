@@ -92,7 +92,8 @@ export default function SignupPage() {
             <span className="brand"><i aria-hidden="true"/><b>КЛИО<span aria-hidden="true">.</span></b><small>Цифровая редакция</small></span>
           </Link>
           <h1>Проверьте почту</h1>
-          <p className="auth-subtitle">Мы отправили письмо со ссылкой подтверждения на <b>{sentTo}</b>. Перейдите по ней, чтобы открыть кабинет — ссылка действует 24 часа. Если письма нет во «Входящих» — загляните в папку «Спам», иногда оно попадает туда.</p>
+          <p className="auth-subtitle">Мы отправили письмо со ссылкой подтверждения на <b>{sentTo}</b>. Перейдите по ней, чтобы открыть кабинет — ссылка действует 24 часа.</p>
+          <p className="auth-spam-note"><b>Загляните в папку «Спам»</b> — почтовые сервисы (особенно iCloud/Mail на Apple-устройствах) нередко отправляют туда письма от новых сервисов.</p>
           {resendMessage && <p className="auth-error" style={{ color: "#d3ffd8", background: "rgba(92,255,140,0.12)", borderColor: "rgba(118,255,118,0.35)" }}>{resendMessage}</p>}
           <button className="button ghost large" type="button" onClick={() => void handleResend()} disabled={resendBusy}>{resendBusy ? "Отправляем…" : "Отправить письмо ещё раз"}</button>
           <p className="auth-switch">Уже подтвердили? <Link href={{ pathname: "/login", query: { return_to: safeReturnTo() } }}>Войти</Link></p>

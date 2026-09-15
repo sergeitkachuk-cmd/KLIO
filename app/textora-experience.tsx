@@ -5975,6 +5975,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     <HelpTip label="Из найденных тем" text={semanticAnalysisReady
                       ? "Нажмите «Из найденных тем», чтобы использовать карту запросов. Без неё КЛИО расширит план вокруг отрасли, задач аудитории и уместных сезонных поводов."
                       : <>Кнопка «Из найденных тем» включится, когда в модуле <button type="button" className="inline-text-link" onClick={() => openModule("semantics")}>«Семантика»</button> будут найдены реальные запросы — оттуда их можно передать сюда. Без них КЛИО расширит план вокруг отрасли, задач аудитории и уместных сезонных поводов.</>}/>
+                    <label className="content-plan-news-toggle"><input type="checkbox" checked={contentPlanNewsAware} onChange={(event) => { setContentPlanNewsAware(event.target.checked); setContentPlanNeedsRefresh(true); }}/><span>Учитывать актуальные новости отрасли</span></label>
+                    <HelpTip label="Актуальные новости" text="КЛИО сместит акцент плана на свежие отраслевые изменения, тренды и вопросы аудитории вместо общих тем — часть заголовков будет привязана к тому, что происходит в отрасли прямо сейчас."/>
                   </div>
                 </div>
 
@@ -5986,7 +5988,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
                 <div className="content-plan-controls">
                   <div><span>Количество тем</span><div>{[10, 15, 25].map((value) => <button type="button" className={contentPlanCount === value ? "active" : ""} onClick={() => { setContentPlanCount(value); setContentPlanNeedsRefresh(true); persistContentPlan({ count: value, needsRefresh: true }); }} key={value}>{value}</button>)}</div></div>
-                  <label className="content-plan-news-toggle"><input type="checkbox" checked={contentPlanNewsAware} onChange={(event) => { setContentPlanNewsAware(event.target.checked); setContentPlanNeedsRefresh(true); }}/><span>Учитывать актуальные новости отрасли</span><HelpTip label="Актуальные новости" text="КЛИО сместит акцент плана на свежие отраслевые изменения, тренды и вопросы аудитории вместо общих тем — часть заголовков будет привязана к тому, что происходит в отрасли прямо сейчас."/></label>
                   <button className={`button primary large ${contentPlanBusy ? "is-busy" : ""}`} type="button" onClick={buildContentPlan} disabled={contentPlanBusy || aiConnection !== "connected" || workspaceAccount.researchRemaining <= 0}><Icon name="spark"/>{contentPlanBusy ? "Собираем систему…" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.researchRemaining <= 0 ? "Лимит исследований исчерпан" : contentPlanResult.items.length ? "Обновить контент‑план" : "Собрать контент‑план"}</button>
                 </div>
                 {contentPlanBusy && <small className="generation-wait-note">План собирается в фоне. Можно продолжать работу — результат появится здесь автоматически.</small>}
