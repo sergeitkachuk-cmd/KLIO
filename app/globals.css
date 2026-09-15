@@ -10083,6 +10083,14 @@ footer nav a {
   .workspace-header-actions > a.telegram-header-link {
     width: 34px;
     height: 34px;
+    /* The base .telegram-header-link rule sets min-height: 40px, which
+       otherwise wins over this height regardless of selector specificity
+       (min-height always floors the used height) — without this override
+       the button rendered 34px wide but 40px tall, an oval, not a circle
+       (site owner: reported this exact shape in the workspace header,
+       right after the same fix already worked on the landing header,
+       where width/height both happened to be 40px and so never hit it). */
+    min-height: 34px;
     flex: 0 0 34px;
     aspect-ratio: 1;
     padding: 0;
