@@ -13,26 +13,43 @@ function addMonths(base: Date, months: number) {
   return result;
 }
 
+function addDays(base: Date, days: number) {
+  const result = new Date(base);
+  result.setUTCDate(result.getUTCDate() + days);
+  return result;
+}
+
 export async function PATCH(request: Request) {
   const user = await getCurrentUser();
   if (!user || !isAdminEmail(user.email)) return NextResponse.json({ error: "Недоступно" }, { status: 403 });
-  const body = await request.json().catch(() => null) as { email?: unknown; planId?: unknown; months?: unknown } | null;
+  const body = await request.json().catch(() => null) as { email?: unknown; planId?: unknown; months?: unknown; days?: unknown } | null;
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
   const planId = body?.planId;
   const months = body?.months === undefined || body?.months === null || body?.months === "" ? null : Number(body.months);
-  if (!email || !isPlanId(planId) || (months !== null && (!Number.isInteger(months) || months < 0 || months > 120))) {
-    return NextResponse.json({ error: "Проверьте email, тариф и количество месяцев" }, { status: 400 });
+  // Days is the finer-grained alternative to months (a whole month is
+  // often too much for a one-off goodwill grant) - the two are mutually
+  // exclusive per request; the client only ever sends whichever unit the
+  // admin picked, never both meaningfully.
+  const days = body?.days === undefined || body?.days === null || body?.days === "" ? null : Number(body.days);
+  if (!email || !isPlanId(planId)
+    || (months !== null && (!Number.isInteger(months) || months < 0 || months > 120))
+    || (days !== null && (!Number.isInteger(days) || days < 0 || days > 3650))
+  ) {
+    return NextResponse.json({ error: "Проверьте email, тариф и срок" }, { status: 400 });
   }
   const db = getDb();
   const [current] = await db.select({ planExpiresAt: accounts.planExpiresAt }).from(accounts).where(eq(accounts.email, email)).limit(1);
   if (!current) return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
   const now = new Date();
-  const isTrialOrClear = planId === "trial" || months === 0;
+  const isTrialOrClear = planId === "trial" || months === 0 || days === 0;
+  const base = current.planExpiresAt && new Date(current.planExpiresAt).getTime() > now.getTime() ? new Date(current.planExpiresAt) : now;
   const nextExpiry = isTrialOrClear
     ? null
-    : months === null
-      ? current.planExpiresAt
-      : addMonths(current.planExpiresAt && new Date(current.planExpiresAt).getTime() > now.getTime() ? new Date(current.planExpiresAt) : now, months).toISOString();
+    : days !== null
+      ? addDays(base, days).toISOString()
+      : months !== null
+        ? addMonths(base, months).toISOString()
+        : current.planExpiresAt;
   const [updated] = await db.update(accounts).set({
     planId: planId as PlanId,
     planExpiresAt: nextExpiry,

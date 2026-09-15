@@ -625,6 +625,9 @@ function AdminStyles() {
       .admin-controls-grid { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 12px; align-items: end; }
       .admin-controls-grid label { display: grid; gap: 6px; color: #6b7280; font-size: 12px; font-weight: 700; }
       .admin-controls-grid select, .admin-controls-grid input { min-height: 38px; border: 1px solid #d1d5db; border-radius: 9px; padding: 0 10px; background: #fff; color: #1c1f26; font: inherit; }
+      .admin-duration-field { display: flex; gap: 6px; }
+      .admin-duration-field input { flex: 1 1 auto; min-width: 0; }
+      .admin-duration-field select { flex: 0 0 auto; }
       .admin-control-actions { display: flex; gap: 8px; }
       .admin-control-actions button:first-child { background: #4f46e5; border-color: #4f46e5; color: #fff; }
       .admin-danger-button { color: #b91c1c !important; }
