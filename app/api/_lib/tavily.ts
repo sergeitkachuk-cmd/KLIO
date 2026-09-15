@@ -246,7 +246,19 @@ export async function researchContentPlanWeb(topic: string, geography: Geography
   // claim it found actual current news.
   const fallbackQuery = `${newsSubject} тренды и практики отрасли`;
   const fallback = await tavilySearch(fallbackQuery, 5, `content-plan:${cacheKey(newsSubject, [])}`);
-  return fallback ? { ...fallback, freshNews: false } : null;
+  if (fallback) return { ...fallback, freshNews: false };
+  // Both attempts failing is unusual enough to log explicitly with the
+  // actual subject searched — tavilySearch's own warnings only fire on a
+  // hard API error/non-2xx response, not on "the request succeeded but
+  // had zero results", so without this a genuinely empty result and an
+  // unlogged transient Tavily outage look identical from the outside
+  // (site owner: got the "no results in either mode" dataNote, asked
+  // "это что такое? звучит как ошибка"). newsSubject falling back to a
+  // brand-name+positioning string (see industryField above) — e.g. brand
+  // profile has no "Продукты/услуги" filled in — is the most likely
+  // cause when this is the actual API response rather than an outage.
+  console.warn("researchContentPlanWeb found nothing in either mode", JSON.stringify({ newsSubject, industryFieldProvided: Boolean(industryField) }));
+  return null;
 }
 
 // Writing needs substantive facts, not topic-discovery snippets. Keep one
