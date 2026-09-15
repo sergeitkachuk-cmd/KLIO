@@ -110,10 +110,12 @@ const PLAN_MAX_GENERATION_ATTEMPTS = 3;
 // lead time, short enough that "upcoming" still means something.
 const PLAN_SEASONAL_HORIZON_DAYS = 60;
 
+// Bumped from 4_500/6_500/10_000 when cta became a per-item model-written
+// field instead of a deterministic fill (one more short string per row).
 function contentPlanOutputTokenBudget(count: number) {
-  if (count <= 10) return 4_500;
-  if (count <= 15) return 6_500;
-  return 10_000;
+  if (count <= 10) return 5_000;
+  if (count <= 15) return 7_500;
+  return 11_500;
 }
 
 function clean(value: unknown, maxLength: number) {
@@ -326,11 +328,20 @@ const itemSchema = {
     angle: { type: "string" },
     objective: { type: "string" },
     primaryKeyword: { type: "string" },
+    // The one exception to "everything else is deterministic" below: cta
+    // used to always be brand.cta verbatim on every single row, which is a
+    // real instance of the plan reading monotonous even when topics differ
+    // (site owner report, visible directly in a real exported plan: every
+    // row had the literal same CTA sentence). A material's actual next
+    // step (read/save/ask a question/sign up/get a consultation/...)
+    // depends on that specific material, not just the brand, so this one
+    // field needs the model's judgment per row.
+    cta: { type: "string" },
   },
   // The model returns only a compact editorial core. The remaining display
   // fields are deterministic derivatives below; asking it to write them for
   // every row was the source of max_output_tokens truncation on DeepSeek.
-  required: ["id", "title", "subtitle", "cluster", "format", "intent", "stage", "priority", "angle", "objective", "primaryKeyword"],
+  required: ["id", "title", "subtitle", "cluster", "format", "intent", "stage", "priority", "angle", "objective", "primaryKeyword", "cta"],
   additionalProperties: false,
 } as const;
 
@@ -420,7 +431,10 @@ function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: s
     metaTitle: cleanPlanTitle(clean(item.title, 90)),
     metaDescription: clean(item.subtitle, 190),
     structure: ["Контекст и вопрос читателя", "Ключевые факты и критерии выбора", "Практический ориентир по теме", "Следующий шаг"],
-    cta: brand.cta || "Узнать подробности и получить консультацию.",
+    // Model-written per material now (see itemSchema's cta comment) —
+    // brand.cta is only a fallback for a missing/empty response, not the
+    // default every row gets.
+    cta: clean(item.cta, 160) || brand.cta || "Узнать подробности и получить консультацию.",
     evidenceNeeded: ["Проверить актуальные факты и данные перед публикацией"],
     // Sources are deterministic metadata about this request, not creative
     // content.  Filling them here saves one array per plan row and prevents
@@ -504,6 +518,12 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       "Работай как редакционная система бренда, а не генератор общих заголовков. Сначала используй весь доступный профиль: предложение, аудиторию, позиционирование, подтверждённые преимущества, доказательства, географию, голос и ограничения.",
       input.requestedQuery ? "Основная тема пользователя задаёт фокус плана; не выходи за неё без явной связи с брендом." : "Отдельная тема и семантика не заданы: построй разнообразный общий контент‑план вокруг отрасли и задач аудитории, а не каталог бренда. Расширяй поле от услуг бренда к близким проблемам, критериям выбора, подготовке, использованию, уходу, типичным ошибкам, смежным решениям и экспертным вопросам, которые могут привести новую аудиторию. Не сужай план до одного преимущества или одной услуги.",
       currentIndustryFocus ? "Пользователь просит актуальные отраслевые темы. Это приоритет выше перечня программ на сайте: минимум 60% плана посвяти внешнему отраслевому полю — подтверждённым веб‑поиском изменениям, трендам, ожиданиям аудитории, новым практикам и значимым вопросам отрасли. Сайт бренда используй только для проверки релевантности и мягкой связи с предложением; не подменяй отраслевой план каталогом услуг. Не выдумывай новости, даты, тренды или регулирование: если этого нет в web_research, формулируй тему как вопрос или критерий выбора без заявления о факте." : "",
+      // Уточняет правило выше, а не отменяет его: разрешение строить общий
+      // отраслевой контент (когда тема/семантика не заданы) — это про ШИРОТУ
+      // поля тем, а не про обезличенность каждого материала. Абстрактная
+      // тема-заглушка вида «Как выбрать X» без собственной точки зрения
+      // бренда остаётся слабой темой в любом режиме.
+      "Даже широкая отраслевая тема должна вести к какой-то реальной компетенции, продукту, взгляду, факту или доказательству бренда — не быть материалом, который слово в слово мог бы опубликовать любой конкурент. Абстрактные формулировки вроде «Как выбрать [категория]», «5 советов по [отрасль]», «Почему важно [общая ценность]» или «Что такое [общий термин]» без такой точки зрения бренда — редкое исключение, а не типовой каркас плана.",
       // Универсальное правило для любого бренда и отрасли: тема/фокус часто
       // называет категорию, а не одну конкретную тему ("акцент на
       // программах лечения", "по каждой услуге", "линейка продуктов",
@@ -519,6 +539,12 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       input.semantics.length
         ? "Семантика — это карта реального спроса для серии публикаций, а не набор ключей одной статьи. Построй план по её кластерам: одна строка плана использует один кластер и один поисковый интент; основной запрос и все поддерживающие формулировки строки должны относиться к этому же кластеру. Не смешивай кластеры в одном материале. Один кластер можно развить несколькими материалами только для явно разных вопросов или интентов, без каннибализации."
         : "Семантика не передана: построй план по теме и профилю, но не выдумывай частотность запросов.",
+      // General permission, not tied to semantics specifically: a genuinely
+      // rich topic deserving more than one material is good editorial
+      // practice, but the failure mode without the second sentence here is
+      // padding the plan with a weak topic split into filler parts just to
+      // hit the requested count.
+      "Если тема достаточно объёмна для нескольких материалов, оформи её как мини-серию (например: проблема → разбор → кейс, или знакомство → экспертность → продукт) — но только если каждая часть серии имеет самостоятельную ценность и могла бы быть прочитана отдельно. Не дроби одну небольшую тему на несколько публикаций только ради количества строк в плане.",
       input.semantics.length
         ? "В первую очередь используй небрендовые, широкие и смежные кластеры, чтобы приводить новую аудиторию. Брендовые, навигационные и запросы вида «официальный сайт», «цены» оставляй для отдельных конверсионных страниц или материалов только когда это прямо соответствует цели плана; не подменяй ими статьи для роста новой аудитории. Частотность — сигнал приоритета среди сопоставимых кластеров, но не единственный критерий: учитывай интент, полезность и соответствие бренду."
         : "Без семантики проведи веб‑исследование тематического поля и предложи околоотраслевые, околотематические и полезные для новой аудитории направления. Не выдумывай частотность и не делай все темы брендовыми. Уместные календарные поводы и праздники можно включать только если они действительно связаны с предложением, аудиторией или сезонным спросом бренда и дают читателю самостоятельную пользу. Не добавляй формальные поздравления, случайные даты и выдуманную сезонность.",
@@ -538,6 +564,16 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       `Сегодняшняя дата передана в current_date (поле input). Используй её, чтобы определить текущий сезон, время года и ближайшие ${PLAN_SEASONAL_HORIZON_DAYS} дней — включай темы к отраслевым профессиональным дням, праздникам или сезонным поводам этого периода, если они реально существуют и относятся к отрасли или аудитории бренда (например, Всемирный день физиотерапевта для санатория/реабилитации). Называй только те памятные даты и праздники, в существовании которых ты уверен — при любом сомнении в дате или названии не выдумывай её, сформулируй тему без привязки к конкретному дню.`,
       "Сезонные и календарные темы поощряются, если они реально востребованы аудиторией или отраслью бренда (сезон спроса, отраслевые события, актуальные для времени года вопросы) — такая тема, поднятая год назад, разрешена снова: сезон вернулся, читатель другой. Не путай уместный сезонный повод с формальным поздравлением или случайной датой.",
       "Сбалансируй воронку: знакомство, выбор, решение и удержание. Не делай весь план информационными инструкциями и не превращай коммерческие темы в статьи «как выбрать». Для темы с конкретным брендом или продуктом предусмотрены материалы о его предложении, доказательствах, сценариях применения и возражениях.",
+      // A recurring axis of "the plan reads monotonous" that's separate
+      // from topic diversity and title-construction diversity (both
+      // already required above / enforced in code): even genuinely
+      // different topics read the same if every material is built the same
+      // editorial way (always an explainer, always a listicle, always
+      // "expert breaks it down"). Gives the model an explicit toolkit
+      // instead of leaving angle variety to chance.
+      "У каждого материала есть не только тема, но и редакционный угол — способ подачи. Используй разные углы: объяснение, история, наблюдение, разбор, сравнение, разбор ошибки, миф, вопрос клиента, экспертный комментарий, кейс, сценарий использования, закулисье/люди компании, процесс, цифры и факты, инструкция, чек-лист, подборка, FAQ, дискуссионный вопрос, сезонная тема, реакция на отраслевое событие, «проблема → решение», «до → после», «ожидание → реальность», неочевидное преимущество, работа с возражением, профессиональный взгляд, история бренда, ценности компании. Это набор инструментов, а не обязательный чек-лист для каждой темы — план не должен читаться как серия однотипных статей одного жанра.",
+      "objective каждой темы называет ОДНУ основную маркетинговую или коммуникационную задачу материала (например: охват, узнаваемость, доверие, формирование спроса, обучение, демонстрация экспертизы, SEO, вовлечение, работа с возражениями, прогрев, лидогенерация, продажа, повторное обращение, удержание, репутация, комьюнити, информирование), а не список из нескольких задач сразу. План в целом должен покрывать разные задачи, а не одну и ту же почти в каждой теме.",
+      "Если в профиле бренда описано несколько сегментов аудитории, распредели темы между ними осознанно, а не строй весь план для одного сегмента. В angle называй, для какого сегмента предназначена тема и какой её вопрос, барьер или желание материал закрывает — не абстрактного «клиента», а конкретный сегмент из профиля, если сегменты там названы.",
       // Универсальный пробел для любого бренда: план легко скатывается в
       // одну лишь предметную экспертизу (сама услуга/продукт) и упускает
       // тему взаимодействия с самим сервисом — то, как клиенту удобно
@@ -545,8 +581,20 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       // подготовиться к визиту. Это тоже реальная задача аудитории и
       // материал для «Удержание»/поддержки, а не только для «Решение».
       "Кроме предметной экспертизы включи материалы про взаимодействие с самим сервисом бренда, если это уместно отрасли: как записаться или оформить заявку, чем удобны онлайн‑бронирование, личный кабинет или другие сервисы сайта, что взять с собой или как подготовиться, чего ожидать на месте, как связаться с поддержкой. Не выдумывай функции сайта, которых нет в профиле бренда или website_snapshot — если таких сведений нет, опирайся на типичный процесс отрасли в общих чертах, не приписывая бренду конкретные технические детали.",
+      // search_geography and competitor_editorial_opportunities were always
+      // passed as raw input data with no textual guidance at all on how to
+      // use them — the model was left to guess. Both gaps closed here.
+      input.geography.length ? "Используй географию (search_geography) только там, где регион действительно значим для темы, спроса или сезонности — не вставляй название региона искусственно в каждый заголовок и не приписывай бренду локальную специфику, которой нет в профиле." : "",
+      input.competitorInsights.length ? "Матрица конкурентов (competitor_editorial_opportunities) — это только сигнал рыночных пробелов и возможностей, не шаблон: не копируй заголовки, рубрики, формулировки или структуру чужого контента. Предпочитай темы, где у бренда есть собственная компетенция, доказательство, продукт или отличная точка зрения." : "",
       "Если тема или фокус не указывает на конкретную категорию для разбора по пунктам (см. правило выше), не строй план вокруг одного преимущества и не превращай его в скучный каталог услуг без содержания. Разделяй образовательные, коммерческие, репутационные и вовлекающие задачи; не выдумывай сезонность, статистику, тренды или кейсы.",
       "Каждый title — чистый публикационный заголовок без номера, комментария, редакционной команды, пояснения в скобках и фраз вроде «использовать выводы». Не добавляй одинаковые каркасы «полный разбор», «основные ошибки», «пошаговый маршрут» ко всем темам.",
+      "Не используй абстрактные канцелярские заголовки без конкретной идеи материала: «Преимущества нашей компании», «Информация о программе», «Экспертное мнение», «Актуальные вопросы отрасли» и подобные. Заголовок может быть предварительным, но должен ясно указывать на конкретную идею конкретного материала.",
+      // Named clichés, not just the construction-pattern rule already
+      // below — this catches whole formulaic titles that could each use a
+      // *different* opening word and still all read as the same tired
+      // template ("5 причин…" / "7 советов…" / "Топ‑10…" are as
+      // interchangeable with each other as five "Как…" titles are).
+      "Избегай однотипных клише вроде «5 причин…», «7 советов…», «Как выбрать…», «Почему важно…», «Всё, что нужно знать о…», «Топ‑10…», «Секреты успешного…» — они допустимы только тогда, когда действительно являются лучшим способом раскрыть конкретную тему, а не способ быстро заполнить план.",
       // The recurring complaint this addresses: a plan where most titles
       // open the same way ("Почему...", "Когда...", "Как...") reads as
       // repetitive even when the underlying topics genuinely differ — title
@@ -563,13 +611,23 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       bannedOpeners.length ? `Эти конструкции заголовков уже использованы максимально допустимое число раз в этом плане: ${bannedOpeners.map((label) => `«${label}»`).join(", ")}. Ни один новый заголовок не должен начинаться (до или сразу после двоеточия) так же — используй другую форму.` : "",
       excludeTitles.length ? `Это уже созданные темы и материалы бренда за последнее время. Не повторяй их, не делай близкие перефразировки и не возвращай ту же задачу с переставленными словами: ${excludeTitles.map((title) => `«${title}»`).join("; ")}` : "Если ранее созданные темы не переданы, всё равно не повторяй идеи внутри текущего плана.",
       softExcludeTitles.length ? `Эти темы поднимались раньше, но прошло достаточно времени: ${softExcludeTitles.map((title) => `«${title}»`).join("; ")}. Их можно взять снова только с действительно новым ракурсом, актуальным поводом или обновлёнными фактами — не пересказывай их дословно той же структурой.` : "",
-      "Для каждой строки верни только title, subtitle, cluster, format, intent, stage, priority, angle, objective и primaryKeyword. Не выводи lsi, audience, metaTitle, metaDescription, structure, cta, evidenceNeeded или sources: КЛИО заполнит их из профиля и темы. Формулируй поля кратко и по существу.",
+      "Для каждой строки верни только title, subtitle, cluster, format, intent, stage, priority, angle, objective, primaryKeyword и cta. Не выводи lsi, audience, metaTitle, metaDescription, structure, evidenceNeeded или sources: КЛИО заполнит их из профиля и темы. Формулируй поля кратко и по существу.",
+      // cta used to always be brand_profile.cta verbatim on every single
+      // row — a real instance of "the plan reads monotonous" visible
+      // directly in an exported plan (site owner report: identical CTA
+      // sentence on all 15 rows). A material's actual next step depends on
+      // that material and its funnel stage, not just the brand.
+      "cta — конкретный следующий шаг именно для этой темы, не обязательно продажа: прочитать, сохранить, обсудить в комментариях, задать вопрос, перейти на страницу сайта, посмотреть программу, записаться, получить консультацию, изучить услугу, поделиться, оставить мнение и т. п. Опирайся на желаемое действие из профиля бренда (brand_profile.cta), но не копируй его дословно в каждую строку — материал для «Знакомство» и материал для «Решение» обычно ведут к разным следующим шагам.",
       "Title и subtitle должны точно соответствовать теме. subtitle — одна короткая зацепка под H1 с пользой читателю, не повторяет title. Не обещай позиции, результат лечения, доход, сроки, цены и иные факты, которых нет в источниках.",
       "Сначала продумай задачу читателя и редакционный ракурс, но во внешний JSON выведи только компактную схему. Не добавляй объяснений вне JSON.",
       // A separate AI research/web-search step (and, briefly, routing this
       // whole operation to OpenAI) was tried and reverted here — see the
       // fix history in ai-config.ts's generate_content_plan entry.
       "Опирайся на переданный профиль бренда, семантику, географию и снимок сайта бренда (website_snapshot) — не выдумывай факты, частотность или подробности, которых там нет. Если website_snapshot содержит актуальные предложения, программы или обновления, которых нет в текстовых полях профиля, обязательно учти их — это самый свежий источник о том, что бренд предлагает прямо сейчас.",
+      // The final editorial pass, applied silently before the JSON is
+      // written — same spirit as the title-diversity self-check already
+      // above, generalized to the whole plan.
+      "Перед финальной выдачей мысленно проверь план, не описывая эту проверку в ответе: для каждой темы должен быть убедительный ответ хотя бы на два из четырёх вопросов — «Почему это интересно аудитории?», «Почему именно этот бренд имеет право об этом говорить?», «Какую задачу бренда это решает?», «Не повторяет ли это уже другую тему плана?». Убери или переработай банальные темы, темы без ясной связи с брендом, материалы без понятной аудитории, надуманные инфоповоды, темы на неподтверждённых фактах и формулировки, которые читаются как типовой AI‑брейншторм, а не редакционное решение.",
       "Не пиши промежуточные текстовые сообщения о ходе работы («приступаю к анализу», «теперь перейду к плану» и т.п.). Единственный текстовый ответ — финальный JSON с готовым планом.",
       "Верни только структурированный результат по заданной JSON‑схеме.",
       ...FINAL_QA_RULES,
@@ -616,7 +674,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       banned_title_openers: bannedOpeners,
       editorial_brief_contract: {
         topic: "title", subtitle: "subtitle", intent: "intent", objective: "objective", audience: "audience", angle: "angle", format: "format",
-        structure: "structure", keywords: ["primaryKeyword", "lsi"], evidenceNeeded: "evidenceNeeded", sources: "sources",
+        structure: "structure", keywords: ["primaryKeyword", "lsi"], cta: "cta", evidenceNeeded: "evidenceNeeded", sources: "sources",
         knownFacts: input.brand.name ? [input.brand.description, input.brand.positioning, input.brand.advantages, input.brand.products, input.brand.services, input.brand.proof].filter(Boolean) : [],
         restrictions: [input.brand.restrictions, input.brand.prohibited].filter(Boolean),
         authorPosition: "brand for commercial brand materials; neutral or expert otherwise",
