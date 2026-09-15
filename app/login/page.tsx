@@ -110,7 +110,7 @@ export default function LoginPage() {
         body: JSON.stringify({ email: normalizedEmail }),
       });
       const payload = await response.json().catch(() => ({}));
-      setForgotMessage(payload.message || "Если аккаунт существует, мы отправили письмо со ссылкой для смены пароля.");
+      setForgotMessage(payload.message || "Если аккаунт существует, мы отправили письмо со ссылкой для смены пароля. Если письма нет во «Входящих», загляните в папку «Спам».");
     } catch {
       setForgotMessage("Не удалось отправить письмо. Попробуйте немного позже.");
     } finally {

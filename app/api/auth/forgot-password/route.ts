@@ -8,7 +8,7 @@ import { workspaceDatabaseAvailable } from "../../_lib/workspace-account";
 import { getDb } from "../../../../db";
 import { accounts } from "../../../../db/schema";
 
-const GENERIC_OK = { ok: true, message: "Если аккаунт существует, мы отправили письмо со ссылкой для смены пароля." } as const;
+const GENERIC_OK = { ok: true, message: "Если аккаунт существует, мы отправили письмо со ссылкой для смены пароля. Если письма нет во «Входящих», загляните в папку «Спам»." } as const;
 
 export async function POST(request: Request) {
   if (isRateLimited(`forgot-password:${clientIp(request)}`, 5, 15 * 60 * 1000)) return Response.json(GENERIC_OK);
