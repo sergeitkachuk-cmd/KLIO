@@ -8708,16 +8708,31 @@ footer nav a {
 }
 
 .content-plan-basis-actions {
-  /* Anchors both this row's HelpTip popovers (see .help-tip-panel's
-     position:absolute) — without a positioned ancestor here, an absolute
-     popover falls back to the nearest one anywhere up the tree instead of
-     this row, which is why the "Актуальные новости" tip never visibly
-     opened where expected (site owner report). */
-  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
+}
+
+/* Each "?" trigger is its own positioning root here, not the whole row.
+   .field-label-help/.semantic-primary-label make the label ROW the
+   popover's positioned ancestor because each of those rows holds exactly
+   one label+HelpTip pair, sized to the field it belongs to. This row
+   holds several unrelated buttons before each HelpTip, so anchoring to
+   the whole row (as tried previously) opened both "Из найденных тем" and
+   "Актуальные новости" tips flush at the row's own left edge instead of
+   under their own icon (site owner report: two "?" open in unrelated
+   places). The panel's default width (min(340px, 100%)) is also relative
+   to its containing block, so with .help-tip itself as that block now,
+   the 100% would resolve against the ~28px trigger — overridden below to
+   an explicit size instead. */
+.content-plan-basis-actions .help-tip {
+  position: relative;
+}
+.content-plan-basis-actions .help-tip-panel {
+  left: 0;
+  width: min(320px, 86vw);
+  min-width: min(320px, 86vw);
 }
 
 .content-plan-basis-actions > button > b {
