@@ -8708,6 +8708,12 @@ footer nav a {
 }
 
 .content-plan-basis-actions {
+  /* Anchors both this row's HelpTip popovers (see .help-tip-panel's
+     position:absolute) — without a positioned ancestor here, an absolute
+     popover falls back to the nearest one anywhere up the tree instead of
+     this row, which is why the "Актуальные новости" tip never visibly
+     opened where expected (site owner report). */
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -8942,7 +8948,16 @@ footer nav a {
 
 .content-plan-controls > div button:active { transform: scale(0.96); }
 
-.content-plan-news-toggle {
+/* .content-plan-query-row label { display: grid } and its "> span" caps
+   rule are generic descendant selectors that also happened to match this
+   label/span pair, since it lives inside .content-plan-query-row too (via
+   .content-plan-basis-actions) — the checkbox and its text ended up on
+   separate grid rows, in the uppercase caption style meant for the query
+   field's own label (site owner screenshot: checkbox stacked above the
+   text, wrong color/case). Extra specificity below reasserts the
+   originally-intended flex layout and plain-text styling regardless of
+   where this ends up nesting. */
+.content-plan-basis-actions label.content-plan-news-toggle {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -8952,10 +8967,32 @@ footer nav a {
   cursor: pointer;
 }
 
-.content-plan-news-toggle input[type="checkbox"] {
+.content-plan-basis-actions .content-plan-news-toggle > span {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* .content-plan-query-row input's own generic rule (width:100%, padding,
+   border-radius:12px, a light background, min-height:52px) also matches
+   this checkbox and, per-property, wins on anything my selector below
+   doesn't itself set — every one of those properties is reset here
+   explicitly rather than assuming a narrower width/height override is
+   enough (site owner screenshot: a big padded rounded box, not a plain
+   checkbox — min-height:52px alone floors the box past an unset height
+   the same way an earlier, unrelated min-height bug did for the Telegram
+   header button). */
+.content-plan-basis-actions .content-plan-news-toggle input[type="checkbox"] {
   width: 18px;
   height: 18px;
+  min-height: 0;
   flex: 0 0 auto;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 4px;
+  background: transparent;
   accent-color: #7c3aed;
   cursor: pointer;
 }
@@ -18996,11 +19033,13 @@ input[type="radio"] {
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.2);
 }
 
-[data-theme="light"] .content-plan-news-toggle {
+[data-theme="light"] .content-plan-basis-actions .content-plan-news-toggle,
+[data-theme="light"] .content-plan-basis-actions .content-plan-news-toggle > span {
   color: #0d1b31;
 }
 
-[data-theme="light"] .content-plan-news-toggle input[type="checkbox"] {
+[data-theme="light"] .content-plan-basis-actions .content-plan-news-toggle input[type="checkbox"] {
+  border-color: rgba(15, 23, 42, 0.32);
   accent-color: #2452b8;
 }
 
