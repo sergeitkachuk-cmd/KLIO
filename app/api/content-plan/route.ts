@@ -49,6 +49,7 @@ type ContentPlanPayload = {
   competitorInsights?: unknown;
   brand?: unknown;
   existingTitles?: unknown;
+  newsAware?: unknown;
 };
 
 type ContentPlanGoal = "mixed" | "seo" | "social" | "landing" | "ads";
@@ -240,7 +241,11 @@ function normalizePayload(raw: ContentPlanPayload) {
   const existingTitles = unique(Array.isArray(raw.existingTitles)
     ? raw.existingTitles.map((item) => clean(item, 240)).filter(Boolean).slice(0, PLAN_EXISTING_TITLES_LIMIT)
     : []);
-  return { query, requestedQuery, goal, count, semantics, geography, competitorInsights, brand, existingTitles };
+  // User-facing "Учитывать актуальные новости отрасли" checkbox — forces
+  // the same current-industry-focus mode isCurrentIndustryFocus otherwise
+  // only reaches by guessing at keywords in the query text.
+  const newsAware = raw.newsAware === true;
+  return { query, requestedQuery, goal, count, semantics, geography, competitorInsights, brand, existingTitles, newsAware };
 }
 
 const itemSchema = {
@@ -392,7 +397,12 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
   // history.
   const strictExcludeBase = unique([...input.existingTitles, ...recentHistoricalTitles]).slice(0, PLAN_EXISTING_TITLES_LIMIT);
   input = { ...input, existingTitles: strictExcludeBase };
-  const currentIndustryFocus = isCurrentIndustryFocus(input.query);
+  // The "Учитывать актуальные новости отрасли" checkbox forces the same
+  // mode isCurrentIndustryFocus otherwise only reaches by matching keywords
+  // in the query text — same single researchContentPlanWeb call either
+  // way, just a different query framing, so this adds no extra web-search
+  // cost over what a "актуальные темы" query already triggers.
+  const currentIndustryFocus = input.newsAware || isCurrentIndustryFocus(input.query);
   // Direct HTTP read of the brand's own site (not an AI call). A separate
   // AI research/web-search step was tried here and reverted — see the fix
   // history in ai-config.ts's generate_content_plan entry for why.
@@ -445,6 +455,13 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       `Сегодняшняя дата передана в current_date (поле input). Используй её, чтобы определить текущий сезон, время года и ближайшие ${PLAN_SEASONAL_HORIZON_DAYS} дней — включай темы к отраслевым профессиональным дням, праздникам или сезонным поводам этого периода, если они реально существуют и относятся к отрасли или аудитории бренда (например, Всемирный день физиотерапевта для санатория/реабилитации). Называй только те памятные даты и праздники, в существовании которых ты уверен — при любом сомнении в дате или названии не выдумывай её, сформулируй тему без привязки к конкретному дню.`,
       "Сезонные и календарные темы поощряются, если они реально востребованы аудиторией или отраслью бренда (сезон спроса, отраслевые события, актуальные для времени года вопросы) — такая тема, поднятая год назад, разрешена снова: сезон вернулся, читатель другой. Не путай уместный сезонный повод с формальным поздравлением или случайной датой.",
       "Сбалансируй воронку: знакомство, выбор, решение и удержание. Не делай весь план информационными инструкциями и не превращай коммерческие темы в статьи «как выбрать». Для темы с конкретным брендом или продуктом предусмотрены материалы о его предложении, доказательствах, сценариях применения и возражениях.",
+      // Универсальный пробел для любого бренда: план легко скатывается в
+      // одну лишь предметную экспертизу (сама услуга/продукт) и упускает
+      // тему взаимодействия с самим сервисом — то, как клиенту удобно
+      // записаться, оформить заказ, воспользоваться личным кабинетом или
+      // подготовиться к визиту. Это тоже реальная задача аудитории и
+      // материал для «Удержание»/поддержки, а не только для «Решение».
+      "Кроме предметной экспертизы включи материалы про взаимодействие с самим сервисом бренда, если это уместно отрасли: как записаться или оформить заявку, чем удобны онлайн‑бронирование, личный кабинет или другие сервисы сайта, что взять с собой или как подготовиться, чего ожидать на месте, как связаться с поддержкой. Не выдумывай функции сайта, которых нет в профиле бренда или website_snapshot — если таких сведений нет, опирайся на типичный процесс отрасли в общих чертах, не приписывая бренду конкретные технические детали.",
       "Если тема или фокус не указывает на конкретную категорию для разбора по пунктам (см. правило выше), не строй план вокруг одного преимущества и не превращай его в скучный каталог услуг без содержания. Разделяй образовательные, коммерческие, репутационные и вовлекающие задачи; не выдумывай сезонность, статистику, тренды или кейсы.",
       "Каждый title — чистый публикационный заголовок без номера, комментария, редакционной команды, пояснения в скобках и фраз вроде «использовать выводы». Не добавляй одинаковые каркасы «полный разбор», «основные ошибки», «пошаговый маршрут» ко всем темам.",
       // The recurring complaint this addresses: a plan where most titles

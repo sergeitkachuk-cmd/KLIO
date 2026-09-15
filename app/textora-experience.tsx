@@ -2211,6 +2211,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [contentPlanQuery, setContentPlanQuery] = useState("");
   const [contentPlanGoal, setContentPlanGoal] = useState<ContentPlanGoal>("social");
   const [contentPlanCount, setContentPlanCount] = useState(25);
+  // Deliberately not persisted to localStorage/workspace snapshot like
+  // goal/count above — it's a one-off "this run only" cost toggle (forces
+  // the server's existing web-research call toward news/trends instead of
+  // general audience questions, see isCurrentIndustryFocus in
+  // content-plan/route.ts), not a lasting preference worth restoring.
+  const [contentPlanNewsAware, setContentPlanNewsAware] = useState(false);
   const [manualLengthInput, setManualLengthInput] = useState("8400");
   const [contentPlanResult, setContentPlanResult] = useState<ContentPlanResult>(emptyContentPlanResult);
   const [contentPlanMode, setContentPlanMode] = useState<ContentPlanMode>("idle");
@@ -4502,6 +4508,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           competitorInsights: !competitorNeedsRefresh ? selectedCompetitorTopics.map((item) => `${item.title}: ${item.opportunity}`) : [],
           brand: useBrand ? effectiveBrand : null,
           existingTitles,
+          newsAware: contentPlanNewsAware,
         }),
       });
       const startPayload = await safeJson(startResponse) as { error?: string; jobId?: string };
@@ -5979,6 +5986,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
                 <div className="content-plan-controls">
                   <div><span>Количество тем</span><div>{[10, 15, 25].map((value) => <button type="button" className={contentPlanCount === value ? "active" : ""} onClick={() => { setContentPlanCount(value); setContentPlanNeedsRefresh(true); persistContentPlan({ count: value, needsRefresh: true }); }} key={value}>{value}</button>)}</div></div>
+                  <label className="content-plan-news-toggle"><input type="checkbox" checked={contentPlanNewsAware} onChange={(event) => { setContentPlanNewsAware(event.target.checked); setContentPlanNeedsRefresh(true); }}/><span>Учитывать актуальные новости отрасли</span><HelpTip label="Актуальные новости" text="КЛИО сместит акцент плана на свежие отраслевые изменения, тренды и вопросы аудитории вместо общих тем — часть заголовков будет привязана к тому, что происходит в отрасли прямо сейчас."/></label>
                   <button className={`button primary large ${contentPlanBusy ? "is-busy" : ""}`} type="button" onClick={buildContentPlan} disabled={contentPlanBusy || aiConnection !== "connected" || workspaceAccount.researchRemaining <= 0}><Icon name="spark"/>{contentPlanBusy ? "Собираем систему…" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.researchRemaining <= 0 ? "Лимит исследований исчерпан" : contentPlanResult.items.length ? "Обновить контент‑план" : "Собрать контент‑план"}</button>
                 </div>
                 {contentPlanBusy && <small className="generation-wait-note">План собирается в фоне. Можно продолжать работу — результат появится здесь автоматически.</small>}

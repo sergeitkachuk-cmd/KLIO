@@ -8942,6 +8942,24 @@ footer nav a {
 
 .content-plan-controls > div button:active { transform: scale(0.96); }
 
+.content-plan-news-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #f5f1ff;
+  font-size: 13px;
+  font-weight: 640;
+  cursor: pointer;
+}
+
+.content-plan-news-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  accent-color: #7c3aed;
+  cursor: pointer;
+}
+
 .content-plan-note > i {
   display: grid;
   place-items: center;
@@ -18957,6 +18975,14 @@ input[type="radio"] {
   color: #fff;
   background: linear-gradient(115deg, #2452b8, #3568d4);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="light"] .content-plan-news-toggle {
+  color: #0d1b31;
+}
+
+[data-theme="light"] .content-plan-news-toggle input[type="checkbox"] {
+  accent-color: #2452b8;
 }
 
 /* .content-plan-goal never had a light version at all (see its own
