@@ -425,6 +425,7 @@ type PlanItemEvaluation = {
   overusedConstructionTitles: string[];
   overusedFormatTitles: string[];
   overusedProductPillarTitles: string[];
+  overusedClusterTitles: string[];
 };
 
 // Was "validatePlan" and threw on any collision, discarding the whole
@@ -440,9 +441,9 @@ type PlanItemEvaluation = {
 // from the overall requested count (see planFormatCap/planProductPillarCap)
 // — passing fixed numbers here keeps this function from needing to know
 // about input.count itself.
-function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: string[], goal: ContentPlanGoal, brand: BrandInput, sources: string[], openerCounts: Map<string, number>, formatCounts: Map<string, number>, formatCap: number, productPillarCounter: { count: number }, productPillarCap: number): PlanItemEvaluation {
+function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: string[], goal: ContentPlanGoal, brand: BrandInput, sources: string[], openerCounts: Map<string, number>, formatCounts: Map<string, number>, formatCap: number, productPillarCounter: { count: number }, productPillarCap: number, clusterCounts: Map<string, { count: number; label: string }>, clusterCap: number): PlanItemEvaluation {
   if (!Array.isArray(plan.items) || plan.items.length !== expectedCount) {
-    return { valid: [], countMismatch: true, duplicateTitles: [], repeatsExistingTitles: [], invalidTitles: [], overusedConstructionTitles: [], overusedFormatTitles: [], overusedProductPillarTitles: [] };
+    return { valid: [], countMismatch: true, duplicateTitles: [], repeatsExistingTitles: [], invalidTitles: [], overusedConstructionTitles: [], overusedFormatTitles: [], overusedProductPillarTitles: [], overusedClusterTitles: [] };
   }
 
   const cleaned = plan.items.map((item) => ({
@@ -526,8 +527,26 @@ function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: s
     productPillarCounter.count += 1;
     return productPillarCounter.count > productPillarCap;
   });
+  for (const item of overusedProductPillar) badSoFarKeys.add(item.title);
 
-  const badKeys = new Set([...badSoFarKeys, ...overusedProductPillar.map((item) => item.title)]);
+  // A plan can have varied titles, formats and pillars and still be, in
+  // practice, a plan about 2-3 semantic clusters (see planClusterCap's own
+  // comment for the real exported-plan evidence: two clusters alone
+  // covering 7-8 of 10 items in two separate real generations). Clusters
+  // are free text, not a small fixed enum like format/pillar, so titleKey
+  // normalizes them (case/ё/punctuation) before counting — otherwise
+  // trivial casing differences would dodge the cap entirely.
+  const overusedCluster = cleaned.filter((item) => {
+    if (badSoFarKeys.has(item.title)) return false;
+    const key = titleKey(item.cluster);
+    if (!key) return false;
+    const entry = clusterCounts.get(key);
+    const count = (entry?.count ?? 0) + 1;
+    clusterCounts.set(key, { count, label: entry?.label ?? item.cluster });
+    return count > clusterCap;
+  });
+
+  const badKeys = new Set([...badSoFarKeys, ...overusedCluster.map((item) => item.title)]);
   return {
     valid: cleaned.filter((item) => !badKeys.has(item.title)),
     countMismatch: false,
@@ -537,6 +556,7 @@ function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: s
     overusedConstructionTitles: overusedConstruction.map((item) => item.title),
     overusedFormatTitles: overusedFormat.map((item) => item.title),
     overusedProductPillarTitles: overusedProductPillar.map((item) => item.title),
+    overusedClusterTitles: overusedCluster.map((item) => item.title),
   };
 }
 
@@ -547,6 +567,23 @@ function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: s
 // to one format this returns > requestedCount, so the cap can never fire.
 function planFormatCap(requestedCount: number, allowedFormatCount: number) {
   return Math.ceil(requestedCount / allowedFormatCount) + 1;
+}
+
+// Distinct from every diversity axis capped above: title wording, format
+// and pillar can all vary while a plan is still, structurally, a plan
+// about 2-3 semantic clusters — confirmed directly from two real exported
+// plans (site owner, comparing three generations): one had "Очередь на
+// санаторно-курортное лечение" and "Санаторно-курортное лечение и
+// путёвки" covering 8 of 10 items between them; another had the same two
+// clusters plus one more covering all 10. The existing "one cluster can
+// only repeat for genuinely different intents" instruction is prompt-only
+// and, like every other diversity rule before it got a code-level cap,
+// was being ignored. 0.3 leaves real room for a cluster with several
+// legitimately different angles/intents (the instruction's own point)
+// without letting it swallow most of the plan.
+const PLAN_MAX_SAME_CLUSTER_RATIO = 0.3;
+function planClusterCap(requestedCount: number) {
+  return Math.max(2, Math.ceil(requestedCount * PLAN_MAX_SAME_CLUSTER_RATIO));
 }
 
 // Always called when the news toggle is on (and no explicit topic was
@@ -665,7 +702,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
   }
   const sources = availablePlanSources(input, website?.status === "loaded", Boolean(webResearch));
 
-  function buildInstructions(neededCount: number, excludeTitles: string[], bannedOpeners: string[], bannedFormats: string[], productPillarBanned: boolean) {
+  function buildInstructions(neededCount: number, excludeTitles: string[], bannedOpeners: string[], bannedFormats: string[], productPillarBanned: boolean, bannedClusters: string[]) {
     return [
       "Ты — ведущий контент‑стратег и SEO‑редактор платформы КЛИО.",
       ...CORE_SYSTEM_RULES,
@@ -696,11 +733,22 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       // below for the code-level enforcement; bannedFormats escalates this
       // into a concrete instruction once a format actually hits its cap.
       bannedFormats.length ? `Эти форматы уже использованы максимально допустимое число раз в этом плане: ${bannedFormats.join(", ")}. Ни одна новая тема не должна использовать эти форматы — выбери другой формат из allowed_formats.` : "",
+      // Same escalation pattern as bannedOpeners/bannedFormats — see
+      // planClusterCap for why a cluster cap exists at all.
+      bannedClusters.length ? `Эти кластеры семантики уже использованы максимально допустимое число раз в этом плане: ${bannedClusters.map((label) => `«${label}»`).join(", ")}. Ни одна новая тема не должна относиться к этим кластерам — выбери другой кластер, даже если он менее частотен.` : "",
       "Сначала определи предмет, аудиторию, поисковые интенты, коммерческую задачу и возможные тематические ветви. Не переносить знания или шаблоны из другой отрасли.",
       "Разведи ядро, широкие обзоры, средние подтемы, узкие long-tail вопросы и действительно смежные темы. Смежная тема должна поддерживать решение аудитории или экспертизу бренда, а не быть случайной ассоциацией.",
       input.semantics.length
         ? "Семантика — это карта реального спроса для серии публикаций, а не набор ключей одной статьи. Построй план по её кластерам: одна строка плана использует один кластер и один поисковый интент; основной запрос и все поддерживающие формулировки строки должны относиться к этому же кластеру. Не смешивай кластеры в одном материале. Один кластер можно развить несколькими материалами только для явно разных вопросов или интентов, без каннибализации."
         : "Семантика не передана: построй план по теме и профилю, но не выдумывай частотность запросов.",
+      // The recurring failure this addresses: a plan can look diverse by
+      // title and still put most of its items into just 2-3 clusters —
+      // confirmed directly from two real exported plans where two
+      // clusters alone covered 7-8 of 10 items (site owner, comparing
+      // three generations: "темы очень одинаковы местами"). Частотность
+      // is a priority signal above, not a mandate to spend most of the
+      // plan there.
+      input.semantics.length ? "Даже у самого частотного кластера есть предел: не более 25-30% тем плана должны относиться к одному кластеру, независимо от его частотности. Распредели темы по заметно большему числу разных кластеров, а не концентрируйся на 2-3 самых частотных." : "",
       // General permission, not tied to semantics specifically: a genuinely
       // rich topic deserving more than one material is good editorial
       // practice, but the failure mode without the second sentence here is
@@ -806,7 +854,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
     ].join("\n");
   }
 
-  function buildRequestInput(neededCount: number, excludeTitles: string[], bannedOpeners: string[], bannedFormats: string[], productPillarBanned: boolean) {
+  function buildRequestInput(neededCount: number, excludeTitles: string[], bannedOpeners: string[], bannedFormats: string[], productPillarBanned: boolean, bannedClusters: string[]) {
     const now = new Date();
     return JSON.stringify({
       current_date: now.toISOString().slice(0, 10),
@@ -852,6 +900,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       existing_titles_soft_reference: softExcludeTitles,
       banned_title_openers: bannedOpeners,
       banned_formats: bannedFormats,
+      banned_clusters: bannedClusters,
       editorial_brief_contract: {
         topic: "title", subtitle: "subtitle", intent: "intent", objective: "objective", audience: "audience", angle: "angle", format: "format", pillar: "pillar",
         structure: "structure", keywords: ["primaryKeyword", "lsi"], cta: "cta", evidenceNeeded: "evidenceNeeded", sources: "sources",
@@ -881,6 +930,8 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
   const formatCap = planFormatCap(input.count, GOAL_FORMAT_LOCK[input.goal].length);
   const productPillarCounter = { count: 0 };
   const productPillarCap = planProductPillarCap(input.count);
+  const clusterCounts = new Map<string, { count: number; label: string }>();
+  const clusterCap = planClusterCap(input.count);
   for (let attempt = 1; attempt <= PLAN_MAX_GENERATION_ATTEMPTS && accepted.length < input.count; attempt++) {
     const neededCount = input.count - accepted.length;
     const bannedOpeners = [...openerCounts.entries()]
@@ -890,6 +941,9 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       .filter(([, count]) => count >= formatCap)
       .map(([format]) => format);
     const productPillarBanned = productPillarCounter.count >= productPillarCap;
+    const bannedClusters = [...clusterCounts.values()]
+      .filter((entry) => entry.count >= clusterCap)
+      .map((entry) => entry.label);
     const call = await callAiModel<AiPlan>({
       operation: "generate_content_plan",
       maxOutputTokensOverride: contentPlanOutputTokenBudget(neededCount),
@@ -897,14 +951,14 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       ownerEmail,
       schemaName: "klio_content_plan",
       schema: contentPlanSchema(neededCount),
-      instructions: buildInstructions(neededCount, excludeTitles, bannedOpeners, bannedFormats, productPillarBanned),
-      input: buildRequestInput(neededCount, excludeTitles, bannedOpeners, bannedFormats, productPillarBanned),
+      instructions: buildInstructions(neededCount, excludeTitles, bannedOpeners, bannedFormats, productPillarBanned, bannedClusters),
+      input: buildRequestInput(neededCount, excludeTitles, bannedOpeners, bannedFormats, productPillarBanned, bannedClusters),
     });
     model = call.model;
-    const evaluation = evaluatePlanItems(call.result, neededCount, excludeTitles, input.goal, input.brand, sources, openerCounts, formatCounts, formatCap, productPillarCounter, productPillarCap);
+    const evaluation = evaluatePlanItems(call.result, neededCount, excludeTitles, input.goal, input.brand, sources, openerCounts, formatCounts, formatCap, productPillarCounter, productPillarCap, clusterCounts, clusterCap);
     accepted = [...accepted, ...evaluation.valid];
     excludeTitles = unique([...excludeTitles, ...evaluation.valid.map((item) => item.title)]);
-    if (evaluation.countMismatch || evaluation.duplicateTitles.length || evaluation.repeatsExistingTitles.length || evaluation.invalidTitles.length || evaluation.overusedConstructionTitles.length || evaluation.overusedFormatTitles.length || evaluation.overusedProductPillarTitles.length) {
+    if (evaluation.countMismatch || evaluation.duplicateTitles.length || evaluation.repeatsExistingTitles.length || evaluation.invalidTitles.length || evaluation.overusedConstructionTitles.length || evaluation.overusedFormatTitles.length || evaluation.overusedProductPillarTitles.length || evaluation.overusedClusterTitles.length) {
       // Was a silent discard with zero trace — logged now so a rejection
       // is diagnosable from real data instead of another guess (site
       // owner: hit this five times in a row with no way to tell why).
@@ -917,6 +971,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
         overusedConstructionTitles: evaluation.overusedConstructionTitles,
         overusedFormatTitles: evaluation.overusedFormatTitles,
         overusedProductPillarTitles: evaluation.overusedProductPillarTitles,
+        overusedClusterTitles: evaluation.overusedClusterTitles,
         excludeTitlesChecked: excludeTitles,
       }));
     }
