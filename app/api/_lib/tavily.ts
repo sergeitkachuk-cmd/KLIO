@@ -21,6 +21,16 @@ const MAX_CACHE_ENTRIES = 200;
 const researchCache = new Map<string, { expiresAt: number; value: TavilyResearch }>();
 let tavilyUnavailableUntil = 0;
 
+// User-generated / uncurated platforms that repeatedly surfaced as "sources"
+// for material facts despite having no editorial vetting — student coursework
+// dumps, free-blog posts, social-network pages (site owner: flagged this
+// twice, once for unrelated-homonym noise and once for studfile.net/wordpress
+// blog/textarchive.ru showing up as "facts" for an editorial-methodology
+// piece). Tavily has no per-domain authority signal to filter on, so exclude
+// the recurring offenders outright rather than rely on the model to judge
+// source quality on its own.
+const LOW_AUTHORITY_DOMAINS = ["studfile.net", "textarchive.ru", "dzen.ru", "vk.com", "wordpress.com"];
+
 function clean(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().replace(/\s+/g, " ").slice(0, maxLength) : "";
 }
@@ -52,7 +62,7 @@ async function tavilySearch(query: string, maxResults: number, cacheNamespace: s
     const response = await fetch("https://api.tavily.com/search", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ query: normalizedQuery, topic: "general", search_depth: options?.depth ?? "fast", ...(options?.depth === "advanced" ? { chunks_per_source: 3 } : {}), max_results: maxResults, include_answer: false, include_raw_content: false, include_images: false }),
+      body: JSON.stringify({ query: normalizedQuery, topic: "general", search_depth: options?.depth ?? "fast", ...(options?.depth === "advanced" ? { chunks_per_source: 3 } : {}), max_results: maxResults, include_answer: false, include_raw_content: false, include_images: false, exclude_domains: LOW_AUTHORITY_DOMAINS }),
       signal: AbortSignal.timeout(options?.timeoutMs ?? 8_000),
     });
     if (!response.ok) {
@@ -101,7 +111,9 @@ function publicSearchUrl(value: string) {
 async function yandexResearch(query: string, maxResults: number): Promise<TavilyResearch | null> {
   const apiKey = process.env.YANDEX_SEARCH_API_KEY?.trim();
   const folderId = process.env.YANDEX_FOLDER_ID?.trim();
-  const normalizedQuery = clean(query, 400);
+  // Yandex's API has no exclude_domains field, but its query syntax does —
+  // same low-authority blocklist as Tavily, applied as search operators.
+  const normalizedQuery = clean(`${query} ${LOW_AUTHORITY_DOMAINS.map((domain) => `-site:${domain}`).join(" ")}`, 400);
   if (!apiKey || !folderId || !normalizedQuery) return null;
   const cacheId = `yandex-research:${normalizedQuery.toLocaleLowerCase("ru-RU")}`;
   const cached = researchCache.get(cacheId);
