@@ -4148,6 +4148,7 @@ footer nav a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   min-height: 40px;
   padding: 0 15px;
   border: 1px solid rgba(190, 168, 255, 0.68);
@@ -4160,6 +4161,28 @@ footer nav a {
   line-height: 1.2;
   text-decoration: none;
   transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+}
+
+.telegram-header-link svg {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+}
+
+/* The workspace header's generic ".workspace-header-actions > a" reset
+   (plain uppercase text link, see below) and its mobile "hide every direct
+   link" rule would otherwise strip this button back down to invisible
+   plain text or hide it outright — reassert the pill button regardless of
+   width, same reason the mobile media query below keeps it as an icon
+   instead of "display: none" (site owner: the header Telegram link was
+   invisible on phones for both the landing and workspace headers). */
+.workspace-header-actions > a.telegram-header-link {
+  display: inline-flex;
+  border: 1px solid rgba(190, 168, 255, 0.68);
+  color: #fff;
+  background: linear-gradient(135deg, rgba(104, 55, 216, 0.96), rgba(151, 93, 237, 0.92));
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 .telegram-header-link:hover,
@@ -10049,9 +10072,22 @@ footer nav a {
     padding: 0 16px;
   }
 
-  .workspace-header-actions > a,
+  .workspace-header-actions > a:not(.telegram-header-link),
   .workspace-account b,
   .workspace-account small {
+    display: none;
+  }
+
+  /* Icon-only, matching the theme-toggle's compact size at this width,
+     instead of taking up the room "На главную" just gave up above. */
+  .workspace-header-actions > a.telegram-header-link {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    gap: 0;
+  }
+
+  .workspace-header-actions > a.telegram-header-link .telegram-header-link-text {
     display: none;
   }
 
@@ -17291,6 +17327,10 @@ input[type="radio"] {
   color: rgba(13, 27, 49, 0.68);
 }
 
+[data-theme="light"] .workspace-header-actions > a.telegram-header-link {
+  color: #fff;
+}
+
 [data-theme="light"] .workspace-account {
   border-left-color: rgba(15, 23, 42, 0.14);
 }
@@ -21990,7 +22030,18 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 }
 
 @media (max-width: 860px) {
-  .telegram-header-link { display: none; }
+  /* Collapse to an icon-only button instead of disappearing entirely —
+     it was previously just hidden below this width, which is why it was
+     missing on phones (site owner report). */
+  .telegram-header-link {
+    width: 40px;
+    padding: 0;
+    gap: 0;
+  }
+
+  .telegram-header-link-text {
+    display: none;
+  }
 }
 
 @media (max-width: 560px) {
