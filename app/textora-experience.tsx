@@ -163,6 +163,7 @@ type ContentPlanItem = {
   intent: "Информационный" | "Коммерческий" | "Транзакционный" | "Смешанный" | "Навигационный";
   stage: "Знакомство" | "Выбор" | "Решение" | "Удержание";
   priority: "Высокий" | "Средний" | "Дополнительный";
+  pillar: "продукт" | "экспертиза" | "аудитория" | "сервис" | "бренд";
   angle: string;
   objective: string;
   primaryKeyword: string;
@@ -1199,6 +1200,9 @@ function normalizeContentPlanItem(value: Partial<ContentPlanItem>, index: number
     priority: ["Высокий", "Средний", "Дополнительный"].includes(value.priority || "")
       ? value.priority as ContentPlanItem["priority"]
       : "Средний",
+    pillar: ["продукт", "экспертиза", "аудитория", "сервис", "бренд"].includes(value.pillar || "")
+      ? value.pillar as ContentPlanItem["pillar"]
+      : "экспертиза",
     angle: typeof value.angle === "string" && value.angle ? value.angle : "Предметный ракурс по исходной теме",
     objective: typeof value.objective === "string" && value.objective ? value.objective : "Закрыть задачу аудитории по теме материала",
     primaryKeyword: typeof value.primaryKeyword === "string" ? value.primaryKeyword : "",
@@ -4759,9 +4763,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       return `"${protectedValue.replace(/"/g, '""')}"`;
     };
     const rows = [
-      ["№", "Статус", "Тема", "Формат", "Кластер", "Интент", "Этап", "Приоритет", "Ракурс", "Цель", "Основной запрос", "Поддерживающая семантика", "Аудитория", "SEO‑заголовок", "Метаописание", "Структура", "CTA", "Фактура для проверки", "Источники"],
+      ["№", "Статус", "Тема", "Формат", "Категория", "Кластер", "Интент", "Этап", "Приоритет", "Ракурс", "Цель", "Основной запрос", "Поддерживающая семантика", "Аудитория", "SEO‑заголовок", "Метаописание", "Структура", "CTA", "Фактура для проверки", "Источники"],
       ...contentPlanResult.items.map((item, index) => [
-        String(index + 1), item.status, item.title, item.format, item.cluster, item.intent, item.stage, item.priority,
+        String(index + 1), item.status, item.title, item.format, item.pillar, item.cluster, item.intent, item.stage, item.priority,
         item.angle, item.objective, item.primaryKeyword, item.lsi.join("; "), item.audience, item.metaTitle, item.metaDescription,
         item.structure.join("; "), item.cta, item.evidenceNeeded.join("; "), item.sources.join("; "),
       ]),
@@ -6012,7 +6016,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                         <label className={`content-plan-select ${selectedPlanItemIds.includes(item.id) ? "is-selected" : ""}`}><input type="checkbox" checked={selectedPlanItemIds.includes(item.id)} onChange={() => togglePlanItemSelection(item.id)}/><i>{selectedPlanItemIds.includes(item.id) ? "✓" : ""}</i><span>Выбрать</span></label>
                         <span className="content-plan-index">{String(originalIndex + 1).padStart(2, "0")}</span>
                         <div className="content-plan-item-copy">
-                          <div><span>{item.cluster}</span><i>{item.format}</i><i>{item.intent}</i><i>{item.stage}</i><em className={`priority-${item.priority === "Высокий" ? "high" : item.priority === "Средний" ? "medium" : "extra"}`}>{item.priority}</em></div>
+                          <div><span>{item.cluster}</span><i>{item.format}</i><i>{item.pillar}</i><i>{item.intent}</i><i>{item.stage}</i><em className={`priority-${item.priority === "Высокий" ? "high" : item.priority === "Средний" ? "medium" : "extra"}`}>{item.priority}</em></div>
                           <h3>{item.title}</h3>
                           <p><span>Основной запрос</span><b>{item.primaryKeyword}</b></p>
                         </div>

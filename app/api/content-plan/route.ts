@@ -63,6 +63,7 @@ type PlanItem = {
   intent: "Информационный" | "Коммерческий" | "Транзакционный" | "Смешанный" | "Навигационный";
   stage: "Знакомство" | "Выбор" | "Решение" | "Удержание";
   priority: "Высокий" | "Средний" | "Дополнительный";
+  pillar: ContentPillar;
   angle: string;
   objective: string;
   primaryKeyword: string;
@@ -235,6 +236,26 @@ function titleOpenerKey(title: string): string {
 // ship a plan where most titles read the same.
 const PLAN_MAX_SAME_TITLE_OPENER = 3;
 
+// A recurring complaint distinct from title-construction and format
+// diversity (both already capped elsewhere in this file): a plan can have
+// varied titles and formats and still be, topically, a catalog — every
+// single item explaining one specific named brand program or procedure
+// (site owner, looking at two real generations: "я имел ввиду не
+// разнообразие вида материалов, а именно узкая тематика заголовков — типа
+// только про медпрограммы это плохо"). pillar tags each item's actual
+// content category (not its format) so "продукт" specifically — the axis
+// that kept crowding everything else out — can be capped the same way.
+type ContentPillar = "продукт" | "экспертиза" | "аудитория" | "сервис" | "бренд";
+const CONTENT_PILLARS: ContentPillar[] = ["продукт", "экспертиза", "аудитория", "сервис", "бренд"];
+// A plan that's majority non-catalog content still leaves plenty of room
+// for legitimate product-anchored materials (a subscription-length plan
+// has to sell the brand's actual offer too) — this caps overrepresentation,
+// it doesn't ban product topics.
+const PLAN_MAX_PRODUCT_PILLAR_RATIO = 0.5;
+function planProductPillarCap(count: number) {
+  return Math.ceil(count * PLAN_MAX_PRODUCT_PILLAR_RATIO) + 1;
+}
+
 const OPENER_DISPLAY_LABEL: Record<string, string> = {
   "что": "Что…",
   "как": "Как…",
@@ -325,6 +346,7 @@ const itemSchema = {
     intent: { type: "string", enum: ["Информационный", "Коммерческий", "Транзакционный", "Смешанный", "Навигационный"] },
     stage: { type: "string", enum: ["Знакомство", "Выбор", "Решение", "Удержание"] },
     priority: { type: "string", enum: ["Высокий", "Средний", "Дополнительный"] },
+    pillar: { type: "string", enum: CONTENT_PILLARS },
     angle: { type: "string" },
     objective: { type: "string" },
     primaryKeyword: { type: "string" },
@@ -341,7 +363,7 @@ const itemSchema = {
   // The model returns only a compact editorial core. The remaining display
   // fields are deterministic derivatives below; asking it to write them for
   // every row was the source of max_output_tokens truncation on DeepSeek.
-  required: ["id", "title", "subtitle", "cluster", "format", "intent", "stage", "priority", "angle", "objective", "primaryKeyword", "cta"],
+  required: ["id", "title", "subtitle", "cluster", "format", "intent", "stage", "priority", "pillar", "angle", "objective", "primaryKeyword", "cta"],
   additionalProperties: false,
 } as const;
 
@@ -402,6 +424,7 @@ type PlanItemEvaluation = {
   invalidTitles: string[];
   overusedConstructionTitles: string[];
   overusedFormatTitles: string[];
+  overusedProductPillarTitles: string[];
 };
 
 // Was "validatePlan" and threw on any collision, discarding the whole
@@ -410,15 +433,16 @@ type PlanItemEvaluation = {
 // as history piled up: site owner report). Now returns whatever validated
 // cleanly instead of throwing, so runContentPlanGeneration can keep the
 // good items and ask for only the shortfall — see the retry loop there.
-// openerCounts/formatCounts are shared and mutated across every attempt of
-// one plan generation (see the caller), so their caps apply to the final
-// accepted set as a whole, not just within one batch. formatCap is
-// precomputed once by the caller from the overall requested count and the
-// goal's allowed-format count (see planFormatCap) — passing a fixed number
-// here keeps this function from needing to know about input.count itself.
-function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: string[], goal: ContentPlanGoal, brand: BrandInput, sources: string[], openerCounts: Map<string, number>, formatCounts: Map<string, number>, formatCap: number): PlanItemEvaluation {
+// openerCounts/formatCounts/productPillarCounter are shared and mutated
+// across every attempt of one plan generation (see the caller), so their
+// caps apply to the final accepted set as a whole, not just within one
+// batch. formatCap/productPillarCap are precomputed once by the caller
+// from the overall requested count (see planFormatCap/planProductPillarCap)
+// — passing fixed numbers here keeps this function from needing to know
+// about input.count itself.
+function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: string[], goal: ContentPlanGoal, brand: BrandInput, sources: string[], openerCounts: Map<string, number>, formatCounts: Map<string, number>, formatCap: number, productPillarCounter: { count: number }, productPillarCap: number): PlanItemEvaluation {
   if (!Array.isArray(plan.items) || plan.items.length !== expectedCount) {
-    return { valid: [], countMismatch: true, duplicateTitles: [], repeatsExistingTitles: [], invalidTitles: [], overusedConstructionTitles: [], overusedFormatTitles: [] };
+    return { valid: [], countMismatch: true, duplicateTitles: [], repeatsExistingTitles: [], invalidTitles: [], overusedConstructionTitles: [], overusedFormatTitles: [], overusedProductPillarTitles: [] };
   }
 
   const cleaned = plan.items.map((item) => ({
@@ -453,6 +477,7 @@ function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: s
     !item.title || !item.cluster || !item.primaryKeyword || !item.angle || !item.objective
     || item.lsi.length < 2 || item.structure.length < 3
     || !allowedFormats.includes(item.format)
+    || !CONTENT_PILLARS.includes(item.pillar)
     || /(?:комментарий пользователя|редакционн(?:ая|ый) задач|используй|добавь|раскрой применительно|инструкц(?:ия|ии) для ии)/i.test(item.title)
   ));
 
@@ -487,8 +512,22 @@ function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: s
     formatCounts.set(item.format, count);
     return count > formatCap;
   });
+  for (const item of overusedFormat) badSoFarKeys.add(item.title);
 
-  const badKeys = new Set([...badSoFarKeys, ...overusedFormat.map((item) => item.title)]);
+  // Distinct axis from both caps above: a plan can have varied titles AND
+  // varied formats and still be topically a catalog if almost every item
+  // is pillar "продукт" (site owner: "узкая тематика заголовков — типа
+  // только про медпрограммы это плохо"). Only "продукт" is capped — the
+  // other four pillars are what the plan should have MORE of, not less, so
+  // they're never charged against anything.
+  const overusedProductPillar = cleaned.filter((item) => {
+    if (badSoFarKeys.has(item.title)) return false;
+    if (item.pillar !== "продукт") return false;
+    productPillarCounter.count += 1;
+    return productPillarCounter.count > productPillarCap;
+  });
+
+  const badKeys = new Set([...badSoFarKeys, ...overusedProductPillar.map((item) => item.title)]);
   return {
     valid: cleaned.filter((item) => !badKeys.has(item.title)),
     countMismatch: false,
@@ -497,6 +536,7 @@ function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: s
     invalidTitles: invalid.map((item) => item.title),
     overusedConstructionTitles: overusedConstruction.map((item) => item.title),
     overusedFormatTitles: overusedFormat.map((item) => item.title),
+    overusedProductPillarTitles: overusedProductPillar.map((item) => item.title),
   };
 }
 
@@ -555,7 +595,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
   ]);
   const sources = availablePlanSources(input, website?.status === "loaded", Boolean(webResearch));
 
-  function buildInstructions(neededCount: number, excludeTitles: string[], bannedOpeners: string[], bannedFormats: string[]) {
+  function buildInstructions(neededCount: number, excludeTitles: string[], bannedOpeners: string[], bannedFormats: string[], productPillarBanned: boolean) {
     return [
       "Ты — ведущий контент‑стратег и SEO‑редактор платформы КЛИО.",
       ...CORE_SYSTEM_RULES,
@@ -624,7 +664,17 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       // "expert breaks it down"). Gives the model an explicit toolkit
       // instead of leaving angle variety to chance.
       "У каждого материала есть не только тема, но и редакционный угол — способ подачи. Используй разные углы: объяснение, история, наблюдение, разбор, сравнение, разбор ошибки, миф, вопрос клиента, экспертный комментарий, кейс, сценарий использования, закулисье/люди компании, процесс, цифры и факты, инструкция, чек-лист, подборка, FAQ, дискуссионный вопрос, сезонная тема, реакция на отраслевое событие, «проблема → решение», «до → после», «ожидание → реальность», неочевидное преимущество, работа с возражением, профессиональный взгляд, история бренда, ценности компании. Это набор инструментов, а не обязательный чек-лист для каждой темы — план не должен читаться как серия однотипных статей одного жанра.",
+      // The most concrete, direct fix for the actual reported failure: a
+      // plan with varied titles and formats that's still, topically, a
+      // catalog — nearly every item explaining one specific named brand
+      // program or procedure (site owner: "узкая тематика заголовков —
+      // типа только про медпрограммы это плохо"). pillar makes this an
+      // explicit, code-checked field instead of hoping angle/objective
+      // variety implies topical variety on its own.
+      "Для каждой темы укажи pillar — её содержательную категорию, а не формат: «продукт» (материал раскрывает конкретную названную программу, услугу или процедуру бренда), «экспертиза» (образовательный/отраслевой материал, не привязанный к одной конкретной программе), «аудитория» (о жизни, вопросах, барьерах или решениях читателя, а не о конкретном продукте), «сервис» (о взаимодействии с самим сервисом бренда: запись, сайт, личный кабинет, логистика, подготовка), «бренд» (история, ценности, репутация, команда, закулисье). Не более половины тем плана должно быть pillar «продукт» — план, где почти каждая тема объясняет конкретную программу или процедуру, читается как каталог услуг, а не как контент‑система.",
       "objective каждой темы называет ОДНУ основную маркетинговую или коммуникационную задачу материала (например: охват, узнаваемость, доверие, формирование спроса, обучение, демонстрация экспертизы, SEO, вовлечение, работа с возражениями, прогрев, лидогенерация, продажа, повторное обращение, удержание, репутация, комьюнити, информирование), а не список из нескольких задач сразу. План в целом должен покрывать разные задачи, а не одну и ту же почти в каждой теме.",
+      // Same escalation pattern as bannedOpeners/bannedFormats above.
+      productPillarBanned ? "Pillar «продукт» уже использован максимально допустимое число раз в этом плане. Все новые темы должны быть pillar «экспертиза», «аудитория», «сервис» или «бренд» — не «продукт»." : "",
       "Если в профиле бренда описано несколько сегментов аудитории, распредели темы между ними осознанно, а не строй весь план для одного сегмента. В angle называй, для какого сегмента предназначена тема и какой её вопрос, барьер или желание материал закрывает — не абстрактного «клиента», а конкретный сегмент из профиля, если сегменты там названы.",
       // Универсальный пробел для любого бренда: план легко скатывается в
       // одну лишь предметную экспертизу (сама услуга/продукт) и упускает
@@ -663,7 +713,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       bannedOpeners.length ? `Эти конструкции заголовков уже использованы максимально допустимое число раз в этом плане: ${bannedOpeners.map((label) => `«${label}»`).join(", ")}. Ни один новый заголовок не должен начинаться (до или сразу после двоеточия) так же — используй другую форму.` : "",
       excludeTitles.length ? `Это уже созданные темы и материалы бренда за последнее время. Не повторяй их, не делай близкие перефразировки и не возвращай ту же задачу с переставленными словами: ${excludeTitles.map((title) => `«${title}»`).join("; ")}` : "Если ранее созданные темы не переданы, всё равно не повторяй идеи внутри текущего плана.",
       softExcludeTitles.length ? `Эти темы поднимались раньше, но прошло достаточно времени: ${softExcludeTitles.map((title) => `«${title}»`).join("; ")}. Их можно взять снова только с действительно новым ракурсом, актуальным поводом или обновлёнными фактами — не пересказывай их дословно той же структурой.` : "",
-      "Для каждой строки верни только title, subtitle, cluster, format, intent, stage, priority, angle, objective, primaryKeyword и cta. Не выводи lsi, audience, metaTitle, metaDescription, structure, evidenceNeeded или sources: КЛИО заполнит их из профиля и темы. Формулируй поля кратко и по существу.",
+      "Для каждой строки верни только title, subtitle, cluster, format, intent, stage, priority, pillar, angle, objective, primaryKeyword и cta. Не выводи lsi, audience, metaTitle, metaDescription, structure, evidenceNeeded или sources: КЛИО заполнит их из профиля и темы. Формулируй поля кратко и по существу.",
       // cta used to always be brand_profile.cta verbatim on every single
       // row — a real instance of "the plan reads monotonous" visible
       // directly in an exported plan (site owner report: identical CTA
@@ -686,7 +736,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
     ].join("\n");
   }
 
-  function buildRequestInput(neededCount: number, excludeTitles: string[], bannedOpeners: string[], bannedFormats: string[]) {
+  function buildRequestInput(neededCount: number, excludeTitles: string[], bannedOpeners: string[], bannedFormats: string[], productPillarBanned: boolean) {
     const now = new Date();
     return JSON.stringify({
       current_date: now.toISOString().slice(0, 10),
@@ -697,6 +747,8 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       plan_basis: input.requestedQuery ? "user_topic" : "brand_profile",
       plan_goal: input.goal,
       allowed_formats: GOAL_FORMAT_LOCK[input.goal],
+      pillar_options: CONTENT_PILLARS,
+      product_pillar_banned: productPillarBanned,
       selected_semantics: input.semantics.slice(0, PLAN_SEMANTICS_LIMIT),
       semantic_strategy: input.semantics.length ? {
         purpose: "series_of_articles_for_new_audience",
@@ -726,7 +778,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       banned_title_openers: bannedOpeners,
       banned_formats: bannedFormats,
       editorial_brief_contract: {
-        topic: "title", subtitle: "subtitle", intent: "intent", objective: "objective", audience: "audience", angle: "angle", format: "format",
+        topic: "title", subtitle: "subtitle", intent: "intent", objective: "objective", audience: "audience", angle: "angle", format: "format", pillar: "pillar",
         structure: "structure", keywords: ["primaryKeyword", "lsi"], cta: "cta", evidenceNeeded: "evidenceNeeded", sources: "sources",
         knownFacts: input.brand.name ? [input.brand.description, input.brand.positioning, input.brand.advantages, input.brand.products, input.brand.services, input.brand.proof].filter(Boolean) : [],
         restrictions: [input.brand.restrictions, input.brand.prohibited].filter(Boolean),
@@ -752,6 +804,8 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
   const openerCounts = new Map<string, number>();
   const formatCounts = new Map<string, number>();
   const formatCap = planFormatCap(input.count, GOAL_FORMAT_LOCK[input.goal].length);
+  const productPillarCounter = { count: 0 };
+  const productPillarCap = planProductPillarCap(input.count);
   for (let attempt = 1; attempt <= PLAN_MAX_GENERATION_ATTEMPTS && accepted.length < input.count; attempt++) {
     const neededCount = input.count - accepted.length;
     const bannedOpeners = [...openerCounts.entries()]
@@ -760,6 +814,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
     const bannedFormats = [...formatCounts.entries()]
       .filter(([, count]) => count >= formatCap)
       .map(([format]) => format);
+    const productPillarBanned = productPillarCounter.count >= productPillarCap;
     const call = await callAiModel<AiPlan>({
       operation: "generate_content_plan",
       maxOutputTokensOverride: contentPlanOutputTokenBudget(neededCount),
@@ -767,14 +822,14 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       ownerEmail,
       schemaName: "klio_content_plan",
       schema: contentPlanSchema(neededCount),
-      instructions: buildInstructions(neededCount, excludeTitles, bannedOpeners, bannedFormats),
-      input: buildRequestInput(neededCount, excludeTitles, bannedOpeners, bannedFormats),
+      instructions: buildInstructions(neededCount, excludeTitles, bannedOpeners, bannedFormats, productPillarBanned),
+      input: buildRequestInput(neededCount, excludeTitles, bannedOpeners, bannedFormats, productPillarBanned),
     });
     model = call.model;
-    const evaluation = evaluatePlanItems(call.result, neededCount, excludeTitles, input.goal, input.brand, sources, openerCounts, formatCounts, formatCap);
+    const evaluation = evaluatePlanItems(call.result, neededCount, excludeTitles, input.goal, input.brand, sources, openerCounts, formatCounts, formatCap, productPillarCounter, productPillarCap);
     accepted = [...accepted, ...evaluation.valid];
     excludeTitles = unique([...excludeTitles, ...evaluation.valid.map((item) => item.title)]);
-    if (evaluation.countMismatch || evaluation.duplicateTitles.length || evaluation.repeatsExistingTitles.length || evaluation.invalidTitles.length || evaluation.overusedConstructionTitles.length || evaluation.overusedFormatTitles.length) {
+    if (evaluation.countMismatch || evaluation.duplicateTitles.length || evaluation.repeatsExistingTitles.length || evaluation.invalidTitles.length || evaluation.overusedConstructionTitles.length || evaluation.overusedFormatTitles.length || evaluation.overusedProductPillarTitles.length) {
       // Was a silent discard with zero trace — logged now so a rejection
       // is diagnosable from real data instead of another guess (site
       // owner: hit this five times in a row with no way to tell why).
@@ -786,6 +841,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
         invalidTitles: evaluation.invalidTitles,
         overusedConstructionTitles: evaluation.overusedConstructionTitles,
         overusedFormatTitles: evaluation.overusedFormatTitles,
+        overusedProductPillarTitles: evaluation.overusedProductPillarTitles,
         excludeTitlesChecked: excludeTitles,
       }));
     }
