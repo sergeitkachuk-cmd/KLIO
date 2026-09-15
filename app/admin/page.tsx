@@ -75,6 +75,7 @@ const OPERATION_LABELS: Record<AiOperation, string> = {
   revise_content: "Коррекция черновика",
   analyze_brand_website: "Анализ сайта бренда",
   suggest_brand_voice: "Подбор голоса бренда",
+  infer_content_plan_industry: "Контент-план: поиск отрасли (nano)",
   normalize_quick_brief: "Разбор брифа (nano)",
   validate_content: "Проверка качества (nano)",
   condense_overflow: "Сжатие переполнения (nano)",

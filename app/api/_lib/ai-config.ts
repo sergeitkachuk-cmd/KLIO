@@ -133,7 +133,8 @@ export type AiOperation =
   // Nano — short formalized steps
   | "normalize_quick_brief"
   | "validate_content"
-  | "condense_overflow";
+  | "condense_overflow"
+  | "infer_content_plan_industry";
 
 export type ReasoningEffort = "none" | "low" | "medium";
 
@@ -244,6 +245,17 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   analyze_brand_website: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 1_800, structuredOutput: true, retryable: true, useWebSearch: false },
   suggest_brand_voice: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 2_200, structuredOutput: true, retryable: false, useWebSearch: false },
 
+  // Only called when the "актуальные новости" toggle is on AND the brand
+  // profile's Продукты/услуги field is empty (site owner: "если поле
+  // продукт не заполнено ... мы можем чтобы ии сам определил тематику...
+  // а то смысла кнопки новости вообще нет") — the news search's subject
+  // otherwise falls back to brand name + marketing positioning, which
+  // (confirmed against Tavily's own docs, this session) reliably finds
+  // nothing for a small/regional brand regardless of search mode. A
+  // small extraction task (read whatever brand context and website
+  // snapshot exist, name the industry and a few concrete product/service
+  // keywords), not creative generation — same tier as normalize_quick_brief.
+  infer_content_plan_industry: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 500, structuredOutput: true, retryable: true, useWebSearch: false },
   normalize_quick_brief: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 800, structuredOutput: true, retryable: true, useWebSearch: false },
   validate_content: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 1_500, structuredOutput: true, retryable: true, useWebSearch: false },
   // Shrinks an already-written, still-too-long article down to its target

@@ -549,6 +549,50 @@ function planFormatCap(requestedCount: number, allowedFormatCount: number) {
   return Math.ceil(requestedCount / allowedFormatCount) + 1;
 }
 
+// Only called when the news toggle is on and the brand profile never
+// filled in Продукты/услуги — the news search's subject would otherwise
+// fall back to brand name + marketing positioning, which reliably finds
+// nothing for a small/regional brand (see researchContentPlanWeb). A
+// small classification call, not creative generation: read whatever
+// brand context and website content actually exist and name the real
+// industry/products, so the toggle still works for a client who left the
+// field blank and expected the AI to figure it out. Best-effort — a
+// failed or empty inference just means researchContentPlanWeb falls back
+// to its existing (weaker) behavior, not a hard failure for the whole
+// plan; this is a quality improvement on top, never a required step.
+async function inferContentPlanIndustryField(brand: BrandInput, website: Awaited<ReturnType<typeof readWebsiteContext>> | null, ownerEmail: string): Promise<string> {
+  const brandContext = [brand.description, brand.positioning, brand.advantages, brand.proof].filter(Boolean).join("\n").slice(0, 2000);
+  const siteText = website && website.status === "loaded" ? website.text.slice(0, 3000) : "";
+  if (!brandContext && !siteText) return "";
+  try {
+    const call = await callAiModel<{ industry: string; keywords: string[] }>({
+      operation: "infer_content_plan_industry",
+      ownerEmail,
+      schemaName: "klio_industry_keywords",
+      schema: {
+        type: "object",
+        properties: {
+          industry: { type: "string" },
+          keywords: { type: "array", items: { type: "string" }, minItems: 0, maxItems: 6 },
+        },
+        required: ["industry", "keywords"],
+        additionalProperties: false,
+      },
+      instructions: [
+        "Определи отрасль и конкретные продукты, услуги или методы бренда — они нужны для поиска отраслевых новостей, поэтому названия бренда среди них быть не должно: по имени конкретного небольшого бренда новостной поиск почти никогда ничего не находит.",
+        "Опирайся только на переданные данные о бренде и сайте. Не выдумывай продукты, услуги или отрасль, которых там нет.",
+        "Если переданных данных недостаточно, чтобы уверенно определить отрасль, верни industry пустой строкой и keywords пустым списком — не гадай.",
+        "keywords — 2-6 конкретных, коротких, поисковых по духу терминов (методы, продукты, категория услуг), а не маркетинговые формулировки.",
+      ].join("\n"),
+      input: JSON.stringify({ brand_context: brandContext || null, website_snapshot: siteText || null }, null, 2),
+    });
+    return [call.result.industry, ...call.result.keywords].filter(Boolean).join(", ").slice(0, 220);
+  } catch (error) {
+    console.warn("inferContentPlanIndustryField failed, falling back", error instanceof Error ? error.message : error);
+    return "";
+  }
+}
+
 // The actual AI call + validation + quota debit, extracted out of the
 // route handler so it can run after the response has already gone back
 // to the client (see async-jobs.ts for why that's safe on this host).
@@ -584,15 +628,35 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
   // is left alone, since overriding what the user actually asked about
   // with generic industry terms would ignore their request.
   const newsIndustryField = !input.requestedQuery ? [input.brand.services, input.brand.products].filter(Boolean).join(", ").slice(0, 220) : "";
+  // The above still leaves the news toggle useless for a brand profile
+  // that never filled in Продукты/услуги (site owner: "клиент может быть
+  // ленивым и понадеяться на ии ... а то смысла кнопки новости вообще
+  // нет") — inferContentPlanIndustryField below is the fallback for
+  // exactly that case: a small, cheap classification call (not creative
+  // generation) that reads whatever brand context and website content
+  // does exist and names the actual industry/products itself, instead of
+  // requiring the field to be filled in by hand.
+  const needsIndustryInference = currentIndustryFocus && !newsIndustryField;
   // Direct HTTP read of the brand's own site (not an AI call). A separate
   // AI research/web-search step was tried here and reverted — see the fix
   // history in ai-config.ts's generate_content_plan entry for why.
-  // Both reads are independent and bounded.  They run concurrently, then
-  // DeepSeek gets their compact results as plain input — never a web tool.
-  const [website, webResearch] = await Promise.all([
-    input.brand.website ? readWebsiteContext(input.brand.website) : Promise.resolve(null),
-    researchContentPlanWeb(input.query, input.geography, currentIndustryFocus, newsIndustryField),
-  ]);
+  // Both reads are independent and bounded and normally run concurrently,
+  // then DeepSeek gets their compact results as plain input — never a web
+  // tool. Only the industry-inference path below can't stay concurrent:
+  // it needs the website read to finish first so it has real content to
+  // classify, rather than guessing from the brand's marketing text alone.
+  let website: Awaited<ReturnType<typeof readWebsiteContext>> | null = null;
+  let webResearch: Awaited<ReturnType<typeof researchContentPlanWeb>> = null;
+  if (needsIndustryInference) {
+    website = input.brand.website ? await readWebsiteContext(input.brand.website) : null;
+    const inferredField = await inferContentPlanIndustryField(input.brand, website, ownerEmail);
+    webResearch = await researchContentPlanWeb(input.query, input.geography, currentIndustryFocus, inferredField);
+  } else {
+    [website, webResearch] = await Promise.all([
+      input.brand.website ? readWebsiteContext(input.brand.website) : Promise.resolve(null),
+      researchContentPlanWeb(input.query, input.geography, currentIndustryFocus, newsIndustryField),
+    ]);
+  }
   const sources = availablePlanSources(input, website?.status === "loaded", Boolean(webResearch));
 
   function buildInstructions(neededCount: number, excludeTitles: string[], bannedOpeners: string[], bannedFormats: string[], productPillarBanned: boolean) {
