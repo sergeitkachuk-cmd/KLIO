@@ -44,9 +44,15 @@ function cacheKey(topic: string, geography: Geography[]) {
 }
 
 async function tavilySearch(query: string, maxResults: number, cacheNamespace: string, options?: {
-  depth: "advanced";
-  contentLength: number;
-  timeoutMs: number;
+  depth?: "advanced";
+  contentLength?: number;
+  timeoutMs?: number;
+  // Tavily's own recency-scoped search mode, distinct from "general" — see
+  // researchContentPlanWeb for why this matters: rewording the query text
+  // to mention "новости" does NOT make a "general" search actually recent,
+  // it just biases which generic pages come back.
+  topic?: "general" | "news";
+  days?: number;
 }): Promise<TavilyResearch | null> {
   const apiKey = process.env.TAVILY_API_KEY?.trim();
   const normalizedQuery = clean(query, 700);
@@ -62,7 +68,7 @@ async function tavilySearch(query: string, maxResults: number, cacheNamespace: s
     const response = await fetch("https://api.tavily.com/search", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ query: normalizedQuery, topic: "general", search_depth: options?.depth ?? "fast", ...(options?.depth === "advanced" ? { chunks_per_source: 3 } : {}), max_results: maxResults, include_answer: false, include_raw_content: false, include_images: false, exclude_domains: LOW_AUTHORITY_DOMAINS }),
+      body: JSON.stringify({ query: normalizedQuery, topic: options?.topic ?? "general", search_depth: options?.depth ?? "fast", ...(options?.depth === "advanced" ? { chunks_per_source: 3 } : {}), ...(options?.days ? { days: options.days } : {}), max_results: maxResults, include_answer: false, include_raw_content: false, include_images: false, exclude_domains: LOW_AUTHORITY_DOMAINS }),
       signal: AbortSignal.timeout(options?.timeoutMs ?? 8_000),
     });
     if (!response.ok) {
@@ -167,7 +173,17 @@ async function yandexResearch(query: string, maxResults: number): Promise<Tavily
 export async function researchContentPlanWeb(topic: string, geography: Geography[], currentIndustryFocus = false): Promise<TavilyResearch | null> {
   const geographyHint = geography.slice(0, 2).map((item) => [item.label, item.detail].filter(Boolean).join(", ")).filter(Boolean).join("; ");
   const query = `${topic}${geographyHint ? ` ${geographyHint}` : ""} ${currentIndustryFocus ? "актуальные отраслевые тренды, изменения, новости и запросы аудитории" : "актуальная информация, вопросы аудитории и критерии выбора"}`;
-  return tavilySearch(query, 5, `content-plan:${cacheKey(topic, geography)}`);
+  // With currentIndustryFocus, this must actually be a recency-scoped
+  // search, not just a "general" search whose query text happens to say
+  // "новости" — a "general" search has no time bias at all, so for a
+  // narrow/regional brand it kept returning the same evergreen SEO pages
+  // either way, and the model (correctly, per its "don't invent news"
+  // instruction) had nothing genuinely current to draw on, so the toggle
+  // silently produced the same generic plan as without it (site owner
+  // report: checked the box, plan had no news-driven topics at all).
+  // Tavily's topic:"news" + days scopes results to recent publication
+  // dates instead of relevance-only ranking.
+  return tavilySearch(query, 5, `content-plan:${cacheKey(topic, geography)}`, currentIndustryFocus ? { topic: "news", days: 30 } : undefined);
 }
 
 // Writing needs substantive facts, not topic-discovery snippets. Keep one

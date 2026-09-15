@@ -182,6 +182,70 @@ function isCurrentIndustryFocus(query: string) {
   return /(?:актуальн|тренд|отрасл|рын(?:ок|очн)|новост|изменени|тенденц)/iu.test(query);
 }
 
+// A recurring complaint even after the prompt-only "vary your title
+// constructions" instruction was added: the model still clustered most
+// titles on "Что…"/"Как…" (site owner example: 12 of 15 titles opened
+// with, or pivoted after a colon into, the same handful of question
+// words). A soft instruction asking the model to self-check is not
+// reliable enough — this is the same class of problem as duplicate
+// detection, so it gets the same code-level fix: classify each title's
+// opening construction and cap how many of each are allowed to survive,
+// same as titlesAreTooSimilar caps repeats.
+// Uses (?=\s|,|$) lookaheads, not \b, to mark the end of the opening word —
+// JS's \b is defined against ASCII \w only, so it silently never matches
+// around Cyrillic letters at all (confirmed via a standalone simulation
+// before shipping: every \b-based pattern here failed 100% of the time,
+// which would have made this whole check a no-op).
+const TITLE_OPENER_PATTERNS: Array<[RegExp, string]> = [
+  [/^почему(?=\s|,|$)/, "почему"],
+  [/^зачем(?=\s|,|$)/, "почему"],
+  [/^когда(?=\s|,|$)/, "когда"],
+  [/^как(?=\s|,|$)/, "как"],
+  [/^о\s?ч[её]м(?=\s|,|$)/, "что"],
+  [/^что(?=\s|,|$)/, "что"],
+  [/^чем(?=\s|,|$)/, "чем"],
+  [/^кому(?=\s|,|$)/, "кому"],
+  [/^кто(?=\s|,|$)/, "кто"],
+  [/^где(?=\s|,|$)/, "где"],
+  [/^сколько(?=\s|,|$)/, "сколько"],
+  [/^\d+\s/, "число"],
+];
+
+// Checks the title's own opening clause AND, separately, whatever follows
+// a colon — a naming lead-in before the colon ("Программа «СОК»: что
+// даёт…") reads just as formulaic as opening on the question word itself
+// once several titles share that same "[label]: что/как…" shape, so the
+// part after the colon needs its own check, not just the very first word
+// of the whole string.
+function titleOpenerKey(title: string): string {
+  const clauses = title.split(":").map((part) => part.trim().toLocaleLowerCase("ru-RU").replace(/ё/g, "е"));
+  for (const clause of clauses) {
+    for (const [pattern, key] of TITLE_OPENER_PATTERNS) {
+      if (pattern.test(clause)) return key;
+    }
+  }
+  return "";
+}
+
+// Upper bound of the "не начинай больше 2-3 заголовков одинаковой
+// конструкцией" instruction already in the prompt — enforced here instead
+// of only asked for, so a model that ignores the instruction still can't
+// ship a plan where most titles read the same.
+const PLAN_MAX_SAME_TITLE_OPENER = 3;
+
+const OPENER_DISPLAY_LABEL: Record<string, string> = {
+  "что": "Что…",
+  "как": "Как…",
+  "почему": "Почему…",
+  "когда": "Когда…",
+  "чем": "Чем…",
+  "кому": "Кому…",
+  "кто": "Кто…",
+  "где": "Где…",
+  "сколько": "Сколько…",
+  "число": "числовой формат («5 …», «3 …»)",
+};
+
 const CONTENT_PLAN_GOALS = new Set<ContentPlanGoal>(["mixed", "seo", "social", "landing", "ads"]);
 
 function normalizePayload(raw: ContentPlanPayload) {
@@ -325,6 +389,7 @@ type PlanItemEvaluation = {
   duplicateTitles: string[];
   repeatsExistingTitles: string[];
   invalidTitles: string[];
+  overusedConstructionTitles: string[];
 };
 
 // Was "validatePlan" and threw on any collision, discarding the whole
@@ -333,9 +398,12 @@ type PlanItemEvaluation = {
 // as history piled up: site owner report). Now returns whatever validated
 // cleanly instead of throwing, so runContentPlanGeneration can keep the
 // good items and ask for only the shortfall — see the retry loop there.
-function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: string[], goal: ContentPlanGoal, brand: BrandInput, sources: string[]): PlanItemEvaluation {
+// openerCounts is shared and mutated across every attempt of one plan
+// generation (see the caller), so the PLAN_MAX_SAME_TITLE_OPENER cap
+// applies to the final accepted set as a whole, not just within one batch.
+function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: string[], goal: ContentPlanGoal, brand: BrandInput, sources: string[], openerCounts: Map<string, number>): PlanItemEvaluation {
   if (!Array.isArray(plan.items) || plan.items.length !== expectedCount) {
-    return { valid: [], countMismatch: true, duplicateTitles: [], repeatsExistingTitles: [], invalidTitles: [] };
+    return { valid: [], countMismatch: true, duplicateTitles: [], repeatsExistingTitles: [], invalidTitles: [], overusedConstructionTitles: [] };
   }
 
   const cleaned = plan.items.map((item) => ({
@@ -370,13 +438,28 @@ function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: s
     || /(?:комментарий пользователя|редакционн(?:ая|ый) задач|используй|добавь|раскрой применительно|инструкц(?:ия|ии) для ии)/i.test(item.title)
   ));
 
-  const badKeys = new Set([...duplicates, ...repeatsExisting, ...invalid].map((item) => item.title));
+  const badSoFarKeys = new Set([...duplicates, ...repeatsExisting, ...invalid].map((item) => item.title));
+  // Only items that would otherwise survive get charged against the
+  // construction cap — an item already rejected as a duplicate/invalid
+  // shouldn't consume one of the few slots a genuinely different, valid
+  // title using that same construction could still use in a later attempt.
+  const overusedConstruction = cleaned.filter((item) => {
+    if (badSoFarKeys.has(item.title)) return false;
+    const key = titleOpenerKey(item.title);
+    if (!key) return false;
+    const count = (openerCounts.get(key) ?? 0) + 1;
+    openerCounts.set(key, count);
+    return count > PLAN_MAX_SAME_TITLE_OPENER;
+  });
+
+  const badKeys = new Set([...badSoFarKeys, ...overusedConstruction.map((item) => item.title)]);
   return {
     valid: cleaned.filter((item) => !badKeys.has(item.title)),
     countMismatch: false,
     duplicateTitles: duplicates.map((item) => item.title),
     repeatsExistingTitles: repeatsExisting.map((item) => item.title),
     invalidTitles: invalid.map((item) => item.title),
+    overusedConstructionTitles: overusedConstruction.map((item) => item.title),
   };
 }
 
@@ -414,7 +497,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
   ]);
   const sources = availablePlanSources(input, website?.status === "loaded", Boolean(webResearch));
 
-  function buildInstructions(neededCount: number, excludeTitles: string[]) {
+  function buildInstructions(neededCount: number, excludeTitles: string[], bannedOpeners: string[]) {
     return [
       "Ты — ведущий контент‑стратег и SEO‑редактор платформы КЛИО.",
       ...CORE_SYSTEM_RULES,
@@ -469,7 +552,15 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       // repetitive even when the underlying topics genuinely differ — title
       // *pattern* is its own diversity axis, separate from topic/cluster
       // diversity already required above.
-      "Заголовки должны различаться и по смыслу, и по форме написания. Не начинай больше 2-3 заголовков одинаковой конструкцией («Почему…», «Когда…», «Как…», «Что такое…» и т.п.) — смешивай утверждения, вопросы, сравнения («X или Y»), числовые форматы («5 признаков…», «3 ошибки…»), предупреждения и практические разборы. Если самопроверка показывает, что многие заголовки начинаются одинаково — переформулируй часть из них другой конструкцией, сохранив тему.",
+      "Заголовки должны различаться и по смыслу, и по форме написания. Не начинай больше 2-3 заголовков одинаковой конструкцией («Почему…», «Когда…», «Как…», «Что такое…» и т.п.) — смешивай утверждения, вопросы, сравнения («X или Y»), числовые форматы («5 признаков…», «3 ошибки…»), предупреждения и практические разборы. Правило применяется и к части после двоеточия — «Название: что…» так же считается конструкцией «Что…», а не отдельной формой. Если самопроверка показывает, что многие заголовки начинаются одинаково — переформулируй часть из них другой конструкцией, сохранив тему.",
+      // Escalates across retries: attempt 1 has nothing here (first ≤3 of
+      // each construction are always allowed), but once a construction hits
+      // its cap this becomes a hard, concrete instruction instead of the
+      // generic diversity ask above — same pattern as excludeTitles below,
+      // just for HOW a title opens rather than WHAT it's about (site owner:
+      // a model that ignores the generic ask above needs this explicit
+      // handhold or a retry just regenerates the same overused pattern).
+      bannedOpeners.length ? `Эти конструкции заголовков уже использованы максимально допустимое число раз в этом плане: ${bannedOpeners.map((label) => `«${label}»`).join(", ")}. Ни один новый заголовок не должен начинаться (до или сразу после двоеточия) так же — используй другую форму.` : "",
       excludeTitles.length ? `Это уже созданные темы и материалы бренда за последнее время. Не повторяй их, не делай близкие перефразировки и не возвращай ту же задачу с переставленными словами: ${excludeTitles.map((title) => `«${title}»`).join("; ")}` : "Если ранее созданные темы не переданы, всё равно не повторяй идеи внутри текущего плана.",
       softExcludeTitles.length ? `Эти темы поднимались раньше, но прошло достаточно времени: ${softExcludeTitles.map((title) => `«${title}»`).join("; ")}. Их можно взять снова только с действительно новым ракурсом, актуальным поводом или обновлёнными фактами — не пересказывай их дословно той же структурой.` : "",
       "Для каждой строки верни только title, subtitle, cluster, format, intent, stage, priority, angle, objective и primaryKeyword. Не выводи lsi, audience, metaTitle, metaDescription, structure, cta, evidenceNeeded или sources: КЛИО заполнит их из профиля и темы. Формулируй поля кратко и по существу.",
@@ -485,7 +576,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
     ].join("\n");
   }
 
-  function buildRequestInput(neededCount: number, excludeTitles: string[]) {
+  function buildRequestInput(neededCount: number, excludeTitles: string[], bannedOpeners: string[]) {
     const now = new Date();
     return JSON.stringify({
       current_date: now.toISOString().slice(0, 10),
@@ -522,6 +613,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       } : null,
       existing_titles_to_exclude: excludeTitles,
       existing_titles_soft_reference: softExcludeTitles,
+      banned_title_openers: bannedOpeners,
       editorial_brief_contract: {
         topic: "title", subtitle: "subtitle", intent: "intent", objective: "objective", audience: "audience", angle: "angle", format: "format",
         structure: "structure", keywords: ["primaryKeyword", "lsi"], evidenceNeeded: "evidenceNeeded", sources: "sources",
@@ -543,8 +635,15 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
   let accepted: PlanItem[] = [];
   let excludeTitles = strictExcludeBase;
   let model = "";
+  // Shared and mutated across every attempt below — see evaluatePlanItems
+  // and PLAN_MAX_SAME_TITLE_OPENER for why counting has to span the whole
+  // final accepted set, not reset per attempt.
+  const openerCounts = new Map<string, number>();
   for (let attempt = 1; attempt <= PLAN_MAX_GENERATION_ATTEMPTS && accepted.length < input.count; attempt++) {
     const neededCount = input.count - accepted.length;
+    const bannedOpeners = [...openerCounts.entries()]
+      .filter(([, count]) => count >= PLAN_MAX_SAME_TITLE_OPENER)
+      .map(([key]) => OPENER_DISPLAY_LABEL[key] ?? key);
     const call = await callAiModel<AiPlan>({
       operation: "generate_content_plan",
       maxOutputTokensOverride: contentPlanOutputTokenBudget(neededCount),
@@ -552,14 +651,14 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       ownerEmail,
       schemaName: "klio_content_plan",
       schema: contentPlanSchema(neededCount),
-      instructions: buildInstructions(neededCount, excludeTitles),
-      input: buildRequestInput(neededCount, excludeTitles),
+      instructions: buildInstructions(neededCount, excludeTitles, bannedOpeners),
+      input: buildRequestInput(neededCount, excludeTitles, bannedOpeners),
     });
     model = call.model;
-    const evaluation = evaluatePlanItems(call.result, neededCount, excludeTitles, input.goal, input.brand, sources);
+    const evaluation = evaluatePlanItems(call.result, neededCount, excludeTitles, input.goal, input.brand, sources, openerCounts);
     accepted = [...accepted, ...evaluation.valid];
     excludeTitles = unique([...excludeTitles, ...evaluation.valid.map((item) => item.title)]);
-    if (evaluation.countMismatch || evaluation.duplicateTitles.length || evaluation.repeatsExistingTitles.length || evaluation.invalidTitles.length) {
+    if (evaluation.countMismatch || evaluation.duplicateTitles.length || evaluation.repeatsExistingTitles.length || evaluation.invalidTitles.length || evaluation.overusedConstructionTitles.length) {
       // Was a silent discard with zero trace — logged now so a rejection
       // is diagnosable from real data instead of another guess (site
       // owner: hit this five times in a row with no way to tell why).
@@ -569,6 +668,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
         duplicateTitles: evaluation.duplicateTitles,
         repeatsExistingTitles: evaluation.repeatsExistingTitles,
         invalidTitles: evaluation.invalidTitles,
+        overusedConstructionTitles: evaluation.overusedConstructionTitles,
         excludeTitlesChecked: excludeTitles,
       }));
     }
@@ -583,9 +683,17 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
     : "План создан AI‑стратегом по текущей теме и подключённым источникам. Подключите семантику, чтобы приоритизировать темы по подтверждённому спросу.";
   // Visible confirmation of whether the direct site read actually worked
   // (best-effort — a failed/blocked fetch just means no note, not an error).
+  // When the "Учитывать актуальные новости отрасли" checkbox is on but
+  // Tavily's recency-scoped search found nothing (a narrow/regional brand
+  // often has no real recent industry news), the model correctly falls
+  // back to generic topics rather than inventing news — but without this
+  // note that read as the checkbox silently doing nothing (site owner:
+  // "новости были включены и не учел").
   const groundingNote = [
     website?.status === "loaded" ? `Сайт бренда прочитан (${websiteSourceLabel(website)}).` : "",
-    webResearch ? "Веб-поиск Tavily выполнен в ограниченном режиме и добавлен как справочный слой." : "",
+    webResearch
+      ? currentIndustryFocus ? "Найдены актуальные отраслевые источники за последние 30 дней — план учитывает их." : "Веб-поиск Tavily выполнен в ограниченном режиме и добавлен как справочный слой."
+      : currentIndustryFocus ? "Актуальных новостей отрасли за последние 30 дней не найдено — план построен на общих темах вместо реальных новостных поводов." : "",
   ].filter(Boolean).join(" ");
   const result = {
     mode: "ai" as const,
