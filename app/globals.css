@@ -10083,6 +10083,8 @@ footer nav a {
   .workspace-header-actions > a.telegram-header-link {
     width: 34px;
     height: 34px;
+    flex: 0 0 34px;
+    aspect-ratio: 1;
     padding: 0;
     gap: 0;
   }
@@ -22035,6 +22037,9 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
      missing on phones (site owner report). */
   .telegram-header-link {
     width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    aspect-ratio: 1;
     padding: 0;
     gap: 0;
   }
