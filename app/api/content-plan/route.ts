@@ -181,35 +181,27 @@ function titlesAreTooSimilar(left: string, right: string) {
   return shared / Math.min(a.size, b.size) >= 0.67;
 }
 
-// A distinct check from titlesAreTooSimilar, for a distinct failure mode:
-// a real cross-generation repeat can wear a completely different title
-// each time ("Кардиореабилитация: чем восстановление в санатории
-// отличается от домашнего режима" vs, a plan apart, "Реабилитация после
-// инфаркта и операций на сердце: что уточнить перед поездкой" — same
-// subject, no shared significant title words at all) while its short SEO
-// keyword stays close to identical ("кардиореабилитация в санатории" both
-// times) — confirmed directly against real exported plans the site owner
-// compared across generations, after checking the actual title pairs
-// through titlesAreTooSimilar and finding every one missed ("темы очень
-// одинаковы местами... первые 4-5 уже были ранее только с чуть другой
-// формулировкой"). primaryKeyword phrases are short (typically 2-4 words)
-// and canonical, so titlesAreTooSimilar's shared>=3 floor — tuned for
-// full sentences — is too strict here: a lower shared>=2 floor plus a more
-// lenient ratio also compensates for titleTerms' crude suffix-stripping
-// producing slightly different stems for different grammatical cases of
-// the same root word (e.g. "анемии" -> "анеми" vs "анемия" -> "анем").
-// Verified against 9 real keyword pairs (4 genuine repeats worded
-// differently, 5 genuinely distinct subjects) before shipping.
-function keywordsAreTooSimilar(left: string, right: string) {
-  const a = titleTerms(left);
-  const b = titleTerms(right);
-  if (!a.size || !b.size) return false;
-  let shared = 0;
-  for (const word of a) if (b.has(word)) shared += 1;
-  if (shared < 2) return false;
-  return shared / Math.min(a.size, b.size) >= 0.5;
-}
-
+// Reuses titlesAreTooSimilar's own thresholds (shared>=3, ratio>=0.67)
+// for primaryKeyword comparison instead of a separate, looser check. A
+// first attempt here used shared>=2/ratio>=0.5 on the theory that
+// keyword phrases are short (2-4 words) so titlesAreTooSimilar's floor
+// -- tuned for full sentences -- would be too strict. Verified against 9
+// hand-picked pairs and shipped, but a broader sweep over ~50 real
+// primaryKeyword values from every CSV shared this session found 71
+// flagged pairs out of 1653 at that looser threshold, most of them
+// genuinely different topics that only share the niche's small common
+// vocabulary ("санаторий", "программа", "лечение") -- e.g.
+// "диагностическая программа ЧЕК АП" and "антистресс программа" both
+// matched "программа"+"санатории" and got flagged as the same subject.
+// In a narrow/jargon-heavy niche this false-positive rate is high enough
+// to reject most of a batch and exhaust PLAN_MAX_GENERATION_ATTEMPTS
+// outright (site owner: "AI-редакция подготовила слабый или
+// повторяющийся контент-план" -- the very failure this whole retry
+// system exists to avoid). The same broader sweep at titlesAreTooSimilar's
+// actual thresholds found zero false positives, at the cost of missing a
+// couple of the original hand-picked genuine repeats (short 2-shared-term
+// matches) -- an acceptable trade: an occasional missed cross-generation
+// repeat is a soft quality issue, a generation failing outright is not.
 function isCurrentIndustryFocus(query: string) {
   return /(?:актуальн|тренд|отрасл|рын(?:ок|очн)|новост|изменени|тенденц)/iu.test(query);
 }
@@ -504,10 +496,10 @@ function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: s
   const duplicates = cleaned.filter((item, index) => cleaned.slice(0, index).some((previous) => titlesAreTooSimilar(previous.title, item.title)));
   const repeatsExisting = cleaned.filter((item) => excludeTitles.some((title) => titlesAreTooSimilar(title, item.title)));
   // Catches a real cross-generation repeat that repeatsExisting misses:
-  // same subject, differently-worded title (see keywordsAreTooSimilar's
-  // own comment — confirmed against real exported plans the site owner
-  // compared across generations).
-  const repeatsExistingKeyword = cleaned.filter((item) => !excludeTitles.some((title) => titlesAreTooSimilar(title, item.title)) && excludeKeywords.some((keyword) => keywordsAreTooSimilar(keyword, item.primaryKeyword)));
+  // same subject, differently-worded title. Reuses titlesAreTooSimilar
+  // itself (see the comment above isCurrentIndustryFocus for why a looser,
+  // keyword-specific threshold was tried and reverted).
+  const repeatsExistingKeyword = cleaned.filter((item) => !excludeTitles.some((title) => titlesAreTooSimilar(title, item.title)) && excludeKeywords.some((keyword) => titlesAreTooSimilar(keyword, item.primaryKeyword)));
   const allowedFormats = GOAL_FORMAT_LOCK[goal];
   const invalid = cleaned.filter((item) => (
     !item.title || !item.cluster || !item.primaryKeyword || !item.angle || !item.objective
@@ -695,9 +687,11 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
   // history.
   const strictExcludeBase = unique([...input.existingTitles, ...recentHistoricalTitles]).slice(0, PLAN_EXISTING_TITLES_LIMIT);
   input = { ...input, existingTitles: strictExcludeBase };
-  // Same recency window as titles above, but keyed on primaryKeyword — see
-  // keywordsAreTooSimilar for why this catches real repeats that
-  // recentHistoricalTitles' title-only check misses.
+  // Same recency window as titles above, but keyed on primaryKeyword — a
+  // real cross-generation repeat can wear a completely different title
+  // each time while its short SEO keyword stays close to identical, which
+  // recentHistoricalTitles' title-only check misses (see evaluatePlanItems'
+  // repeatsExistingKeyword and the comment above isCurrentIndustryFocus).
   const strictExcludeKeywords = unique(historicalTitles.filter((item) => new Date(item.createdAt).getTime() >= historyCutoffMs).map((item) => item.primaryKeyword).filter(Boolean)).slice(0, PLAN_EXISTING_TITLES_LIMIT);
   // The "Учитывать актуальные новости отрасли" checkbox forces the same
   // mode isCurrentIndustryFocus otherwise only reaches by matching keywords
