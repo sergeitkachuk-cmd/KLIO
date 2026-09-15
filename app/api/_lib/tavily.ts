@@ -53,12 +53,14 @@ async function tavilySearch(query: string, maxResults: number, cacheNamespace: s
   depth?: "advanced";
   contentLength?: number;
   timeoutMs?: number;
-  // Tavily's own recency-scoped search mode, distinct from "general" — see
-  // researchContentPlanWeb for why this matters: rewording the query text
-  // to mention "новости" does NOT make a "general" search actually recent,
-  // it just biases which generic pages come back.
-  topic?: "general" | "news";
-  days?: number;
+  // Was days:number, a parameter Tavily's /search endpoint doesn't
+  // actually have — confirmed against Tavily's own API reference. It was
+  // silently ignored by the API on every call, so the only thing the
+  // earlier "recency" fix actually did was switch topic to "news"; no
+  // date-range filtering was ever applied at all. time_range is the real
+  // parameter (day/week/month/year — start_date/end_date exist too but
+  // aren't needed here).
+  timeRange?: "day" | "week" | "month" | "year";
 }): Promise<TavilyResearch | null> {
   const apiKey = process.env.TAVILY_API_KEY?.trim();
   const normalizedQuery = clean(query, 700);
@@ -74,7 +76,7 @@ async function tavilySearch(query: string, maxResults: number, cacheNamespace: s
     const response = await fetch("https://api.tavily.com/search", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ query: normalizedQuery, topic: options?.topic ?? "general", search_depth: options?.depth ?? "fast", ...(options?.depth === "advanced" ? { chunks_per_source: 3 } : {}), ...(options?.days ? { days: options.days } : {}), max_results: maxResults, include_answer: false, include_raw_content: false, include_images: false, exclude_domains: LOW_AUTHORITY_DOMAINS }),
+      body: JSON.stringify({ query: normalizedQuery, topic: "general", search_depth: options?.depth ?? "fast", ...(options?.depth === "advanced" ? { chunks_per_source: 3 } : {}), ...(options?.timeRange ? { time_range: options.timeRange } : {}), max_results: maxResults, include_answer: false, include_raw_content: false, include_images: false, exclude_domains: LOW_AUTHORITY_DOMAINS }),
       signal: AbortSignal.timeout(options?.timeoutMs ?? 8_000),
     });
     if (!response.ok) {
@@ -186,10 +188,26 @@ export async function researchContentPlanWeb(topic: string, geography: Geography
   // instruction) had nothing genuinely current to draw on, so the toggle
   // silently produced the same generic plan as without it (site owner
   // report: checked the box, plan had no news-driven topics at all).
-  // Tavily's topic:"news" + days scopes results to recent publication
-  // dates instead of relevance-only ranking.
   //
-  // That first fix wasn't enough on its own: when no explicit topic is
+  // Two real bugs in the first attempt at fixing this, both confirmed
+  // against Tavily's own API reference:
+  // 1. { topic: "news", days: 30 } — Tavily's /search endpoint has no
+  //    "days" parameter at all; it was silently ignored on every request,
+  //    so that "fix" only ever switched the source pool to topic:"news"
+  //    and applied zero actual date filtering. The real parameter is
+  //    time_range ("day"/"week"/"month"/"year").
+  // 2. topic:"news" is the wrong mode here regardless: Tavily's own docs
+  //    describe it as tuned for "politics, sports, and major current
+  //    events covered by mainstream media sources" — a niche/regional B2B
+  //    industry (site owner's own example: water treatment) is exactly
+  //    the kind of content that pool is thin on, no matter how the query
+  //    is worded (site owner: "новостей масса ... может проблема в том,
+  //    что не понимает что искать" — the volume genuinely exists on the
+  //    open web, just not inside Tavily's curated "mainstream news" index).
+  // Switched to topic:"general" (the only mode tavilySearch sends now —
+  // no mainstream-media bias) with a real time_range:"month" filter.
+  //
+  // That first fix wasn't enough on its own either way: when no explicit topic is
   // typed, `topic` here is the caller's brand-name+positioning fallback
   // (see normalizePayload's `query`) — literally "<Brand Name>: <sales
   // copy>". A real news search for a specific small/regional brand's own
@@ -211,20 +229,22 @@ export async function researchContentPlanWeb(topic: string, geography: Geography
     const query = `${topic}${geographyHint ? ` ${geographyHint}` : ""} актуальная информация, вопросы аудитории и критерии выбора`;
     return tavilySearch(query, 5, `content-plan:${cacheKey(topic, geography)}`);
   }
-  const newsQuery = `${newsSubject} актуальные отраслевые тренды, изменения, новости и запросы аудитории`;
-  const fresh = await tavilySearch(newsQuery, 5, `content-plan-news:${cacheKey(newsSubject, [])}`, { topic: "news", days: 30 });
-  if (fresh) return { ...fresh, freshNews: true };
+  // Kept short and keyword-like rather than a long descriptive sentence —
+  // closer to how a person would actually type this into a search box.
+  const recentQuery = `${newsSubject} новости отрасли`;
+  const recent = await tavilySearch(recentQuery, 5, `content-plan-news:${cacheKey(newsSubject, [])}`, { timeRange: "month" });
+  if (recent) return { ...recent, freshNews: true };
   // A niche/regional/B2B industry can genuinely have nothing published in
-  // the last 30 days — that's a real, legitimate empty result, not a bug.
+  // the last month — that's a real, legitimate empty result, not a bug.
   // But it left the model with zero external grounding at all for a mode
   // whose whole premise is "ground this in the outside world" (site owner
   // report: news toggle checked, found nothing, plan fell back to fully
-  // generic). A general (non-recency) search on the same industry-level
-  // subject can't manufacture news that doesn't exist, but it can still
-  // give the model real, current-enough industry context instead of
-  // nothing — clearly labeled via freshNews:false so the caller's dataNote
-  // doesn't claim it found actual news.
-  const fallbackQuery = `${newsSubject} отраслевые тренды, практики и вопросы аудитории`;
+  // generic). A search on the same industry-level subject without the
+  // time filter can't manufacture news that doesn't exist, but it can
+  // still give the model real industry context instead of nothing —
+  // clearly labeled via freshNews:false so the caller's dataNote doesn't
+  // claim it found actual current news.
+  const fallbackQuery = `${newsSubject} тренды и практики отрасли`;
   const fallback = await tavilySearch(fallbackQuery, 5, `content-plan:${cacheKey(newsSubject, [])}`);
   return fallback ? { ...fallback, freshNews: false } : null;
 }

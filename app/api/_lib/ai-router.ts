@@ -338,6 +338,13 @@ async function requestOnce(params: {
     }));
     const error = new AiCallError("ИИ не завершил материал. Повторите запрос чуть позже.", 502);
     (error as { usage?: typeof usage; diagnosticMessage?: string }).usage = usage;
+    // A genuine output/token-budget cutoff is a reasonable one-off to
+    // retry (see research_semantics's own comment in ai-config.ts for why
+    // this specifically, not every "incomplete" reason, is treated as
+    // transient) — an unfamiliar reason (a real refusal/policy stop, say)
+    // stays non-transient so a retryable operation doesn't just repeat an
+    // identical failure.
+    (error as { transient?: boolean }).transient = incompleteReason === "max_output_tokens";
     error.diagnosticMessage = [
       error.message,
       `provider_status=${String(body.status || "unknown")}`,

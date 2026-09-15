@@ -145,6 +145,16 @@ export async function POST(request: Request) {
     const candidates = [...counts.entries()].map(([key, frequency]) => ({ phrase: collected.find((item) => normalize(item.phrase) === key)?.phrase || key, frequency }))
       .sort((a, b) => b.frequency - a.frequency).slice(0, 140);
     if (candidates.length < 8) throw new AiResponseError("Источник поисковых данных вернул слишком мало реальных запросов по этой теме. Уточните формулировку или профиль бренда.", 422);
+    // The classification call only ever needs to output 8-30 keywords, but
+    // was being handed the full up-to-140 verified pool to sift through —
+    // the same shape of large, dense input already confirmed (content-
+    // plan's existingTitles fix, this session) to send DeepSeek into a
+    // runaway reasoning spiral that burns the whole output budget before
+    // emitting the final JSON (site owner: "Раздел семантика ... не
+    // работает", every attempt failing with "ИИ не завершил материал").
+    // candidates itself (and its full length in sources.candidates below)
+    // stays at up to 140 — this only trims what's fed to the AI call.
+    const classificationCandidates = candidates.slice(0, 80);
     const ai = await callAiModel<Omit<SemanticResult, "primaryQuery" | "dataNote">>({
       operation: "research_semantics", ownerEmail: identity.email, schemaName: "klio_wordstat_semantic_map", schema: schema(),
       instructions: [
@@ -155,7 +165,7 @@ export async function POST(request: Request) {
         "Для одного будущего материала отметь recommended только 1 основной и 3–5 близких поддерживающих фраз из ОДНОГО кластера. Внутри кластера предпочитай более частотные и недублирующие фразы.",
         "Не смешивай в recommended коммерческие, информационные, навигационные и иные несовместимые намерения. Верни 8–30 фраз из списка.",
         "recommendedLength — разумный объём будущего материала в знаках с пробелами: для подробной SEO-статьи обычно 5 000–12 000, не в словах.",
-      ].join("\n"), input: JSON.stringify({ original_query: query, search_demand_geography: searchRegion.label, market: clean(seedPlan.result.market, 180), brand_name: brand.name || null, growth_seeds: seeds.slice(1), verified_candidates_last_30_days: candidates }, null, 2),
+      ].join("\n"), input: JSON.stringify({ original_query: query, search_demand_geography: searchRegion.label, market: clean(seedPlan.result.market, 180), brand_name: brand.name || null, growth_seeds: seeds.slice(1), verified_candidates_last_30_days: classificationCandidates }, null, 2),
     });
     const seen = new Set<string>();
     const keywords = ai.result.keywords.map((item, index) => {

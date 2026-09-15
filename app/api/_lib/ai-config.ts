@@ -213,7 +213,20 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // is too weak for at useful quality — verified this session: nano/mini-
   // tier models either time out on it or degrade to near-brand-only
   // phrases. Kept on Luna.
-  research_semantics: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 9_000, structuredOutput: true, retryable: false, useWebSearch: false },
+  // maxOutputTokens bumped 9_000 -> 12_000 and retryable flipped on (site
+  // owner: "Раздел семантика ... не работает", every attempt failing with
+  // "ИИ не завершил материал") — the classification call feeds up to 140
+  // raw candidate phrases in for clustering (see semantics/route.ts), the
+  // same shape of large, information-dense input that was already
+  // confirmed (content-plan's existingTitles fix, this session) to send
+  // DeepSeek into a runaway reasoning spiral that burns the whole output
+  // budget before ever emitting the final JSON, coming back
+  // status:"incomplete". retryable:true only helps once the "incomplete"
+  // error is itself marked transient for a genuine max_output_tokens
+  // cutoff (see ai-router.ts) — a one-off reasoning spike is worth one
+  // retry; a systematically-too-large input is fixed at the source
+  // instead (candidates trimmed 140 -> 80 in semantics/route.ts).
+  research_semantics: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 12_000, structuredOutput: true, retryable: true, useWebSearch: false },
   discover_competitors: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 1_800, structuredOutput: false, retryable: false, useWebSearch: false },
   analyze_competitors: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 9_000, structuredOutput: true, retryable: false, useWebSearch: false },
   // The correction/patch pass (missing keyword, off-target length, etc.):
