@@ -5015,6 +5015,19 @@ footer nav a {
   color: var(--acid) !important;
 }
 
+/* Same base pill as .material-delete/.material-archive above — publish
+   straight from the card instead of forcing a trip through "В редактор"
+   first (site owner request). VK's own blue rather than red/acid-green,
+   since it's neither destructive nor reversible-storage, it's a shortcut
+   into Публикации. */
+.material-publish {
+  color: rgba(255, 255, 255, 0.55) !important;
+}
+
+.material-publish:hover {
+  color: #4fa3ff !important;
+}
+
 /* Archived cards only ever show up under the "Архив" tab (every other
    tab excludes them), so this isn't about standing out from unarchived
    siblings in the same list - it's a quieter default read ("put away")
@@ -12325,10 +12338,16 @@ input[type="radio"] {
 .publication-platform-icon.vk { background: #0077ff; }
 .publication-platform-icon:not(.telegram):not(.vk) { background: rgba(255, 255, 255, 0.22); }
 
+/* Was a 40%-transparent tint over a thin border — too subtle to tell which
+   channels were actually selected at a glance (site owner report). Solid
+   fill instead, same idea as .workspace-history-filters > button.active's
+   own bright/dark contrast, just using this module's own accent green. */
 .publications-editor-channels button.active {
-  border-color: color-mix(in srgb, var(--module-accent) 60%, transparent);
-  color: #fff;
-  background: color-mix(in srgb, var(--module-accent) 40%, transparent);
+  border-color: color-mix(in srgb, var(--module-accent) 85%, transparent);
+  color: #16240a;
+  background: var(--module-accent);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.35), 0 8px 20px color-mix(in srgb, var(--module-accent) 35%, transparent);
+  font-weight: 700;
 }
 
 .publications-editor-actions {
@@ -15016,8 +15035,13 @@ input[type="radio"] {
 
 .workspace-history-list article footer > div {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 7px;
+  /* Was 7px — read as "buttons stuck together" once a 4th one (В
+     публикацию) joined Удалить/В архив/В редактор on the same narrow
+     row (site owner report). flex-wrap above keeps a 4th button from
+     overflowing the card on narrow widths instead of forcing a squeeze. */
+  gap: 10px;
 }
 
 .workspace-history-list article footer .material-export {
