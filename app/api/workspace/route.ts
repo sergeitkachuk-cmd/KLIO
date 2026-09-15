@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { accounts, brands, generations, materials, publications, socialChannels } from "../../../db/schema";
 import { planRule } from "../../plans";
 import {
@@ -204,6 +204,22 @@ export async function POST(request: Request) {
         profileJson: JSON.stringify(profile),
         workspaceJson: JSON.stringify(workspace),
       }).returning();
+      // A material generated with no brand active stores brandId: null
+      // (generation without a profile has always been supported - see
+      // generate()/generateQuick() in textora-experience.tsx) and the
+      // "Материалы" list shows it fine while nothing else has claimed it.
+      // But once this account's first real brand exists, "Материалы"
+      // filters strictly by the now-active brand id, and null never
+      // matches a real id — the material would just vanish from view,
+      // even though it's still sitting in the database (site owner: hit
+      // this exact sequence — generated a material with no brand, then
+      // filled in and saved a brand profile, then couldn't find it).
+      // Adopting it into whichever brand comes first resolves that the
+      // same way a person would expect: there was nothing else it could
+      // have belonged to.
+      if (currentCount === 0) {
+        await tx.update(generations).set({ brandId: created.id }).where(and(eq(generations.ownerEmail, user.email), isNull(generations.brandId)));
+      }
       return Response.json({
         brand: { ...created, profile, workspace },
         account: accountSummary(lockedAccount, currentCount + 1),

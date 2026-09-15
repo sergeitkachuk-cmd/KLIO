@@ -5,6 +5,7 @@ import { isAdminEmail } from "../../_lib/admin";
 import { getDb } from "../../../../db";
 import { accounts, aiUsage, asyncJobs, brands, emailVerifications, generations, invoices, materials, passwordResets, payments, sessions } from "../../../../db/schema";
 import { isPlanId, type PlanId } from "../../../plans";
+import { nextQuotaPeriodEnd } from "../../_lib/subscription";
 
 function addMonths(base: Date, months: number) {
   const result = new Date(base);
@@ -25,12 +26,31 @@ export async function PATCH(request: Request) {
   const db = getDb();
   const [current] = await db.select({ planExpiresAt: accounts.planExpiresAt }).from(accounts).where(eq(accounts.email, email)).limit(1);
   if (!current) return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
-  const nextExpiry = planId === "trial" || months === 0
+  const now = new Date();
+  const isTrialOrClear = planId === "trial" || months === 0;
+  const nextExpiry = isTrialOrClear
     ? null
     : months === null
       ? current.planExpiresAt
-      : addMonths(current.planExpiresAt && new Date(current.planExpiresAt).getTime() > Date.now() ? new Date(current.planExpiresAt) : new Date(), months).toISOString();
-  const [updated] = await db.update(accounts).set({ planId: planId as PlanId, planExpiresAt: nextExpiry, updatedAt: new Date().toISOString() }).where(eq(accounts.email, email)).returning({ email: accounts.email, planId: accounts.planId, planExpiresAt: accounts.planExpiresAt });
+      : addMonths(current.planExpiresAt && new Date(current.planExpiresAt).getTime() > now.getTime() ? new Date(current.planExpiresAt) : now, months).toISOString();
+  const [updated] = await db.update(accounts).set({
+    planId: planId as PlanId,
+    planExpiresAt: nextExpiry,
+    // Assigning a plan here should behave like a fresh grant, not silently
+    // carry over whatever was used under whatever plan the account had
+    // before — a real payment already resets these same three counters
+    // (see the confirmedPayment branch in tochka/webhook's route.ts). This
+    // admin override was the one path that changed planId without also
+    // doing that, which is exactly how a brand-new "Старт" account could
+    // show "5 из 5 исследований" already spent before ever really using
+    // the new plan (site owner: hit this after granting a plan by hand).
+    generationsUsed: 0,
+    researchUsed: 0,
+    editorActionsUsed: 0,
+    generationMonth: `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`,
+    quotaPeriodEndsAt: isTrialOrClear ? null : nextQuotaPeriodEnd(now),
+    updatedAt: now.toISOString(),
+  }).where(eq(accounts.email, email)).returning({ email: accounts.email, planId: accounts.planId, planExpiresAt: accounts.planExpiresAt });
   return NextResponse.json(updated);
 }
 

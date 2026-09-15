@@ -3445,6 +3445,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setWorkspaceBrands((current) => [...current, created]);
       if (payload.account) setWorkspaceAccount(payload.account);
       workspaceVersions.current.set(created.id, created.updatedAt);
+      // Mirrors the server's own adoption of brandless generations into
+      // this account's first brand (see create_brand in api/workspace/
+      // route.ts) - this is always that first brand, since this function
+      // only runs when activeBrandId was empty, which only happens with
+      // zero existing brands. Without this, a material made before any
+      // brand existed would still be correctly adopted server-side, but
+      // would keep looking gone here until the next full page load.
+      setWorkspaceHistory((current) => current.map((item) => item.brandId === null ? { ...item, brandId: created.id } : item));
       applyWorkspaceBrand(created);
       showToast(`Бренд «${created.name}» создан, профиль сохранён`);
     } catch (error) {

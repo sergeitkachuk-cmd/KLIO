@@ -42,7 +42,7 @@ function harness({ failDelete = false, generation = false, archiveRows = null, b
     } }) }) }),
   };
   const dependencies = {
-    "drizzle-orm": { eq: (key, value) => row => row[key] === value, and: (...checks) => row => checks.filter(Boolean).every(check => check(row)), desc: () => null, sql: (parts, ...values) => parts.join("").includes(" < ") ? row => row.createdAt < values[2] || row.createdAt === values[2] && row.id < values[3] : null },
+    "drizzle-orm": { eq: (key, value) => row => row[key] === value, and: (...checks) => row => checks.filter(Boolean).every(check => check(row)), desc: () => null, isNull: (key) => row => row[key] == null, sql: (parts, ...values) => parts.join("").includes(" < ") ? row => row.createdAt < values[2] || row.createdAt === values[2] && row.id < values[3] : null },
     "../../../db/schema": tables,
     "../../plans": { planRule: () => ({ brandLimit }) },
     "../_lib/workspace-account": {
