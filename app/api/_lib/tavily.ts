@@ -170,9 +170,8 @@ async function yandexResearch(query: string, maxResults: number): Promise<Tavily
 // This is deliberately a single, server-controlled request.  DeepSeek never
 // receives a search tool, so it cannot decide to make more searches or enter
 // an agent loop.  A short cached digest is enough to ground a content plan.
-export async function researchContentPlanWeb(topic: string, geography: Geography[], currentIndustryFocus = false): Promise<TavilyResearch | null> {
+export async function researchContentPlanWeb(topic: string, geography: Geography[], currentIndustryFocus = false, industryField = ""): Promise<TavilyResearch | null> {
   const geographyHint = geography.slice(0, 2).map((item) => [item.label, item.detail].filter(Boolean).join(", ")).filter(Boolean).join("; ");
-  const query = `${topic}${geographyHint ? ` ${geographyHint}` : ""} ${currentIndustryFocus ? "актуальные отраслевые тренды, изменения, новости и запросы аудитории" : "актуальная информация, вопросы аудитории и критерии выбора"}`;
   // With currentIndustryFocus, this must actually be a recency-scoped
   // search, not just a "general" search whose query text happens to say
   // "новости" — a "general" search has no time bias at all, so for a
@@ -183,6 +182,28 @@ export async function researchContentPlanWeb(topic: string, geography: Geography
   // report: checked the box, plan had no news-driven topics at all).
   // Tavily's topic:"news" + days scopes results to recent publication
   // dates instead of relevance-only ranking.
+  //
+  // That first fix wasn't enough on its own: when no explicit topic is
+  // typed, `topic` here is the caller's brand-name+positioning fallback
+  // (see normalizePayload's `query`) — literally "<Brand Name>: <sales
+  // copy>". A real news search for a specific small/regional brand's own
+  // name will almost always come back empty (there is no news about it),
+  // which reads identically to "the toggle does nothing" even though the
+  // recency scoping itself is working correctly (site owner report). News
+  // mode needs an industry/field-level subject instead — the methods and
+  // services the brand actually uses are a genuinely searchable topic
+  // ("бальнеотерапия", "кардиореабилитация", ...), the brand's own name
+  // is not. industryField (the brand's plain products/services list, not
+  // its marketing positioning) is preferred for news mode when available;
+  // geography is dropped from the news query too, since narrowing an
+  // already-narrow industry search down to one small region compounds the
+  // same problem. Falls back to `topic` when no industryField is passed
+  // (e.g. brand profile has no services/products filled in) or when not
+  // in news mode, where the previous, unchanged query still applies.
+  const newsSubject = industryField || topic;
+  const query = currentIndustryFocus
+    ? `${newsSubject} актуальные отраслевые тренды, изменения, новости и запросы аудитории`
+    : `${topic}${geographyHint ? ` ${geographyHint}` : ""} актуальная информация, вопросы аудитории и критерии выбора`;
   return tavilySearch(query, 5, `content-plan:${cacheKey(topic, geography)}`, currentIndustryFocus ? { topic: "news", days: 30 } : undefined);
 }
 

@@ -401,6 +401,7 @@ type PlanItemEvaluation = {
   repeatsExistingTitles: string[];
   invalidTitles: string[];
   overusedConstructionTitles: string[];
+  overusedFormatTitles: string[];
 };
 
 // Was "validatePlan" and threw on any collision, discarding the whole
@@ -409,12 +410,15 @@ type PlanItemEvaluation = {
 // as history piled up: site owner report). Now returns whatever validated
 // cleanly instead of throwing, so runContentPlanGeneration can keep the
 // good items and ask for only the shortfall — see the retry loop there.
-// openerCounts is shared and mutated across every attempt of one plan
-// generation (see the caller), so the PLAN_MAX_SAME_TITLE_OPENER cap
-// applies to the final accepted set as a whole, not just within one batch.
-function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: string[], goal: ContentPlanGoal, brand: BrandInput, sources: string[], openerCounts: Map<string, number>): PlanItemEvaluation {
+// openerCounts/formatCounts are shared and mutated across every attempt of
+// one plan generation (see the caller), so their caps apply to the final
+// accepted set as a whole, not just within one batch. formatCap is
+// precomputed once by the caller from the overall requested count and the
+// goal's allowed-format count (see planFormatCap) — passing a fixed number
+// here keeps this function from needing to know about input.count itself.
+function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: string[], goal: ContentPlanGoal, brand: BrandInput, sources: string[], openerCounts: Map<string, number>, formatCounts: Map<string, number>, formatCap: number): PlanItemEvaluation {
   if (!Array.isArray(plan.items) || plan.items.length !== expectedCount) {
-    return { valid: [], countMismatch: true, duplicateTitles: [], repeatsExistingTitles: [], invalidTitles: [], overusedConstructionTitles: [] };
+    return { valid: [], countMismatch: true, duplicateTitles: [], repeatsExistingTitles: [], invalidTitles: [], overusedConstructionTitles: [], overusedFormatTitles: [] };
   }
 
   const cleaned = plan.items.map((item) => ({
@@ -465,8 +469,26 @@ function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: s
     openerCounts.set(key, count);
     return count > PLAN_MAX_SAME_TITLE_OPENER;
   });
+  for (const item of overusedConstruction) badSoFarKeys.add(item.title);
 
-  const badKeys = new Set([...badSoFarKeys, ...overusedConstruction.map((item) => item.title)]);
+  // Same pattern as the construction cap, for the format field: a real
+  // export showed 25 of 25 "mixed"-goal items come back as "Пост" across
+  // two separate generations, despite GOAL_INSTRUCTION explicitly asking
+  // for a free spread across all 8 allowed formats (site owner report) —
+  // a prompt-only ask for diversity is the same class of problem the
+  // construction cap already exists to fix. formatCap is precomputed by
+  // the caller so it always has enough total capacity across every
+  // allowed format to reach the requested plan size (see planFormatCap) —
+  // a goal locked to a single format (social/landing/ads) gets a cap that
+  // can never actually trigger, so this is a no-op there by construction.
+  const overusedFormat = cleaned.filter((item) => {
+    if (badSoFarKeys.has(item.title)) return false;
+    const count = (formatCounts.get(item.format) ?? 0) + 1;
+    formatCounts.set(item.format, count);
+    return count > formatCap;
+  });
+
+  const badKeys = new Set([...badSoFarKeys, ...overusedFormat.map((item) => item.title)]);
   return {
     valid: cleaned.filter((item) => !badKeys.has(item.title)),
     countMismatch: false,
@@ -474,7 +496,17 @@ function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: s
     repeatsExistingTitles: repeatsExisting.map((item) => item.title),
     invalidTitles: invalid.map((item) => item.title),
     overusedConstructionTitles: overusedConstruction.map((item) => item.title),
+    overusedFormatTitles: overusedFormat.map((item) => item.title),
   };
+}
+
+// Guarantees enough total capacity across every allowed format to reach
+// requestedCount even if the model packs every format up to the cap
+// exactly (ceil(requestedCount / allowedFormatCount) + 1 headroom per
+// format) — see evaluatePlanItems' overusedFormat check. For a goal locked
+// to one format this returns > requestedCount, so the cap can never fire.
+function planFormatCap(requestedCount: number, allowedFormatCount: number) {
+  return Math.ceil(requestedCount / allowedFormatCount) + 1;
 }
 
 // The actual AI call + validation + quota debit, extracted out of the
@@ -500,6 +532,18 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
   // way, just a different query framing, so this adds no extra web-search
   // cost over what a "актуальные темы" query already triggers.
   const currentIndustryFocus = input.newsAware || isCurrentIndustryFocus(input.query);
+  // When no explicit topic was typed, input.query falls back to "<brand
+  // name>: <positioning>" (see normalizePayload) — a fine subject for the
+  // general/fast search, but a real news search for that exact small/
+  // regional brand's own name almost always comes back empty (site owner
+  // report: "актуальные новости" toggle finds nothing). Give news mode the
+  // brand's plain services/products instead — an industry/method-level
+  // subject ("бальнеотерапия", "кардиореабилитация", ...) is genuinely
+  // searchable where the brand's own name is not. Only applies when the
+  // topic came from that brand-profile fallback: an explicitly typed topic
+  // is left alone, since overriding what the user actually asked about
+  // with generic industry terms would ignore their request.
+  const newsIndustryField = !input.requestedQuery ? [input.brand.services, input.brand.products].filter(Boolean).join(", ").slice(0, 220) : "";
   // Direct HTTP read of the brand's own site (not an AI call). A separate
   // AI research/web-search step was tried here and reverted — see the fix
   // history in ai-config.ts's generate_content_plan entry for why.
@@ -507,11 +551,11 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
   // DeepSeek gets their compact results as plain input — never a web tool.
   const [website, webResearch] = await Promise.all([
     input.brand.website ? readWebsiteContext(input.brand.website) : Promise.resolve(null),
-    researchContentPlanWeb(input.query, input.geography, currentIndustryFocus),
+    researchContentPlanWeb(input.query, input.geography, currentIndustryFocus, newsIndustryField),
   ]);
   const sources = availablePlanSources(input, website?.status === "loaded", Boolean(webResearch));
 
-  function buildInstructions(neededCount: number, excludeTitles: string[], bannedOpeners: string[]) {
+  function buildInstructions(neededCount: number, excludeTitles: string[], bannedOpeners: string[], bannedFormats: string[]) {
     return [
       "Ты — ведущий контент‑стратег и SEO‑редактор платформы КЛИО.",
       ...CORE_SYSTEM_RULES,
@@ -534,6 +578,14 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       "Если тема или фокус называет категорию из нескольких пунктов без явного перечисления самих пунктов (например: «акцент на программах лечения», «по каждой услуге», «наши направления», «линейка продуктов», «виды процедур»), сначала определи конкретные пункты этой категории — в первую очередь по продуктам и услугам из профиля бренда, если они там названы; если в профиле их нет, опирайся на типичные пункты такой категории в этой отрасли, не приписывая бренду недостоверные детали. Затем построй план так, чтобы каждый пункт (или большинство пунктов, если их больше, чем тем в плане) получил отдельную тему со своим углом и практической пользой, а не растворялся в одном общем обзоре.",
       `Создай ровно ${neededCount} готовых к работе тем для единой контент‑системы, а не перечень шаблонных заголовков.`,
       GOAL_INSTRUCTION[input.goal],
+      // GOAL_INSTRUCTION's "свободно распределяй формат" for "mixed" was
+      // prompt-only and, in practice, ignored the same way the title-
+      // construction rule was: two real generations came back with all 25
+      // items as "Пост" despite 8 allowed formats (site owner report). Same
+      // fix pattern as the construction cap — see planFormatCap/formatCap
+      // below for the code-level enforcement; bannedFormats escalates this
+      // into a concrete instruction once a format actually hits its cap.
+      bannedFormats.length ? `Эти форматы уже использованы максимально допустимое число раз в этом плане: ${bannedFormats.join(", ")}. Ни одна новая тема не должна использовать эти форматы — выбери другой формат из allowed_formats.` : "",
       "Сначала определи предмет, аудиторию, поисковые интенты, коммерческую задачу и возможные тематические ветви. Не переносить знания или шаблоны из другой отрасли.",
       "Разведи ядро, широкие обзоры, средние подтемы, узкие long-tail вопросы и действительно смежные темы. Смежная тема должна поддерживать решение аудитории или экспертизу бренда, а не быть случайной ассоциацией.",
       input.semantics.length
@@ -634,7 +686,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
     ].join("\n");
   }
 
-  function buildRequestInput(neededCount: number, excludeTitles: string[], bannedOpeners: string[]) {
+  function buildRequestInput(neededCount: number, excludeTitles: string[], bannedOpeners: string[], bannedFormats: string[]) {
     const now = new Date();
     return JSON.stringify({
       current_date: now.toISOString().slice(0, 10),
@@ -672,6 +724,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       existing_titles_to_exclude: excludeTitles,
       existing_titles_soft_reference: softExcludeTitles,
       banned_title_openers: bannedOpeners,
+      banned_formats: bannedFormats,
       editorial_brief_contract: {
         topic: "title", subtitle: "subtitle", intent: "intent", objective: "objective", audience: "audience", angle: "angle", format: "format",
         structure: "structure", keywords: ["primaryKeyword", "lsi"], cta: "cta", evidenceNeeded: "evidenceNeeded", sources: "sources",
@@ -694,14 +747,19 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
   let excludeTitles = strictExcludeBase;
   let model = "";
   // Shared and mutated across every attempt below — see evaluatePlanItems
-  // and PLAN_MAX_SAME_TITLE_OPENER for why counting has to span the whole
-  // final accepted set, not reset per attempt.
+  // and PLAN_MAX_SAME_TITLE_OPENER/planFormatCap for why counting has to
+  // span the whole final accepted set, not reset per attempt.
   const openerCounts = new Map<string, number>();
+  const formatCounts = new Map<string, number>();
+  const formatCap = planFormatCap(input.count, GOAL_FORMAT_LOCK[input.goal].length);
   for (let attempt = 1; attempt <= PLAN_MAX_GENERATION_ATTEMPTS && accepted.length < input.count; attempt++) {
     const neededCount = input.count - accepted.length;
     const bannedOpeners = [...openerCounts.entries()]
       .filter(([, count]) => count >= PLAN_MAX_SAME_TITLE_OPENER)
       .map(([key]) => OPENER_DISPLAY_LABEL[key] ?? key);
+    const bannedFormats = [...formatCounts.entries()]
+      .filter(([, count]) => count >= formatCap)
+      .map(([format]) => format);
     const call = await callAiModel<AiPlan>({
       operation: "generate_content_plan",
       maxOutputTokensOverride: contentPlanOutputTokenBudget(neededCount),
@@ -709,14 +767,14 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       ownerEmail,
       schemaName: "klio_content_plan",
       schema: contentPlanSchema(neededCount),
-      instructions: buildInstructions(neededCount, excludeTitles, bannedOpeners),
-      input: buildRequestInput(neededCount, excludeTitles, bannedOpeners),
+      instructions: buildInstructions(neededCount, excludeTitles, bannedOpeners, bannedFormats),
+      input: buildRequestInput(neededCount, excludeTitles, bannedOpeners, bannedFormats),
     });
     model = call.model;
-    const evaluation = evaluatePlanItems(call.result, neededCount, excludeTitles, input.goal, input.brand, sources, openerCounts);
+    const evaluation = evaluatePlanItems(call.result, neededCount, excludeTitles, input.goal, input.brand, sources, openerCounts, formatCounts, formatCap);
     accepted = [...accepted, ...evaluation.valid];
     excludeTitles = unique([...excludeTitles, ...evaluation.valid.map((item) => item.title)]);
-    if (evaluation.countMismatch || evaluation.duplicateTitles.length || evaluation.repeatsExistingTitles.length || evaluation.invalidTitles.length || evaluation.overusedConstructionTitles.length) {
+    if (evaluation.countMismatch || evaluation.duplicateTitles.length || evaluation.repeatsExistingTitles.length || evaluation.invalidTitles.length || evaluation.overusedConstructionTitles.length || evaluation.overusedFormatTitles.length) {
       // Was a silent discard with zero trace — logged now so a rejection
       // is diagnosable from real data instead of another guess (site
       // owner: hit this five times in a row with no way to tell why).
@@ -727,6 +785,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
         repeatsExistingTitles: evaluation.repeatsExistingTitles,
         invalidTitles: evaluation.invalidTitles,
         overusedConstructionTitles: evaluation.overusedConstructionTitles,
+        overusedFormatTitles: evaluation.overusedFormatTitles,
         excludeTitlesChecked: excludeTitles,
       }));
     }
