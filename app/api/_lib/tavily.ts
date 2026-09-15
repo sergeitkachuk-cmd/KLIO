@@ -4,6 +4,12 @@ export type TavilyResearch = {
   query: string;
   provider?: "tavily" | "yandex";
   results: Array<{ title: string; url: string; content: string }>;
+  // Only meaningful for researchContentPlanWeb's currentIndustryFocus case:
+  // true when the recency-scoped news search itself found something,
+  // false when it came back empty and this is the general-mode fallback
+  // instead (see researchContentPlanWeb) — lets the caller's dataNote say
+  // which actually happened rather than treating both the same.
+  freshNews?: boolean;
 };
 
 export type TavilyExtract = { url: string; content: string };
@@ -201,10 +207,26 @@ export async function researchContentPlanWeb(topic: string, geography: Geography
   // (e.g. brand profile has no services/products filled in) or when not
   // in news mode, where the previous, unchanged query still applies.
   const newsSubject = industryField || topic;
-  const query = currentIndustryFocus
-    ? `${newsSubject} актуальные отраслевые тренды, изменения, новости и запросы аудитории`
-    : `${topic}${geographyHint ? ` ${geographyHint}` : ""} актуальная информация, вопросы аудитории и критерии выбора`;
-  return tavilySearch(query, 5, `content-plan:${cacheKey(topic, geography)}`, currentIndustryFocus ? { topic: "news", days: 30 } : undefined);
+  if (!currentIndustryFocus) {
+    const query = `${topic}${geographyHint ? ` ${geographyHint}` : ""} актуальная информация, вопросы аудитории и критерии выбора`;
+    return tavilySearch(query, 5, `content-plan:${cacheKey(topic, geography)}`);
+  }
+  const newsQuery = `${newsSubject} актуальные отраслевые тренды, изменения, новости и запросы аудитории`;
+  const fresh = await tavilySearch(newsQuery, 5, `content-plan-news:${cacheKey(newsSubject, [])}`, { topic: "news", days: 30 });
+  if (fresh) return { ...fresh, freshNews: true };
+  // A niche/regional/B2B industry can genuinely have nothing published in
+  // the last 30 days — that's a real, legitimate empty result, not a bug.
+  // But it left the model with zero external grounding at all for a mode
+  // whose whole premise is "ground this in the outside world" (site owner
+  // report: news toggle checked, found nothing, plan fell back to fully
+  // generic). A general (non-recency) search on the same industry-level
+  // subject can't manufacture news that doesn't exist, but it can still
+  // give the model real, current-enough industry context instead of
+  // nothing — clearly labeled via freshNews:false so the caller's dataNote
+  // doesn't claim it found actual news.
+  const fallbackQuery = `${newsSubject} отраслевые тренды, практики и вопросы аудитории`;
+  const fallback = await tavilySearch(fallbackQuery, 5, `content-plan:${cacheKey(newsSubject, [])}`);
+  return fallback ? { ...fallback, freshNews: false } : null;
 }
 
 // Writing needs substantive facts, not topic-discovery snippets. Keep one

@@ -771,7 +771,12 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       web_research: webResearch ? {
         query: webResearch.query,
         results: webResearch.results,
-        rule: currentIndustryFocus ? "Это первичный источник для выбора актуальных отраслевых ракурсов. Не приписывай бренду факты из чужих сайтов и не выдумывай данные." : "Это краткие выдержки поиска. Используй их только как ориентир для актуальности и тематики; не приписывай бренду факты из чужих сайтов и не выдумывай данные.",
+        is_recent_news: currentIndustryFocus ? Boolean(webResearch.freshNews) : undefined,
+        rule: currentIndustryFocus
+          ? webResearch.freshNews
+            ? "Это подтверждённые актуальные отраслевые источники за последние 30 дней — используй их как первичный источник для выбора актуальных ракурсов. Не приписывай бренду факты из чужих сайтов и не выдумывай данные."
+            : "Свежих новостей за 30 дней не нашлось — это общий отраслевой контекст без ограничения по дате, НЕ подтверждённые последние новости. Используй как справочный фон для тем, но не формулируй темы как «свежую новость» или «недавнее изменение», раз подтверждения этому нет."
+          : "Это краткие выдержки поиска. Используй их только как ориентир для актуальности и тематики; не приписывай бренду факты из чужих сайтов и не выдумывай данные.",
       } : null,
       existing_titles_to_exclude: excludeTitles,
       existing_titles_soft_reference: softExcludeTitles,
@@ -855,18 +860,24 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
     ? "План построен по карте подтверждённого спроса: каждая тема привязана к одному кластеру и отдельной задаче читателя. В приоритете — небрендовые и смежные запросы для привлечения новой аудитории; брендовый спрос вынесен в отдельную конверсионную ветку."
     : "План создан AI‑стратегом по текущей теме и подключённым источникам. Подключите семантику, чтобы приоритизировать темы по подтверждённому спросу.";
   // Visible confirmation of whether the direct site read actually worked
-  // (best-effort — a failed/blocked fetch just means no note, not an error).
-  // When the "Учитывать актуальные новости отрасли" checkbox is on but
-  // Tavily's recency-scoped search found nothing (a narrow/regional brand
-  // often has no real recent industry news), the model correctly falls
-  // back to generic topics rather than inventing news — but without this
-  // note that read as the checkbox silently doing nothing (site owner:
-  // "новости были включены и не учел").
+  // (best-effort — a failed/blocked fetch just means no note, not an error)
+  // and, separately, of the web search — a distinct step from the site
+  // read, not an either/or (site owner asked directly: "он использует
+  // веб-поиск или только сайт бренда?" — both, always, independently).
+  // researchContentPlanWeb's freshNews distinguishes three real outcomes
+  // for currentIndustryFocus instead of collapsing "found genuine recent
+  // news" and "industry has none, used general context instead" into the
+  // same message (site owner: news toggle checked, got the generic-plan
+  // note, asked why nothing was found at all).
   const groundingNote = [
     website?.status === "loaded" ? `Сайт бренда прочитан (${websiteSourceLabel(website)}).` : "",
-    webResearch
-      ? currentIndustryFocus ? "Найдены актуальные отраслевые источники за последние 30 дней — план учитывает их." : "Веб-поиск Tavily выполнен в ограниченном режиме и добавлен как справочный слой."
-      : currentIndustryFocus ? "Актуальных новостей отрасли за последние 30 дней не найдено — план построен на общих темах вместо реальных новостных поводов." : "",
+    currentIndustryFocus
+      ? webResearch?.freshNews
+        ? "Найдены актуальные отраслевые источники за последние 30 дней — план учитывает их."
+        : webResearch
+          ? "Свежих новостей отрасли за 30 дней не нашлось (это реально для узких/нишевых отраслей), поэтому использован более широкий отраслевой веб‑поиск без ограничения по дате."
+          : "Веб‑поиск не вернул результатов ни в новостном, ни в общем режиме — план построен без внешнего отраслевого источника."
+      : webResearch ? "Веб-поиск Tavily выполнен в ограниченном режиме и добавлен как справочный слой." : "",
   ].filter(Boolean).join(" ");
   const result = {
     mode: "ai" as const,
