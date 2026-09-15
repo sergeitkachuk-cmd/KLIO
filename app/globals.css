@@ -12341,12 +12341,19 @@ input[type="radio"] {
 /* Was a 40%-transparent tint over a thin border — too subtle to tell which
    channels were actually selected at a glance (site owner report). Solid
    fill instead, same idea as .workspace-history-filters > button.active's
-   own bright/dark contrast, just using this module's own accent green. */
+   own bright/dark contrast, just using this module's own accent green.
+   Explicit fallback on every var() below, not just decoration: this picker
+   lives in the pubEditor modal, which renders outside .publications-module
+   in the DOM (a shared .archive-editor-overlay/-modal shell also used for
+   the plain material editor and the channel-connect modal), so
+   --module-accent is never actually inherited here — without the fallback
+   the background silently computed to transparent and the dark text on it
+   was invisible (site owner: "кнопка с каналом теперь вообще не видно"). */
 .publications-editor-channels button.active {
-  border-color: color-mix(in srgb, var(--module-accent) 85%, transparent);
+  border-color: color-mix(in srgb, var(--module-accent, #9bcf4b) 85%, transparent);
   color: #16240a;
-  background: var(--module-accent);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.35), 0 8px 20px color-mix(in srgb, var(--module-accent) 35%, transparent);
+  background: var(--module-accent, #9bcf4b);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.35), 0 8px 20px color-mix(in srgb, var(--module-accent, #9bcf4b) 35%, transparent);
   font-weight: 700;
 }
 
@@ -13471,6 +13478,12 @@ input[type="radio"] {
   position: static;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
+  /* A narrower mobile breakpoint already set gap: 7px below, but this
+     base (desktop) rule never had one at all — a CSS grid with no gap
+     defaults to 0, so the five buttons sat edge to edge (site owner
+     report: "буквы слипшиеся" on the editor's own action row, not the
+     Материалы list footer already fixed separately). */
+  gap: 10px;
   align-items: center;
   justify-content: end;
   margin-top: 4px;
