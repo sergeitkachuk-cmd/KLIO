@@ -171,7 +171,15 @@ export async function getAsyncJob(id: string, ownerEmail: string) {
 // within weeks even though enough time has passed to legitimately revisit
 // a theme (site owner: hit exactly this, called it out as a dealbreaker for
 // anyone on a long subscription).
-export async function recentCompletedContentPlanTitles(ownerEmail: string, limit = 24): Promise<Array<{ title: string; createdAt: string }>> {
+// primaryKeyword travels alongside each title now — a real cross-generation
+// repeat can wear a completely different title each time ("Кардиореабилитация
+// в санатории" vs "Что происходит с организмом во время курса
+// грязелечения" for the SAME grязелечение subject two plans apart) while
+// its short, canonical SEO keyword stays close to identical ("грязелечение
+// в санатории" both times) — confirmed directly from real exported plans
+// the site owner compared across generations (see content-plan/route.ts's
+// keywordsAreTooSimilar, which uses this field for exactly that check).
+export async function recentCompletedContentPlanTitles(ownerEmail: string, limit = 24): Promise<Array<{ title: string; primaryKeyword: string; createdAt: string }>> {
   const db = getDb();
   const jobs = await db.select({ resultJson: asyncJobs.resultJson, createdAt: asyncJobs.createdAt }).from(asyncJobs).where(and(
     eq(asyncJobs.ownerEmail, ownerEmail),
@@ -179,17 +187,17 @@ export async function recentCompletedContentPlanTitles(ownerEmail: string, limit
     eq(asyncJobs.status, "done"),
   )).orderBy(desc(asyncJobs.createdAt)).limit(8);
   const seen = new Set<string>();
-  const titles: Array<{ title: string; createdAt: string }> = [];
+  const titles: Array<{ title: string; primaryKeyword: string; createdAt: string }> = [];
   for (const job of jobs) {
     try {
-      const parsed = JSON.parse(job.resultJson || "{}") as { result?: { items?: Array<{ title?: unknown }> } };
+      const parsed = JSON.parse(job.resultJson || "{}") as { result?: { items?: Array<{ title?: unknown; primaryKeyword?: unknown }> } };
       for (const item of parsed.result?.items || []) {
         if (typeof item.title !== "string") continue;
         const title = item.title.trim();
         const key = title.toLocaleLowerCase("ru-RU");
         if (!title || seen.has(key)) continue;
         seen.add(key);
-        titles.push({ title, createdAt: job.createdAt });
+        titles.push({ title, primaryKeyword: typeof item.primaryKeyword === "string" ? item.primaryKeyword.trim() : "", createdAt: job.createdAt });
         if (titles.length >= limit) return titles;
       }
     } catch {

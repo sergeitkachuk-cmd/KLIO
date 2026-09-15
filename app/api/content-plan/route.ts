@@ -181,6 +181,35 @@ function titlesAreTooSimilar(left: string, right: string) {
   return shared / Math.min(a.size, b.size) >= 0.67;
 }
 
+// A distinct check from titlesAreTooSimilar, for a distinct failure mode:
+// a real cross-generation repeat can wear a completely different title
+// each time ("Кардиореабилитация: чем восстановление в санатории
+// отличается от домашнего режима" vs, a plan apart, "Реабилитация после
+// инфаркта и операций на сердце: что уточнить перед поездкой" — same
+// subject, no shared significant title words at all) while its short SEO
+// keyword stays close to identical ("кардиореабилитация в санатории" both
+// times) — confirmed directly against real exported plans the site owner
+// compared across generations, after checking the actual title pairs
+// through titlesAreTooSimilar and finding every one missed ("темы очень
+// одинаковы местами... первые 4-5 уже были ранее только с чуть другой
+// формулировкой"). primaryKeyword phrases are short (typically 2-4 words)
+// and canonical, so titlesAreTooSimilar's shared>=3 floor — tuned for
+// full sentences — is too strict here: a lower shared>=2 floor plus a more
+// lenient ratio also compensates for titleTerms' crude suffix-stripping
+// producing slightly different stems for different grammatical cases of
+// the same root word (e.g. "анемии" -> "анеми" vs "анемия" -> "анем").
+// Verified against 9 real keyword pairs (4 genuine repeats worded
+// differently, 5 genuinely distinct subjects) before shipping.
+function keywordsAreTooSimilar(left: string, right: string) {
+  const a = titleTerms(left);
+  const b = titleTerms(right);
+  if (!a.size || !b.size) return false;
+  let shared = 0;
+  for (const word of a) if (b.has(word)) shared += 1;
+  if (shared < 2) return false;
+  return shared / Math.min(a.size, b.size) >= 0.5;
+}
+
 function isCurrentIndustryFocus(query: string) {
   return /(?:актуальн|тренд|отрасл|рын(?:ок|очн)|новост|изменени|тенденц)/iu.test(query);
 }
@@ -421,6 +450,7 @@ type PlanItemEvaluation = {
   countMismatch: boolean;
   duplicateTitles: string[];
   repeatsExistingTitles: string[];
+  repeatsExistingKeywordTitles: string[];
   invalidTitles: string[];
   overusedConstructionTitles: string[];
   overusedFormatTitles: string[];
@@ -441,9 +471,9 @@ type PlanItemEvaluation = {
 // from the overall requested count (see planFormatCap/planProductPillarCap)
 // — passing fixed numbers here keeps this function from needing to know
 // about input.count itself.
-function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: string[], goal: ContentPlanGoal, brand: BrandInput, sources: string[], openerCounts: Map<string, number>, formatCounts: Map<string, number>, formatCap: number, productPillarCounter: { count: number }, productPillarCap: number, clusterCounts: Map<string, { count: number; label: string }>, clusterCap: number): PlanItemEvaluation {
+function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: string[], excludeKeywords: string[], goal: ContentPlanGoal, brand: BrandInput, sources: string[], openerCounts: Map<string, number>, formatCounts: Map<string, number>, formatCap: number, productPillarCounter: { count: number }, productPillarCap: number, clusterCounts: Map<string, { count: number; label: string }>, clusterCap: number): PlanItemEvaluation {
   if (!Array.isArray(plan.items) || plan.items.length !== expectedCount) {
-    return { valid: [], countMismatch: true, duplicateTitles: [], repeatsExistingTitles: [], invalidTitles: [], overusedConstructionTitles: [], overusedFormatTitles: [], overusedProductPillarTitles: [], overusedClusterTitles: [] };
+    return { valid: [], countMismatch: true, duplicateTitles: [], repeatsExistingTitles: [], repeatsExistingKeywordTitles: [], invalidTitles: [], overusedConstructionTitles: [], overusedFormatTitles: [], overusedProductPillarTitles: [], overusedClusterTitles: [] };
   }
 
   const cleaned = plan.items.map((item) => ({
@@ -473,6 +503,11 @@ function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: s
 
   const duplicates = cleaned.filter((item, index) => cleaned.slice(0, index).some((previous) => titlesAreTooSimilar(previous.title, item.title)));
   const repeatsExisting = cleaned.filter((item) => excludeTitles.some((title) => titlesAreTooSimilar(title, item.title)));
+  // Catches a real cross-generation repeat that repeatsExisting misses:
+  // same subject, differently-worded title (see keywordsAreTooSimilar's
+  // own comment — confirmed against real exported plans the site owner
+  // compared across generations).
+  const repeatsExistingKeyword = cleaned.filter((item) => !excludeTitles.some((title) => titlesAreTooSimilar(title, item.title)) && excludeKeywords.some((keyword) => keywordsAreTooSimilar(keyword, item.primaryKeyword)));
   const allowedFormats = GOAL_FORMAT_LOCK[goal];
   const invalid = cleaned.filter((item) => (
     !item.title || !item.cluster || !item.primaryKeyword || !item.angle || !item.objective
@@ -482,7 +517,7 @@ function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: s
     || /(?:комментарий пользователя|редакционн(?:ая|ый) задач|используй|добавь|раскрой применительно|инструкц(?:ия|ии) для ии)/i.test(item.title)
   ));
 
-  const badSoFarKeys = new Set([...duplicates, ...repeatsExisting, ...invalid].map((item) => item.title));
+  const badSoFarKeys = new Set([...duplicates, ...repeatsExisting, ...repeatsExistingKeyword, ...invalid].map((item) => item.title));
   // Only items that would otherwise survive get charged against the
   // construction cap — an item already rejected as a duplicate/invalid
   // shouldn't consume one of the few slots a genuinely different, valid
@@ -552,6 +587,7 @@ function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: s
     countMismatch: false,
     duplicateTitles: duplicates.map((item) => item.title),
     repeatsExistingTitles: repeatsExisting.map((item) => item.title),
+    repeatsExistingKeywordTitles: repeatsExistingKeyword.map((item) => item.title),
     invalidTitles: invalid.map((item) => item.title),
     overusedConstructionTitles: overusedConstruction.map((item) => item.title),
     overusedFormatTitles: overusedFormat.map((item) => item.title),
@@ -659,6 +695,10 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
   // history.
   const strictExcludeBase = unique([...input.existingTitles, ...recentHistoricalTitles]).slice(0, PLAN_EXISTING_TITLES_LIMIT);
   input = { ...input, existingTitles: strictExcludeBase };
+  // Same recency window as titles above, but keyed on primaryKeyword — see
+  // keywordsAreTooSimilar for why this catches real repeats that
+  // recentHistoricalTitles' title-only check misses.
+  const strictExcludeKeywords = unique(historicalTitles.filter((item) => new Date(item.createdAt).getTime() >= historyCutoffMs).map((item) => item.primaryKeyword).filter(Boolean)).slice(0, PLAN_EXISTING_TITLES_LIMIT);
   // The "Учитывать актуальные новости отрасли" checkbox forces the same
   // mode isCurrentIndustryFocus otherwise only reaches by matching keywords
   // in the query text — same single researchContentPlanWeb call either
@@ -702,7 +742,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
   }
   const sources = availablePlanSources(input, website?.status === "loaded", Boolean(webResearch));
 
-  function buildInstructions(neededCount: number, excludeTitles: string[], bannedOpeners: string[], bannedFormats: string[], productPillarBanned: boolean, bannedClusters: string[]) {
+  function buildInstructions(neededCount: number, excludeTitles: string[], excludeKeywords: string[], bannedOpeners: string[], bannedFormats: string[], productPillarBanned: boolean, bannedClusters: string[]) {
     return [
       "Ты — ведущий контент‑стратег и SEO‑редактор платформы КЛИО.",
       ...CORE_SYSTEM_RULES,
@@ -830,6 +870,13 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       // handhold or a retry just regenerates the same overused pattern).
       bannedOpeners.length ? `Эти конструкции заголовков уже использованы максимально допустимое число раз в этом плане: ${bannedOpeners.map((label) => `«${label}»`).join(", ")}. Ни один новый заголовок не должен начинаться (до или сразу после двоеточия) так же — используй другую форму.` : "",
       excludeTitles.length ? `Это уже созданные темы и материалы бренда за последнее время. Не повторяй их, не делай близкие перефразировки и не возвращай ту же задачу с переставленными словами: ${excludeTitles.map((title) => `«${title}»`).join("; ")}` : "Если ранее созданные темы не переданы, всё равно не повторяй идеи внутри текущего плана.",
+      // A real repeat can wear a completely different title while its
+      // underlying subject (this list) stays close to identical — this
+      // catches what excludeTitles above misses (site owner, comparing
+      // three generations: same subjects kept resurfacing under new
+      // titles). Distinct from excludeTitles: this is about WHAT the
+      // material is about, not how it's worded.
+      excludeKeywords.length ? `Эти темы/предметы уже раскрыты в недавних материалах бренда под другими заголовками — не создавай новую тему по тому же предмету (например, тот же метод лечения, та же программа, тот же вопрос аудитории), даже с другим заголовком и ракурсом: ${excludeKeywords.map((keyword) => `«${keyword}»`).join("; ")}` : "",
       softExcludeTitles.length ? `Эти темы поднимались раньше, но прошло достаточно времени: ${softExcludeTitles.map((title) => `«${title}»`).join("; ")}. Их можно взять снова только с действительно новым ракурсом, актуальным поводом или обновлёнными фактами — не пересказывай их дословно той же структурой.` : "",
       "Для каждой строки верни только title, subtitle, cluster, format, intent, stage, priority, pillar, angle, objective, primaryKeyword и cta. Не выводи lsi, audience, metaTitle, metaDescription, structure, evidenceNeeded или sources: КЛИО заполнит их из профиля и темы. Формулируй поля кратко и по существу.",
       // cta used to always be brand_profile.cta verbatim on every single
@@ -854,7 +901,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
     ].join("\n");
   }
 
-  function buildRequestInput(neededCount: number, excludeTitles: string[], bannedOpeners: string[], bannedFormats: string[], productPillarBanned: boolean, bannedClusters: string[]) {
+  function buildRequestInput(neededCount: number, excludeTitles: string[], excludeKeywords: string[], bannedOpeners: string[], bannedFormats: string[], productPillarBanned: boolean, bannedClusters: string[]) {
     const now = new Date();
     return JSON.stringify({
       current_date: now.toISOString().slice(0, 10),
@@ -897,6 +944,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
           : "Это краткие выдержки поиска. Используй их только как ориентир для актуальности и тематики; не приписывай бренду факты из чужих сайтов и не выдумывай данные.",
       } : null,
       existing_titles_to_exclude: excludeTitles,
+      existing_subjects_keywords_to_exclude: excludeKeywords,
       existing_titles_soft_reference: softExcludeTitles,
       banned_title_openers: bannedOpeners,
       banned_formats: bannedFormats,
@@ -921,6 +969,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
   // fails instead of looping forever or ballooning cost.
   let accepted: PlanItem[] = [];
   let excludeTitles = strictExcludeBase;
+  let excludeKeywords = strictExcludeKeywords;
   let model = "";
   // Shared and mutated across every attempt below — see evaluatePlanItems
   // and PLAN_MAX_SAME_TITLE_OPENER/planFormatCap for why counting has to
@@ -951,14 +1000,15 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       ownerEmail,
       schemaName: "klio_content_plan",
       schema: contentPlanSchema(neededCount),
-      instructions: buildInstructions(neededCount, excludeTitles, bannedOpeners, bannedFormats, productPillarBanned, bannedClusters),
-      input: buildRequestInput(neededCount, excludeTitles, bannedOpeners, bannedFormats, productPillarBanned, bannedClusters),
+      instructions: buildInstructions(neededCount, excludeTitles, excludeKeywords, bannedOpeners, bannedFormats, productPillarBanned, bannedClusters),
+      input: buildRequestInput(neededCount, excludeTitles, excludeKeywords, bannedOpeners, bannedFormats, productPillarBanned, bannedClusters),
     });
     model = call.model;
-    const evaluation = evaluatePlanItems(call.result, neededCount, excludeTitles, input.goal, input.brand, sources, openerCounts, formatCounts, formatCap, productPillarCounter, productPillarCap, clusterCounts, clusterCap);
+    const evaluation = evaluatePlanItems(call.result, neededCount, excludeTitles, excludeKeywords, input.goal, input.brand, sources, openerCounts, formatCounts, formatCap, productPillarCounter, productPillarCap, clusterCounts, clusterCap);
     accepted = [...accepted, ...evaluation.valid];
     excludeTitles = unique([...excludeTitles, ...evaluation.valid.map((item) => item.title)]);
-    if (evaluation.countMismatch || evaluation.duplicateTitles.length || evaluation.repeatsExistingTitles.length || evaluation.invalidTitles.length || evaluation.overusedConstructionTitles.length || evaluation.overusedFormatTitles.length || evaluation.overusedProductPillarTitles.length || evaluation.overusedClusterTitles.length) {
+    excludeKeywords = unique([...excludeKeywords, ...evaluation.valid.map((item) => item.primaryKeyword)]);
+    if (evaluation.countMismatch || evaluation.duplicateTitles.length || evaluation.repeatsExistingTitles.length || evaluation.repeatsExistingKeywordTitles.length || evaluation.invalidTitles.length || evaluation.overusedConstructionTitles.length || evaluation.overusedFormatTitles.length || evaluation.overusedProductPillarTitles.length || evaluation.overusedClusterTitles.length) {
       // Was a silent discard with zero trace — logged now so a rejection
       // is diagnosable from real data instead of another guess (site
       // owner: hit this five times in a row with no way to tell why).
@@ -967,12 +1017,14 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
         countMismatch: evaluation.countMismatch,
         duplicateTitles: evaluation.duplicateTitles,
         repeatsExistingTitles: evaluation.repeatsExistingTitles,
+        repeatsExistingKeywordTitles: evaluation.repeatsExistingKeywordTitles,
         invalidTitles: evaluation.invalidTitles,
         overusedConstructionTitles: evaluation.overusedConstructionTitles,
         overusedFormatTitles: evaluation.overusedFormatTitles,
         overusedProductPillarTitles: evaluation.overusedProductPillarTitles,
         overusedClusterTitles: evaluation.overusedClusterTitles,
         excludeTitlesChecked: excludeTitles,
+        excludeKeywordsChecked: excludeKeywords,
       }));
     }
   }
