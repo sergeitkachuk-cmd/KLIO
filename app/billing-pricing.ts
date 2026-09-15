@@ -8,6 +8,15 @@ export const PLAN_PRICES = {
   agency: { monthly: 6590, yearly: 5290, name: "Агентство" },
 } as const;
 
+// PlanId (app/plans.ts) has grown admin-only, non-purchasable members
+// ("trial", "comp") that deliberately have no entry here — the payment
+// routes' own `!PLAN_PRICES[planId]` check already rejects those at
+// runtime, but a plain PlanId index into this narrower object doesn't
+// prove that to the type checker. A real type guard does.
+export function isPurchasablePlan(id: string): id is keyof typeof PLAN_PRICES {
+  return id in PLAN_PRICES;
+}
+
 export const BILLING_PERIODS: Array<{
   id: BillingPeriod;
   label: string;

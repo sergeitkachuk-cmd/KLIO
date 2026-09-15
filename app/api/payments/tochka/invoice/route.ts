@@ -5,7 +5,7 @@ import { ensureAccount, getWorkspaceDb, WorkspaceAccessError, workspaceIdentity 
 import { discoverTochkaIds, tochkaRequest, TochkaConfigError } from "../../../_lib/tochka";
 import { requireAdminUser } from "../../../_lib/admin";
 import { isPlanId, type PlanId } from "../../../../plans";
-import { isBillingPeriod, periodAmount, billingDescription, PLAN_PRICES } from "../../../../billing-pricing";
+import { isBillingPeriod, periodAmount, billingDescription, isPurchasablePlan, PLAN_PRICES } from "../../../../billing-pricing";
 const TEST_PLAN_ID = "test";
 const TEST_PRICE = { monthly: 1, yearly: 1, name: "Тестовый тариф" };
 
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       const admin = await requireAdminUser();
       if (!admin || admin.email.toLowerCase() !== user.email.toLowerCase()) return Response.json({ error: "Тестовый тариф доступен только администратору." }, { status: 403 });
       if (billing !== "monthly") return Response.json({ error: "Тестовый тариф доступен только на 1 месяц." }, { status: 400 });
-    } else if (!isPlanId(planId) || planId === "trial" || !PLAN_PRICES[planId]) {
+    } else if (!isPlanId(planId) || planId === "trial" || !isPurchasablePlan(planId)) {
       return Response.json({ error: "Неизвестный тариф." }, { status: 400 });
     }
 

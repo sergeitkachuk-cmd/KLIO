@@ -6,7 +6,7 @@ import { isPlanId, type PlanId } from "../../../../plans";
 import { payments } from "../../../../../db/schema";
 import { ensureAccount } from "../../../_lib/workspace-account";
 import { getWorkspaceDb } from "../../../_lib/workspace-account";
-import { isBillingPeriod, periodAmount, billingDescription, PLAN_PRICES } from "../../../../billing-pricing";
+import { isBillingPeriod, periodAmount, billingDescription, isPurchasablePlan, PLAN_PRICES } from "../../../../billing-pricing";
 import { PAYMENT_LINK_TTL_MINUTES } from "../../../../payment-link";
 
 export async function POST(request: Request) {
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     const planId = input?.planId as PlanId;
     const mode = input?.mode === "card" ? "card" : "sbp";
     const billing = isBillingPeriod(input?.billing) ? input.billing : "monthly";
-    if (!isPlanId(planId) || planId === "trial" || !PLAN_PRICES[planId]) return Response.json({ error: "Неизвестный тариф." }, { status: 400 });
+    if (!isPlanId(planId) || planId === "trial" || !isPurchasablePlan(planId)) return Response.json({ error: "Неизвестный тариф." }, { status: 400 });
     const price = PLAN_PRICES[planId];
     const amount = periodAmount(price.monthly, price.yearly, billing);
     const { customerCode, merchantId } = await discoverTochkaIds();

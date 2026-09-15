@@ -1,4 +1,10 @@
-export type PlanId = "trial" | "start" | "pro" | "agency";
+// "comp" is a hand-granted goodwill period (admin-only, see
+// admin-account-controls.tsx) — distinct from "trial" (the automatic,
+// tightly-limited 48h window every new signup starts on) for cases like
+// compensating an account that hit a real bug on day one. Never
+// purchasable: PLAN_PRICES in billing-pricing.ts has no "comp" entry, and
+// every payment route already rejects any planId missing from there.
+export type PlanId = "trial" | "start" | "pro" | "agency" | "comp";
 
 export type PlanRule = {
   id: PlanId;
@@ -72,10 +78,23 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
     channelLimit: 10,
     periodLabel: "в месяц",
   },
+  comp: {
+    id: "comp",
+    name: "Тестовый период",
+    // Roomier than trial's 5/3/5 — this is meant to actually let someone
+    // properly try the product, not just poke at it for two days.
+    generationLimit: 25,
+    researchLimit: 10,
+    editorActionLimit: 100,
+    brandLimit: 1,
+    seatLimit: 1,
+    channelLimit: 1,
+    periodLabel: "за тестовый период",
+  },
 };
 
 export function isPlanId(value: unknown): value is PlanId {
-  return value === "trial" || value === "start" || value === "pro" || value === "agency";
+  return value === "trial" || value === "start" || value === "pro" || value === "agency" || value === "comp";
 }
 
 export function planRule(value: unknown): PlanRule {

@@ -533,8 +533,33 @@ function AdminStyles() {
       @media (prefers-color-scheme: dark) { .admin-sidebar button:hover, .admin-sidebar button em { background: rgba(148, 163, 184, 0.14); } .admin-sidebar button.active em { background: rgba(255, 255, 255, 0.22); } }
       @media (max-width: 900px) {
         .admin-shell { grid-template-columns: 1fr; }
-        .admin-sidebar nav { position: static; display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
-        .admin-sidebar button { flex: 0 0 auto; white-space: nowrap; }
+        /* Same pill-bar pattern as the workspace's own mobile bottom nav
+           (textora-experience.tsx's .workspace-sidebar nav on mobile) -
+           was a plain flex row of full-width-style buttons squeezed onto
+           one line, which is exactly why they read as "too long, running
+           off the edge" (site owner: hit this). Rounded pills sized to
+           their own label text, in a horizontally scrolling strip, is the
+           established fix for this same shape of control on this site. */
+        .admin-sidebar nav {
+          position: static;
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          overscroll-behavior-inline: contain;
+          padding-bottom: 4px;
+          scrollbar-width: none;
+        }
+        .admin-sidebar nav::-webkit-scrollbar { display: none; }
+        .admin-sidebar button {
+          flex: 0 0 auto;
+          justify-content: flex-start;
+          width: auto;
+          min-height: 40px;
+          padding: 8px 14px;
+          border-radius: 999px;
+          white-space: nowrap;
+        }
       }
       .admin-block { margin-bottom: 32px; }
       .admin-block h2 { font-size: 16px; margin: 0 0 10px; }
