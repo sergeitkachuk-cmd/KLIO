@@ -36,6 +36,7 @@ function harness(replies, connecting) {
   };
   const loaded = load("app/api/_lib/social-publish.ts", {
     "node:https": { request },
+    "node:http": { request },
     "./public-fetch": { fetchPublicResource: () => { throw new Error("Unexpected image download"); } },
     "./image-type": {},
     "./publishing-config": load("app/api/_lib/publishing-config.ts"),
@@ -163,6 +164,7 @@ test("Telegram channel validation separates transport failures from invalid cred
     const loaded = load("app/api/_lib/social-channels.ts", {
       "./publishing-config": {}, "../../../db/schema": {},
       "node:https": { request },
+      "node:http": { request },
       "./telegram-proxy": load("app/api/_lib/telegram-proxy.ts", {}, { process: { env: {} } }),
     }, {
       setTimeout: callback => { callback(); return 0; },

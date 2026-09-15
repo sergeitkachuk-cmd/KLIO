@@ -5,10 +5,11 @@
 // to the browser (socialChannelSummary strips credentialsJson unconditionally
 // — see the comment on that column in db/schema.ts).
 
+import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { VK_API_VERSION, type ChannelCredentials } from "./publishing-config";
 import { socialChannels } from "../../../db/schema";
-import { telegramConnectTarget } from "./telegram-proxy";
+import { telegramApiBase } from "./telegram-proxy";
 
 export class ChannelValidationError extends Error {}
 
@@ -24,13 +25,14 @@ const telegramLinkPrefixPending = new Map<string, Promise<string | null>>();
 // happens far less often than publishing to one already connected.
 function telegramPostPinnedIPv4(url: string, body: string, signal: AbortSignal): Promise<{ status: number; json: () => Promise<unknown> }> {
   const endpoint = new URL(url);
-  const target = telegramConnectTarget(endpoint.hostname, endpoint.port || 443);
+  // Plain HTTP when talking to a self-hosted Bot API server (see
+  // telegramApiBase) instead of the real, always-HTTPS api.telegram.org.
+  const requestFn = endpoint.protocol === "http:" ? httpRequest : httpsRequest;
   return new Promise((resolve, reject) => {
-    const request = httpsRequest({
+    const request = requestFn({
       protocol: endpoint.protocol,
-      hostname: target.hostname,
-      port: target.port,
-      servername: target.servername,
+      hostname: endpoint.hostname,
+      port: endpoint.port || (endpoint.protocol === "http:" ? 80 : 443),
       path: `${endpoint.pathname}${endpoint.search}`,
       method: "POST",
       family: 4,
@@ -63,7 +65,7 @@ async function telegramGetChat(botToken: string, chatId: string): Promise<{ stat
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       return await telegramPostPinnedIPv4(
-        `https://api.telegram.org/bot${botToken}/getChat`,
+        `${telegramApiBase()}/bot${botToken}/getChat`,
         JSON.stringify({ chat_id: chatId }),
         AbortSignal.timeout(15_000),
       );

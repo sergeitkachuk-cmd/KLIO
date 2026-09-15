@@ -6,10 +6,11 @@
 // rewrite. See publishing-config.ts for the credential shapes and limits
 // this reads.
 
+import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
 import { fetchPublicResource } from "./public-fetch";
 import { imageContentType } from "./image-type";
-import { telegramConnectTarget } from "./telegram-proxy";
+import { telegramApiBase } from "./telegram-proxy";
 import {
   PLATFORM_TEXT_LIMITS,
   VK_API_VERSION,
@@ -69,16 +70,17 @@ class TelegramTransportError extends Error {
 function postToTelegramApi(url: string, body: object, signal: AbortSignal): Promise<TelegramApiResponse> {
   const endpoint = new URL(url);
   const payload = JSON.stringify(body);
-  const target = telegramConnectTarget(endpoint.hostname, endpoint.port || 443);
+  // Plain HTTP when talking to a self-hosted Bot API server (see
+  // telegramApiBase) instead of the real, always-HTTPS api.telegram.org.
+  const requestFn = endpoint.protocol === "http:" ? httpRequest : httpsRequest;
   return new Promise((resolve, reject) => {
     // Unknown transport state is not proof of non-delivery. In particular,
     // keep-alive sockets do not emit another connect event when reused.
     let connected = true;
-    const request = httpsRequest({
+    const request = requestFn({
       protocol: endpoint.protocol,
-      hostname: target.hostname,
-      port: target.port,
-      servername: target.servername,
+      hostname: endpoint.hostname,
+      port: endpoint.port || (endpoint.protocol === "http:" ? 80 : 443),
       path: `${endpoint.pathname}${endpoint.search}`,
       method: "POST",
       family: 4,
@@ -141,7 +143,7 @@ function splitTelegramText(text: string, limit: number): string[] {
 }
 
 async function publishToTelegram(creds: TelegramCredentials, text: string, imageUrl: string | null): Promise<{ providerPostId: string }> {
-  const base = `https://api.telegram.org/bot${creds.botToken}`;
+  const base = `${telegramApiBase()}/bot${creds.botToken}`;
   const signal = AbortSignal.timeout(120_000);
   async function send(method: "sendPhoto" | "sendMessage", body: object): Promise<TelegramMessagePayload> {
     let response: TelegramApiResponse;
