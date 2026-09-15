@@ -4472,7 +4472,20 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setContentPlanError("ИИ не подключён. Контент‑план не строится по демонстрационным заготовкам — сначала подключите серверный AI‑доступ.");
       return;
     }
-    const requestedQuery = contentPlanQuery.trim() || (semanticAnalysisReady ? semanticResult.primaryQuery || semanticQuery : "");
+    // Was semanticAnalysisReady — true whenever ANY semantic analysis is
+    // cached, regardless of whether it's for this plan at all. That let a
+    // stale/unrelated semantics query silently become the plan's entire
+    // topic (bypassing the brand-profile path server-side, not just
+    // adding extra keywords) whenever "По профилю бренда" was pressed
+    // (contentPlanQuery reset to "") but old semantics happened to still
+    // be cached from an earlier, unrelated analysis (site owner: "я при
+    // этом не нажимал кнопку семантика, она просто была в модуле и
+    // видимо подтянулась"). semanticPlanBasisSelected — the same signal
+    // that drives the "Из найденных тем" button's own pressed state — is
+    // only true once contentPlanQuery already matches the semantics
+    // module's query, which only happens via applyCurrentSemanticsForPlan
+    // (i.e. actually pressing that button).
+    const requestedQuery = contentPlanQuery.trim() || (semanticPlanBasisSelected ? semanticResult.primaryQuery || semanticQuery : "");
     const cleanQuery = requestedQuery || (useBrand ? brandComparisonTheme(effectiveBrand) : topic.trim());
     if (!cleanQuery) {
       setContentPlanError("Заполните профиль бренда или укажите тему контент‑плана.");
@@ -4500,7 +4513,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           query: requestedQuery,
           goal: contentPlanGoal,
           count: contentPlanCount,
-          semantics: semanticAnalysisReady ? semanticResult.keywords.map((item) => ({
+          semantics: semanticPlanBasisSelected ? semanticResult.keywords.map((item) => ({
             phrase: item.phrase,
             cluster: item.cluster,
             intent: item.intent,
