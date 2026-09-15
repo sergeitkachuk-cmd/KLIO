@@ -91,6 +91,23 @@ const PLAN_COMPETITOR_INSIGHTS_LIMIT = 5;
 const PLAN_EXISTING_TITLES_LIMIT = 24;
 const PLAN_WEBSITE_SNAPSHOT_LIMIT = 6_000;
 const CONTENT_PLAN_TIMEOUT_MS = 120_000;
+// Titles from completed plans older than this stop being a hard "never
+// again" block and become soft context instead (still told to the model,
+// worded as "revisit with a fresh angle" rather than "never repeat") — see
+// recentCompletedContentPlanTitles' own comment for why: without this, a
+// long-running subscription on a narrow niche eventually has no genuinely
+// untouched ground left, and every regeneration fails outright.
+const PLAN_STRICT_HISTORY_MS = 45 * 24 * 60 * 60 * 1000;
+// A partial collision (1-2 of 15 titles touch recent history or each
+// other) used to reject the entire batch and cost the whole generation.
+// Instead, keep whatever validated cleanly and ask for only the shortfall,
+// bounded to a few rounds so a genuinely stuck request still fails instead
+// of looping forever.
+const PLAN_MAX_GENERATION_ATTEMPTS = 3;
+// How far ahead the model should look for professional/calendar occasions
+// worth planning content around — long enough to cover realistic publishing
+// lead time, short enough that "upcoming" still means something.
+const PLAN_SEASONAL_HORIZON_DAYS = 60;
 
 function contentPlanOutputTokenBudget(count: number) {
   if (count <= 10) return 4_500;
@@ -138,11 +155,25 @@ function titleTerms(value: string) {
 }
 
 function titlesAreTooSimilar(left: string, right: string) {
+  if (titleKey(left) === titleKey(right)) return true;
   const a = titleTerms(left);
   const b = titleTerms(right);
-  if (!a.size || !b.size) return titleKey(left) === titleKey(right);
+  if (!a.size || !b.size) return false;
   let shared = 0;
   for (const word of a) if (b.has(word)) shared += 1;
+  // A ratio alone breaks down for short titles: two titles that merely
+  // share their subject's 2 core nouns (e.g. both mention "санаторий" and
+  // "лечение") hit a 100% ratio at min-size 2 even though they're about
+  // completely different things — everything that would actually
+  // distinguish them (numbers, short qualifiers) is already discarded by
+  // the length>=4/stopword filter above. Confirmed via simulation while
+  // investigating a "content plan totally fails, every attempt" report:
+  // a batch of 15 short, topically-related titles saw most of them flagged
+  // as mutual duplicates purely from this effect. Requiring at least 3
+  // shared terms keeps real near-duplicates caught (which in practice
+  // share most of a full sentence, not just its subject) while two titles
+  // that merely share what they're about do not.
+  if (shared < 3) return false;
   return shared / Math.min(a.size, b.size) >= 0.67;
 }
 
@@ -281,14 +312,30 @@ function availablePlanSources(input: ReturnType<typeof normalizePayload>, websit
   ].filter(Boolean);
 }
 
-function validatePlan(plan: AiPlan, input: ReturnType<typeof normalizePayload>, sources: string[]) {
-  if (!Array.isArray(plan.items) || plan.items.length !== input.count) {
-    throw new AiResponseError(`AI‑редакция подготовила неполный план. Требуется ${input.count} тем.`, 422);
+type PlanItemEvaluation = {
+  // Cleanly validated items only — never includes a duplicate/repeat/
+  // invalid one, so a caller can always safely use this as-is.
+  valid: PlanItem[];
+  countMismatch: boolean;
+  duplicateTitles: string[];
+  repeatsExistingTitles: string[];
+  invalidTitles: string[];
+};
+
+// Was "validatePlan" and threw on any collision, discarding the whole
+// batch — one bad title out of 15 cost the entire generation (and, on a
+// long-running subscription, made every regeneration more likely to fail
+// as history piled up: site owner report). Now returns whatever validated
+// cleanly instead of throwing, so runContentPlanGeneration can keep the
+// good items and ask for only the shortfall — see the retry loop there.
+function evaluatePlanItems(plan: AiPlan, expectedCount: number, excludeTitles: string[], goal: ContentPlanGoal, brand: BrandInput, sources: string[]): PlanItemEvaluation {
+  if (!Array.isArray(plan.items) || plan.items.length !== expectedCount) {
+    return { valid: [], countMismatch: true, duplicateTitles: [], repeatsExistingTitles: [], invalidTitles: [] };
   }
 
-  const cleaned = plan.items.map((item, index) => ({
+  const cleaned = plan.items.map((item) => ({
     ...item,
-    id: `plan-${index + 1}`,
+    id: "",
     title: cleanPlanTitle(clean(item.title, 220)),
     subtitle: clean(item.subtitle, 360),
     cluster: clean(item.cluster, 100),
@@ -296,11 +343,11 @@ function validatePlan(plan: AiPlan, input: ReturnType<typeof normalizePayload>, 
     objective: clean(item.objective, 500),
     primaryKeyword: clean(item.primaryKeyword, 220),
     lsi: unique([clean(item.primaryKeyword, 180), clean(item.cluster, 180)]).slice(0, PLAN_LSI_LIMIT),
-    audience: input.brand.audience || "Читатели, выбирающие решение по теме материала",
+    audience: brand.audience || "Читатели, выбирающие решение по теме материала",
     metaTitle: cleanPlanTitle(clean(item.title, 90)),
     metaDescription: clean(item.subtitle, 190),
     structure: ["Контекст и вопрос читателя", "Ключевые факты и критерии выбора", "Практический ориентир по теме", "Следующий шаг"],
-    cta: input.brand.cta || "Узнать подробности и получить консультацию.",
+    cta: brand.cta || "Узнать подробности и получить консультацию.",
     evidenceNeeded: ["Проверить актуальные факты и данные перед публикацией"],
     // Sources are deterministic metadata about this request, not creative
     // content.  Filling them here saves one array per plan row and prevents
@@ -309,8 +356,8 @@ function validatePlan(plan: AiPlan, input: ReturnType<typeof normalizePayload>, 
   }));
 
   const duplicates = cleaned.filter((item, index) => cleaned.slice(0, index).some((previous) => titlesAreTooSimilar(previous.title, item.title)));
-  const repeatsExisting = cleaned.filter((item) => input.existingTitles.some((title) => titlesAreTooSimilar(title, item.title)));
-  const allowedFormats = GOAL_FORMAT_LOCK[input.goal];
+  const repeatsExisting = cleaned.filter((item) => excludeTitles.some((title) => titlesAreTooSimilar(title, item.title)));
+  const allowedFormats = GOAL_FORMAT_LOCK[goal];
   const invalid = cleaned.filter((item) => (
     !item.title || !item.cluster || !item.primaryKeyword || !item.angle || !item.objective
     || item.lsi.length < 2 || item.structure.length < 3
@@ -318,24 +365,14 @@ function validatePlan(plan: AiPlan, input: ReturnType<typeof normalizePayload>, 
     || /(?:комментарий пользователя|редакционн(?:ая|ый) задач|используй|добавь|раскрой применительно|инструкц(?:ия|ии) для ии)/i.test(item.title)
   ));
 
-  if (duplicates.length || repeatsExisting.length || invalid.length) {
-    // This throw previously discarded the actual generated titles with no
-    // trace anywhere — every rejection was a black box, impossible to tell
-    // apart from "the model wrote 2 similar titles" vs "the model wrote 15
-    // fine titles but this heuristic misfired" vs "every title collided
-    // with old history". Log exactly which titles tripped which check, so
-    // the next occurrence is diagnosable instead of another guess (site
-    // owner: hit this five times in a row with no way to tell why).
-    console.error("content-plan validation rejected the AI's output", JSON.stringify({
-      duplicateTitles: duplicates.map((item) => item.title),
-      repeatsExistingTitles: repeatsExisting.map((item) => item.title),
-      invalidTitles: invalid.map((item) => ({ title: item.title, cluster: item.cluster, primaryKeyword: item.primaryKeyword, angle: item.angle, objective: item.objective, format: item.format, lsi: item.lsi })),
-      allTitles: cleaned.map((item) => item.title),
-      existingTitlesChecked: input.existingTitles,
-    }));
-    throw new AiResponseError("AI‑редакция подготовила слабый или повторяющийся контент‑план. Запустите анализ ещё раз.", 422);
-  }
-  return cleaned;
+  const badKeys = new Set([...duplicates, ...repeatsExisting, ...invalid].map((item) => item.title));
+  return {
+    valid: cleaned.filter((item) => !badKeys.has(item.title)),
+    countMismatch: false,
+    duplicateTitles: duplicates.map((item) => item.title),
+    repeatsExistingTitles: repeatsExisting.map((item) => item.title),
+    invalidTitles: invalid.map((item) => item.title),
+  };
 }
 
 // The actual AI call + validation + quota debit, extracted out of the
@@ -343,7 +380,18 @@ function validatePlan(plan: AiPlan, input: ReturnType<typeof normalizePayload>, 
 // to the client (see async-jobs.ts for why that's safe on this host).
 async function runContentPlanGeneration(input: ReturnType<typeof normalizePayload>, ownerEmail: string, jobId?: string) {
   const historicalTitles = await recentCompletedContentPlanTitles(ownerEmail, PLAN_EXISTING_TITLES_LIMIT);
-  input = { ...input, existingTitles: unique([...input.existingTitles, ...historicalTitles]).slice(0, PLAN_EXISTING_TITLES_LIMIT) };
+  const historyCutoffMs = Date.now() - PLAN_STRICT_HISTORY_MS;
+  const recentHistoricalTitles = historicalTitles.filter((item) => new Date(item.createdAt).getTime() >= historyCutoffMs).map((item) => item.title);
+  // Older than the cutoff: told to the model as "revisit with a fresh
+  // angle if enough time has passed", never enforced as a hard reject —
+  // see evaluatePlanItems, which only ever checks against strictExcludeBase
+  // below, not this list.
+  const softExcludeTitles = unique(historicalTitles.filter((item) => new Date(item.createdAt).getTime() < historyCutoffMs).map((item) => item.title)).slice(0, PLAN_EXISTING_TITLES_LIMIT);
+  // Client-sent existingTitles are always "right now" (the plan currently
+  // on screen, being explicitly refreshed) — always strict, same as recent
+  // history.
+  const strictExcludeBase = unique([...input.existingTitles, ...recentHistoricalTitles]).slice(0, PLAN_EXISTING_TITLES_LIMIT);
+  input = { ...input, existingTitles: strictExcludeBase };
   const currentIndustryFocus = isCurrentIndustryFocus(input.query);
   // Direct HTTP read of the brand's own site (not an AI call). A separate
   // AI research/web-search step was tried here and reverted — see the fix
@@ -354,7 +402,10 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
     input.brand.website ? readWebsiteContext(input.brand.website) : Promise.resolve(null),
     researchContentPlanWeb(input.query, input.geography, currentIndustryFocus),
   ]);
-  const instructions = [
+  const sources = availablePlanSources(input, website?.status === "loaded", Boolean(webResearch));
+
+  function buildInstructions(neededCount: number, excludeTitles: string[]) {
+    return [
       "Ты — ведущий контент‑стратег и SEO‑редактор платформы КЛИО.",
       ...CORE_SYSTEM_RULES,
       "Работай как редакционная система бренда, а не генератор общих заголовков. Сначала используй весь доступный профиль: предложение, аудиторию, позиционирование, подтверждённые преимущества, доказательства, географию, голос и ограничения.",
@@ -368,7 +419,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       // вокруг неё, а не по одной теме на каждый пункт категории, чего
       // ожидал пользователь.
       "Если тема или фокус называет категорию из нескольких пунктов без явного перечисления самих пунктов (например: «акцент на программах лечения», «по каждой услуге», «наши направления», «линейка продуктов», «виды процедур»), сначала определи конкретные пункты этой категории — в первую очередь по продуктам и услугам из профиля бренда, если они там названы; если в профиле их нет, опирайся на типичные пункты такой категории в этой отрасли, не приписывая бренду недостоверные детали. Затем построй план так, чтобы каждый пункт (или большинство пунктов, если их больше, чем тем в плане) получил отдельную тему со своим углом и практической пользой, а не растворялся в одном общем обзоре.",
-      `Создай ровно ${input.count} готовых к работе тем для единой контент‑системы, а не перечень шаблонных заголовков.`,
+      `Создай ровно ${neededCount} готовых к работе тем для единой контент‑системы, а не перечень шаблонных заголовков.`,
       GOAL_INSTRUCTION[input.goal],
       "Сначала определи предмет, аудиторию, поисковые интенты, коммерческую задачу и возможные тематические ветви. Не переносить знания или шаблоны из другой отрасли.",
       "Разведи ядро, широкие обзоры, средние подтемы, узкие long-tail вопросы и действительно смежные темы. Смежная тема должна поддерживать решение аудитории или экспертизу бренда, а не быть случайной ассоциацией.",
@@ -378,10 +429,32 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       input.semantics.length
         ? "В первую очередь используй небрендовые, широкие и смежные кластеры, чтобы приводить новую аудиторию. Брендовые, навигационные и запросы вида «официальный сайт», «цены» оставляй для отдельных конверсионных страниц или материалов только когда это прямо соответствует цели плана; не подменяй ими статьи для роста новой аудитории. Частотность — сигнал приоритета среди сопоставимых кластеров, но не единственный критерий: учитывай интент, полезность и соответствие бренду."
         : "Без семантики проведи веб‑исследование тематического поля и предложи околоотраслевые, околотематические и полезные для новой аудитории направления. Не выдумывай частотность и не делай все темы брендовыми. Уместные календарные поводы и праздники можно включать только если они действительно связаны с предложением, аудиторией или сезонным спросом бренда и дают читателю самостоятельную пользу. Не добавляй формальные поздравления, случайные даты и выдуманную сезонность.",
+      // Explicit permission, not just tolerance: a genuinely seasonal theme
+      // recurring every year is good editorial practice, not a duplicate —
+      // the hard exclusion list below only ever contains recent titles, so
+      // this only needs to unblock the model's own judgment, not fight a
+      // stricter check downstream.
+      // Without today's actual date, the model has no grounded way to know
+      // what season/quarter it is or which professional/calendar days fall
+      // within publishing lead time — it either invents dates (forbidden
+      // elsewhere in this prompt) or, more often, just plays safe and skips
+      // seasonal angles entirely. current_date in the input JSON below is
+      // the fix (site owner: real, verifiable occasions relevant to the
+      // brand's own field were being missed entirely, e.g. World PT Day for
+      // a sanatorium/rehab brand).
+      `Сегодняшняя дата передана в current_date (поле input). Используй её, чтобы определить текущий сезон, время года и ближайшие ${PLAN_SEASONAL_HORIZON_DAYS} дней — включай темы к отраслевым профессиональным дням, праздникам или сезонным поводам этого периода, если они реально существуют и относятся к отрасли или аудитории бренда (например, Всемирный день физиотерапевта для санатория/реабилитации). Называй только те памятные даты и праздники, в существовании которых ты уверен — при любом сомнении в дате или названии не выдумывай её, сформулируй тему без привязки к конкретному дню.`,
+      "Сезонные и календарные темы поощряются, если они реально востребованы аудиторией или отраслью бренда (сезон спроса, отраслевые события, актуальные для времени года вопросы) — такая тема, поднятая год назад, разрешена снова: сезон вернулся, читатель другой. Не путай уместный сезонный повод с формальным поздравлением или случайной датой.",
       "Сбалансируй воронку: знакомство, выбор, решение и удержание. Не делай весь план информационными инструкциями и не превращай коммерческие темы в статьи «как выбрать». Для темы с конкретным брендом или продуктом предусмотрены материалы о его предложении, доказательствах, сценариях применения и возражениях.",
       "Если тема или фокус не указывает на конкретную категорию для разбора по пунктам (см. правило выше), не строй план вокруг одного преимущества и не превращай его в скучный каталог услуг без содержания. Разделяй образовательные, коммерческие, репутационные и вовлекающие задачи; не выдумывай сезонность, статистику, тренды или кейсы.",
       "Каждый title — чистый публикационный заголовок без номера, комментария, редакционной команды, пояснения в скобках и фраз вроде «использовать выводы». Не добавляй одинаковые каркасы «полный разбор», «основные ошибки», «пошаговый маршрут» ко всем темам.",
-      input.existingTitles.length ? `Это уже созданные темы и материалы бренда. Не повторяй их, не делай близкие перефразировки и не возвращай ту же задачу с переставленными словами: ${input.existingTitles.map((title) => `«${title}»`).join("; ")}` : "Если ранее созданные темы не переданы, всё равно не повторяй идеи внутри текущего плана.",
+      // The recurring complaint this addresses: a plan where most titles
+      // open the same way ("Почему...", "Когда...", "Как...") reads as
+      // repetitive even when the underlying topics genuinely differ — title
+      // *pattern* is its own diversity axis, separate from topic/cluster
+      // diversity already required above.
+      "Заголовки должны различаться и по смыслу, и по форме написания. Не начинай больше 2-3 заголовков одинаковой конструкцией («Почему…», «Когда…», «Как…», «Что такое…» и т.п.) — смешивай утверждения, вопросы, сравнения («X или Y»), числовые форматы («5 признаков…», «3 ошибки…»), предупреждения и практические разборы. Если самопроверка показывает, что многие заголовки начинаются одинаково — переформулируй часть из них другой конструкцией, сохранив тему.",
+      excludeTitles.length ? `Это уже созданные темы и материалы бренда за последнее время. Не повторяй их, не делай близкие перефразировки и не возвращай ту же задачу с переставленными словами: ${excludeTitles.map((title) => `«${title}»`).join("; ")}` : "Если ранее созданные темы не переданы, всё равно не повторяй идеи внутри текущего плана.",
+      softExcludeTitles.length ? `Эти темы поднимались раньше, но прошло достаточно времени: ${softExcludeTitles.map((title) => `«${title}»`).join("; ")}. Их можно взять снова только с действительно новым ракурсом, актуальным поводом или обновлёнными фактами — не пересказывай их дословно той же структурой.` : "",
       "Для каждой строки верни только title, subtitle, cluster, format, intent, stage, priority, angle, objective и primaryKeyword. Не выводи lsi, audience, metaTitle, metaDescription, structure, cta, evidenceNeeded или sources: КЛИО заполнит их из профиля и темы. Формулируй поля кратко и по существу.",
       "Title и subtitle должны точно соответствовать теме. subtitle — одна короткая зацепка под H1 с пользой читателю, не повторяет title. Не обещай позиции, результат лечения, доход, сроки, цены и иные факты, которых нет в источниках.",
       "Сначала продумай задачу читателя и редакционный ракурс, но во внешний JSON выведи только компактную схему. Не добавляй объяснений вне JSON.",
@@ -393,16 +466,14 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       "Верни только структурированный результат по заданной JSON‑схеме.",
       ...FINAL_QA_RULES,
     ].join("\n");
+  }
 
-  const { result: aiPlan, model } = await callAiModel<AiPlan>({
-    operation: "generate_content_plan",
-    maxOutputTokensOverride: contentPlanOutputTokenBudget(input.count),
-    requestTimeoutMs: CONTENT_PLAN_TIMEOUT_MS,
-    ownerEmail,
-    schemaName: "klio_content_plan",
-    schema: contentPlanSchema(input.count),
-    instructions,
-    input: JSON.stringify({
+  function buildRequestInput(neededCount: number, excludeTitles: string[]) {
+    const now = new Date();
+    return JSON.stringify({
+      current_date: now.toISOString().slice(0, 10),
+      current_date_human: now.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric", weekday: "long", timeZone: "Europe/Moscow" }),
+      seasonal_planning_horizon_days: PLAN_SEASONAL_HORIZON_DAYS,
       main_topic: input.query,
       focus_mode: currentIndustryFocus ? "current_industry_topics" : "brand_or_general_topic",
       plan_basis: input.requestedQuery ? "user_topic" : "brand_profile",
@@ -432,7 +503,8 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
         results: webResearch.results,
         rule: currentIndustryFocus ? "Это первичный источник для выбора актуальных отраслевых ракурсов. Не приписывай бренду факты из чужих сайтов и не выдумывай данные." : "Это краткие выдержки поиска. Используй их только как ориентир для актуальности и тематики; не приписывай бренду факты из чужих сайтов и не выдумывай данные.",
       } : null,
-      existing_titles_to_exclude: input.existingTitles,
+      existing_titles_to_exclude: excludeTitles,
+      existing_titles_soft_reference: softExcludeTitles,
       editorial_brief_contract: {
         topic: "title", subtitle: "subtitle", intent: "intent", objective: "objective", audience: "audience", angle: "angle", format: "format",
         structure: "structure", keywords: ["primaryKeyword", "lsi"], evidenceNeeded: "evidenceNeeded", sources: "sources",
@@ -440,11 +512,55 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
         restrictions: [input.brand.restrictions, input.brand.prohibited].filter(Boolean),
         authorPosition: "brand for commercial brand materials; neutral or expert otherwise",
       },
-      required_items: input.count,
-    }, null, 2),
-  });
+      required_items: neededCount,
+    }, null, 2);
+  }
 
-  const items = validatePlan(aiPlan, input, availablePlanSources(input, website?.status === "loaded", Boolean(webResearch)));
+  // A partial collision (1-2 of N titles touch recent history or each
+  // other) used to reject the entire batch, costing the whole generation
+  // and, on a long-running subscription, getting more likely every time as
+  // history piled up (site owner report). Now: keep whatever validated
+  // cleanly and ask only for the shortfall, bounded to
+  // PLAN_MAX_GENERATION_ATTEMPTS rounds so a genuinely stuck request still
+  // fails instead of looping forever or ballooning cost.
+  let accepted: PlanItem[] = [];
+  let excludeTitles = strictExcludeBase;
+  let model = "";
+  for (let attempt = 1; attempt <= PLAN_MAX_GENERATION_ATTEMPTS && accepted.length < input.count; attempt++) {
+    const neededCount = input.count - accepted.length;
+    const call = await callAiModel<AiPlan>({
+      operation: "generate_content_plan",
+      maxOutputTokensOverride: contentPlanOutputTokenBudget(neededCount),
+      requestTimeoutMs: CONTENT_PLAN_TIMEOUT_MS,
+      ownerEmail,
+      schemaName: "klio_content_plan",
+      schema: contentPlanSchema(neededCount),
+      instructions: buildInstructions(neededCount, excludeTitles),
+      input: buildRequestInput(neededCount, excludeTitles),
+    });
+    model = call.model;
+    const evaluation = evaluatePlanItems(call.result, neededCount, excludeTitles, input.goal, input.brand, sources);
+    accepted = [...accepted, ...evaluation.valid];
+    excludeTitles = unique([...excludeTitles, ...evaluation.valid.map((item) => item.title)]);
+    if (evaluation.countMismatch || evaluation.duplicateTitles.length || evaluation.repeatsExistingTitles.length || evaluation.invalidTitles.length) {
+      // Was a silent discard with zero trace — logged now so a rejection
+      // is diagnosable from real data instead of another guess (site
+      // owner: hit this five times in a row with no way to tell why).
+      console.error("content-plan validation rejected part of the AI's output", JSON.stringify({
+        attempt, neededCount, acceptedSoFar: accepted.length,
+        countMismatch: evaluation.countMismatch,
+        duplicateTitles: evaluation.duplicateTitles,
+        repeatsExistingTitles: evaluation.repeatsExistingTitles,
+        invalidTitles: evaluation.invalidTitles,
+        excludeTitlesChecked: excludeTitles,
+      }));
+    }
+  }
+
+  if (accepted.length < input.count) {
+    throw new AiResponseError("AI‑редакция подготовила слабый или повторяющийся контент‑план. Запустите анализ ещё раз.", 422);
+  }
+  const items = accepted.slice(0, input.count).map((item, index) => ({ ...item, id: `plan-${index + 1}` }));
   const baseDataNote = input.semantics.length
     ? "План построен по карте подтверждённого спроса: каждая тема привязана к одному кластеру и отдельной задаче читателя. В приоритете — небрендовые и смежные запросы для привлечения новой аудитории; брендовый спрос вынесен в отдельную конверсионную ветку."
     : "План создан AI‑стратегом по текущей теме и подключённым источникам. Подключите семантику, чтобы приоритизировать темы по подтверждённому спросу.";

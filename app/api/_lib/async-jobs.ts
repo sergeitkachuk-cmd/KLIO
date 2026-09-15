@@ -162,24 +162,39 @@ export async function getAsyncJob(id: string, ownerEmail: string) {
 // A freshly regenerated plan replaces the browser's previous draft, so the
 // client alone cannot reliably remember titles from earlier unsaved versions.
 // Keep a compact server-side exclusion list from recently completed jobs.
-export async function recentCompletedContentPlanTitles(ownerEmail: string, limit = 24) {
+//
+// Returns createdAt alongside each title (not just the strings) so the
+// caller can tell a title generated yesterday from one generated six months
+// ago — content-plan/route.ts only hard-blocks the recent ones and lets old
+// ones resurface, since a real subscriber regenerating plans for months on
+// a narrow niche will otherwise run out of "never touched before" ground
+// within weeks even though enough time has passed to legitimately revisit
+// a theme (site owner: hit exactly this, called it out as a dealbreaker for
+// anyone on a long subscription).
+export async function recentCompletedContentPlanTitles(ownerEmail: string, limit = 24): Promise<Array<{ title: string; createdAt: string }>> {
   const db = getDb();
-  const jobs = await db.select({ resultJson: asyncJobs.resultJson }).from(asyncJobs).where(and(
+  const jobs = await db.select({ resultJson: asyncJobs.resultJson, createdAt: asyncJobs.createdAt }).from(asyncJobs).where(and(
     eq(asyncJobs.ownerEmail, ownerEmail),
     eq(asyncJobs.kind, "content_plan"),
     eq(asyncJobs.status, "done"),
   )).orderBy(desc(asyncJobs.createdAt)).limit(8);
-  const titles: string[] = [];
+  const seen = new Set<string>();
+  const titles: Array<{ title: string; createdAt: string }> = [];
   for (const job of jobs) {
     try {
       const parsed = JSON.parse(job.resultJson || "{}") as { result?: { items?: Array<{ title?: unknown }> } };
       for (const item of parsed.result?.items || []) {
-        if (typeof item.title === "string" && item.title.trim()) titles.push(item.title.trim());
-        if (titles.length >= limit) return [...new Set(titles)];
+        if (typeof item.title !== "string") continue;
+        const title = item.title.trim();
+        const key = title.toLocaleLowerCase("ru-RU");
+        if (!title || seen.has(key)) continue;
+        seen.add(key);
+        titles.push({ title, createdAt: job.createdAt });
+        if (titles.length >= limit) return titles;
       }
     } catch {
       // A malformed historical result must never block a new plan.
     }
   }
-  return [...new Set(titles)].slice(0, limit);
+  return titles.slice(0, limit);
 }
