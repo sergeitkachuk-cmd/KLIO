@@ -319,6 +319,20 @@ function validatePlan(plan: AiPlan, input: ReturnType<typeof normalizePayload>, 
   ));
 
   if (duplicates.length || repeatsExisting.length || invalid.length) {
+    // This throw previously discarded the actual generated titles with no
+    // trace anywhere — every rejection was a black box, impossible to tell
+    // apart from "the model wrote 2 similar titles" vs "the model wrote 15
+    // fine titles but this heuristic misfired" vs "every title collided
+    // with old history". Log exactly which titles tripped which check, so
+    // the next occurrence is diagnosable instead of another guess (site
+    // owner: hit this five times in a row with no way to tell why).
+    console.error("content-plan validation rejected the AI's output", JSON.stringify({
+      duplicateTitles: duplicates.map((item) => item.title),
+      repeatsExistingTitles: repeatsExisting.map((item) => item.title),
+      invalidTitles: invalid.map((item) => ({ title: item.title, cluster: item.cluster, primaryKeyword: item.primaryKeyword, angle: item.angle, objective: item.objective, format: item.format, lsi: item.lsi })),
+      allTitles: cleaned.map((item) => item.title),
+      existingTitlesChecked: input.existingTitles,
+    }));
     throw new AiResponseError("AI‑редакция подготовила слабый или повторяющийся контент‑план. Запустите анализ ещё раз.", 422);
   }
   return cleaned;
