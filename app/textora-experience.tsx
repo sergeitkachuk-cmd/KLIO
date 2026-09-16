@@ -204,6 +204,12 @@ type BrandProfile = {
   restrictions: string;
   signature: string;
   prohibited: string;
+  // Set only by uploadBrandBook() after a successful attach — see
+  // api/brand/analyze-pdf/route.ts. brandBookKey is an opaque S3 object
+  // key, never a fetchable URL directly (the object is private; see
+  // api/brand/book/route.ts, the only thing that ever reads it back).
+  brandBookFileName: string;
+  brandBookKey: string;
 };
 
 type GeneratedMaterial = {
@@ -449,6 +455,8 @@ const defaultBrand: BrandProfile = {
   restrictions: "Не обещать исцеление, не ставить диагнозы, не придумывать показания, цены, сроки и медицинские факты.",
   signature: "С заботой о вашем здоровье и отдыхе, санаторий «Марциальные воды» — первый российский курорт.",
   prohibited: "гарантированное исцеление; чудодейственный; лучший санаторий; уникальный результат; успейте любой ценой",
+  brandBookFileName: "",
+  brandBookKey: "",
 };
 
 // Demo data belongs only to the public example. A brand created in a real
@@ -471,6 +479,8 @@ function emptyBrandProfile(name = "Мой бренд"): BrandProfile {
     restrictions: "",
     signature: "",
     prohibited: "",
+    brandBookFileName: "",
+    brandBookKey: "",
   };
 }
 
@@ -1747,6 +1757,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [replaceFoundation, setReplaceFoundation] = useState(false);
   const [replaceVoice, setReplaceVoice] = useState(false);
   const brandFillLock = useRef(false);
+  const brandBookInputRef = useRef<HTMLInputElement | null>(null);
   const brandFillEpoch = useRef(0);
   const [brandAnalyzeBusy, setBrandAnalyzeBusy] = useState(false);
   const [brandAnalyzeError, setBrandAnalyzeError] = useState("");
@@ -3598,6 +3609,67 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       brandFillLock.current = false;
       (isVoice ? setVoiceBusy : setBrandAnalyzeBusy)(false);
     }
+  }
+
+  // Alternative to fillBrandTab("foundation") for a brand with no website
+  // (site owner: "если у бренда нет сайта, только группа или страница в
+  // ВК") — shares its busy lock/epoch and error slot rather than adding a
+  // second set of each, since the two can't usefully run at once anyway.
+  // Always attaches the file first and reports that separately from the
+  // auto-fill outcome: api/brand/analyze-pdf/route.ts still returns
+  // `book` even when extraction or the AI call failed afterward, and a
+  // scanned/image-only brand book is a real, expected case, not an error.
+  async function uploadBrandBook(file: File) {
+    if (brandFillLock.current) return;
+    const maxBytes = 20 * 1024 * 1024;
+    if (file.type && file.type !== "application/pdf") { setBrandAnalyzeError("Поддерживаются только PDF-файлы."); return; }
+    if (file.size > maxBytes) { setBrandAnalyzeError(`Файл больше ${Math.round(maxBytes / 1024 / 1024)} МБ — уменьшите файл и попробуйте снова.`); return; }
+    const snapshot = { ...brand };
+    const epoch = brandFillEpoch.current;
+    brandFillLock.current = true;
+    setBrandAnalyzeBusy(true);
+    setBrandAnalyzeError("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("snapshot", JSON.stringify(snapshot));
+      const response = await fetch("/api/brand/analyze-pdf", { method: "POST", body: form });
+      const payload = await safeJson(response) as {
+        error?: string; mode?: string; note?: string;
+        book?: { key: string; fileName: string };
+        result?: Partial<BrandProfile>;
+        usage?: { account?: WorkspaceAccount };
+      };
+      if (!response.ok) throw new Error(payload.error || "Не удалось загрузить файл. Попробуйте ещё раз.");
+      if (payload.usage?.account) setWorkspaceAccount(payload.usage.account);
+      if (epoch !== brandFillEpoch.current) return;
+
+      if (payload.book) {
+        const book = payload.book;
+        setBrand((current) => ({ ...current, brandBookFileName: book.fileName, brandBookKey: book.key }));
+        setBrandSaved(false);
+      }
+      if (payload.mode === "ai" && payload.result) {
+        const result = payload.result;
+        setBrand((current) => mergeProfileFill(current, snapshot, result, FOUNDATION_FIELDS, replaceFoundation));
+        setSemanticNeedsRefresh(true);
+        setContentPlanNeedsRefresh(true);
+        setReplaceFoundation(false);
+        showToast("Брендбук прикреплён, основа дополнена по файлу. Проверьте поля перед сохранением.");
+      } else {
+        showToast(payload.note || "Брендбук прикреплён.");
+      }
+    } catch (error) {
+      if (epoch === brandFillEpoch.current) setBrandAnalyzeError(error instanceof Error ? error.message : "Не удалось загрузить файл.");
+    } finally {
+      brandFillLock.current = false;
+      setBrandAnalyzeBusy(false);
+    }
+  }
+
+  function removeBrandBook() {
+    setBrand((current) => ({ ...current, brandBookFileName: "", brandBookKey: "" }));
+    setBrandSaved(false);
   }
 
   function persistSemantics(
@@ -5632,6 +5704,20 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     <label className="profile-fill-replace"><input type="checkbox" checked={replaceFoundation} onChange={event => setReplaceFoundation(event.target.checked)} disabled={brandAnalyzeBusy || voiceBusy}/>Перезаписать поля, которые уже заполнены</label>
                     <small className="profile-fill-replace-help">По умолчанию заполняются только пустые поля.</small>
                     {brandAnalyzeError && <small className="is-error" role="alert">{brandAnalyzeError}</small>}
+                  </ProfileField>
+                  <ProfileField id="brand-book" label="Брендбук (PDF)" help="Если у бренда нет сайта — например, только группа или страница в соцсетях — загрузите PDF с брендбуком или описанием компании. КЛИО прочитает текст файла и предложит те же поля, что и по сайту.">
+                    <div className="brand-website-row">
+                      <span className="brand-book-status">{brand.brandBookFileName || "Файл не прикреплён"}</span>
+                      <button type="button" className={brandAnalyzeBusy ? "is-busy" : ""} disabled={brandAnalyzeBusy || voiceBusy} onClick={() => brandBookInputRef.current?.click()}>{brandAnalyzeBusy ? "Читаем файл…" : brand.brandBookFileName ? "Заменить файл" : "Загрузить PDF"}</button>
+                      <input ref={brandBookInputRef} type="file" accept="application/pdf" hidden disabled={brandAnalyzeBusy || voiceBusy} onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        event.target.value = "";
+                        if (file) void uploadBrandBook(file);
+                      }}/>
+                      {brand.brandBookFileName && activeBrandId && <a className="brand-book-link" href={`/api/brand/book?brandId=${encodeURIComponent(activeBrandId)}`} target="_blank" rel="noreferrer">Скачать</a>}
+                      {brand.brandBookFileName && <button type="button" className="brand-book-remove" onClick={removeBrandBook} disabled={brandAnalyzeBusy || voiceBusy}>Открепить</button>}
+                    </div>
+                    <small>КЛИО попробует дополнить профиль по файлу — спишется 1 исследование, если в файле найдётся текст</small>
                   </ProfileField>
                   <ProfileField id="brand-description" label="О компании" help="Короткая фактическая справка: сфера, география, услуги и масштаб." wide><AutoTextarea id="brand-description" aria-describedby="brand-description-help" rows={3} value={brand.description} onChange={(event) => updateBrand("description", event.target.value)}/></ProfileField>
                   <ProfileField id="brand-positioning" label="Позиционирование" help="Какое место бренд хочет занимать в сознании аудитории — не рекламный слоган, а редакционный ориентир." wide><AutoTextarea id="brand-positioning" aria-describedby="brand-positioning-help" rows={3} value={brand.positioning} onChange={(event) => updateBrand("positioning", event.target.value)}/></ProfileField>

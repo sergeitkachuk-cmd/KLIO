@@ -1634,6 +1634,51 @@ select:focus-visible {
   cursor: default;
 }
 
+/* Brand book (PDF) row reuses .brand-website-row itself (same flex layout,
+   same button skin across the marketing dark/light variants and the real
+   workspace's .brand-tab-shell overrides below) - only the status text and
+   the two small text actions need their own rules. */
+.brand-website-row .brand-book-status {
+  flex: 1 1 auto;
+  min-width: 0;
+  align-self: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--profile-muted, #6b7280);
+}
+
+/* !important throughout: .brand-book-remove is a <button> inside
+   .brand-website-row, which several pre-existing pill-button rules target
+   at higher specificity (id/theme-scoped chains four classes deep in
+   places - see the file's own note above on this file's history of
+   specificity fights). Overriding every property they set is the only way
+   to reliably keep this a plain text action in both themes. */
+.brand-website-row .brand-book-link,
+.brand-website-row .brand-book-remove {
+  flex: 0 0 auto;
+  padding: 0 !important;
+  border: none !important;
+  background: none !important;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--profile-accent, #7c3aed) !important;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.brand-website-row .brand-book-link:hover,
+.brand-website-row .brand-book-remove:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.brand-website-row .brand-book-remove:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .brand-profile-footer {
   display: flex;
   align-items: center;

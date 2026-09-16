@@ -57,9 +57,10 @@
 // that configuration as https://s3.twcstorage.ru/<bucket>/<key>. Retest a
 // fresh KLIO upload after deployment before touching ACL or Bucket Policy.
 
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { createHash } from "node:crypto";
 import { imageContentType } from "./image-type";
+import { isPdfSignature } from "./pdf-type";
 
 export class StorageError extends Error {
   status: number;
@@ -174,4 +175,76 @@ export async function uploadPublicationImage(file: File, ownerEmail: string): Pr
   }
 
   return publicUrl(key);
+}
+
+// Generous enough for a real brand-book export (design-heavy PDFs run
+// larger than a single social-post image) while staying well inside a
+// single request body.
+const MAX_BRAND_BOOK_BYTES = 20 * 1024 * 1024;
+
+// Unlike uploadPublicationImage, this is deliberately never public: a
+// brand book is only ever read back by our own server (see
+// api/brand/book/route.ts's GetObjectCommand fetch and the PDF-analysis
+// route, which reads the same bytes right after upload), so it sidesteps
+// the still-unresolved public-ACL/bucket-policy issue documented above
+// entirely rather than depending on it.
+export async function uploadBrandBookPdf(file: File, ownerEmail: string): Promise<{ key: string; bytes: Uint8Array }> {
+  if (!storageConfigured()) {
+    throw new StorageError("Загрузка файлов пока не настроена на сервере.", 503);
+  }
+  if (file.size > MAX_BRAND_BOOK_BYTES) {
+    throw new StorageError(`Файл больше ${Math.round(MAX_BRAND_BOOK_BYTES / 1024 / 1024)} МБ — уменьшите файл и попробуйте снова.`, 400);
+  }
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (!isPdfSignature(bytes)) throw new StorageError("Поддерживаются только PDF-файлы.", 400);
+
+  const ownerKey = createHash("sha256").update(ownerEmail.trim().toLowerCase()).digest("hex");
+  const key = `brand-books/${ownerKey}/${crypto.randomUUID()}.pdf`;
+
+  try {
+    await client().send(new PutObjectCommand({
+      Bucket: requiredEnv("S3_BUCKET"),
+      Key: key,
+      Body: bytes,
+      ContentType: "application/pdf",
+    }), { abortSignal: AbortSignal.timeout(40_000) });
+  } catch (error) {
+    if (error instanceof StorageError) throw error;
+    console.error("S3 brand-book upload failed", error instanceof Error ? error.message : error);
+    throw new StorageError("Не удалось загрузить файл в хранилище.");
+  }
+
+  return { key, bytes };
+}
+
+// Owner-scoped, authenticated read-back for the "Скачать" link on an
+// attached brand book — see api/brand/book/route.ts, the only caller. Keys
+// are namespaced by the same sha256(ownerEmail) prefix uploadBrandBookPdf
+// writes, so a caller-supplied key from another account's brand can never
+// resolve here (the route checks the prefix before calling this).
+// Uint8Array<ArrayBuffer>, not the bare (implicitly ArrayBufferLike, i.e.
+// SharedArrayBuffer-including) Uint8Array: `BodyInit` in this TS/DOM lib
+// only accepts the concrete-ArrayBuffer-backed variant, and api/brand/
+// book/route.ts passes this straight into `new Response(bytes, ...)`.
+export async function downloadBrandBookPdf(key: string): Promise<Uint8Array<ArrayBuffer>> {
+  if (!storageConfigured()) throw new StorageError("Хранилище файлов пока не настроено на сервере.", 503);
+  try {
+    const response = await client().send(new GetObjectCommand({
+      Bucket: requiredEnv("S3_BUCKET"),
+      Key: key,
+    }), { abortSignal: AbortSignal.timeout(20_000) });
+    const body = response.Body;
+    if (!body) throw new StorageError("Файл не найден в хранилище.", 404);
+    // Copied into a fresh, concretely ArrayBuffer-backed Uint8Array (not
+    // just the SDK's own ArrayBufferLike-typed one) so callers can pass
+    // this directly as a Response/Blob body without a type mismatch.
+    const raw = await body.transformToByteArray();
+    const bytes = new Uint8Array(raw.length);
+    bytes.set(raw);
+    return bytes;
+  } catch (error) {
+    if (error instanceof StorageError) throw error;
+    console.error("S3 brand-book download failed", error instanceof Error ? error.message : error);
+    throw new StorageError("Не удалось прочитать файл из хранилища.", 502);
+  }
 }

@@ -59,6 +59,12 @@ function cleanProfile(value: unknown) {
     restrictions: clean(source.restrictions, 2000),
     signature: clean(source.signature, 1200),
     prohibited: clean(source.prohibited, 2000),
+    // Set only by api/brand/analyze-pdf/route.ts after a successful S3
+    // upload — never treat these as free-form user text (no injected file
+    // key should ever resolve to another account's object; see
+    // api/brand/book/route.ts, which re-checks brand ownership anyway).
+    brandBookFileName: clean(source.brandBookFileName, 200),
+    brandBookKey: clean(source.brandBookKey, 400),
   };
 }
 
