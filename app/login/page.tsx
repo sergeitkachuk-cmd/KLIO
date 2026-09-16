@@ -5,6 +5,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import YandexIcon from "../yandex-icon";
 import VkSignIn from "../vk-signin";
 import { safeReturnPath } from "../api/_lib/safe-return-path";
+import { PasswordField } from "../password-field";
 
 function safeReturnTo(): string {
   if (typeof window === "undefined") return "/workspace";
@@ -134,7 +135,7 @@ export default function LoginPage() {
         <div className="auth-divider"><span>или по email</span></div>
         <form onSubmit={handleSubmit}>
           <label className="field">Email<input type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-          <label className="field">Пароль<input type="password" required autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+          <PasswordField label="Пароль" value={password} onChange={setPassword} autoComplete="current-password" />
           <button className="auth-forgot" type="button" onClick={() => void handleForgotPassword()} disabled={forgotBusy}>
             {forgotBusy ? "Отправляем…" : "Забыли пароль?"}
           </button>

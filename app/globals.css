@@ -2426,6 +2426,39 @@ select:focus-visible {
   line-height: 1.45;
 }
 
+.password-field-row {
+  position: relative;
+}
+
+.password-field-row input {
+  padding-right: 44px;
+}
+
+.password-field-toggle {
+  position: absolute;
+  top: 9px;
+  right: 2px;
+  width: 40px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+}
+
+.password-field-toggle:hover {
+  color: #fff;
+}
+
+.password-field-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+
 .field.two {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -18638,6 +18671,14 @@ input[type="radio"] {
   color: #0d1b31;
   background: rgba(255, 255, 255, 0.75);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="light"] .password-field-toggle {
+  color: rgba(13, 27, 49, 0.5);
+}
+
+[data-theme="light"] .password-field-toggle:hover {
+  color: #0d1b31;
 }
 
 [data-theme="light"] .field input::placeholder,

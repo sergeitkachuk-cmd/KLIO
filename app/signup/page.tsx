@@ -6,6 +6,7 @@ import { trackMetricaGoal } from "../analytics-consent";
 import YandexIcon from "../yandex-icon";
 import VkSignIn from "../vk-signin";
 import { safeReturnPath } from "../api/_lib/safe-return-path";
+import { PasswordField } from "../password-field";
 
 function safeReturnTo(): string {
   if (typeof window === "undefined") return "/workspace";
@@ -119,8 +120,8 @@ export default function SignupPage() {
         <form onSubmit={handleSubmit}>
           <label className="field">Имя<input required autoComplete="name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} /></label>
           <label className="field">Email<input type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-          <label className="field">Пароль<input type="password" required minLength={8} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} /><small>Не короче 8 символов</small></label>
-          <label className="field">Повторите пароль<input type="password" required minLength={8} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} /></label>
+          <PasswordField label="Пароль" value={password} onChange={setPassword} autoComplete="new-password" minLength={8} hint={<small>Не короче 8 символов</small>} />
+          <PasswordField label="Повторите пароль" value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" minLength={8} />
           {error && <p className="auth-error">{error}</p>}
           <button className="button primary large" type="submit" disabled={busy}>{busy ? "Создаём…" : "Создать кабинет"}</button>
         </form>

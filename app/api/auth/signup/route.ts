@@ -7,6 +7,7 @@ import { emailDeliveryAvailable, sendVerificationEmail } from "../../_lib/email"
 import { clientIp, isRateLimited } from "../../_lib/rate-limit";
 import { createEmailVerification } from "../../_lib/verification";
 import { ensureAccount, getWorkspaceDb, workspaceDatabaseAvailable, workspaceErrorResponse } from "../../_lib/workspace-account";
+import { domainAcceptsMail } from "../../_lib/email-domain";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -34,6 +35,13 @@ export async function POST(request: Request) {
     }
     if (password.length < 8 || password.length > 256) {
       return Response.json({ error: "Пароль должен содержать от 8 до 256 символов." }, { status: 400 });
+    }
+    // Catches a mistyped domain (gmial.com, yandex.ry...) before it ever
+    // creates an account that can never receive its verification email —
+    // see email-domain.ts for what this can and can't catch.
+    const domain = email.split("@")[1] ?? "";
+    if (!await domainAcceptsMail(domain)) {
+      return Response.json({ error: "Не удалось найти почтовый сервер для этого домена. Проверьте адрес email — возможно, в нём опечатка." }, { status: 400 });
     }
 
     const name = displayName || email.split("@")[0];
