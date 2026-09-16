@@ -8,6 +8,7 @@ import { accounts, aiUsage, asyncJobs, brands, emailVerifications, generations, 
 import { planRule, planExpiryState, formatPlanExpiry } from "../plans";
 import { billingDescription, type BillingPeriod } from "../billing-pricing";
 import { getExternalServiceStatuses } from "../api/_lib/external-service-status";
+import { trialExpiresAt } from "../api/_lib/workspace-account";
 import { AdminThemeToggle } from "./admin-theme-toggle";
 import { AdminAccountControls } from "./admin-account-controls";
 import { AdminUsersTable, type AdminUserRow } from "./admin-users-table";
@@ -318,7 +319,11 @@ export default async function AdminPage() {
       createdAt: account.createdAt,
       planName: plan.name,
       planId: account.planId,
-      planExpiresAt: account.planExpiresAt,
+      // Raw column is always null for "trial" (see the schema comment on
+      // accounts.planExpiresAt) — trialExpiresAt derives the real createdAt+48h
+      // deadline so the admin table shows an actual date/countdown instead of
+      // the bare "Пробный период" label formatPlanExpiry falls back to.
+      planExpiresAt: account.planId === "trial" ? trialExpiresAt(account) : account.planExpiresAt,
       generationsUsed: account.generationsUsed,
       generationLimit: plan.generationLimit,
       researchUsed: account.researchUsed,

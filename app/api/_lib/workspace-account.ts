@@ -147,7 +147,7 @@ function isPaidPlanExpired(account: typeof accounts.$inferSelect) {
 // editorActionLimit was actually used. Shared by accountSummary (so
 // /account actually shows this instead of silently hiding it) and
 // assertTrialActive (the real enforcement) so the two can't drift apart.
-const TRIAL_DURATION_MS = 48 * 60 * 60 * 1000;
+export const TRIAL_DURATION_MS = 48 * 60 * 60 * 1000;
 
 function isTrialExpired(account: typeof accounts.$inferSelect) {
   if (account.planId !== "trial") return false;
@@ -155,23 +155,28 @@ function isTrialExpired(account: typeof accounts.$inferSelect) {
   return Number.isFinite(startedAt) && Date.now() - startedAt > TRIAL_DURATION_MS;
 }
 
+// Trial never had its own expiry timestamp before — assertTrialActive
+// computed createdAt+48h inline and nothing else saw it, so neither /account
+// nor /admin had anything to show while the trial was still running, nor any
+// way to tell a fresh trial from a 3-week-old expired one. This is derived,
+// not stored — the accounts table itself still has no trial expiry column,
+// only createdAt — and is exported so /admin can display the same deadline
+// instead of reading the raw (always-null-for-trial) planExpiresAt column.
+export function trialExpiresAt(account: typeof accounts.$inferSelect): string | null {
+  if (account.planId !== "trial") return null;
+  const createdAtMs = new Date(account.createdAt).getTime();
+  return Number.isFinite(createdAtMs) ? new Date(createdAtMs + TRIAL_DURATION_MS).toISOString() : null;
+}
+
 export function accountSummary(account: typeof accounts.$inferSelect, brandCount = 0) {
   const rule = planRule(account.planId);
   const expired = isPaidPlanExpired(account) || isTrialExpired(account);
   const createdAtMs = new Date(account.createdAt).getTime();
-  // Trial never had its own expiry timestamp before — assertTrialActive
-  // computed createdAt+48h inline and nothing else saw it, so /account had
-  // nothing to show while the trial was still running and no way to tell a
-  // fresh trial from a 3-week-old expired one. Feeding this synthetic
-  // deadline through the same planExpiresAt/planExpiryState fields a paid
-  // plan uses means /account's existing expiry line, day-banded coloring
-  // (soon/critical/expired) and countdown wording all work for trial too,
-  // with no separate code path. This is derived, not stored — the accounts
-  // table itself still has no trial expiry column, only createdAt.
-  const trialExpiresAt = account.planId === "trial" && Number.isFinite(createdAtMs)
-    ? new Date(createdAtMs + TRIAL_DURATION_MS).toISOString()
-    : null;
-  const effectivePlanExpiresAt = account.planId === "trial" ? trialExpiresAt : account.planExpiresAt;
+  // Feeding this synthetic deadline through the same planExpiresAt/
+  // planExpiryState fields a paid plan uses means /account's existing expiry
+  // line, day-banded coloring (soon/critical/expired) and countdown wording
+  // all work for trial too, with no separate code path.
+  const effectivePlanExpiresAt = account.planId === "trial" ? trialExpiresAt(account) : account.planExpiresAt;
   return {
     planId: rule.id,
     planName: expired ? `${rule.name} — срок истёк` : rule.name,
@@ -201,11 +206,10 @@ export function accountSummary(account: typeof accounts.$inferSelect, brandCount
     // for paid plans an admin granted by hand, which still reset on the
     // calendar month instead.
     quotaResetsAt: account.quotaPeriodEndsAt,
-    // The trial's own createdAt+48h deadline for trial accounts (see above);
-    // for paid plans, the real payment/admin-granted expiry, or null if an
-    // admin granted one without an expiry — the account page flags that
-    // "missing" case, same as /admin (which still reads the raw column
-    // directly and is unaffected by the trial computation here).
+    // The trial's own createdAt+48h deadline for trial accounts (see
+    // trialExpiresAt above, also used directly by /admin); for paid plans,
+    // the real payment/admin-granted expiry, or null if an admin granted one
+    // without an expiry — the account page flags that "missing" case.
     planExpiresAt: effectivePlanExpiresAt,
     planExpiryState: planExpiryState(rule.id, effectivePlanExpiresAt),
   };
