@@ -1618,6 +1618,12 @@ select:focus-visible {
 
 .brand-website-row button {
   flex: 0 0 auto;
+  /* Explicit, not left to align-items:stretch against a sibling input -
+     the brand-book row has no input in it (just a status span), so the
+     button had nothing tall to stretch against and rendered at its own
+     thin intrinsic height instead of matching the row like it does next
+     to "Сайт" (site owner: "смотрится как-то криво и узко по высоте"). */
+  min-height: 48px;
   padding: 0 14px;
   border: 1px solid rgba(124, 58, 237, 0.23);
   border-radius: 999px;
@@ -10530,6 +10536,23 @@ input[type="radio"] {
   .brand-website-row button {
     white-space: normal;
     padding: 10px 14px;
+  }
+
+  /* Column layout above stretches every child to full width by default;
+     fine for the primary button (a real full-width action, centers
+     itself), wrong for these three - "Открепить" is a <button> and
+     picked up the browser's own centered-text default once stretched,
+     while "Скачать" (a plain <a>, no such default) stayed left-aligned
+     right next to it, and the status span's own align-self:center (for
+     desktop's row layout, where it centers vertically) re-targets the
+     cross axis here and centers it horizontally instead. Sizing all
+     three to content and left-aligning matches the rest of the stacked
+     fields around them instead of each doing something different. */
+  .brand-website-row .brand-book-status,
+  .brand-website-row .brand-book-link,
+  .brand-website-row .brand-book-remove {
+    align-self: flex-start;
+    text-align: left;
   }
 
   .length-control {
