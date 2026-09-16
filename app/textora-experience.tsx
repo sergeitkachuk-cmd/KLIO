@@ -5447,6 +5447,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </div>
             </div>
 
+            {/* Not blind: gated on zero lifetime usage (the real signal for
+                "just registered", since daysWithKlio can be low for a returning
+                visitor too) plus a thin brand profile — a returning user with an
+                already-filled profile never sees this. */}
+            {workspaceAccount.lifetimeGenerationsUsed + workspaceAccount.lifetimeResearchUsed + workspaceAccount.lifetimeEditorActionsUsed === 0 && brandProfileFillRatio(effectiveBrand) < 50 &&
+              renderAdviceTip("start-brand-profile-onboarding", <>Чтобы КЛИО точнее подбирала темы и тексты под ваш бизнес, заполните профиль бренда — вручную или нажмите «Заполнить по сайту с КЛИО» в разделе «Профиль бренда». Либо просто опишите задачу максимально подробно прямо в генераторе — КЛИО учтёт это сразу.</>)}
+
             <section className="workspace-start-use-cases" aria-labelledby="workspace-use-cases-title">
               <div className="workspace-start-use-cases-heading">
                 <span>КЛИО в работе</span>
@@ -6076,6 +6083,18 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <article><span>Готово</span><b>{contentPlanProgress.ready}</b><small>отмечено редактором</small></article>
                 </div>
 
+                {contentPlanResult.dataNote && <div className="content-plan-note"><i>i</i><p>{contentPlanResult.dataNote}</p></div>}
+
+                {/* Right above the (often long, 10-25 item) list so it's seen
+                    immediately after the plan appears, not after scrolling
+                    past every item — see renderAdviceTip. */}
+                {brandProfileFillRatio(effectiveBrand) < 50 && renderAdviceTip("content-plan-brand-thin", <>Чтобы контент‑план был точнее и разнообразнее, заполните профиль бренда подробнее — вручную или нажмите «Заполнить по сайту с КЛИО» в разделе «Профиль бренда».</>)}
+                {/* Not blind: only once the person has actually started curating the
+                    plan (moved at least one item into work or marked it done) — that's
+                    the point where knowing "replace just the selected ones" is actually
+                    relevant, not a guess shown to everyone regardless of behavior. */}
+                {contentPlanProgress.working + contentPlanProgress.ready > 0 && renderAdviceTip("content-plan-regenerate-selected", <>Если какие-то темы не подходят — отметьте их «Выбрать» ниже и нажмите «Заменить выбранные»: КЛИО подберёт другие темы, а остальной план не изменится.</>)}
+
                 <div className="content-plan-list">
                   {contentPlanResult.items.map((item) => {
                     const originalIndex = contentPlanResult.items.findIndex((candidate) => candidate.id === item.id);
@@ -6101,11 +6120,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     </article>;
                   })}
                 </div>
-
-                {contentPlanResult.dataNote && <div className="content-plan-note"><i>i</i><p>{contentPlanResult.dataNote}</p></div>}
-
-                {brandProfileFillRatio(effectiveBrand) < 50 && renderAdviceTip("content-plan-brand-thin", <>Чтобы контент‑план был точнее и разнообразнее, заполните профиль бренда подробнее — вручную или нажмите «Заполнить по сайту с КЛИО» в разделе «Профиль бренда».</>)}
-                {renderAdviceTip("content-plan-regenerate-selected", <>Если какие-то темы не подходят — отметьте их «Выбрать» ниже и нажмите «Заменить выбранные»: КЛИО подберёт другие темы, а остальной план не изменится.</>)}
 
                 <div className="content-plan-actions">
                   <div className="content-plan-toolbar-actions">

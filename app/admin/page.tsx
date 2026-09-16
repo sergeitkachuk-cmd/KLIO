@@ -4,7 +4,7 @@ import { getCurrentUser } from "../identity";
 import { isAdminEmail } from "../api/_lib/admin";
 import type { AiOperation } from "../api/_lib/ai-config";
 import { getDb } from "../../db";
-import { accounts, aiUsage, asyncJobs, brands, emailVerifications, generations, invoices, materials, passwordResets, payments, publications, sessions } from "../../db/schema";
+import { accounts, aiUsage, asyncJobs, brands, emailVerifications, generations, invoices, materials, passwordResets, payments, publications, sessions, socialChannels } from "../../db/schema";
 import { planRule, planExpiryState, formatPlanExpiry } from "../plans";
 import { billingDescription, type BillingPeriod } from "../billing-pricing";
 import { getExternalServiceStatuses } from "../api/_lib/external-service-status";
@@ -156,7 +156,7 @@ export default async function AdminPage() {
     await db.delete(accounts).where(eq(accounts.email, stale.email));
   }
 
-  const [userRows, usageByUser, brandRows, invoiceRefsByUser, transactionRefsByUser, totalsRows, last30Rows, byModelRows, byOperationRows, recentAiRows, externalServices, paymentRows, generationsByOriginRows, materialsByTypeRows, publicationsByOwnerRows, paidPaymentOwners, paidInvoiceOwners] = await Promise.all([
+  const [userRows, usageByUser, brandRows, invoiceRefsByUser, transactionRefsByUser, totalsRows, last30Rows, byModelRows, byOperationRows, recentAiRows, externalServices, paymentRows, generationsByOriginRows, materialsByTypeRows, publicationsByOwnerRows, paidPaymentOwners, paidInvoiceOwners, socialChannelsByOwnerRows] = await Promise.all([
     db.select().from(accounts).orderBy(desc(accounts.createdAt)),
     db.select({
       ownerEmail: aiUsage.ownerEmail,
@@ -253,6 +253,16 @@ export default async function AdminPage() {
     // back to "trial" but the account genuinely did convert once.
     db.select({ ownerEmail: payments.ownerEmail }).from(payments).where(eq(payments.status, "paid")).groupBy(payments.ownerEmail),
     db.select({ ownerEmail: invoices.ownerEmail }).from(invoices).where(eq(invoices.paymentStatus, "payment_paid")).groupBy(invoices.ownerEmail),
+    // "Сколько человек и сколько подключило каналов соцсетей" — one brand
+    // can hold several channels (see the schema comment on socialChannels:
+    // a main + regional community, VK alongside Telegram, ...), so this is
+    // grouped by owner+platform, not just counted, to answer both "how many
+    // people" (distinct owners below) and "which platform" at once.
+    db.select({
+      ownerEmail: socialChannels.ownerEmail,
+      platform: socialChannels.platform,
+      count: sql<number>`count(*)`,
+    }).from(socialChannels).groupBy(socialChannels.ownerEmail, socialChannels.platform),
   ]);
 
   const usageMap = new Map(usageByUser.map((row) => [row.ownerEmail, row]));
@@ -283,6 +293,13 @@ export default async function AdminPage() {
   }
   const publicationsMap = new Map(publicationsByOwnerRows.map((row) => [row.ownerEmail, num(row.count)]));
   const paidOwners = new Set([...paidPaymentOwners.map((row) => row.ownerEmail), ...paidInvoiceOwners.map((row) => row.ownerEmail)]);
+  const socialChannelsByOwner = new Map<string, { vk: number; telegram: number }>();
+  for (const row of socialChannelsByOwnerRows) {
+    const entry = socialChannelsByOwner.get(row.ownerEmail) ?? { vk: 0, telegram: 0 };
+    if (row.platform === "vk") entry.vk += num(row.count);
+    else if (row.platform === "telegram") entry.telegram += num(row.count);
+    socialChannelsByOwner.set(row.ownerEmail, entry);
+  }
   const invoiceMap = new Map(invoiceRefsByUser.map((row) => [row.ownerEmail, row]));
   const transactionMap = new Map(transactionRefsByUser.map((row) => [row.ownerEmail, row.transactionRefs]));
 
@@ -291,11 +308,13 @@ export default async function AdminPage() {
     const usage = usageMap.get(account.email);
     const gen = generationsByOwner.get(account.email) ?? { generator: 0, editor: 0, manual: 0 };
     const mat = materialsByOwner.get(account.email) ?? { contentPlan: 0, semantics: 0, competitors: 0 };
+    const social = socialChannelsByOwner.get(account.email) ?? { vk: 0, telegram: 0 };
     const modulesUsed = [gen.generator > 0, gen.editor > 0, mat.contentPlan > 0, mat.semantics > 0, mat.competitors > 0].filter(Boolean).length;
     return {
       email: account.email,
       displayName: account.displayName,
       emailVerified: account.emailVerified,
+      signupMethod: account.signupMethod,
       createdAt: account.createdAt,
       planName: plan.name,
       planId: account.planId,
@@ -315,6 +334,9 @@ export default async function AdminPage() {
       semanticsRuns: mat.semantics,
       competitorAnalyses: mat.competitors,
       publicationsCount: publicationsMap.get(account.email) ?? 0,
+      socialChannelsVk: social.vk,
+      socialChannelsTelegram: social.telegram,
+      socialChannelsConnected: social.vk + social.telegram,
       modulesUsed,
       everPaid: paidOwners.has(account.email),
       totalCostUsd: num(usage?.totalCostUsd),
@@ -353,6 +375,26 @@ export default async function AdminPage() {
     { id: "multi-module", label: "Использовали 2+ инструмента", count: users.filter((item) => item.modulesUsed >= 2).length },
     { id: "paid", label: "Оплатили тариф", count: users.filter((item) => item.everPaid).length },
     { id: "active-30d", label: "Активны за последние 30 дней", count: users.filter((item) => { const days = daysSince(item.lastCallAt); return days !== null && days <= 30; }).length },
+  ];
+
+  // "Добавить методы регистрации на сайте: по электронке, через яндекс или
+  // вк, чтобы понимать что удобно людям" — accounts.signupMethod is set once
+  // at creation (see ensureAccount in workspace-account.ts); "unknown" is
+  // only ever a real, pre-migration account, never a new one.
+  const SIGNUP_METHOD_LABELS: Record<string, string> = { email: "Email", yandex: "Яндекс", vk: "VK", unknown: "Неизвестно (до внедрения учёта)" };
+  const signupMethodCounts = new Map<string, number>();
+  for (const item of users) signupMethodCounts.set(item.signupMethod, (signupMethodCounts.get(item.signupMethod) ?? 0) + 1);
+  const signupMethodBreakdown = [...signupMethodCounts.entries()]
+    .sort(([, a], [, b]) => b - a)
+    .map(([method, count]) => ({ method, label: SIGNUP_METHOD_LABELS[method] ?? method, count }));
+
+  // "Сколько человек и сколько подключило каналов соцсетей" — connected-at-
+  // least-one is the activation signal (funnel-style, % of all accounts);
+  // the vk/telegram split below it is about which platform to prioritize.
+  const socialChannelsConnectedCount = users.filter((item) => item.socialChannelsConnected > 0).length;
+  const socialChannelsBreakdown = [
+    { id: "vk", label: "VK", count: users.filter((item) => item.socialChannelsVk > 0).length },
+    { id: "telegram", label: "Telegram", count: users.filter((item) => item.socialChannelsTelegram > 0).length },
   ];
 
   // One section per former top-to-bottom block, now shown one at a time
@@ -502,6 +544,52 @@ export default async function AdminPage() {
           })}
           {!users.length && <p className="admin-empty-row">Пока нет ни одного аккаунта.</p>}
         </div>
+
+        <div className="admin-block-heading admin-funnel-secondary-heading">
+          <div>
+            <h2>Способ регистрации</h2>
+            <p>Как люди фактически заходят в кабинет — помогает понять, какой способ входа стоит продвигать заметнее.</p>
+          </div>
+        </div>
+        <div className="admin-funnel">
+          {signupMethodBreakdown.map((row) => {
+            const pctOfTotal = users.length ? Math.round((row.count / users.length) * 100) : 0;
+            return (
+              <div className="admin-funnel-row" key={row.method}>
+                <span className="admin-funnel-label">{row.label}</span>
+                <div className="admin-funnel-track"><div className="admin-funnel-fill" style={{ width: `${pctOfTotal}%` }} /></div>
+                <span className="admin-funnel-count">{formatNumber(row.count)}</span>
+                <span className="admin-funnel-pct">{pctOfTotal}%</span>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="admin-block-heading admin-funnel-secondary-heading">
+          <div>
+            <h2>Подключение соцсетей</h2>
+            <p>Календарь публикаций работает только после подключения канала — это показывает, кто вообще дошёл до этого шага и какая площадка популярнее.</p>
+          </div>
+        </div>
+        <div className="admin-funnel">
+          <div className="admin-funnel-row">
+            <span className="admin-funnel-label">Подключили хотя бы один канал</span>
+            <div className="admin-funnel-track"><div className="admin-funnel-fill" style={{ width: `${users.length ? Math.round((socialChannelsConnectedCount / users.length) * 100) : 0}%` }} /></div>
+            <span className="admin-funnel-count">{formatNumber(socialChannelsConnectedCount)}</span>
+            <span className="admin-funnel-pct">{users.length ? Math.round((socialChannelsConnectedCount / users.length) * 100) : 0}%</span>
+          </div>
+          {socialChannelsBreakdown.map((row) => {
+            const pctOfTotal = users.length ? Math.round((row.count / users.length) * 100) : 0;
+            return (
+              <div className="admin-funnel-row" key={row.id}>
+                <span className="admin-funnel-label">{row.label}</span>
+                <div className="admin-funnel-track"><div className="admin-funnel-fill" style={{ width: `${pctOfTotal}%` }} /></div>
+                <span className="admin-funnel-count">{formatNumber(row.count)}</span>
+                <span className="admin-funnel-pct">{pctOfTotal}%</span>
+              </div>
+            );
+          })}
+        </div>
       </section>
     ),
   });
@@ -533,7 +621,10 @@ export default async function AdminPage() {
             semanticsRuns: item.semanticsRuns,
             competitorAnalyses: item.competitorAnalyses,
             publicationsCount: item.publicationsCount,
+            socialChannelsVk: item.socialChannelsVk,
+            socialChannelsTelegram: item.socialChannelsTelegram,
             everPaid: item.everPaid,
+            signupMethod: SIGNUP_METHOD_LABELS[item.signupMethod] ?? item.signupMethod,
             totalCost: formatUsd(item.totalCostUsd),
             lastCallAt: formatDate(item.lastCallAt),
             invoiceRefs: item.invoiceRefs,
@@ -770,6 +861,7 @@ function AdminStyles() {
       .admin-funnel-fill { height: 100%; border-radius: 999px; background: #4f46e5; }
       .admin-funnel-count { text-align: right; font-weight: 700; font-size: 13px; }
       .admin-funnel-pct { font-size: 12px; color: #6b7280; white-space: nowrap; }
+      .admin-funnel-secondary-heading { margin-top: 28px; }
       @media (max-width: 800px) { .admin-funnel-row { grid-template-columns: 1fr; gap: 4px; } .admin-funnel-count, .admin-funnel-pct { text-align: left; } }
       .admin-table-scroll { overflow-x: auto; border: 1px solid rgba(148, 163, 184, 0.24); border-radius: 16px; scrollbar-color: #64748b transparent; scrollbar-width: thin; }
       .admin-table-scroll::-webkit-scrollbar { height: 8px; }

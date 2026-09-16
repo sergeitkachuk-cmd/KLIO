@@ -60,7 +60,7 @@ export async function GET(request: Request) {
     if (!email) return NextResponse.redirect(`${baseUrl}/login?error=oauth_no_email&provider=yandex`);
 
     const displayName = info.real_name || info.display_name || info.login || email.split("@")[0];
-    const account = await ensureAccount({ email, displayName, fullName: displayName });
+    const account = await ensureAccount({ email, displayName, fullName: displayName }, "yandex");
 
     if (!account.emailVerified) {
       // Yandex has already vetted this address as belonging to the visitor

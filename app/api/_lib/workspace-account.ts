@@ -66,7 +66,15 @@ function isTestAccount(email: string) {
   return email.trim().toLocaleLowerCase("en-US") === TEST_ACCOUNT_EMAIL;
 }
 
-export async function ensureAccount(user: ChatGPTUser) {
+// signupMethod only matters the first time this creates a row (the insert
+// branch below) — every other call site either passes nothing (an internal
+// "make sure this already-logged-in user's row exists" check, e.g. billing/
+// publications) or is re-fetching an existing account, where the argument
+// is simply ignored. Defaults to "email" so an unrelated call site that
+// never specifies it still writes a real, schema-valid value rather than
+// relying on the column's own "unknown" default (that default exists for
+// rows that predate this field, not for new ones).
+export async function ensureAccount(user: ChatGPTUser, signupMethod: "email" | "yandex" | "vk" = "email") {
   const db = await getWorkspaceDb();
   const now = new Date();
   const currentMonth = monthKey(now);
@@ -77,6 +85,7 @@ export async function ensureAccount(user: ChatGPTUser) {
       email: user.email,
       displayName: user.displayName,
       planId: isTestAccount(user.email) ? "agency" : "trial",
+      signupMethod,
       generationMonth: currentMonth,
       generationsUsed: 0,
       researchUsed: 0,

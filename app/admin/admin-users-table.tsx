@@ -13,6 +13,8 @@ export type AdminUserRow = {
   textsGenerated: number; textsEdited: number; textsManual: number;
   contentPlans: number; semanticsRuns: number; competitorAnalyses: number;
   publicationsCount: number; everPaid: boolean;
+  signupMethod: string;
+  socialChannelsVk: number; socialChannelsTelegram: number;
 };
 type Props = { users: AdminUserRow[] };
 const listValue = (value: string) => value.trim() || "—";
@@ -51,7 +53,9 @@ export function AdminUsersTable({ users }: Props) {
               <div><b>Семантика:</b> {item.semanticsRuns}</div>
               <div><b>Анализ конкурентов:</b> {item.competitorAnalyses}</div>
               <div><b>Публикации:</b> {item.publicationsCount}</div>
+              <div><b>Подключено соцсетей:</b> {item.socialChannelsVk + item.socialChannelsTelegram === 0 ? "нет" : `VK ${item.socialChannelsVk}, Telegram ${item.socialChannelsTelegram}`}</div>
               <div><b>Когда-либо оплачивал:</b> {item.everPaid ? "Да" : "Нет"}</div>
+              <div><b>Способ регистрации:</b> {item.signupMethod}</div>
               <div className="admin-user-details-wide"><b>Счета:</b> {listValue(item.invoiceRefs)}</div><div className="admin-user-details-wide"><b>Операции:</b> {listValue(item.transactionRefs)}</div><div className="admin-user-details-wide"><b>Плательщик:</b> {listValue(item.payerNames)}</div></div></td></tr>}
           </Fragment>; })}
           {!filteredUsers.length && <tr><td colSpan={10} className="admin-empty-row">По этому запросу клиентов не найдено.</td></tr>}

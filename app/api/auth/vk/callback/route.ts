@@ -79,7 +79,7 @@ export async function GET(request: Request) {
     if (!email) return NextResponse.redirect(`${baseUrl}/login?error=oauth_no_email&provider=vk`);
 
     const displayName = [info.user?.first_name, info.user?.last_name].filter(Boolean).join(" ").trim() || email.split("@")[0];
-    const account = await ensureAccount({ email, displayName, fullName: displayName });
+    const account = await ensureAccount({ email, displayName, fullName: displayName }, "vk");
 
     if (!account.emailVerified) {
       // VK has already vetted this address as belonging to the visitor who

@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     }
 
     const name = displayName || email.split("@")[0];
-    const account = await ensureAccount({ email, displayName: name, fullName: name });
+    const account = await ensureAccount({ email, displayName: name, fullName: name }, "email");
     if (account.passwordHash && account.emailVerified) {
       return Response.json({ error: "Этот email уже зарегистрирован. Войдите в кабинет." }, { status: 409 });
     }

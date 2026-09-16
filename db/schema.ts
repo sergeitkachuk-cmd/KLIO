@@ -10,6 +10,16 @@ export const accounts = pgTable("accounts", {
   // Only meaningful for the password sign-in path — ChatGPT-embed accounts
   // are already vetted by OpenAI's own auth and never gate on this.
   emailVerified: boolean("email_verified").notNull().default(false),
+  // "email" | "yandex" | "vk" — set once, at ensureAccount()'s insert branch,
+  // by whichever real entry point created the row (signup/route.ts,
+  // yandex/callback, vk/callback, vk/session); never changed afterward even
+  // if the person later also links another method. "unknown" is only the
+  // column default for rows that existed before this field did — there is
+  // no way to recover their real signup channel retroactively, and leaving
+  // them as "unknown" is more honest than silently attributing them all to
+  // "email" (site owner: "добавить методы регистрации на сайте: по
+  // электронке, через яндекс или вк, чтобы понимать что удобно людям").
+  signupMethod: text("signup_method").notNull().default("unknown"),
   planId: text("plan_id").notNull().default("trial"),
   planExpiresAt: text("plan_expires_at"),
   // Anchors the monthly usage-quota reset to the payment date instead of
