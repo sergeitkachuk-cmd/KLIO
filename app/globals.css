@@ -9398,6 +9398,63 @@ footer nav a {
   line-height: 1.48;
 }
 
+/* Proactive AI-advice banner, deliberately not styled like
+   .content-plan-note above (a fact/status note) — violet + a "КЛИО" badge
+   reads as "this is a suggestion from KLIO", not "here's what happened".
+   Reused across modules by the same renderAdviceTip helper (site owner:
+   "и так же по другим модулям"), so this lives in the shared stylesheet
+   rather than a module-specific one. */
+.advice-tip {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: 4px 15px 4px 4px;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.18), rgba(124, 58, 237, 0.06));
+}
+.advice-tip-badge {
+  flex: 0 0 auto;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.advice-tip p {
+  margin: 0;
+  color: #f5f1ff;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.advice-tip-dismiss {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.advice-tip-dismiss:hover { background: rgba(255, 255, 255, 0.14); color: #fff; }
+[data-theme="light"] .advice-tip {
+  border-color: rgba(124, 58, 237, 0.3);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.12), rgba(124, 58, 237, 0.04));
+}
+[data-theme="light"] .advice-tip p { color: #2b1655; }
+[data-theme="light"] .advice-tip-dismiss { color: rgba(43, 22, 85, 0.5); }
+[data-theme="light"] .advice-tip-dismiss:hover { background: rgba(124, 58, 237, 0.14); color: #2b1655; }
+
 /* Same "no dark ancestor" issue as .content-plan-note above — a direct
    child of .content-plan-shell, which has no background of its own, so
    a light-theme translucent fill and unset (dark, inherited) text color

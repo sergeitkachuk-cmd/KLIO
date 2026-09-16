@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, MouseEvent as ReactMouseEvent, TextareaHTMLAttributes } from "react";
+import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode, TextareaHTMLAttributes } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
@@ -2254,6 +2254,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [generationMode, setGenerationMode] = useState<GenerationMode>("example");
   const [generationError, setGenerationError] = useState("");
   const [toast, setToast] = useState("");
+  // Proactive, dismissible advice banners ("давай сделаем ... советы
+  // всплывающими шапками ... от нашего ии и на базе анализа ии") — a
+  // toast is too transient for advice meant to actually be read and acted
+  // on (2.8s auto-dismiss), so this is its own, separate mechanism: an
+  // inline banner near the relevant module's result, dismissed by hand
+  // and remembered per tip id so it never nags twice. See renderAdviceTip.
+  const [dismissedTips, setDismissedTips] = useState<string[]>([]);
   // All 4 real billing periods (1/3/6/12 months, 0/5/10/20% discount) —
   // was just a monthly/annual boolean, which is where the landing page's
   // pricing drifted from the account cabinet's actual picker (same
@@ -2633,6 +2640,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       } catch {
         // localStorage can throw in some privacy-mode/embedded contexts;
         // theme just stays dark for this visit.
+      }
+    });
+    queueMicrotask(() => {
+      try {
+        const saved = window.localStorage.getItem("clio-dismissed-tips-v1");
+        if (saved) setDismissedTips(JSON.parse(saved));
+      } catch {
+        // A tip just shows again this visit — not worth failing hydration over.
       }
     });
   }, []);
@@ -3054,6 +3069,48 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   function showToast(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(""), 2800);
+  }
+
+  function dismissTip(id: string) {
+    setDismissedTips((current) => {
+      if (current.includes(id)) return current;
+      const next = [...current, id];
+      try {
+        window.localStorage.setItem("clio-dismissed-tips-v1", JSON.stringify(next));
+      } catch {
+        // Dismissal just doesn't survive a reload this time — not worth
+        // blocking the UI update over.
+      }
+      return next;
+    });
+  }
+
+  // Proactive advice, not a fact/status note (see .content-plan-note for
+  // that) — a distinct visual language (violet, "КЛИО" badge) so the two
+  // don't blur together. Any module can call this the same way; content
+  // plan is the first (site owner: "и так же по другим модулям").
+  function renderAdviceTip(id: string, text: ReactNode) {
+    if (dismissedTips.includes(id)) return null;
+    return (
+      <div className="advice-tip" key={id}>
+        <span className="advice-tip-badge">КЛИО</span>
+        <p>{text}</p>
+        <button type="button" className="advice-tip-dismiss" onClick={() => dismissTip(id)} aria-label="Скрыть совет">×</button>
+      </div>
+    );
+  }
+
+  // Mirrors brandProfileCompletion in app/admin/page.tsx (same 16 fields,
+  // same "% заполнен" idea) — kept as a plain duplicate rather than a
+  // shared import since that file is server-only (reads brands.profileJson
+  // directly from the DB) while this one already has the parsed object in
+  // memory as BrandProfile, so there's nothing to actually share besides
+  // the field list itself.
+  function brandProfileFillRatio(profile: BrandProfile): number {
+    const fields: (keyof BrandProfile)[] = ["name", "website", "description", "positioning", "audience", "advantages", "products", "services", "proof", "geography", "vocabulary", "cta", "voice", "restrictions", "signature", "prohibited"];
+    let filled = 0;
+    for (const field of fields) if (profile[field].trim()) filled += 1;
+    return Math.round((filled / fields.length) * 100);
   }
 
   function copyPlainText(value: string, label: string) {
@@ -6046,6 +6103,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </div>
 
                 {contentPlanResult.dataNote && <div className="content-plan-note"><i>i</i><p>{contentPlanResult.dataNote}</p></div>}
+
+                {brandProfileFillRatio(effectiveBrand) < 50 && renderAdviceTip("content-plan-brand-thin", <>Чтобы контент‑план был точнее и разнообразнее, заполните профиль бренда подробнее — вручную или нажмите «Заполнить по сайту с КЛИО» в разделе «Профиль бренда».</>)}
+                {renderAdviceTip("content-plan-regenerate-selected", <>Если какие-то темы не подходят — отметьте их «Выбрать» ниже и нажмите «Заменить выбранные»: КЛИО подберёт другие темы, а остальной план не изменится.</>)}
 
                 <div className="content-plan-actions">
                   <div className="content-plan-toolbar-actions">
