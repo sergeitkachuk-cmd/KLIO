@@ -218,7 +218,7 @@ export function accountSummary(account: typeof accounts.$inferSelect, brandCount
 function assertTrialActive(account: typeof accounts.$inferSelect) {
   if (!isTrialExpired(account)) return;
   throw new WorkspaceAccessError(
-    "Пробный период КЛИО закончился. Напишите нам, чтобы продолжить работу.",
+    "Пробный период КЛИО закончился. Выберите тариф, чтобы продолжить работу.",
     402,
   );
 }
