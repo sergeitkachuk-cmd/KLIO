@@ -5759,6 +5759,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <label className="profile-fill-replace"><input type="checkbox" checked={replaceVoice} onChange={event => setReplaceVoice(event.target.checked)} disabled={voiceBusy || brandAnalyzeBusy}/>Перезаписать поля, которые уже заполнены</label>
                   <small className="profile-fill-replace-help">По умолчанию заполняются только пустые поля.</small>
                   {voiceError && <p className="profile-fill-error" role="alert">{voiceError}</p>}
+                  {/* Not blind: only once real usage exists (lifetimeGenerationsUsed
+                      counts real materials, not drafts) — a brand-new account's
+                      empty voice fields are just the starting state, not a gap. */}
+                  {workspaceAccount.lifetimeGenerationsUsed >= 3 && !brand.voice.trim() && !brand.vocabulary.trim() && renderAdviceTip("brand-voice-thin", <>Вижу, вы уже создали несколько материалов, а голос бренда пока не описан — тексты выходят нейтральными. Заполните «Голос бренда» и «Словарь бренда» ниже или нажмите «Подобрать голос с КЛИО» — и я буду точнее держать вашу интонацию.</>)}
                 </div>
                   <div className="brand-fields">
                     <ProfileField id="brand-voice" label="Голос бренда" help="Интонация, сложность языка, длина фраз и степень эмоциональности."><AutoTextarea id="brand-voice" aria-describedby="brand-voice-help" rows={4} value={brand.voice} onChange={(event) => updateBrand("voice", event.target.value)}/></ProfileField>
@@ -5857,6 +5861,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </div>
                 {semanticError && <p className="generation-error" role="alert">{semanticError}</p>}
                 {semanticAnalysisReady && <div className="semantic-data-note"><i>i</i><p>{semanticResult.dataNote}</p></div>}
+                {semanticAnalysisReady && selectedSemanticKeywords.length === 0 && renderAdviceTip("semantics-select-keywords", <>Я нашла запросы, но пока ни один не выбран — отметьте нужные галочками ниже: так я буду знать, какие фразы обязательно учесть в статье.</>)}
               </div>
 
               {semanticAnalysisReady ? <>
@@ -6066,6 +6071,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <ModuleSelect label="Объём" value={quickLength} help="Если оставить «Автоматически», КЛИО сама оценит объём по формату и задаче — например, короткий пост для соцсетей или полноценную статью. Если результат обычно выходит не того размера, выберите объём вручную." options={QUICK_LENGTH_OPTIONS} onChange={setQuickLength}/>
                   {quickLength === "custom" && <label className="field custom-length">Свой объём<div><input type="number" min="300" max="30000" step="100" value={quickCustomLengthInput} onChange={(event) => setQuickManualLength(event.target.value)} onBlur={commitQuickManualLength} inputMode="numeric"/><span>знаков</span></div><small>Укажите от 300 до 30 000 знаков с пробелами</small></label>}
                   {quickError && <p className="generation-error" role="alert">{quickError}</p>}
+                  {/* Not blind: only after real generator use (not right after
+                      signup) and only while semantics has never been run once —
+                      the moment "на глаз" keyword guessing is the actual pattern,
+                      not a one-off. */}
+                  {workspaceAccount.lifetimeGenerationsUsed >= 3 && semanticMode === "idle" && renderAdviceTip("generator-try-semantics", <>Вижу, вы уже сделали несколько материалов на глаз, без реальных поисковых запросов. Загляните в «Семантика» — я найду формулировки, которые реально ищут по вашей теме, и материалы точнее попадут в спрос.</>)}
                   <button className={`button primary generate ${quickBusy ? "is-busy" : ""}`} type="button" onClick={() => void generateQuick()} disabled={!workspaceReady || quickBusy || aiConnection !== "connected"}><Icon name="spark"/>{quickBusy ? "КЛИО пишет…" : !workspaceReady ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
                 </div>}
                 {generatorMode === "advanced" && <>
@@ -6281,6 +6291,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <div className="editor-tone-picker"><span>Интонация результата</span><div>{styles.map((item) => <button type="button" className={adaptationTone === item ? "active" : ""} onClick={() => { setAdaptationTone(item); setAdaptationResult(null); setAdaptationMode("example"); }} key={item}>{item}</button>)}</div></div>
 
                 <label className="adaptation-brand-switch"><input type="checkbox" checked={useBrand} onChange={(event) => setUseBrand(event.target.checked)}/><i/><span><b>Использовать профиль бренда</b><small>Можно отключить и работать только с исходным текстом</small></span></label>
+                {!useBrand && adaptationSource.trim().length > 0 && brandProfileFillRatio(effectiveBrand) >= 50 && renderAdviceTip("adaptation-use-brand", <>Вижу, профиль бренда неплохо заполнен, но сейчас он выключен — включите его, и я буду держать ваш голос и факты при редактуре, а не просто менять форму текста.</>)}
                 {adaptationError && <p className="generation-error" role="alert">{adaptationError}</p>}
                 <button className={`button primary large adaptation-submit ${adaptationBusy ? "is-busy" : ""}`} type="button" onClick={adaptText} disabled={adaptationBusy || aiConnection !== "connected"}><Icon name="edit"/>{adaptationBusy ? "КЛИО редактирует…" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.editorActionsRemaining <= 0 ? "Лимит AI‑редактуры исчерпан" : `Запустить «${activeAdaptationPlan.title}»`}</button>
                 <small className="adaptation-quota-note">Один запуск расходует одно редакторское действие. Ручное редактирование и копирование бесплатны.</small>
@@ -6307,6 +6318,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
             {!activeBrandId ? <p className="publications-empty-note">Сначала выберите или создайте бренд слева — каналы и календарь публикаций привязаны к нему.</p> : <>
               <p className="publications-vk-note"><b>Пока в тестовом режиме:</b> Telegram публикует текст и изображения; VK — только текстовые посты.</p>
+              {pubChannels.length === 0 && workspaceAccount.lifetimeGenerationsUsed > 0 && renderAdviceTip("publications-connect-channel", <>У вас уже есть готовые материалы, а канал ещё не подключён — нажмите «+ Подключить канал» ниже, и я смогу ставить публикации в календарь прямо в VK или Telegram.</>)}
               <div className="publications-channels-bar">
                 <div className="publications-channels-list">
                   {pubChannels.map((channel) => <span className={`publications-channel-chip publications-channel-chip-${channel.platform}`} key={channel.id}>
