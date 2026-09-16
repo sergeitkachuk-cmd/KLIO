@@ -78,6 +78,18 @@ function daysSince(value: string | null | undefined): number | null {
   return (Date.now() - date.getTime()) / (24 * 60 * 60 * 1000);
 }
 
+// Calendar-day comparison in Moscow time (see formatDate's own comment on
+// why — the host runs UTC), not a rolling 24h window: someone who signed up
+// at 23:50 Moscow time reads as "today" only until midnight, same as a
+// human would judge it, not for a full day afterward.
+function isToday(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  const asMoscowDate = (input: Date) => input.toLocaleDateString("ru-RU", { timeZone: "Europe/Moscow" });
+  return asMoscowDate(date) === asMoscowDate(new Date());
+}
+
 function formatDuration(value: unknown): string {
   const milliseconds = num(value);
   if (milliseconds < 1_000) return `${Math.round(milliseconds)} мс`;
@@ -316,6 +328,7 @@ export default async function AdminPage() {
       displayName: account.displayName,
       emailVerified: account.emailVerified,
       signupMethod: account.signupMethod,
+      registeredToday: isToday(account.createdAt),
       createdAt: account.createdAt,
       planName: plan.name,
       planId: account.planId,
@@ -630,6 +643,7 @@ export default async function AdminPage() {
             socialChannelsTelegram: item.socialChannelsTelegram,
             everPaid: item.everPaid,
             signupMethod: SIGNUP_METHOD_LABELS[item.signupMethod] ?? item.signupMethod,
+            registeredToday: item.registeredToday,
             totalCost: formatUsd(item.totalCostUsd),
             lastCallAt: formatDate(item.lastCallAt),
             invoiceRefs: item.invoiceRefs,
@@ -848,6 +862,12 @@ function AdminStyles() {
       .admin-payment-status-paid { color: #15803d; background: rgba(74, 222, 128, 0.14); font-weight: 700; }
       .admin-payment-status-refunded { color: #475569; background: rgba(148, 163, 184, 0.16); font-weight: 700; }
       .admin-payment-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+      /* "Выделим линией пользователей, которые зарегистрировались сегодня" —
+         a left accent stripe plus a faint tint, not a text badge, so it reads
+         at a glance while scanning the table without adding another column. */
+      .admin-user-row-new > td:first-child { box-shadow: inset 3px 0 0 #22c55e; }
+      .admin-user-row-new > td { background: rgba(34, 197, 94, 0.08); }
+      body[data-admin-theme="dark"] .admin-user-row-new > td { background: rgba(34, 197, 94, 0.13); }
       /* min-width matters as much as max-width here: table-layout:auto is
          free to shrink a wrap-allowed cell all the way down to its longest
          unbreakable word once the other (nowrap) columns' content already
@@ -901,7 +921,11 @@ function AdminStyles() {
       .admin-control-actions button:first-child { background: #4f46e5; border-color: #4f46e5; color: #fff; }
       .admin-danger-button { color: #b91c1c !important; }
       .admin-muted { color: #6b7280; font-size: 12px; }
-      body[data-admin-theme="dark"] { background: #071525; color: #e5e7eb; }
+      /* Deep navy, not near-black — #071525 flat was reading as black on
+         most monitors despite technically having a blue channel. The
+         gradient is fixed so it reads as one continuous backdrop behind the
+         scrolling content instead of tiling/repeating. */
+      body[data-admin-theme="dark"] { background: linear-gradient(160deg, #0a1330 0%, #0d2145 50%, #091a35 100%) fixed; color: #e5e7eb; }
       body[data-admin-theme="light"] { background: #f8fafc; color: #1c1f26; }
       body[data-admin-theme="dark"] .admin-page { color: #e5e7eb; }
       body[data-admin-theme="dark"] .admin-cards article, body[data-admin-theme="dark"] .admin-integration, body[data-admin-theme="dark"] .admin-account-controls { background: #111d2d; border-color: #2c4059; }

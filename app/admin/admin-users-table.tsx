@@ -15,6 +15,7 @@ export type AdminUserRow = {
   publicationsCount: number; everPaid: boolean;
   signupMethod: string;
   socialChannelsVk: number; socialChannelsTelegram: number;
+  registeredToday: boolean;
 };
 type Props = { users: AdminUserRow[] };
 const listValue = (value: string) => value.trim() || "—";
@@ -40,7 +41,7 @@ export function AdminUsersTable({ users }: Props) {
         <thead><tr><th>Email</th><th>Имя</th><th>Тариф</th><th>Действует до</th><th>Генерации</th><th>Семантика</th><th>Редактор</th><th>Брендов</th><th>Расход</th><th>Детали</th></tr></thead>
         <tbody>
           {filteredUsers.map((item) => { const expanded = expandedEmail === item.email; return <Fragment key={item.email}>
-            <tr><td>{item.email}</td><td><span>{item.displayName}</span><small className="admin-user-muted">{item.emailStatus} · {item.createdAt}</small></td><td>{item.planName}</td>
+            <tr className={item.registeredToday ? "admin-user-row-new" : undefined}><td>{item.email}</td><td><span>{item.displayName}</span><small className="admin-user-muted">{item.emailStatus} · {item.createdAt}</small></td><td>{item.planName}</td>
               <td className={`admin-plan-expiry admin-plan-expiry-${item.planExpiryState}`}>{item.planExpires}</td><td>{item.generations}</td><td>{item.research}</td><td>{item.editor}</td><td>{item.brandCount}</td><td>{item.totalCost}</td>
               <td><button type="button" className="admin-details-toggle" onClick={() => setExpandedEmail(expanded ? null : item.email)}>{expanded ? "Свернуть" : "Подробнее"}</button></td></tr>
             {expanded && <tr className="admin-user-details-row"><td colSpan={10}><div className="admin-user-details">
