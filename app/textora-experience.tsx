@@ -801,6 +801,7 @@ const QUICK_LENGTH_OPTIONS = [
   { value: "3500", label: "≈ 3 500 · статья" },
   { value: "6000", label: "≈ 6 000 · подробная статья" },
   { value: "10000", label: "≈ 10 000 · лонгрид" },
+  { value: "custom", label: "Свой объём…" },
 ];
 
 const defaultLengthByFormat: Record<Format, number> = {
@@ -2215,6 +2216,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [generatorMode, setGeneratorMode] = useState<"quick" | "advanced">("quick");
   const [quickPrompt, setQuickPrompt] = useState("");
   const [quickLength, setQuickLength] = useState("auto");
+  // Mirrors length/customLength/manualLengthInput below (Advanced mode's
+  // own custom-length trio) — kept separate because quickLength's value
+  // must stay one of QUICK_LENGTH_OPTIONS' own values ("auto", a preset,
+  // or "custom"), not a raw character count.
+  const [quickCustomLength, setQuickCustomLength] = useState(3500);
+  const [quickCustomLengthInput, setQuickCustomLengthInput] = useState("3500");
   const [quickBusy, setQuickBusy] = useState(false);
   const [quickError, setQuickError] = useState("");
   const [generatorUseBrand, setGeneratorUseBrand] = useState(true);
@@ -3491,6 +3498,21 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     const next = Number.isFinite(parsed) ? Math.min(30000, Math.max(300, Math.round(parsed))) : length;
     setLength(next);
     setManualLengthInput(String(next));
+  }
+
+  function setQuickManualLength(value: string) {
+    setQuickCustomLengthInput(value);
+    if (!value.trim()) return;
+    const next = Number(value);
+    if (!Number.isFinite(next)) return;
+    setQuickCustomLength(Math.min(30000, Math.max(300, Math.round(next))));
+  }
+
+  function commitQuickManualLength() {
+    const parsed = Number(quickCustomLengthInput);
+    const next = Number.isFinite(parsed) ? Math.min(30000, Math.max(300, Math.round(parsed))) : quickCustomLength;
+    setQuickCustomLength(next);
+    setQuickCustomLengthInput(String(next));
   }
 
   // The profile module's own "Компания" field (brand-name input) doubles
@@ -4980,7 +5002,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           brand: generatorBrandReady ? effectiveBrand : undefined,
           // "Автоматически" (default) omits this — KLIO keeps inferring a
           // target length from the task, same as before this control existed.
-          lengthHint: quickLength === "auto" ? undefined : Number(quickLength),
+          lengthHint: quickLength === "auto" ? undefined : quickLength === "custom" ? quickCustomLength : Number(quickLength),
         }),
       });
       const payload = await safeJson(response) as {
@@ -6042,6 +6064,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 {generatorMode === "quick" && <div className="generator-quick">
                   <label className="field"><span className="field-label-help">Опишите задачу для КЛИО<HelpTip label="Опишите задачу для КЛИО" text="Опишите бренд, сайт или тему и что нужно написать — формат, тон и объём КЛИО определит сама. Если назван реальный бренд или сайт, КЛИО проверит факты в вебе, а не будет их выдумывать."/></span><AutoTextarea rows={6} value={quickPrompt} onChange={(event) => setQuickPrompt(event.target.value)} placeholder="Например: напиши SEO-статью про ORCA (сайт theorca.pro) — платформа для трейдеров с no-code сканерами и стратегиями. Аудитория — активные трейдеры."/><small>{generatorBrandReady ? <>Профиль бренда «{effectiveBrand.name}» включён — КЛИО учтёт его факты и голос, если задача с ним связана.</> : "Профиль бренда сейчас не используется — включите его выше и заполните основу, если хотите писать в голосе бренда без пересказа задачи."}</small></label>
                   <ModuleSelect label="Объём" value={quickLength} help="Если оставить «Автоматически», КЛИО сама оценит объём по формату и задаче — например, короткий пост для соцсетей или полноценную статью. Если результат обычно выходит не того размера, выберите объём вручную." options={QUICK_LENGTH_OPTIONS} onChange={setQuickLength}/>
+                  {quickLength === "custom" && <label className="field custom-length">Свой объём<div><input type="number" min="300" max="30000" step="100" value={quickCustomLengthInput} onChange={(event) => setQuickManualLength(event.target.value)} onBlur={commitQuickManualLength} inputMode="numeric"/><span>знаков</span></div><small>Укажите от 300 до 30 000 знаков с пробелами</small></label>}
                   {quickError && <p className="generation-error" role="alert">{quickError}</p>}
                   <button className={`button primary generate ${quickBusy ? "is-busy" : ""}`} type="button" onClick={() => void generateQuick()} disabled={!workspaceReady || quickBusy || aiConnection !== "connected" || workspaceAccount.generationsRemaining <= 0}><Icon name="spark"/>{quickBusy ? "КЛИО пишет…" : !workspaceReady ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
                 </div>}
