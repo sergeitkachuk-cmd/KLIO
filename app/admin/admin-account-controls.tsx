@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type AdminUser = { email: string; displayName: string; planId: string; planName: string; planExpiresAt: string | null };
@@ -9,6 +9,22 @@ export function AdminAccountControls({ users }: { users: AdminUser[] }) {
   const router = useRouter();
   const [email, setEmail] = useState(users[0]?.email ?? "");
   const selected = users.find((user) => user.email === email) ?? users[0];
+  // "Не просто выбор из выпадающего меню, а ещё и поиск" — filters which
+  // <option>s are visible in the select below rather than driving `email`
+  // itself, so a half-typed query can never silently retarget which
+  // account "Удалить аккаунт" acts on.
+  const [query, setQuery] = useState("");
+  const normalizedQuery = query.trim().toLocaleLowerCase("ru-RU");
+  const filteredUsers = useMemo(() => {
+    if (!normalizedQuery) return users;
+    const matches = users.filter((item) => [item.email, item.displayName].some((value) => value.toLocaleLowerCase("ru-RU").includes(normalizedQuery)));
+    // Keep the currently targeted account in the list even if a later
+    // search doesn't match it — otherwise the select would silently show
+    // nothing selected while `email` (and every action below) still points
+    // at them.
+    if (selected && !matches.some((item) => item.email === selected.email)) return [selected, ...matches];
+    return matches;
+  }, [normalizedQuery, users, selected]);
   const [planId, setPlanId] = useState(selected?.planId ?? "trial");
   const [amount, setAmount] = useState("1");
   // Days is the finer-grained alternative to months - a whole month is
@@ -41,7 +57,10 @@ export function AdminAccountControls({ users }: { users: AdminUser[] }) {
   return <section className="admin-block admin-account-controls">
     <div className="admin-block-heading"><div><h2>Управление тарифами</h2><p>Назначайте план и продлевайте доступ клиенту на нужный срок — в месяцах или днях. Нулевой срок очищает платный тариф.</p></div></div>
     {!users.length ? <p className="admin-muted">Пользователей пока нет.</p> : <div className="admin-controls-grid">
-      <label>Клиент<select value={email} onChange={(event) => { setEmail(event.target.value); const next = users.find((item) => item.email === event.target.value); setPlanId(next?.planId ?? "trial"); }}>{users.map((item) => <option key={item.email} value={item.email}>{item.displayName} — {item.email}</option>)}</select></label>
+      <label>Клиент<div className="admin-client-picker">
+        <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск по email или имени" aria-label="Поиск клиента" />
+        <select value={email} onChange={(event) => { setEmail(event.target.value); const next = users.find((item) => item.email === event.target.value); setPlanId(next?.planId ?? "trial"); }}>{filteredUsers.map((item) => <option key={item.email} value={item.email}>{item.displayName} — {item.email}</option>)}</select>
+      </div></label>
       <label>Тариф<select value={planId} onChange={(event) => setPlanId(event.target.value)}><option value="trial">Пробный</option><option value="comp">Тестовый период</option><option value="start">Старт</option><option value="pro">Профи</option><option value="agency">Агентство</option></select></label>
       <label>Продлить на<div className="admin-duration-field">
         <input type="number" min="1" max={unit === "days" ? 3650 : 120} value={amount} onChange={(event) => setAmount(event.target.value)} />

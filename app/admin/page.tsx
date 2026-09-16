@@ -917,6 +917,7 @@ function AdminStyles() {
       .admin-duration-field { display: flex; gap: 6px; }
       .admin-duration-field input { flex: 1 1 auto; min-width: 0; }
       .admin-duration-field select { flex: 0 0 auto; }
+      .admin-client-picker { display: grid; gap: 6px; }
       .admin-control-actions { display: flex; gap: 8px; }
       .admin-control-actions button:first-child { background: #4f46e5; border-color: #4f46e5; color: #fff; }
       .admin-danger-button { color: #b91c1c !important; }
