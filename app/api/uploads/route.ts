@@ -1,7 +1,9 @@
 // Accepts one image file from the browser and stores it in Timeweb S3
-// (see api/_lib/storage.ts), returning a public URL — used by the
-// "Публикации" calendar editor so a person can attach a picture from
-// their own disk instead of only pasting an external link.
+// (see api/_lib/storage.ts), returning a URL on our own domain — used by
+// the "Публикации" calendar editor so a person can attach a picture from
+// their own disk instead of only pasting an external link. The returned
+// URL points at [...key]/route.ts (this same directory), not S3 directly
+// — see uploadPublicationImage's own comment for why.
 //
 // Deliberately its own top-level route rather than an action on
 // api/publications (workspace-account.ts's ensureAccount/session helpers
@@ -14,6 +16,7 @@ import { uploadPublicationImage, StorageError } from "../_lib/storage";
 import { workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 import { readBoundedBody, RequestBodyError } from "../_lib/request-body";
 import { isRateLimited } from "../_lib/rate-limit";
+import { resolveBaseUrl } from "../_lib/base-url";
 
 export async function POST(request: Request) {
   try {
@@ -25,7 +28,7 @@ export async function POST(request: Request) {
     if (!(file instanceof File)) {
       return Response.json({ error: "Файл не передан." }, { status: 400 });
     }
-    const url = await uploadPublicationImage(file, user.email);
+    const url = await uploadPublicationImage(file, user.email, resolveBaseUrl(request));
     return Response.json({ url }, { status: 201 });
   } catch (error) {
     if (error instanceof RequestBodyError) return Response.json({ error: error.message }, { status: error.status });
