@@ -4,7 +4,7 @@ import { getCurrentUser } from "../identity";
 import { isAdminEmail } from "../api/_lib/admin";
 import type { AiOperation } from "../api/_lib/ai-config";
 import { getDb } from "../../db";
-import { accounts, aiUsage, asyncJobs, brands, emailVerifications, generations, invoices, materials, passwordResets, payments, sessions } from "../../db/schema";
+import { accounts, aiUsage, asyncJobs, brands, emailVerifications, generations, invoices, materials, passwordResets, payments, publications, sessions } from "../../db/schema";
 import { planRule, planExpiryState, formatPlanExpiry } from "../plans";
 import { billingDescription, type BillingPeriod } from "../billing-pricing";
 import { getExternalServiceStatuses } from "../api/_lib/external-service-status";
@@ -45,6 +45,36 @@ function formatDate(value: string | null | undefined): string {
 
 function formatNumber(value: number): string {
   return value.toLocaleString("ru-RU");
+}
+
+// Mirrors BrandProfile in app/textora-experience.tsx (kept as a plain
+// duplicate list rather than a shared import — see the SeoAuditReport
+// mirror comment there for why this file has no existing pattern of
+// importing client-side types). Site owner asked for "насколько процентов
+// заполнен профиль бренда" instead of just a brand count — this is that
+// percentage: how many of the profile's real content fields are non-empty,
+// not just whether a brand row exists at all.
+const BRAND_PROFILE_FIELDS = ["name", "website", "description", "positioning", "audience", "advantages", "products", "services", "proof", "geography", "vocabulary", "cta", "voice", "restrictions", "signature", "prohibited"] as const;
+
+function brandProfileCompletion(profileJson: string): number {
+  try {
+    const parsed = JSON.parse(profileJson) as Record<string, unknown>;
+    let filled = 0;
+    for (const field of BRAND_PROFILE_FIELDS) {
+      const value = parsed[field];
+      if (typeof value === "string" && value.trim()) filled += 1;
+    }
+    return Math.round((filled / BRAND_PROFILE_FIELDS.length) * 100);
+  } catch {
+    return 0;
+  }
+}
+
+function daysSince(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return (Date.now() - date.getTime()) / (24 * 60 * 60 * 1000);
 }
 
 function formatDuration(value: unknown): string {
@@ -126,7 +156,7 @@ export default async function AdminPage() {
     await db.delete(accounts).where(eq(accounts.email, stale.email));
   }
 
-  const [userRows, usageByUser, brandCounts, invoiceRefsByUser, transactionRefsByUser, totalsRows, last30Rows, byModelRows, byOperationRows, recentAiRows, externalServices, paymentRows] = await Promise.all([
+  const [userRows, usageByUser, brandRows, invoiceRefsByUser, transactionRefsByUser, totalsRows, last30Rows, byModelRows, byOperationRows, recentAiRows, externalServices, paymentRows, generationsByOriginRows, materialsByTypeRows, publicationsByOwnerRows, paidPaymentOwners, paidInvoiceOwners] = await Promise.all([
     db.select().from(accounts).orderBy(desc(accounts.createdAt)),
     db.select({
       ownerEmail: aiUsage.ownerEmail,
@@ -135,10 +165,16 @@ export default async function AdminPage() {
       totalTokens: sql<number>`coalesce(sum(${aiUsage.totalTokens}), 0)`,
       lastCallAt: sql<string>`max(${aiUsage.createdAt})`,
     }).from(aiUsage).groupBy(aiUsage.ownerEmail),
+    // Full profileJson per brand (not just a count) — needed for the
+    // "% заполнен профиль бренда" breakdown below. brandMap (count) and
+    // brandProfileMap (completion of the most recently updated brand) are
+    // both derived from this single fetch in JS instead of two queries.
     db.select({
+      id: brands.id,
       ownerEmail: brands.ownerEmail,
-      count: sql<number>`count(*)`,
-    }).from(brands).groupBy(brands.ownerEmail),
+      profileJson: brands.profileJson,
+      updatedAt: brands.updatedAt,
+    }).from(brands),
     db.select({
       ownerEmail: invoices.ownerEmail,
       invoiceRefs: sql<string>`coalesce(string_agg(distinct ${invoices.tochkaDocumentId}, ', '), '')`,
@@ -190,16 +226,72 @@ export default async function AdminPage() {
     // Tochka's own dashboard by its id/operationId instead of guessing from
     // the rolled-up "Операции" field on the users table.
     db.select().from(payments).orderBy(desc(payments.createdAt)).limit(200),
+    // Breaks the old single "Генерации" count into what it's actually made
+    // of — origin distinguishes a generator-written text from an edited one
+    // from a manual entry pasted into the Публикации calendar (site owner:
+    // "сколько создано текстов, сколько редакторских... чтобы это было не
+    // общее обозначение").
+    db.select({
+      ownerEmail: generations.ownerEmail,
+      origin: generations.origin,
+      count: sql<number>`count(*)`,
+    }).from(generations).groupBy(generations.ownerEmail, generations.origin),
+    // materials.type is "content_plan" | "semantics" | "competitors" (see
+    // SavedMaterialType in app/textora-experience.tsx) — the other half of
+    // "сколько контент-плана" etc.
+    db.select({
+      ownerEmail: materials.ownerEmail,
+      type: materials.type,
+      count: sql<number>`count(*)`,
+    }).from(materials).groupBy(materials.ownerEmail, materials.type),
+    db.select({
+      ownerEmail: publications.ownerEmail,
+      count: sql<number>`count(*)`,
+    }).from(publications).groupBy(publications.ownerEmail),
+    // "Ever paid" for the funnel below — checked separately from the
+    // account's current planId, since a lapsed/expired paid plan falls
+    // back to "trial" but the account genuinely did convert once.
+    db.select({ ownerEmail: payments.ownerEmail }).from(payments).where(eq(payments.status, "paid")).groupBy(payments.ownerEmail),
+    db.select({ ownerEmail: invoices.ownerEmail }).from(invoices).where(eq(invoices.paymentStatus, "payment_paid")).groupBy(invoices.ownerEmail),
   ]);
 
   const usageMap = new Map(usageByUser.map((row) => [row.ownerEmail, row]));
-  const brandMap = new Map(brandCounts.map((row) => [row.ownerEmail, num(row.count)]));
+  const brandMap = new Map<string, number>();
+  const brandLatestByOwner = new Map<string, { updatedAt: string; profileJson: string }>();
+  for (const brand of brandRows) {
+    brandMap.set(brand.ownerEmail, (brandMap.get(brand.ownerEmail) ?? 0) + 1);
+    const existing = brandLatestByOwner.get(brand.ownerEmail);
+    if (!existing || brand.updatedAt > existing.updatedAt) brandLatestByOwner.set(brand.ownerEmail, brand);
+  }
+  const brandProfileMap = new Map<string, number>();
+  for (const [ownerEmail, brand] of brandLatestByOwner) brandProfileMap.set(ownerEmail, brandProfileCompletion(brand.profileJson));
+  const generationsByOwner = new Map<string, { generator: number; editor: number; manual: number }>();
+  for (const row of generationsByOriginRows) {
+    const entry = generationsByOwner.get(row.ownerEmail) ?? { generator: 0, editor: 0, manual: 0 };
+    if (row.origin === "generator") entry.generator += num(row.count);
+    else if (row.origin === "editor") entry.editor += num(row.count);
+    else if (row.origin === "manual") entry.manual += num(row.count);
+    generationsByOwner.set(row.ownerEmail, entry);
+  }
+  const materialsByOwner = new Map<string, { contentPlan: number; semantics: number; competitors: number }>();
+  for (const row of materialsByTypeRows) {
+    const entry = materialsByOwner.get(row.ownerEmail) ?? { contentPlan: 0, semantics: 0, competitors: 0 };
+    if (row.type === "content_plan") entry.contentPlan += num(row.count);
+    else if (row.type === "semantics") entry.semantics += num(row.count);
+    else if (row.type === "competitors") entry.competitors += num(row.count);
+    materialsByOwner.set(row.ownerEmail, entry);
+  }
+  const publicationsMap = new Map(publicationsByOwnerRows.map((row) => [row.ownerEmail, num(row.count)]));
+  const paidOwners = new Set([...paidPaymentOwners.map((row) => row.ownerEmail), ...paidInvoiceOwners.map((row) => row.ownerEmail)]);
   const invoiceMap = new Map(invoiceRefsByUser.map((row) => [row.ownerEmail, row]));
   const transactionMap = new Map(transactionRefsByUser.map((row) => [row.ownerEmail, row.transactionRefs]));
 
   const users = userRows.map((account) => {
     const plan = planRule(account.planId);
     const usage = usageMap.get(account.email);
+    const gen = generationsByOwner.get(account.email) ?? { generator: 0, editor: 0, manual: 0 };
+    const mat = materialsByOwner.get(account.email) ?? { contentPlan: 0, semantics: 0, competitors: 0 };
+    const modulesUsed = [gen.generator > 0, gen.editor > 0, mat.contentPlan > 0, mat.semantics > 0, mat.competitors > 0].filter(Boolean).length;
     return {
       email: account.email,
       displayName: account.displayName,
@@ -215,6 +307,16 @@ export default async function AdminPage() {
       editorActionsUsed: account.editorActionsUsed,
       editorActionLimit: plan.editorActionLimit,
       brandCount: brandMap.get(account.email) ?? 0,
+      brandProfileCompletion: brandProfileMap.get(account.email) ?? null,
+      textsGenerated: gen.generator,
+      textsEdited: gen.editor,
+      textsManual: gen.manual,
+      contentPlans: mat.contentPlan,
+      semanticsRuns: mat.semantics,
+      competitorAnalyses: mat.competitors,
+      publicationsCount: publicationsMap.get(account.email) ?? 0,
+      modulesUsed,
+      everPaid: paidOwners.has(account.email),
       totalCostUsd: num(usage?.totalCostUsd),
       totalCalls: num(usage?.totalCalls),
       totalTokens: num(usage?.totalTokens),
@@ -230,6 +332,28 @@ export default async function AdminPage() {
   const totals = totalsRows[0] ?? { totalCostUsd: 0, totalCalls: 0, totalTokens: 0 };
   const last30 = last30Rows[0] ?? { totalCostUsd: 0, totalCalls: 0 };
   const verifiedCount = users.filter((item) => item.emailVerified).length;
+
+  // Activation/retention funnel — "чтобы понимать и делать анализ по
+  // подписчикам, что заходит, а что нет, на каких этапах отваливаются".
+  // Every stage is derived from data already collected for other reasons
+  // (no new tracking/instrumentation needed): a real account never reaches
+  // "оплатили тариф" without genuinely converting, "создали первый
+  // материал" is any of the six content-producing actions across
+  // generations/materials, and "активны за 30 дней" reuses the same
+  // aiUsage.lastCallAt already shown per user. Kept as plain current-state
+  // counts (not a time-boxed cohort) for this first version — a "signups
+  // from October reached stage X by November" cohort view is a natural
+  // next step once this is useful enough to want that precision.
+  const funnelStages = [
+    { id: "registered", label: "Зарегистрировались", count: users.length },
+    { id: "verified", label: "Подтвердили почту", count: verifiedCount },
+    { id: "brand", label: "Создали профиль бренда", count: users.filter((item) => item.brandCount > 0).length },
+    { id: "brand-filled", label: "Заполнили профиль бренда ≥50%", count: users.filter((item) => (item.brandProfileCompletion ?? 0) >= 50).length },
+    { id: "first-material", label: "Создали первый материал", count: users.filter((item) => item.textsGenerated + item.textsEdited + item.textsManual + item.contentPlans + item.semanticsRuns + item.competitorAnalyses > 0).length },
+    { id: "multi-module", label: "Использовали 2+ инструмента", count: users.filter((item) => item.modulesUsed >= 2).length },
+    { id: "paid", label: "Оплатили тариф", count: users.filter((item) => item.everPaid).length },
+    { id: "active-30d", label: "Активны за последние 30 дней", count: users.filter((item) => { const days = daysSince(item.lastCallAt); return days !== null && days <= 30; }).length },
+  ];
 
   // One section per former top-to-bottom block, now shown one at a time
   // behind the sidebar (see AdminShell) instead of all stacked on one
@@ -352,6 +476,36 @@ export default async function AdminPage() {
     ),
   });
   sections.push({
+    id: "funnel",
+    label: "Воронка",
+    content: (
+      <section className="admin-block admin-funnel-block">
+        <div className="admin-block-heading">
+          <div>
+            <h2>Воронка вовлечения</h2>
+            <p>Текущее число аккаунтов на каждом этапе — не когорта по дате регистрации, а срез «сколько дошло до этого прямо сейчас». % — доля от всех зарегистрированных; «от пред. этапа» — доля от количества на предыдущей строке, то есть где именно теряется больше всего.</p>
+          </div>
+        </div>
+        <div className="admin-funnel">
+          {funnelStages.map((stage, index) => {
+            const pctOfTotal = users.length ? Math.round((stage.count / users.length) * 100) : 0;
+            const previous = funnelStages[index - 1];
+            const pctOfPrevious = previous && previous.count ? Math.round((stage.count / previous.count) * 100) : null;
+            return (
+              <div className="admin-funnel-row" key={stage.id}>
+                <span className="admin-funnel-label">{stage.label}</span>
+                <div className="admin-funnel-track"><div className="admin-funnel-fill" style={{ width: `${pctOfTotal}%` }} /></div>
+                <span className="admin-funnel-count">{formatNumber(stage.count)}</span>
+                <span className="admin-funnel-pct">{pctOfTotal}%{pctOfPrevious !== null ? ` · от пред. этапа ${pctOfPrevious}%` : ""}</span>
+              </div>
+            );
+          })}
+          {!users.length && <p className="admin-empty-row">Пока нет ни одного аккаунта.</p>}
+        </div>
+      </section>
+    ),
+  });
+  sections.push({
     id: "users",
     label: "Пользователи",
     badge: String(activeUsers.length),
@@ -371,6 +525,15 @@ export default async function AdminPage() {
             research: `${item.researchUsed} / ${item.researchLimit}`,
             editor: `${item.editorActionsUsed} / ${item.editorActionLimit}`,
             brandCount: item.brandCount,
+            brandProfileCompletion: item.brandProfileCompletion,
+            textsGenerated: item.textsGenerated,
+            textsEdited: item.textsEdited,
+            textsManual: item.textsManual,
+            contentPlans: item.contentPlans,
+            semanticsRuns: item.semanticsRuns,
+            competitorAnalyses: item.competitorAnalyses,
+            publicationsCount: item.publicationsCount,
+            everPaid: item.everPaid,
             totalCost: formatUsd(item.totalCostUsd),
             lastCallAt: formatDate(item.lastCallAt),
             invoiceRefs: item.invoiceRefs,
@@ -600,6 +763,14 @@ function AdminStyles() {
          already turns into a horizontal scrollbar rather than a crush. */
       .admin-ai-error { min-width: 150px; max-width: 320px; white-space: normal !important; overflow-wrap: anywhere; }
       .admin-empty-row { color: #9ca3af; white-space: normal; }
+      .admin-funnel { display: grid; gap: 10px; }
+      .admin-funnel-row { display: grid; grid-template-columns: 240px minmax(0,1fr) 60px 190px; align-items: center; gap: 12px; }
+      .admin-funnel-label { font-size: 13px; font-weight: 600; }
+      .admin-funnel-track { position: relative; height: 20px; border-radius: 999px; background: rgba(148, 163, 184, 0.18); overflow: hidden; }
+      .admin-funnel-fill { height: 100%; border-radius: 999px; background: #4f46e5; }
+      .admin-funnel-count { text-align: right; font-weight: 700; font-size: 13px; }
+      .admin-funnel-pct { font-size: 12px; color: #6b7280; white-space: nowrap; }
+      @media (max-width: 800px) { .admin-funnel-row { grid-template-columns: 1fr; gap: 4px; } .admin-funnel-count, .admin-funnel-pct { text-align: left; } }
       .admin-table-scroll { overflow-x: auto; border: 1px solid rgba(148, 163, 184, 0.24); border-radius: 16px; scrollbar-color: #64748b transparent; scrollbar-width: thin; }
       .admin-table-scroll::-webkit-scrollbar { height: 8px; }
       .admin-table-scroll::-webkit-scrollbar-track { background: transparent; }

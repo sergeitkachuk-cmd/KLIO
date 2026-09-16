@@ -6,6 +6,13 @@ export type AdminUserRow = {
   email: string; displayName: string; emailStatus: string; createdAt: string; planName: string; planExpires: string;
   planExpiryState: "soon" | "critical" | "expired" | "missing" | "normal"; generations: string; research: string; editor: string;
   brandCount: number; totalCost: string; lastCallAt: string; invoiceRefs: string; transactionRefs: string; payerNames: string;
+  // Detailed usage breakdown (site owner: "чтобы это было не общее
+  // обозначение") — null completion means the account has no brand at all,
+  // distinct from 0% (a brand row exists but nothing in it is filled in).
+  brandProfileCompletion: number | null;
+  textsGenerated: number; textsEdited: number; textsManual: number;
+  contentPlans: number; semanticsRuns: number; competitorAnalyses: number;
+  publicationsCount: number; everPaid: boolean;
 };
 type Props = { users: AdminUserRow[] };
 const listValue = (value: string) => value.trim() || "—";
@@ -34,7 +41,18 @@ export function AdminUsersTable({ users }: Props) {
             <tr><td>{item.email}</td><td><span>{item.displayName}</span><small className="admin-user-muted">{item.emailStatus} · {item.createdAt}</small></td><td>{item.planName}</td>
               <td className={`admin-plan-expiry admin-plan-expiry-${item.planExpiryState}`}>{item.planExpires}</td><td>{item.generations}</td><td>{item.research}</td><td>{item.editor}</td><td>{item.brandCount}</td><td>{item.totalCost}</td>
               <td><button type="button" className="admin-details-toggle" onClick={() => setExpandedEmail(expanded ? null : item.email)}>{expanded ? "Свернуть" : "Подробнее"}</button></td></tr>
-            {expanded && <tr className="admin-user-details-row"><td colSpan={10}><div className="admin-user-details"><div><b>Почта:</b> {item.emailStatus}</div><div><b>Регистрация:</b> {item.createdAt}</div><div><b>Последний вызов ИИ:</b> {item.lastCallAt}</div><div className="admin-user-details-wide"><b>Счета:</b> {listValue(item.invoiceRefs)}</div><div className="admin-user-details-wide"><b>Операции:</b> {listValue(item.transactionRefs)}</div><div className="admin-user-details-wide"><b>Плательщик:</b> {listValue(item.payerNames)}</div></div></td></tr>}
+            {expanded && <tr className="admin-user-details-row"><td colSpan={10}><div className="admin-user-details">
+              <div><b>Почта:</b> {item.emailStatus}</div><div><b>Регистрация:</b> {item.createdAt}</div><div><b>Последний вызов ИИ:</b> {item.lastCallAt}</div>
+              <div><b>Профиль бренда заполнен:</b> {item.brandProfileCompletion === null ? "бренд не создан" : `${item.brandProfileCompletion}%`}</div>
+              <div><b>Тексты (генератор):</b> {item.textsGenerated}</div>
+              <div><b>Тексты (редактор):</b> {item.textsEdited}</div>
+              <div><b>Тексты (вручную):</b> {item.textsManual}</div>
+              <div><b>Контент-планы:</b> {item.contentPlans}</div>
+              <div><b>Семантика:</b> {item.semanticsRuns}</div>
+              <div><b>Анализ конкурентов:</b> {item.competitorAnalyses}</div>
+              <div><b>Публикации:</b> {item.publicationsCount}</div>
+              <div><b>Когда-либо оплачивал:</b> {item.everPaid ? "Да" : "Нет"}</div>
+              <div className="admin-user-details-wide"><b>Счета:</b> {listValue(item.invoiceRefs)}</div><div className="admin-user-details-wide"><b>Операции:</b> {listValue(item.transactionRefs)}</div><div className="admin-user-details-wide"><b>Плательщик:</b> {listValue(item.payerNames)}</div></div></td></tr>}
           </Fragment>; })}
           {!filteredUsers.length && <tr><td colSpan={10} className="admin-empty-row">По этому запросу клиентов не найдено.</td></tr>}
         </tbody>
