@@ -165,8 +165,14 @@ function AccountStyles() {
       .account-plan-head h2 { margin: 6px 0 6px; font-size: 30px; }
       .account-plan-head small { color: rgba(255,255,255,0.55); font-size: 14px; }
       .account-plan-expiry { display: block; margin-top: 6px; font-weight: 700; }
-      .account-plan-expiry-soon, .account-plan-expiry-missing { color: #fbbf24; }
-      .account-plan-expiry-critical, .account-plan-expiry-expired { color: #f87171; }
+      /* Scoped by the .account-plan-head ancestor (not just the bare class)
+         so this beats .account-plan-head small above on specificity alone
+         (0,2,0 > 0,1,1) - without it, that generic small-text color rule
+         silently wins and the state color never actually renders, however
+         urgent the real countdown is (confirmed live: a same-day trial
+         expiry showed as plain grey text, not red). */
+      .account-plan-head .account-plan-expiry-soon, .account-plan-head .account-plan-expiry-missing { color: #fbbf24; }
+      .account-plan-head .account-plan-expiry-critical, .account-plan-head .account-plan-expiry-expired { color: #f87171; }
       .account-upgrade { flex-shrink: 0; padding: 11px 18px; border-radius: 999px; color: var(--night); font-size: 15px; font-weight: 700; text-decoration: none; background: var(--acid); }
       .account-upgrade:hover { opacity: 0.88; }
       .account-billing-card h2 { margin: 0 0 8px; font-size: 28px; }
@@ -251,8 +257,8 @@ function AccountStyles() {
       [data-theme="light"] .account-card > span { color: #2452b8; }
       [data-theme="light"] .account-plan-head span { color: #2452b8; }
       [data-theme="light"] .account-plan-head small { color: rgba(13,27,49,0.5); }
-      [data-theme="light"] .account-plan-expiry-soon, [data-theme="light"] .account-plan-expiry-missing { color: #b45309; }
-      [data-theme="light"] .account-plan-expiry-critical, [data-theme="light"] .account-plan-expiry-expired { color: #b91c1c; }
+      [data-theme="light"] .account-plan-head .account-plan-expiry-soon, [data-theme="light"] .account-plan-head .account-plan-expiry-missing { color: #b45309; }
+      [data-theme="light"] .account-plan-head .account-plan-expiry-critical, [data-theme="light"] .account-plan-head .account-plan-expiry-expired { color: #b91c1c; }
       [data-theme="light"] .account-billing-lead, [data-theme="light"] .account-select-label, [data-theme="light"] .account-billing-consent { color: rgba(13,27,49,0.62); }
       [data-theme="light"] .account-select-trigger { border-color: rgba(15,23,42,0.16); background: rgba(255,255,255,0.7); color: #0d1b31; }
       [data-theme="light"] .account-select-trigger.is-open { border-color: #5b4bb7; box-shadow: 0 0 0 2px rgba(91,75,183,0.16); }

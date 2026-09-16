@@ -2116,10 +2116,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }
 
   // Uploads straight from the person's disk to Timeweb S3 (api/uploads ->
-  // api/_lib/storage.ts) and drops the resulting public URL into the same
-  // imageUrl field a pasted external link would fill — the rest of the
-  // editor and the publish pipeline never need to know which path a URL
-  // came from.
+  // api/_lib/storage.ts) and stores the resulting URL in imageUrl. Pasting
+  // an external URL directly used to be supported here too, but the site
+  // owner asked to drop it (upload-only is simpler, and the raw URL text
+  // wasn't something a client needed to see or edit by hand).
   async function uploadPubImage(file: File) {
     setPubImageUploadError("");
     setPubImageUploadBusy(true);
@@ -5586,17 +5586,17 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <label className="publications-editor-field"><span>Заголовок <small>необязательно</small></span><AutoTextarea rows={1} value={pubEditor.title} onChange={(event) => setPubEditor((current) => current && { ...current, title: event.target.value })}/></label>
               <label className="publications-editor-field"><span>Текст публикации</span><AutoTextarea rows={8} value={pubEditor.body} onChange={(event) => setPubEditor((current) => current && { ...current, body: event.target.value })} placeholder="Текст, который уйдёт в канал"/></label>
               <div className="publications-editor-field">
-                <span>Картинка <small>с диска или по ссылке</small></span>
+                <span>Картинка</span>
                 <div className="publications-image-row">
-                  <input type="text" value={pubEditor.imageUrl} onChange={(event) => setPubEditor((current) => current && { ...current, imageUrl: event.target.value })} placeholder="https://…"/>
                   <label className={`publications-upload-button ${pubImageUploadBusy ? "is-busy" : ""}`}>
-                    {pubImageUploadBusy ? "Загрузка…" : "Загрузить"}
+                    {pubImageUploadBusy ? "Загрузка…" : pubEditor.imageUrl ? "Заменить картинку" : "Загрузить картинку"}
                     <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden disabled={pubImageUploadBusy} onChange={(event) => {
                       const file = event.target.files?.[0];
                       event.target.value = "";
                       if (file) void uploadPubImage(file);
                     }}/>
                   </label>
+                  {pubEditor.imageUrl && <button type="button" className="publications-image-remove" onClick={() => setPubEditor((current) => current && { ...current, imageUrl: "" })} disabled={pubImageUploadBusy}>Открепить</button>}
                 </div>
               </div>
               {pubImageUploadError && <p role="alert">{pubImageUploadError}</p>}
