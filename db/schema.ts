@@ -46,6 +46,14 @@ export const accounts = pgTable("accounts", {
   // checkout doesn't burn it. Null means still available (subject to the
   // launch window's own deadline).
   launchDiscountUsedAt: text("launch_discount_used_at"),
+  // Set when the workspace "Задать вопрос" modal is opened (see PATCH
+  // /api/feedback) — drives the unread-announcement count the same way
+  // feedbackMessages.readAt drives unread replies, without a separate
+  // per-account-per-announcement read-tracking table. A brand new account
+  // has no row here yet, so its baseline is its own createdAt (an
+  // announcement sent before signup is still visible in the list, just
+  // never counted as "new").
+  lastSeenAnnouncementAt: text("last_seen_announcement_at"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
@@ -122,6 +130,24 @@ export const feedbackMessages = pgTable("feedback_messages", {
 }, (table) => [
   index("feedback_messages_created_idx").on(table.createdAt),
   index("feedback_messages_owner_idx").on(table.ownerEmail, table.createdAt),
+]);
+
+// Admin-authored, one-way — the opposite direction of feedbackMessages
+// above (site owner writing to clients, not replying to them). Shown in
+// the same workspace "Задать вопрос" modal, above the Q&A history.
+// recipientEmail null means every client sees it (site owner: "с выбором
+// все или кому-то конкретному" — a broadcast); set means only that one
+// account's own list includes it. In-app only, no email — the site owner
+// picked that over a mass-email channel specifically to skip the separate
+// marketing-consent requirement a real newsletter would need in Russia.
+export const announcements = pgTable("announcements", {
+  id: text("id").primaryKey(),
+  message: text("message").notNull(),
+  recipientEmail: text("recipient_email"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  index("announcements_created_idx").on(table.createdAt),
+  index("announcements_recipient_idx").on(table.recipientEmail, table.createdAt),
 ]);
 
 export const sessions = pgTable("sessions", {

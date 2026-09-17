@@ -4,7 +4,7 @@ import { getCurrentUser } from "../identity";
 import { isAdminEmail } from "../api/_lib/admin";
 import type { AiOperation } from "../api/_lib/ai-config";
 import { getDb } from "../../db";
-import { accounts, aiUsage, asyncJobs, brands, emailVerifications, feedbackMessages, generations, invoices, materials, passwordResets, payments, publications, sessions, socialChannels } from "../../db/schema";
+import { accounts, aiUsage, announcements, asyncJobs, brands, emailVerifications, feedbackMessages, generations, invoices, materials, passwordResets, payments, publications, sessions, socialChannels } from "../../db/schema";
 import { planRule, planExpiryState, formatPlanExpiry } from "../plans";
 import { billingDescription, type BillingPeriod } from "../billing-pricing";
 import { getExternalServiceStatuses } from "../api/_lib/external-service-status";
@@ -13,6 +13,7 @@ import { AdminThemeToggle } from "./admin-theme-toggle";
 import { AdminAccountControls } from "./admin-account-controls";
 import { AdminUsersTable, type AdminUserRow } from "./admin-users-table";
 import { AdminFeedbackTable } from "./admin-feedback-table";
+import { AdminAnnouncements } from "./admin-announcements";
 import { AdminShell, type AdminSection } from "./admin-shell";
 
 export const metadata = { title: "КЛИО / Админка" };
@@ -374,6 +375,9 @@ export default async function AdminPage() {
   // separate query rather than folded into the big Promise.all above since
   // it's not part of the per-user usage rollup, just its own small list.
   const feedbackRows = await db.select().from(feedbackMessages).orderBy(desc(feedbackMessages.createdAt)).limit(200);
+  // Admin-authored messages to clients (see app/api/admin/announcements/
+  // route.ts) — the opposite direction of feedbackRows above.
+  const announcementRows = await db.select().from(announcements).orderBy(desc(announcements.createdAt)).limit(200);
 
   const totals = totalsRows[0] ?? { totalCostUsd: 0, totalCalls: 0, totalTokens: 0 };
   const last30 = last30Rows[0] ?? { totalCostUsd: 0, totalCalls: 0 };
@@ -780,6 +784,23 @@ export default async function AdminPage() {
     ),
   });
 
+  sections.push({
+    id: "announcements",
+    label: "Написать клиентам",
+    badge: String(announcementRows.length),
+    content: (
+      <AdminAnnouncements
+        users={activeUsers.map((item) => ({ email: item.email, displayName: item.displayName }))}
+        rows={announcementRows.map((item) => ({
+          id: item.id,
+          message: item.message,
+          recipientEmail: item.recipientEmail,
+          createdAt: formatDate(item.createdAt),
+        }))}
+      />
+    ),
+  });
+
   return (
     <main className="admin-page">
       <AdminStyles />
@@ -947,10 +968,6 @@ function AdminStyles() {
       .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
       .admin-table th, .admin-table td { text-align: left; padding: 9px 10px; border-bottom: 1px solid rgba(148, 163, 184, 0.18); white-space: nowrap; }
       .admin-table th { color: #6b7280; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
-      /* Overrides the table's default nowrap - a feedback message is prose,
-         not a short field, so it needs to wrap within a capped width
-         instead of forcing one giant single-line cell (and the whole
-         table's horizontal scroll) per message. */
       /* The base ".admin-table td" rule's white-space: nowrap (above) is
          what actually stopped this from wrapping — a plain .admin-feedback-
          message override (specificity 0,1,0) silently lost to that rule
@@ -969,6 +986,15 @@ function AdminStyles() {
       .admin-feedback-reply-actions { display: flex; gap: 8px; margin-top: 6px; }
       .admin-feedback-reply-error { margin: 6px 0 0; color: #b91c1c; font-size: 12px; }
       body[data-admin-theme="dark"] .admin-feedback-reply textarea { background: #171d3d; border-color: rgba(139, 110, 255, 0.3); color: #e5e7eb; }
+      .admin-announcement-field { display: grid; gap: 6px; margin-bottom: 14px; color: #6b7280; font-size: 12px; font-weight: 700; }
+      .admin-announcement-field textarea { width: 100%; min-height: 90px; border: 1px solid #d1d5db; border-radius: 9px; padding: 8px 10px; background: #fff; color: #1c1f26; font: inherit; font-size: 13px; resize: vertical; }
+      body[data-admin-theme="dark"] .admin-announcement-field textarea { background: #171d3d; border-color: rgba(139, 110, 255, 0.3); color: #e5e7eb; }
+      .admin-announcements-list { display: grid; gap: 10px; margin-top: 18px; }
+      .admin-announcement-row { padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; }
+      body[data-admin-theme="dark"] .admin-announcement-row { background: #171d3d; border-color: rgba(139, 110, 255, 0.24); }
+      .admin-announcement-row-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; font-size: 12px; font-weight: 700; color: #4f46e5; }
+      .admin-announcement-row-head small { color: #6b7280; font-weight: 500; }
+      .admin-announcement-row p { margin: 0; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
       .admin-plan-expiry-soon { color: #b45309; background: rgba(251, 191, 36, 0.12); font-weight: 700; }
       .admin-plan-expiry-critical, .admin-plan-expiry-expired { color: #b91c1c; background: rgba(248, 113, 113, 0.13); font-weight: 700; }
       .admin-plan-expiry-missing { color: #92400e; background: rgba(251, 191, 36, 0.16); font-weight: 700; }

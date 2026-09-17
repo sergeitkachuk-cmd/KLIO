@@ -12532,6 +12532,34 @@ input[type="radio"] {
 .feedback-modal-entry-answer { color: #d8ff65; }
 .feedback-modal-entry-pending { color: rgba(255, 255, 255, 0.5); font-style: italic; }
 
+/* Same violet "КЛИО is speaking" language as .advice-tip elsewhere in the
+   workspace — one-way announcements read as the site owner talking to the
+   visitor, distinct from the neutral Q&A history below it. */
+.feedback-modal-announcements { display: grid; gap: 10px; }
+.feedback-modal-announcement {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: 4px 14px 4px 4px;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.18), rgba(124, 58, 237, 0.06));
+}
+.feedback-modal-announcement-badge {
+  flex: 0 0 auto;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.feedback-modal-announcement p { margin: 0; color: #f5f1ff; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+
 .publications-editor-modal::-webkit-scrollbar,
 .publications-channel-modal::-webkit-scrollbar { width: 10px; }
 

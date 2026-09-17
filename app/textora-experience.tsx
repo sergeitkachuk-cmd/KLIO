@@ -273,6 +273,11 @@ type WorkspaceAccount = {
 // answers it from /admin).
 type FeedbackMessageRecord = { id: string; message: string; reply: string | null; createdAt: string; repliedAt: string | null };
 
+// Mirrors a row of announcements (db/schema.ts) — the opposite direction of
+// FeedbackMessageRecord above (site owner writing to clients, not replying
+// to their questions). One-way: no reply field, nothing to answer here.
+type AnnouncementRecord = { id: string; message: string; createdAt: string };
+
 type BrandWorkspaceSnapshot = {
   useBrand?: boolean;
   profileMode?: ProfileMode;
@@ -2373,6 +2378,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [feedbackBusy, setFeedbackBusy] = useState(false);
   const [feedbackError, setFeedbackError] = useState("");
   const [feedbackHistory, setFeedbackHistory] = useState<FeedbackMessageRecord[]>([]);
+  const [announcements, setAnnouncements] = useState<AnnouncementRecord[]>([]);
   const [feedbackUnread, setFeedbackUnread] = useState(0);
   const [newBrandName, setNewBrandName] = useState("");
   const [brandSwitchBusy, setBrandSwitchBusy] = useState(false);
@@ -2818,9 +2824,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     void (async () => {
       try {
         const response = await fetch("/api/feedback", { cache: "no-store", headers: { Accept: "application/json" } });
-        const payload = await safeJson(response) as { messages?: FeedbackMessageRecord[]; unreadCount?: number };
+        const payload = await safeJson(response) as { messages?: FeedbackMessageRecord[]; announcements?: AnnouncementRecord[]; unreadCount?: number };
         if (cancelled || !response.ok) return;
         setFeedbackHistory(Array.isArray(payload.messages) ? payload.messages : []);
+        setAnnouncements(Array.isArray(payload.announcements) ? payload.announcements : []);
         setFeedbackUnread(payload.unreadCount ?? 0);
       } catch {
         // Background badge/history load - not worth surfacing an error for.
@@ -5417,6 +5424,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <div className="archive-editor-head-actions"><button type="button" onClick={() => setFeedbackOpen(false)} aria-label="Закрыть">×</button></div>
           </div>
           <p className="feedback-modal-lead">Вопрос, пожелание или что-то не работает — напишите здесь, мы ответим вам прямо в этом окне.</p>
+          {announcements.length > 0 && <div className="feedback-modal-announcements">
+            {announcements.map((item) => (
+              <div className="feedback-modal-announcement" key={item.id}>
+                <span className="feedback-modal-announcement-badge">КЛИО</span>
+                <p>{item.message}</p>
+              </div>
+            ))}
+          </div>}
           {feedbackHistory.length > 0 && <div className="feedback-modal-history">
             {feedbackHistory.map((item) => (
               <div className="feedback-modal-entry" key={item.id}>
