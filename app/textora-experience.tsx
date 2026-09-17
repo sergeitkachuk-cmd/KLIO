@@ -12,7 +12,7 @@ import { FOUNDATION_FIELDS, VOICE_FIELDS, mergeProfileFill, missingVoiceFoundati
 import { russianGeoTree } from "./geo-data";
 import { ADAPTATION_PLANS, FORMAT_PLANS, TONE_PLANS } from "./content-plans";
 import { PLAN_RULES, type PlanId } from "./plans";
-import { BILLING_PERIODS, PLAN_PRICES, periodAmount, type BillingPeriod } from "./billing-pricing";
+import { BILLING_PERIODS, PLAN_PRICES, periodAmount, LAUNCH_DISCOUNT_PERCENT, type BillingPeriod } from "./billing-pricing";
 
 // startViewTransition isn't in every TS lib.dom.d.ts snapshot yet and
 // isn't implemented in every browser either (Safari/Firefox caught up
@@ -33,10 +33,10 @@ type CompetitorMode = "example" | "demo" | "ai";
 type CompetitorFocusSource = "manual" | "semantics" | "brand";
 type CompetitorMarketScope = "national" | "demand" | "brand";
 type ContentPlanMode = "idle" | "demo" | "ai";
-type WorkspaceModule = "start" | "brand" | "generator" | "semantics" | "competitors" | "content-plan" | "adaptation" | "history" | "publications";
+type WorkspaceModule = "start" | "brand" | "generator" | "semantics" | "competitors" | "content-plan" | "adaptation" | "history" | "publications" | "seo-audit";
 
 const WORKSPACE_MODULE_STORAGE_KEY = "klio-workspace-active-module";
-const WORKSPACE_MODULES = new Set<WorkspaceModule>(["start", "brand", "generator", "semantics", "competitors", "content-plan", "adaptation", "history", "publications"]);
+const WORKSPACE_MODULES = new Set<WorkspaceModule>(["start", "brand", "generator", "semantics", "competitors", "content-plan", "adaptation", "history", "publications", "seo-audit"]);
 
 function isWorkspaceModule(value: string | null): value is WorkspaceModule {
   return value !== null && WORKSPACE_MODULES.has(value as WorkspaceModule);
@@ -54,6 +54,7 @@ const WORKSPACE_MODULE_HASH: Record<WorkspaceModule, string> = {
   competitors: "#competitors",
   publications: "#publications",
   history: "#history",
+  "seo-audit": "#seo-audit",
 };
 type ContentPlanStatus = "Запланировано" | "В работе" | "Готово";
 const CONTENT_PLAN_STATUS_OPTIONS = [
@@ -154,6 +155,28 @@ type CompetitorResult = {
   dataNote: string;
 };
 
+// Mirrors SeoAuditReport in app/api/_lib/dataforseo.ts — kept as a plain
+// duplicate type rather than a shared import since this file has no
+// existing pattern of importing types across the api/_lib boundary into
+// client code (every other module type here is hand-mirrored the same way).
+type SeoAuditIssue = { key: string; label: string; severity: "error" | "warning" };
+type SeoAuditReport = {
+  url: string;
+  tier: "basic" | "js" | "browser";
+  statusCode: number | null;
+  score: number | null;
+  title: string;
+  titleLength: number;
+  description: string;
+  descriptionLength: number;
+  h1: string;
+  wordCount: number;
+  loadTimeMs: number | null;
+  ttfbMs: number | null;
+  coreWebVitals: { lcpMs: number | null; cls: number | null; fidMs: number | null } | null;
+  issues: SeoAuditIssue[];
+};
+
 type ContentPlanItem = {
   id: string;
   title: string;
@@ -250,6 +273,9 @@ type WorkspaceAccount = {
   editorActionsUsed: number;
   editorActionLimit: number;
   editorActionsRemaining: number;
+  seoAuditsUsed: number;
+  seoAuditLimit: number;
+  seoAuditsRemaining: number;
   // Lifetime totals, never reset by the monthly/trial period rollover —
   // only used for the "Ваша статистика" bar. generationsUsed etc. above
   // stay period-scoped and keep driving the quota widgets (sidebar,
@@ -257,11 +283,16 @@ type WorkspaceAccount = {
   lifetimeGenerationsUsed: number;
   lifetimeResearchUsed: number;
   lifetimeEditorActionsUsed: number;
+  lifetimeSeoAuditsUsed: number;
   daysWithKlio: number;
   brandCount: number;
   brandLimit: number;
   seatLimit: 1;
   period: string;
+  // Drives the launch-discount banner below .workspace-heading — see
+  // accountSummary() in api/_lib/workspace-account.ts for the eligibility
+  // rule (launch window still open, discount not already used).
+  launchDiscountAvailable: boolean;
 };
 
 type BrandWorkspaceSnapshot = {
@@ -1378,7 +1409,7 @@ function nameInitials(value: string) {
   return (parts.slice(0, 2).map((item) => item[0]?.toLocaleUpperCase("ru-RU") || "").join("") || "К").slice(0, 2);
 }
 
-function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" | "erase" | "sun" | "moon" | "home" | "building" | "list" | "search" | "barChart" | "calendar" | "folder" | "image" | "telegram" }) {
+function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" | "erase" | "sun" | "moon" | "home" | "building" | "list" | "search" | "barChart" | "calendar" | "folder" | "image" | "telegram" | "gauge" }) {
   const paths = {
     arrow: <><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></>,
     spark: <><path d="m12 2 1.7 5.3L19 9l-5.3 1.7L12 16l-1.7-5.3L5 9l5.3-1.7L12 2Z"/><path d="m5 16 .7 2.3L8 19l-2.3.7L5 22l-.7-2.3L2 19l2.3-.7L5 16Z"/></>,
@@ -1406,6 +1437,9 @@ function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" | 
     // link entirely for lack of space (site owner: reported it missing on
     // phones).
     telegram: <><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></>,
+    // Speedometer/score glyph for the "SEO-аудит" nav item — matches the
+    // 0-100 onpage_score DataForSEO returns for each audited page.
+    gauge: <><path d="M12 14 15.5 10.5"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></>,
   };
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
@@ -1793,6 +1827,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [competitorSerp, setCompetitorSerp] = useState<CompetitorSerpItem[]>([]);
   const [competitorError, setCompetitorError] = useState("");
   const [competitorNeedsRefresh, setCompetitorNeedsRefresh] = useState(false);
+  // SEO-audit module: deliberately no localStorage/workspace persistence
+  // like the modules above — each run is a paid DataForSEO call, so this
+  // is a plain one-shot tool (run it, read it) rather than a draft that
+  // survives a refresh. Re-running costs another quota slot either way.
+  const [seoAuditUrl, setSeoAuditUrl] = useState("");
+  const [seoAuditBusy, setSeoAuditBusy] = useState(false);
+  const [seoAuditError, setSeoAuditError] = useState("");
+  const [seoAuditReport, setSeoAuditReport] = useState<SeoAuditReport | null>(null);
   // Hoisted above the rest of the Публикации block (below) instead of
   // staying next to workspaceBrands where it originally lived — every
   // handler here reads it, and a useEffect dependency array is evaluated
@@ -2311,14 +2353,19 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     editorActionsUsed: 0,
     editorActionLimit: PLAN_RULES.start.editorActionLimit,
     editorActionsRemaining: PLAN_RULES.start.editorActionLimit,
+    seoAuditsUsed: 0,
+    seoAuditLimit: PLAN_RULES.start.seoAuditLimit,
+    seoAuditsRemaining: PLAN_RULES.start.seoAuditLimit,
     lifetimeGenerationsUsed: 0,
     lifetimeResearchUsed: 0,
     lifetimeEditorActionsUsed: 0,
+    lifetimeSeoAuditsUsed: 0,
     daysWithKlio: 0,
     brandCount: 0,
     brandLimit: PLAN_RULES.start.brandLimit,
     seatLimit: 1,
     period: "",
+    launchDiscountAvailable: false,
   });
   const [workspaceBrands, setWorkspaceBrands] = useState<WorkspaceBrand[]>([]);
   const workspaceSaveQueue = useRef(createWorkspaceSaveQueue());
@@ -2629,6 +2676,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const generationProgress = Math.min(100, Math.round((workspaceAccount.generationsUsed / Math.max(workspaceAccount.generationLimit, 1)) * 100));
   const researchProgress = Math.min(100, Math.round((workspaceAccount.researchUsed / Math.max(workspaceAccount.researchLimit, 1)) * 100));
   const editorProgress = Math.min(100, Math.round((workspaceAccount.editorActionsUsed / Math.max(workspaceAccount.editorActionLimit, 1)) * 100));
+  const seoAuditProgress = Math.min(100, Math.round((workspaceAccount.seoAuditsUsed / Math.max(workspaceAccount.seoAuditLimit, 1)) * 100));
   const archiveEditorDirty = Boolean(archiveEditorItem && archiveEditorOriginal && [
     archiveEditorItem.title !== archiveEditorOriginal.title,
     archiveEditorItem.body !== archiveEditorOriginal.body,
@@ -4312,6 +4360,36 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     }
   }
 
+  async function runSeoAudit() {
+    const url = seoAuditUrl.trim();
+    if (!url) {
+      setSeoAuditError("Укажите адрес страницы для проверки.");
+      return;
+    }
+    if (workspaceAccount.seoAuditsRemaining <= 0) {
+      setSeoAuditError(`Лимит тарифа «${workspaceAccount.planName}» исчерпан: ${workspaceAccount.seoAuditLimit} SEO-аудитов.`);
+      return;
+    }
+    setSeoAuditBusy(true);
+    setSeoAuditError("");
+    try {
+      const response = await fetch("/api/seo-audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const payload = await safeJson(response) as { error?: string; report?: SeoAuditReport; usage?: { account?: WorkspaceAccount } | null };
+      if (!response.ok || !payload.report) throw new Error(payload.error || "Не удалось выполнить SEO-аудит страницы.");
+      if (payload.usage?.account) setWorkspaceAccount(payload.usage.account);
+      setSeoAuditReport(payload.report);
+      showToast("Аудит страницы готов");
+    } catch (error) {
+      setSeoAuditError(error instanceof Error ? error.message : "Не удалось выполнить SEO-аудит страницы.");
+    } finally {
+      setSeoAuditBusy(false);
+    }
+  }
+
   function toggleCompetitorTopic(id: string) {
     setContentPlanNeedsRefresh(true);
     setSelectedCompetitorTopicIds((current) => {
@@ -5382,6 +5460,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <a href="#semantics" className={activeModule === "semantics" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("semantics"); }}><i><Icon name="search"/></i><span><b>Семантика</b></span></a>
             <a href="#competitors" className={activeModule === "competitors" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("competitors"); }}><i><Icon name="barChart"/></i><span><b>Конкуренты</b></span></a>
             <a href="#publications" className={activeModule === "publications" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("publications"); }}><i><Icon name="calendar"/></i><span><b>Публикации</b></span></a>
+            <a href="#seo-audit" className={activeModule === "seo-audit" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("seo-audit"); }}><i><Icon name="gauge"/></i><span><b>SEO‑аудит</b></span></a>
             {/* Teaser, not a real module (no WorkspaceModule entry, no
                 openModule call) - "показать, что проект развивается", per
                 the site owner. Disabled rather than a dead onClick so it's
@@ -5390,7 +5469,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <i><Icon name="image"/></i><span><b>Генерация изображений</b><em>Скоро</em></span>
             </button>
           </nav>
-          <div className="workspace-stage workspace-quota-stage"><span>Ваш тариф</span><b>{workspaceAccount.planName}</b><div className="workspace-quota-list"><p><span>Материалы</span><em>{workspaceAccount.generationsRemaining} / {workspaceAccount.generationLimit}</em><i><u style={{ width: `${generationProgress}%` }}/></i></p><p><span>Исследования</span><em>{workspaceAccount.researchRemaining} / {workspaceAccount.researchLimit}</em><i><u style={{ width: `${researchProgress}%` }}/></i></p><p><span>AI‑редактура</span><em>{workspaceAccount.editorActionsRemaining} / {workspaceAccount.editorActionLimit}</em><i><u style={{ width: `${editorProgress}%` }}/></i></p></div></div>
+          <div className="workspace-stage workspace-quota-stage"><span>Ваш тариф</span><b>{workspaceAccount.planName}</b><div className="workspace-quota-list"><p><span>Материалы</span><em>{workspaceAccount.generationsRemaining} / {workspaceAccount.generationLimit}</em><i><u style={{ width: `${generationProgress}%` }}/></i></p><p><span>Исследования</span><em>{workspaceAccount.researchRemaining} / {workspaceAccount.researchLimit}</em><i><u style={{ width: `${researchProgress}%` }}/></i></p><p><span>AI‑редактура</span><em>{workspaceAccount.editorActionsRemaining} / {workspaceAccount.editorActionLimit}</em><i><u style={{ width: `${editorProgress}%` }}/></i></p><p><span>SEO‑аудит</span><em>{workspaceAccount.seoAuditsRemaining} / {workspaceAccount.seoAuditLimit}</em><i><u style={{ width: `${seoAuditProgress}%` }}/></i></p></div></div>
         </aside>
 
         <section className="workspace-content">
@@ -5412,6 +5491,16 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </div>
           </div>
 
+          {workspaceAccount.launchDiscountAvailable && (
+            <section className="workspace-launch-banner">
+              <div className="workspace-launch-banner-copy">
+                <p className="workspace-launch-banner-kicker">КЛИО / Для первых клиентов</p>
+                <h2>Дарим скидку {LAUNCH_DISCOUNT_PERCENT}%<span className="klio-mark-dot">.</span></h2>
+                <p>Мы только запустились и будем развиваться вместе с вами — персональная скидка {LAUNCH_DISCOUNT_PERCENT}% на любой тариф при оплате на 1 месяц. Разовое предложение, действует до конца сентября.</p>
+              </div>
+              <Link className="workspace-launch-banner-cta" href="/account#billing">Выбрать тариф со скидкой →</Link>
+            </section>
+          )}
 
           {historyOpen && <section className="workspace-history" id="history">
             {archiveLoading && <p role="status">Загружаем материалы бренда…</p>}
@@ -6383,6 +6472,43 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   </button>)}
               </div>
             </>}
+          </section>
+
+          <section className="workspace-module seo-audit-module" id="seo-audit" style={{ display: activeModule === "seo-audit" ? undefined : "none" }}>
+            <div className="workspace-module-heading tool-heading">
+              <div><span>Самостоятельный инструмент · по желанию</span><h2>SEO‑аудит страницы<span className="klio-mark-dot">.</span></h2></div>
+              <p>Проверьте техническое SEO любой страницы — мета-теги, заголовки, скорость загрузки, дубли и проблемы индексации. Отчёт формируется по данным DataForSEO.</p>
+            </div>
+            <div className="seo-audit-form">
+              <label className="seo-audit-url-field">
+                <span>Адрес страницы</span>
+                <input type="url" inputMode="url" placeholder="https://example.com/page" value={seoAuditUrl} onChange={(event) => setSeoAuditUrl(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void runSeoAudit(); }}/>
+              </label>
+              <button type="button" className={`button primary large ${seoAuditBusy ? "is-busy" : ""}`} onClick={() => void runSeoAudit()} disabled={seoAuditBusy || workspaceAccount.seoAuditsRemaining <= 0}>
+                <Icon name="gauge"/>{seoAuditBusy ? "Проверяем страницу…" : workspaceAccount.seoAuditsRemaining <= 0 ? "Лимит аудитов исчерпан" : "Проверить страницу"}
+              </button>
+              <small>Осталось {workspaceAccount.seoAuditsRemaining} из {workspaceAccount.seoAuditLimit} аудитов на тарифе «{workspaceAccount.planName}»</small>
+            </div>
+            {seoAuditError && <p className="seo-audit-error" role="alert">{seoAuditError}</p>}
+            {seoAuditReport && <div className="seo-audit-report">
+              <div className="seo-audit-summary">
+                <div className="seo-audit-score"><b>{seoAuditReport.score ?? "—"}</b><span>из 100</span></div>
+                <div className="seo-audit-summary-fields">
+                  <p><span>Страница</span><b>{seoAuditReport.url}</b></p>
+                  <p><span>Код ответа</span><b>{seoAuditReport.statusCode ?? "—"}</b></p>
+                  <p><span>Title</span><b>{seoAuditReport.title || "—"}</b><small>{seoAuditReport.titleLength} симв.</small></p>
+                  <p><span>Description</span><b>{seoAuditReport.description || "—"}</b><small>{seoAuditReport.descriptionLength} симв.</small></p>
+                  <p><span>H1</span><b>{seoAuditReport.h1 || "—"}</b></p>
+                  <p><span>Объём текста</span><b>{seoAuditReport.wordCount} слов</b></p>
+                  <p><span>Загрузка страницы</span><b>{seoAuditReport.loadTimeMs != null ? `${Math.round(seoAuditReport.loadTimeMs)} мс` : "—"}</b></p>
+                  {seoAuditReport.coreWebVitals && <p><span>Core Web Vitals</span><b>LCP {seoAuditReport.coreWebVitals.lcpMs ?? "—"} мс · CLS {seoAuditReport.coreWebVitals.cls ?? "—"}</b></p>}
+                </div>
+              </div>
+              <div className="seo-audit-issues">
+                <h3>{seoAuditReport.issues.length ? `Найдено проблем: ${seoAuditReport.issues.length}` : "Проблем не найдено"}</h3>
+                {seoAuditReport.issues.map((issue) => <p className={`seo-audit-issue seo-audit-issue-${issue.severity}`} key={issue.key}>{issue.label}</p>)}
+              </div>
+            </div>}
           </section>
         </section>
       </div>

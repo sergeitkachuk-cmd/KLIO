@@ -62,8 +62,13 @@ export async function POST(request: Request) {
         generationsUsed: 0,
         researchUsed: 0,
         editorActionsUsed: 0,
+        seoAuditsUsed: 0,
         generationMonth: `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, "0")}`,
         quotaPeriodEndsAt: nextQuotaPeriodEnd(paidAt),
+        // Only on confirmed payment, not on payment-link creation — an
+        // abandoned checkout must not burn the one-time launch discount
+        // (see billing-pricing.ts).
+        ...(confirmedPayment.discountApplied ? { launchDiscountUsedAt: paidAt.toISOString() } : {}),
         updatedAt: paidAt.toISOString(),
       }).where(eq(accounts.email, payment.ownerEmail));
       outcome = "confirmed";

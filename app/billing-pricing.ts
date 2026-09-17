@@ -42,3 +42,24 @@ export function periodAmount(monthly: number, yearly: number, billing: BillingPe
 export function billingDescription(billing: BillingPeriod) {
   return BILLING_PERIODS.find((period) => period.id === billing)?.label ?? BILLING_PERIODS[0].label;
 }
+
+// Launch window for KLIO's first trial cohort (site owner, 2026-09-17: ~50
+// signups in one day, almost no activity, zero conversions yet) — a
+// one-time 20% discount, monthly billing only ("скидка ... на любой тариф
+// на месяц"), through end of September. Not an evergreen discount: the
+// deadline below and the per-account launchDiscountUsedAt gate (see
+// db/schema.ts and accountSummary in api/_lib/workspace-account.ts) are
+// both required so this can't be reused after a first purchase or resurface
+// once the launch window has closed.
+export const LAUNCH_DISCOUNT_PERCENT = 20;
+export const LAUNCH_DISCOUNT_BILLING: BillingPeriod = "monthly";
+// 2026-09-30 23:59:59 Europe/Moscow (UTC+3).
+export const LAUNCH_DISCOUNT_DEADLINE = "2026-09-30T20:59:59.000Z";
+
+export function launchDiscountWindowOpen(now: Date = new Date()): boolean {
+  return now.getTime() <= new Date(LAUNCH_DISCOUNT_DEADLINE).getTime();
+}
+
+export function applyLaunchDiscount(amountRub: number): number {
+  return Math.round(amountRub * (1 - LAUNCH_DISCOUNT_PERCENT / 100));
+}

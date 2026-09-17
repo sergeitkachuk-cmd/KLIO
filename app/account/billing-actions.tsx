@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { BILLING_PERIODS, periodAmount, type BillingPeriod } from "@/app/billing-pricing";
+import { BILLING_PERIODS, periodAmount, applyLaunchDiscount, LAUNCH_DISCOUNT_PERCENT, LAUNCH_DISCOUNT_BILLING, type BillingPeriod } from "@/app/billing-pricing";
 import { trackMetricaGoal } from "@/app/analytics-consent";
+import { safeRedirect } from "@/app/api/_lib/safe-redirect";
 
 const plans = [
   { id: "start", name: "Старт", monthly: 1190, yearly: 950 },
@@ -18,7 +19,7 @@ export function StyledSelect({ label, value, options, onChange }: { label: strin
   return <div className="account-select" ref={rootRef}><span className="account-select-label">{label}</span><button type="button" className={`account-select-trigger${open ? " is-open" : ""}`} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((state) => !state)}><span>{selected?.label}</span><span className="account-select-chevron">⌄</span></button>{open && <div className="account-select-menu" role="listbox">{options.map((option) => <button type="button" role="option" aria-selected={option.value === value} className={`account-select-option${option.value === value ? " is-selected" : ""}`} key={option.value} onClick={() => { onChange(option.value); setOpen(false); }}>{option.label}</button>)}</div>}</div>;
 }
 
-export default function BillingActions() {
+export default function BillingActions({ launchDiscountAvailable = false }: { launchDiscountAvailable?: boolean }) {
   const [planId, setPlanId] = useState<(typeof plans)[number]["id"]>("start");
   const [billing, setBilling] = useState<BillingPeriod>("monthly");
   const [accepted, setAccepted] = useState(false); const [busy, setBusy] = useState<"sbp" | "card" | null>(null); const [error, setError] = useState("");
@@ -39,7 +40,32 @@ export default function BillingActions() {
       })
       .catch((caught) => setError(caught instanceof Error ? caught.message : "Не удалось проверить оплату."));
   }, []);
-  const periodOptions = BILLING_PERIODS.map((period) => ({ value: period.id, label: `${period.label} — ${periodAmount(plan.monthly, plan.yearly, period.id).toLocaleString("ru-RU")} ₽${period.discount ? ` (−${period.discount}%)` : ""}` }));
-  async function pay(mode: "sbp" | "card") { if (!accepted) return; setBusy(mode); setError(""); try { const response = await fetch("/api/payments/tochka/create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ planId, billing, mode }) }); const payload = await response.json().catch(() => ({})); if (!response.ok || !payload.paymentUrl) throw new Error(payload.error || "Не удалось создать ссылку на оплату."); window.location.assign(payload.paymentUrl); } catch (caught) { setError(caught instanceof Error ? caught.message : "Не удалось создать ссылку на оплату."); setBusy(null); } }
+  const periodOptions = BILLING_PERIODS.map((period) => {
+    const base = periodAmount(plan.monthly, plan.yearly, period.id);
+    // Server independently recomputes and applies this same discount at
+    // checkout (never trusts a client-sent amount) — this is display only.
+    if (launchDiscountAvailable && period.id === LAUNCH_DISCOUNT_BILLING) {
+      return { value: period.id, label: `${period.label} — ${applyLaunchDiscount(base).toLocaleString("ru-RU")} ₽ (−${LAUNCH_DISCOUNT_PERCENT}% для первых клиентов)` };
+    }
+    return { value: period.id, label: `${period.label} — ${base.toLocaleString("ru-RU")} ₽${period.discount ? ` (−${period.discount}%)` : ""}` };
+  });
+  async function pay(mode: "sbp" | "card") {
+    if (!accepted) return;
+    setBusy(mode);
+    setError("");
+    try {
+      const response = await fetch("/api/payments/tochka/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId, billing, mode }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.paymentUrl) throw new Error(payload.error || "Не удалось создать ссылку на оплату.");
+      safeRedirect(payload.paymentUrl);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Не удалось создать ссылку на оплату.");
+      setBusy(null);
+    }
+  }
   return <div className="account-billing-actions"><div className="account-billing-selects"><StyledSelect label="Тариф" value={planId} onChange={(value) => setPlanId(value as typeof planId)} options={plans.map((item) => ({ value: item.id, label: item.name }))} /><StyledSelect label="Период" value={billing} onChange={(value) => setBilling(value as BillingPeriod)} options={periodOptions} /></div><label className="account-billing-consent"><input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} /><span>Соглашаюсь с <a href="/legal/offer" target="_blank" rel="noreferrer">публичной офертой</a>, <a href="/legal/privacy" target="_blank" rel="noreferrer">политикой обработки персональных данных</a> и <a href="/legal/refunds" target="_blank" rel="noreferrer">правилами возврата</a>.</span></label><div className="account-billing-buttons"><button type="button" disabled={!accepted || Boolean(busy)} onClick={() => pay("sbp")}>{busy === "sbp" ? "Открываем…" : "Оплатить через СБП"}</button><button type="button" disabled={!accepted || Boolean(busy)} onClick={() => pay("card")}>{busy === "card" ? "Открываем…" : "Оплатить картой"}</button><a href={`/invoice?planId=${planId}&billing=${billing}`}>Получить счёт</a></div>{error && <p className="account-billing-error">{error}</p>}</div>;
 }

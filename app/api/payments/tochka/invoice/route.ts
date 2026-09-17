@@ -5,7 +5,7 @@ import { ensureAccount, getWorkspaceDb, WorkspaceAccessError, workspaceIdentity 
 import { discoverTochkaIds, tochkaRequest, TochkaConfigError } from "../../../_lib/tochka";
 import { requireAdminUser } from "../../../_lib/admin";
 import { isPlanId, type PlanId } from "../../../../plans";
-import { isBillingPeriod, periodAmount, billingDescription, isPurchasablePlan, PLAN_PRICES } from "../../../../billing-pricing";
+import { isBillingPeriod, periodAmount, billingDescription, isPurchasablePlan, PLAN_PRICES, LAUNCH_DISCOUNT_BILLING, launchDiscountWindowOpen, applyLaunchDiscount } from "../../../../billing-pricing";
 const TEST_PLAN_ID = "test";
 const TEST_PRICE = { monthly: 1, yearly: 1, name: "Тестовый тариф" };
 
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   try {
     const user = await workspaceIdentity();
     const input = await readBoundedJson(request, 4096);
-    await ensureAccount(user);
+    const account = await ensureAccount(user);
     const requestedPlanId = typeof input?.planId === "string" ? input.planId : "";
     const isTestInvoice = requestedPlanId === TEST_PLAN_ID;
     const planId = requestedPlanId as PlanId;
@@ -51,7 +51,11 @@ export async function POST(request: Request) {
     const { customerCode } = await discoverTochkaIds();
     if (!customerCode) throw new TochkaConfigError("Для счёта не найден customerCode компании в Точке.");
     const price = isTestInvoice ? TEST_PRICE : (PLAN_PRICES[planId as keyof typeof PLAN_PRICES] ?? PLAN_PRICES.start);
-    const amount = isTestInvoice ? 1 : periodAmount(price.monthly, price.yearly, billing);
+    const baseAmount = isTestInvoice ? 1 : periodAmount(price.monthly, price.yearly, billing);
+    // Same server-side-only eligibility check as /api/payments/tochka/create
+    // — see the launch discount note in billing-pricing.ts.
+    const discountApplied = !isTestInvoice && billing === LAUNCH_DISCOUNT_BILLING && launchDiscountWindowOpen() && !account.launchDiscountUsedAt;
+    const amount = discountApplied ? applyLaunchDiscount(baseAmount) : baseAmount;
     const documentNumber = String(Date.now()).slice(-10);
     const paymentPurpose = `Оплата по счёту № ${documentNumber} за подписку «КЛИО — Цифровая редакция», тариф «${price.name}», ${billingDescription(billing)}. Без НДС.`;
     const legalNotice = `Оплачивая настоящий счёт, Покупатель принимает условия публичной оферты ООО «Творческая мастерская „МЕДИАЛИПАС“» на оказание услуг по подписке «КЛИО — Цифровая редакция», размещённой по адресу: https://цифроваяредакция.рф/legal/offer. Оплата счёта означает акцепт оферты в соответствии с п. 3 ст. 438 ГК РФ.`;
@@ -99,8 +103,9 @@ export async function POST(request: Request) {
       amountKopecks: amount * 100, tochkaDocumentId: documentId,
       buyerType: type, buyerName: name, buyerInn: inn, buyerKpp: kpp || null,
       buyerLegalAddress: legalAddress, buyerEmail: email,
+      discountApplied,
     });
-    return Response.json({ documentId, invoiceNumber: documentNumber, paymentPurpose, invoiceUrl: `/api/payments/tochka/invoice/${encodeURIComponent(documentId)}`, amount, planId: isTestInvoice ? TEST_PLAN_ID : planId, billing });
+    return Response.json({ documentId, invoiceNumber: documentNumber, paymentPurpose, invoiceUrl: `/api/payments/tochka/invoice/${encodeURIComponent(documentId)}`, amount, planId: isTestInvoice ? TEST_PLAN_ID : planId, billing, discountApplied });
   } catch (error) {
     if (error instanceof RequestBodyError) return Response.json({ error: error.message }, { status: error.status });
     if (error instanceof WorkspaceAccessError || error instanceof TochkaConfigError) return Response.json({ error: error.message }, { status: error instanceof WorkspaceAccessError ? error.status : 503 });

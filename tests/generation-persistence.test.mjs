@@ -29,6 +29,7 @@ function harness({ failInsert = false, ownedBrand = true, jobStatus = "processin
     "../../identity": { getCurrentUser: async () => ({ email: "test@example.invalid", displayName: "Tester" }) },
     "../../plans": { planRule: () => ({ id: "trial", generationLimit: 10 }), planExpiryState: noop },
     "./subscription": { nextQuotaPeriodEnd: noop },
+    "../../billing-pricing": { launchDiscountWindowOpen: () => true },
   };
   const source = readFileSync(new URL("../app/api/_lib/workspace-account.ts", import.meta.url), "utf8");
   const exports = {};

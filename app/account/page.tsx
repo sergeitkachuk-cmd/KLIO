@@ -4,6 +4,7 @@ import { requireCurrentUser } from "../identity";
 import { getDb } from "../../db";
 import { brands } from "../../db/schema";
 import { accountSummary, ensureAccount, workspaceDatabaseAvailable } from "../api/_lib/workspace-account";
+import { LAUNCH_DISCOUNT_PERCENT } from "../billing-pricing";
 import BillingActions from "./billing-actions";
 import InvoiceDocuments from "./invoice-documents";
 import PaymentHistory from "./payment-history";
@@ -103,6 +104,17 @@ export default async function AccountPage() {
 
         <div className="account-title"><p>Личный кабинет</p><h1>Тариф и данные аккаунта</h1></div>
 
+        {summary.launchDiscountAvailable && (
+          <section className="launch-discount-banner">
+            <div className="launch-discount-banner-copy">
+              <p className="launch-discount-banner-kicker">КЛИО / Для первых клиентов</p>
+              <h2>Дарим скидку {LAUNCH_DISCOUNT_PERCENT}%<span className="klio-mark-dot">.</span></h2>
+              <p>Мы только запустились и будем развиваться вместе с вами — персональная скидка {LAUNCH_DISCOUNT_PERCENT}% на любой тариф при оплате на 1 месяц. Разовое предложение, действует до конца сентября.</p>
+            </div>
+            <a className="launch-discount-banner-cta" href="#billing">Выбрать тариф со скидкой →</a>
+          </section>
+        )}
+
         <section className="account-card account-plan-card">
           <div className="account-plan-head">
             <div>
@@ -125,7 +137,7 @@ export default async function AccountPage() {
           <span>Платный доступ</span>
           <h2>Выберите тариф и способ оплаты</h2>
           <p className="account-billing-lead">Оплата открывается из личного кабинета и привязывается к вашему аккаунту. СБП — быстрый способ, карта также доступна.</p>
-          <BillingActions />
+          <BillingActions launchDiscountAvailable={summary.launchDiscountAvailable} />
           <PaymentHistory />
           <InvoiceDocuments />
         </section>
@@ -159,6 +171,20 @@ function AccountStyles() {
       .account-title p { margin: 0 0 8px; color: var(--acid); font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
       .account-title h1 { margin: 0 0 32px; font-size: 40px; letter-spacing: -0.02em; }
       .account-card { margin-bottom: 22px; padding: 28px 30px; border: 1px solid rgba(255,255,255,0.16); border-radius: 4px 28px 4px 4px; background: radial-gradient(circle at 92% 0%, rgba(124,58,237,0.26), transparent 32%), linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%); box-shadow: 0 24px 70px rgba(3,12,26,0.3), inset 0 1px rgba(255,255,255,0.1); }
+      /* Same violet-glow/navy-gradient language as .workspace-brand-pill
+         (textora-experience.tsx) so the launch banner reads as one brand
+         surface across workspace + личный кабинет, not a bolted-on strip. */
+      .launch-discount-banner { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 22px; padding: 22px 26px; border: 1px solid rgba(139, 110, 255, 0.32); border-radius: 4px 28px 4px 4px; background: radial-gradient(circle at 6% 10%, rgba(216, 255, 101, 0.14), transparent 40%), radial-gradient(circle at 94% 100%, rgba(124, 58, 237, 0.3), transparent 38%), linear-gradient(135deg, #1a1330, #241a3e 60%, #17112a 100%); box-shadow: 0 24px 70px rgba(3,12,26,0.3), inset 0 1px rgba(255,255,255,0.1); }
+      .launch-discount-banner-copy { min-width: 0; }
+      .launch-discount-banner-kicker { margin: 0 0 6px; color: var(--acid); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+      .launch-discount-banner-copy h2 { margin: 0 0 8px; font-size: 24px; }
+      .launch-discount-banner-copy p:last-child { margin: 0; max-width: 560px; color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.5; }
+      .launch-discount-banner-cta { flex: 0 0 auto; padding: 12px 20px; border-radius: 999px; color: var(--night); font-size: 14px; font-weight: 700; text-decoration: none; background: var(--acid); white-space: nowrap; }
+      .launch-discount-banner-cta:hover { filter: brightness(1.06); }
+      [data-theme="light"] .launch-discount-banner { border-color: rgba(91,75,183,0.22); background: radial-gradient(circle at 6% 10%, rgba(216,255,101,0.22), transparent 40%), radial-gradient(circle at 94% 100%, rgba(53,104,212,0.16), transparent 38%), linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%); box-shadow: 0 24px 70px rgba(20,40,80,0.1), inset 0 1px #fff; }
+      [data-theme="light"] .launch-discount-banner-kicker { color: #6b21a8; }
+      [data-theme="light"] .launch-discount-banner-copy h2 { color: #0d1b31; }
+      [data-theme="light"] .launch-discount-banner-copy p:last-child { color: rgba(13,27,49,0.62); }
       .account-card > span { display: block; margin-bottom: 14px; color: #d5c9fb; font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
       .account-plan-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
       .account-plan-head span { color: #d5c9fb; font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
@@ -302,7 +328,7 @@ function AccountStyles() {
       [data-theme="light"] .account-facts > div { border-bottom-color: rgba(15,23,42,0.08); }
       [data-theme="light"] .account-facts dt { color: rgba(13,27,49,0.5); }
       [data-theme="light"] .account-empty { color: rgba(13,27,49,0.55); }
-      @media (max-width: 640px) { .account-content { padding: 28px 16px 72px; } .account-billing-selects { grid-template-columns: 1fr; } .account-billing-buttons { align-items: stretch; flex-direction: column; } .account-billing-buttons button, .account-billing-buttons a { width: 100%; justify-content: center; } .account-document { align-items: flex-start; flex-direction: column; } .account-documents-heading { flex-direction: column; align-items: stretch; } .account-documents-clear { align-self: flex-start; } }
+      @media (max-width: 640px) { .account-content { padding: 28px 16px 72px; } .account-billing-selects { grid-template-columns: 1fr; } .account-billing-buttons { align-items: stretch; flex-direction: column; } .account-billing-buttons button, .account-billing-buttons a { width: 100%; justify-content: center; } .account-document { align-items: flex-start; flex-direction: column; } .account-documents-heading { flex-direction: column; align-items: stretch; } .account-documents-clear { align-self: flex-start; } .launch-discount-banner { flex-direction: column; align-items: stretch; padding: 20px; } .launch-discount-banner-cta { text-align: center; } }
     `}</style>
   );
 }

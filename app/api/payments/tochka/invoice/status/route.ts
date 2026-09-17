@@ -78,6 +78,10 @@ export async function POST(request: Request) {
         editorActionsUsed: 0,
         generationMonth: `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, "0")}`,
         quotaPeriodEndsAt: nextQuotaPeriodEnd(new Date(now)),
+        // Only on confirmed payment, not on invoice creation — an unpaid,
+        // abandoned invoice must not burn the one-time launch discount (see
+        // billing-pricing.ts).
+        ...(currentInvoice.discountApplied ? { launchDiscountUsedAt: now } : {}),
         updatedAt: now,
       }).where(eq(accounts.email, invoice.ownerEmail));
       await tx.update(invoices).set({ paymentStatus, paidAt: now, updatedAt: now }).where(eq(invoices.id, invoice.id));

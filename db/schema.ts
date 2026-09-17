@@ -33,13 +33,25 @@ export const accounts = pgTable("accounts", {
   generationsUsed: integer("generations_used").notNull().default(0),
   researchUsed: integer("research_used").notNull().default(0),
   editorActionsUsed: integer("editor_actions_used").notNull().default(0),
-  // Mirror the three counters above but never reset on the monthly
+  // Technical SEO audits (DataForSEO OnPage) — kept separate from
+  // researchUsed/editorActionsUsed because it's billed against *our* own
+  // prepaid DataForSEO balance per call, not just AI tokens, so it needs
+  // its own tighter per-plan cap rather than sharing an existing one.
+  seoAuditsUsed: integer("seo_audits_used").notNull().default(0),
+  // Mirror the four counters above but never reset on the monthly
   // rollover in ensureAccount() — the "Ваша статистика" bar on the
   // workspace overview reads these for a lifetime total instead of the
   // current-period used-count the sidebar/plan quota widgets already show.
   lifetimeGenerationsUsed: integer("lifetime_generations_used").notNull().default(0),
   lifetimeResearchUsed: integer("lifetime_research_used").notNull().default(0),
   lifetimeEditorActionsUsed: integer("lifetime_editor_actions_used").notNull().default(0),
+  lifetimeSeoAuditsUsed: integer("lifetime_seo_audits_used").notNull().default(0),
+  // Set once the one-time launch discount (see LAUNCH_DISCOUNT_PERCENT in
+  // app/billing-pricing.ts) has actually been consumed by a confirmed
+  // payment — never on link/invoice creation alone, so an abandoned
+  // checkout doesn't burn it. Null means still available (subject to the
+  // launch window's own deadline).
+  launchDiscountUsedAt: text("launch_discount_used_at"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
@@ -53,6 +65,10 @@ export const payments = pgTable("payments", {
   billing: text("billing").notNull(),
   mode: text("mode").notNull(),
   amountKopecks: integer("amount_kopecks").notNull(),
+  // Whether this specific payment had the one-time launch discount applied
+  // — read by the webhook handler to decide whether to also set the
+  // account's launchDiscountUsedAt once this payment is confirmed.
+  discountApplied: boolean("discount_applied").notNull().default(false),
   status: text("status").notNull().default("pending"),
   operationId: text("operation_id"),
   paidAt: text("paid_at"),
@@ -79,6 +95,8 @@ export const invoices = pgTable("invoices", {
   buyerKpp: text("buyer_kpp"),
   buyerLegalAddress: text("buyer_legal_address").notNull(),
   buyerEmail: text("buyer_email").notNull(),
+  // Same one-time launch discount flag as payments.discountApplied above.
+  discountApplied: boolean("discount_applied").notNull().default(false),
   paymentStatus: text("payment_status").notNull().default("payment_waiting"),
   paidAt: text("paid_at"),
   closingDocumentId: text("closing_document_id"),
