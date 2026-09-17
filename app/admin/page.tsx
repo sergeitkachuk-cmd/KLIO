@@ -816,32 +816,59 @@ function AdminStyles() {
       @media (prefers-color-scheme: dark) { .admin-sidebar button:hover, .admin-sidebar button em { background: rgba(139, 92, 246, 0.16); } .admin-sidebar button.active em { background: rgba(255, 255, 255, 0.22); } }
       @media (max-width: 900px) {
         .admin-shell { grid-template-columns: 1fr; }
-        /* Same pill-bar pattern as the workspace's own mobile bottom nav
-           (textora-experience.tsx's .workspace-sidebar nav on mobile) -
-           was a plain flex row of full-width-style buttons squeezed onto
-           one line, which is exactly why they read as "too long, running
-           off the edge" (site owner: hit this). Rounded pills sized to
-           their own label text, in a horizontally scrolling strip, is the
-           established fix for this same shape of control on this site. */
+        /* Anchored like the workspace's own mobile bottom nav
+           (textora-experience.tsx's .workspace-sidebar nav) instead of
+           sitting inline above the content - site owner: "сделаем как в
+           рабочей области внизу и закрепим". position: fixed (not
+           sticky/relative-to-any-scroll-container) means it's anchored to
+           the viewport itself, so it can never be nudged or covered by a
+           table's own independent horizontal scroll (.admin-table-scroll)
+           elsewhere on the page - the two scroll independently by
+           construction, not by a z-index/containment hack. */
+        .admin-sidebar { display: contents; }
         .admin-sidebar nav {
-          position: static;
+          position: fixed;
+          /* The desktop rule's top: 20px (for position: sticky there)
+             otherwise survives into this fixed position - top and bottom
+             both set with no explicit height stretches the box to fill
+             the gap between them, which is how this shipped its first
+             try (a pill stretched almost the full viewport height). */
+          top: auto;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          z-index: 70;
           display: flex;
           gap: 8px;
+          width: 100%;
+          margin: 0;
+          padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
           overflow-x: auto;
           -webkit-overflow-scrolling: touch;
           overscroll-behavior-inline: contain;
-          padding-bottom: 4px;
           scrollbar-width: none;
+          border-top: 1px solid rgba(139, 110, 255, 0.24);
+          background: linear-gradient(180deg, rgba(10, 16, 36, 0.92), rgba(8, 13, 30, 0.98));
+          box-shadow: 0 -14px 30px rgba(3, 12, 28, 0.35);
         }
         .admin-sidebar nav::-webkit-scrollbar { display: none; }
         .admin-sidebar button {
           flex: 0 0 auto;
           justify-content: flex-start;
           width: auto;
-          min-height: 40px;
+          min-height: 44px;
           padding: 8px 14px;
           border-radius: 999px;
           white-space: nowrap;
+        }
+        /* Room for the now-fixed bar so it never covers the last section's
+           own content (mirrors .workspace-content's own bottom padding for
+           the same reason). */
+        .admin-main { padding-bottom: 88px; }
+        body[data-admin-theme="light"] .admin-sidebar nav {
+          border-top-color: rgba(36, 82, 184, 0.16);
+          background: rgba(255, 255, 255, 0.96);
+          box-shadow: 0 -12px 28px rgba(15, 23, 42, 0.12);
         }
       }
       .admin-block { margin-bottom: 32px; }
