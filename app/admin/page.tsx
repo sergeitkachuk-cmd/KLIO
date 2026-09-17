@@ -4,7 +4,7 @@ import { getCurrentUser } from "../identity";
 import { isAdminEmail } from "../api/_lib/admin";
 import type { AiOperation } from "../api/_lib/ai-config";
 import { getDb } from "../../db";
-import { accounts, aiUsage, asyncJobs, brands, emailVerifications, generations, invoices, materials, passwordResets, payments, publications, sessions, socialChannels } from "../../db/schema";
+import { accounts, aiUsage, asyncJobs, brands, emailVerifications, feedbackMessages, generations, invoices, materials, passwordResets, payments, publications, sessions, socialChannels } from "../../db/schema";
 import { planRule, planExpiryState, formatPlanExpiry } from "../plans";
 import { billingDescription, type BillingPeriod } from "../billing-pricing";
 import { getExternalServiceStatuses } from "../api/_lib/external-service-status";
@@ -368,6 +368,11 @@ export default async function AdminPage() {
   });
   const activeUsers = users.filter((item) => item.emailVerified);
   const pendingUsers = users.filter((item) => !item.emailVerified);
+
+  // "Задать вопрос" submissions (see app/api/feedback/route.ts) — a
+  // separate query rather than folded into the big Promise.all above since
+  // it's not part of the per-user usage rollup, just its own small list.
+  const feedbackRows = await db.select().from(feedbackMessages).orderBy(desc(feedbackMessages.createdAt)).limit(200);
 
   const totals = totalsRows[0] ?? { totalCostUsd: 0, totalCalls: 0, totalTokens: 0 };
   const last30 = last30Rows[0] ?? { totalCostUsd: 0, totalCalls: 0 };
@@ -754,6 +759,34 @@ export default async function AdminPage() {
     content: <AdminAccountControls users={activeUsers.map((item) => ({ email: item.email, displayName: item.displayName, planId: item.planId, planName: item.planName, planExpiresAt: item.planExpiresAt }))} />,
   });
 
+  sections.push({
+    id: "feedback",
+    label: "Обращения",
+    badge: String(feedbackRows.length),
+    content: (
+      <section className="admin-block">
+        <h2>Обращения ({feedbackRows.length})</h2>
+        <p className="admin-note">«Задать вопрос» из рабочего пространства. Ответ — обычным письмом на адрес отправителя.</p>
+        <div className="admin-table-scroll">
+          <table className="admin-table admin-table-feedback">
+            <thead><tr><th>Когда</th><th>От кого</th><th>Сообщение</th><th></th></tr></thead>
+            <tbody>
+              {feedbackRows.map((item) => (
+                <tr key={item.id}>
+                  <td>{formatDate(item.createdAt)}</td>
+                  <td>{item.ownerEmail}</td>
+                  <td className="admin-feedback-message">{item.message}</td>
+                  <td><a href={`mailto:${item.ownerEmail}`}>Ответить</a></td>
+                </tr>
+              ))}
+              {!feedbackRows.length && <tr><td colSpan={4} className="admin-empty-row">Обращений пока не было.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    ),
+  });
+
   return (
     <main className="admin-page">
       <AdminStyles />
@@ -921,6 +954,23 @@ function AdminStyles() {
       .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
       .admin-table th, .admin-table td { text-align: left; padding: 9px 10px; border-bottom: 1px solid rgba(148, 163, 184, 0.18); white-space: nowrap; }
       .admin-table th { color: #6b7280; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+      /* Overrides the table's default nowrap - a feedback message is prose,
+         not a short field, so it needs to wrap within a capped width
+         instead of forcing one giant single-line cell (and the whole
+         table's horizontal scroll) per message. */
+      /* The base ".admin-table td" rule's white-space: nowrap (above) is
+         what actually stopped this from wrapping — a plain .admin-feedback-
+         message override (specificity 0,1,0) silently lost to that rule
+         (0,1,1); table-layout: fixed with per-column pixel widths was a
+         first attempt at working around that, but it broke on mobile
+         (fixed columns wider than the 390px viewport squeezed the message
+         column down to a single narrow one-word-per-line strip instead of
+         a readable paragraph). min-width keeps this column from being
+         squeezed that way — on a narrow screen the table just ends up
+         wider than the viewport, same as the "Пользователи" table's own
+         many columns, and scrolls horizontally via .admin-table-scroll
+         exactly like that one already does, rather than reflowing. */
+      .admin-table-feedback .admin-feedback-message { min-width: 260px; white-space: normal; word-break: break-word; }
       .admin-plan-expiry-soon { color: #b45309; background: rgba(251, 191, 36, 0.12); font-weight: 700; }
       .admin-plan-expiry-critical, .admin-plan-expiry-expired { color: #b91c1c; background: rgba(248, 113, 113, 0.13); font-weight: 700; }
       .admin-plan-expiry-missing { color: #92400e; background: rgba(251, 191, 36, 0.16); font-weight: 700; }

@@ -129,6 +129,24 @@ export async function sendPublicationFailedEmail(email: string, params: { channe
   });
 }
 
+// Notifies the site owner (ADMIN_EMAILS) of a new "Задать вопрос" submission
+// from the workspace account menu — see feedbackMessages in db/schema.ts.
+// The reply itself happens as an ordinary email straight to fromEmail, not
+// through any in-app thread — this is deliberately a one-way notification.
+export async function sendFeedbackNotificationEmail(to: string, params: { fromEmail: string; message: string }) {
+  const safeFrom = escapeHtml(params.fromEmail);
+  const safeMessage = escapeHtml(params.message).replace(/\n/g, "<br/>");
+  await sendTransactionalEmail({
+    to,
+    subject: `Новое обращение от ${params.fromEmail}`,
+    html: emailShell("Новое обращение", `
+      <p><strong>От:</strong> <a href="mailto:${safeFrom}">${safeFrom}</a></p>
+      <p style="white-space: pre-wrap;">${safeMessage}</p>
+    `),
+    plaintext: `Новое обращение от ${params.fromEmail}:\n\n${params.message}`,
+  });
+}
+
 // Sent by the trial-reminder cron job (not yet wired up — see workspace-account.ts's
 // TRIAL_DURATION_MS) once an account is approaching the end of its 48h trial window.
 export async function sendTrialEndingEmail(email: string, workspaceUrl: string) {

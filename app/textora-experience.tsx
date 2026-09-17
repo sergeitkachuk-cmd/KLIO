@@ -2363,6 +2363,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [brandCreatorOpen, setBrandCreatorOpen] = useState(false);
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [feedbackBusy, setFeedbackBusy] = useState(false);
+  const [feedbackError, setFeedbackError] = useState("");
+  const [feedbackSent, setFeedbackSent] = useState(false);
   const [newBrandName, setNewBrandName] = useState("");
   const [brandSwitchBusy, setBrandSwitchBusy] = useState(false);
   // Scroll target for resultRevealTick below - the top of the result
@@ -2805,6 +2810,31 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       window.location.assign("/");
     }
   };
+
+  async function submitFeedback() {
+    const message = feedbackMessage.trim();
+    if (!message) {
+      setFeedbackError("Напишите сообщение.");
+      return;
+    }
+    setFeedbackBusy(true);
+    setFeedbackError("");
+    try {
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Не удалось отправить сообщение.");
+      setFeedbackSent(true);
+      setFeedbackMessage("");
+    } catch (error) {
+      setFeedbackError(error instanceof Error ? error.message : "Не удалось отправить сообщение.");
+    } finally {
+      setFeedbackBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (workspace) return;
@@ -5333,11 +5363,36 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </button>
             {accountMenuOpen && <div className="account-menu-list" role="menu">
               <Link href="/account" role="menuitem">Личный кабинет</Link>
+              <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); setFeedbackOpen(true); setFeedbackSent(false); setFeedbackError(""); }}>Задать вопрос</button>
               <button type="button" role="menuitem" onClick={() => void signOutOfWorkspace()}>Выйти</button>
             </div>}
           </div>
         </div>
       </header>
+
+      {feedbackOpen && <div className="archive-editor-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget && !feedbackBusy) setFeedbackOpen(false); }}>
+        <section className="feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-modal-title">
+          <div className="archive-editor-head">
+            <div><span>КЛИО / Обратная связь</span><h2 id="feedback-modal-title">Задать вопрос</h2></div>
+            <div className="archive-editor-head-actions"><button type="button" onClick={() => setFeedbackOpen(false)} aria-label="Закрыть">×</button></div>
+          </div>
+          {feedbackSent ? (
+            <p className="feedback-modal-sent">Спасибо! Мы получили сообщение и ответим вам на почту в ближайшее время.</p>
+          ) : (
+            <>
+              <p className="feedback-modal-lead">Вопрос, пожелание или что-то не работает — напишите здесь, мы ответим вам на почту.</p>
+              <label className="publications-editor-field">
+                <span>Сообщение</span>
+                <textarea rows={5} value={feedbackMessage} onChange={(event) => setFeedbackMessage(event.target.value)} placeholder="Опишите вопрос или пожелание…"/>
+              </label>
+              {feedbackError && <p className="generation-error" role="alert">{feedbackError}</p>}
+              <div className="publications-editor-actions">
+                <button type="button" className="button primary" disabled={feedbackBusy} onClick={() => void submitFeedback()}>{feedbackBusy ? "Отправляем…" : "Отправить"}</button>
+              </div>
+            </>
+          )}
+        </section>
+      </div>}
 
       {workspaceDataError && activeBrandId && <section role="alert" style={{ margin: "12px 20px", padding: 16, border: "2px solid #c65819", borderRadius: 12, background: "#fff4e8", color: "#512900" }}>
         <p>{workspaceDataError}</p>

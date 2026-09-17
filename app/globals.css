@@ -12437,6 +12437,36 @@ input[type="radio"] {
 }
 .publications-chip-more:hover { background: rgba(133, 87, 232, .42); color: #fff; }
 
+/* Same overlay/modal shell as .publications-channel-modal - one shared
+   dark-regardless-of-theme surface language for every workspace modal. */
+.feedback-modal {
+  width: min(560px, 100%);
+  max-height: calc(100svh - 44px);
+  padding: 25px;
+  overflow: auto; -webkit-overflow-scrolling: touch;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 5px 28px 5px 5px;
+  background:
+    radial-gradient(circle at 96% 0%, rgba(124, 58, 237, 0.2), transparent 30%),
+    linear-gradient(145deg, #0a2340 0%, #082b4c 55%, #061c34 100%);
+  box-shadow: 0 34px 100px rgba(0, 0, 0, 0.5), inset 0 1px rgba(255, 255, 255, 0.1);
+  display: grid;
+  gap: 14px;
+}
+.feedback-modal-lead {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.feedback-modal-sent {
+  margin: 0;
+  color: #d8ff65;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 .publications-editor-modal::-webkit-scrollbar,
 .publications-channel-modal::-webkit-scrollbar { width: 10px; }
 
