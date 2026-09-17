@@ -800,11 +800,20 @@ function AdminStyles() {
       .admin-sidebar button em { flex: 0 0 auto; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-style: normal; font-weight: 700; background: rgba(100, 116, 139, 0.14); }
       .admin-sidebar button.active em { background: rgba(255, 255, 255, 0.22); }
       .admin-main { min-width: 0; }
+      /* Grid items default to min-width:auto (at least their content's
+         width), not 0 - without this, the mobile pill-nav's own
+         overflow-x:auto (below) had nothing to clip against, so its
+         intrinsic content width (all pills laid end to end) forced the
+         whole .admin-shell single-column track wider than the viewport
+         instead of scrolling within itself, dragging every section
+         (funnel bars included) into the same horizontal overflow (site
+         owner: "график... растягивается за границы экрана"). */
+      .admin-sidebar { min-width: 0; }
       .admin-main .admin-block:last-child { margin-bottom: 0; }
-      body[data-admin-theme="dark"] .admin-sidebar button:hover, body[data-admin-theme="dark"] .admin-sidebar button em { background: rgba(148, 163, 184, 0.14); }
+      body[data-admin-theme="dark"] .admin-sidebar button:hover, body[data-admin-theme="dark"] .admin-sidebar button em { background: rgba(139, 92, 246, 0.16); }
       body[data-admin-theme="dark"] .admin-sidebar button.active { background: #4f46e5; }
       body[data-admin-theme="dark"] .admin-sidebar button.active em { background: rgba(255, 255, 255, 0.22); }
-      @media (prefers-color-scheme: dark) { .admin-sidebar button:hover, .admin-sidebar button em { background: rgba(148, 163, 184, 0.14); } .admin-sidebar button.active em { background: rgba(255, 255, 255, 0.22); } }
+      @media (prefers-color-scheme: dark) { .admin-sidebar button:hover, .admin-sidebar button em { background: rgba(139, 92, 246, 0.16); } .admin-sidebar button.active em { background: rgba(255, 255, 255, 0.22); } }
       @media (max-width: 900px) {
         .admin-shell { grid-template-columns: 1fr; }
         /* Same pill-bar pattern as the workspace's own mobile bottom nav
@@ -929,16 +938,29 @@ function AdminStyles() {
       body[data-admin-theme="dark"] { background: linear-gradient(160deg, #0a1330 0%, #0d2145 50%, #091a35 100%) fixed; color: #e5e7eb; }
       body[data-admin-theme="light"] { background: #f8fafc; color: #1c1f26; }
       body[data-admin-theme="dark"] .admin-page { color: #e5e7eb; }
-      body[data-admin-theme="dark"] .admin-cards article, body[data-admin-theme="dark"] .admin-integration, body[data-admin-theme="dark"] .admin-account-controls { background: #111d2d; border-color: #2c4059; }
-      body[data-admin-theme="dark"] .admin-theme-toggle, body[data-admin-theme="dark"] .admin-controls-grid select, body[data-admin-theme="dark"] .admin-controls-grid input { background: #17263a; border-color: #3a506b; color: #e5e7eb; }
-      body[data-admin-theme="dark"] .admin-users-toolbar input { background: #17263a; border-color: #3a506b; color: #e5e7eb; }
+      /* Flat #111d2d read as "black plates" (site owner) despite technically
+         being navy - too close in lightness/saturation to the page's own
+         dark gradient behind it to register as a lifted surface. A violet
+         corner glow plus a warmer navy gradient (same language as
+         /account's .account-card - see billing-actions.tsx) and a violet-
+         tinted border instead of steel blue-gray ties this to KLIO's own
+         accent (#4f46e5/#7c3aed, already the sidebar/button/funnel color)
+         instead of an unrelated cool-gray palette. */
+      body[data-admin-theme="dark"] .admin-cards article, body[data-admin-theme="dark"] .admin-integration, body[data-admin-theme="dark"] .admin-account-controls {
+        background: radial-gradient(circle at 90% 0%, rgba(139, 92, 246, 0.20), transparent 35%), linear-gradient(150deg, #131c40 0%, #101a35 55%, #0b1428 100%);
+        border-color: rgba(139, 110, 255, 0.24);
+      }
+      body[data-admin-theme="dark"] .admin-theme-toggle, body[data-admin-theme="dark"] .admin-controls-grid select, body[data-admin-theme="dark"] .admin-controls-grid input { background: #171d3d; border-color: rgba(139, 110, 255, 0.3); color: #e5e7eb; }
+      body[data-admin-theme="dark"] .admin-users-toolbar input { background: #171d3d; border-color: rgba(139, 110, 255, 0.3); color: #e5e7eb; }
       @media (max-width: 800px) { .admin-controls-grid { grid-template-columns: 1fr; } .admin-header-actions { width: 100%; justify-content: space-between; align-items: center; } }
       @media (prefers-color-scheme: dark) {
         .admin-page { color: #e5e7eb; }
-        .admin-cards article { background: #14161b; border-color: #262933; }
-        .admin-integration { background: #14161b; border-color: #262933; }
+        .admin-cards article, .admin-integration {
+          background: radial-gradient(circle at 90% 0%, rgba(139, 92, 246, 0.20), transparent 35%), linear-gradient(150deg, #131c40 0%, #101a35 55%, #0b1428 100%);
+          border-color: rgba(139, 110, 255, 0.24);
+        }
         .admin-block-heading p, .admin-integration small { color: #a0a7b4; }
-        .admin-refresh { border-color: #3b404d; }
+        .admin-refresh { border-color: rgba(139, 110, 255, 0.3); }
         .admin-integration-connected i { background: #153d2a; color: #86efac; }
         .admin-integration-needs_setup i { background: #4a3610; color: #fde68a; }
         .admin-integration-unavailable i { background: #4a1d24; color: #fca5a5; }
