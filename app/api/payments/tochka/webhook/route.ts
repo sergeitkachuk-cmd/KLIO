@@ -62,7 +62,6 @@ export async function POST(request: Request) {
         generationsUsed: 0,
         researchUsed: 0,
         editorActionsUsed: 0,
-        seoAuditsUsed: 0,
         generationMonth: `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, "0")}`,
         quotaPeriodEndsAt: nextQuotaPeriodEnd(paidAt),
         // Only on confirmed payment, not on payment-link creation — an

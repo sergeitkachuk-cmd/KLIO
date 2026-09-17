@@ -91,11 +91,9 @@ export async function ensureAccount(user: ChatGPTUser, signupMethod: "email" | "
       generationsUsed: 0,
       researchUsed: 0,
       editorActionsUsed: 0,
-      seoAuditsUsed: 0,
       lifetimeGenerationsUsed: 0,
       lifetimeResearchUsed: 0,
       lifetimeEditorActionsUsed: 0,
-      lifetimeSeoAuditsUsed: 0,
     }).onConflictDoNothing({ target: accounts.email }).returning();
     if (!account) [account] = await db.select().from(accounts).where(eq(accounts.email, user.email)).limit(1);
   } else if (quotaPeriodElapsed(account, now)) {
@@ -112,7 +110,6 @@ export async function ensureAccount(user: ChatGPTUser, signupMethod: "email" | "
       generationsUsed: 0,
       researchUsed: 0,
       editorActionsUsed: 0,
-      seoAuditsUsed: 0,
       updatedAt: sql`CURRENT_TIMESTAMP`,
     }).where(and(
       eq(accounts.email, user.email),
@@ -193,9 +190,6 @@ export function accountSummary(account: typeof accounts.$inferSelect, brandCount
     editorActionsUsed: account.editorActionsUsed,
     editorActionLimit: expired ? 0 : rule.editorActionLimit,
     editorActionsRemaining: expired ? 0 : Math.max(0, rule.editorActionLimit - account.editorActionsUsed),
-    seoAuditsUsed: account.seoAuditsUsed,
-    seoAuditLimit: expired ? 0 : rule.seoAuditLimit,
-    seoAuditsRemaining: expired ? 0 : Math.max(0, rule.seoAuditLimit - account.seoAuditsUsed),
     // Lifetime totals for the "Ваша статистика" bar — never reset by the
     // monthly rollover in ensureAccount(), unlike the period counters
     // above (which still drive the plan quota widgets on /account and
@@ -203,7 +197,6 @@ export function accountSummary(account: typeof accounts.$inferSelect, brandCount
     lifetimeGenerationsUsed: account.lifetimeGenerationsUsed,
     lifetimeResearchUsed: account.lifetimeResearchUsed,
     lifetimeEditorActionsUsed: account.lifetimeEditorActionsUsed,
-    lifetimeSeoAuditsUsed: account.lifetimeSeoAuditsUsed,
     daysWithKlio: Number.isNaN(createdAtMs) ? 0 : Math.max(0, Math.floor((Date.now() - createdAtMs) / 86400000)),
     brandCount,
     brandLimit: rule.brandLimit,
@@ -334,45 +327,6 @@ export async function recordResearch(job?: JobResult) {
 
 export async function recordEditorialAction(job?: JobResult) {
   return consumeSecondaryQuota("editor", job);
-}
-
-// Kept separate from consumeSecondaryQuota/assertSecondaryQuotaAvailable
-// (research/editor) rather than folded into that "research" | "editor"
-// union: an SEO audit isn't a background async job like content-plan/
-// adapt-text, it runs and returns synchronously (see api/seo-audit/
-// route.ts), so it has no job row to touch mid-transaction.
-export async function assertSeoAuditQuotaAvailable() {
-  if (!await workspaceDatabaseAvailable()) return;
-  const user = await workspaceIdentity();
-  const current = await ensureAccount(user);
-  assertPlanActive(current);
-  const rule = planRule(current.planId);
-  if (current.seoAuditsUsed >= rule.seoAuditLimit) {
-    throw new WorkspaceAccessError(`Лимит тарифа «${rule.name}» исчерпан: ${rule.seoAuditLimit} SEO-аудитов ${rule.periodLabel}.`, 429);
-  }
-}
-
-export async function recordSeoAudit() {
-  if (!await workspaceDatabaseAvailable()) return null;
-  const user = await workspaceIdentity();
-  const db = await getWorkspaceDb();
-  const current = await ensureAccount(user);
-  assertPlanActive(current);
-  const rule = planRule(current.planId);
-
-  const [updated] = await db.update(accounts).set({
-    seoAuditsUsed: sql`${accounts.seoAuditsUsed} + 1`,
-    lifetimeSeoAuditsUsed: sql`${accounts.lifetimeSeoAuditsUsed} + 1`,
-    updatedAt: sql`CURRENT_TIMESTAMP`,
-  }).where(and(
-    eq(accounts.email, user.email),
-    lt(accounts.seoAuditsUsed, rule.seoAuditLimit),
-  )).returning();
-
-  if (!updated) throw new WorkspaceAccessError(`Лимит тарифа «${rule.name}» исчерпан: ${rule.seoAuditLimit} SEO-аудитов ${rule.periodLabel}.`, 429);
-
-  const [{ count: brandCount = 0 } = { count: 0 }] = await db.select({ count: sql<number>`count(*)` }).from(brands).where(eq(brands.ownerEmail, user.email));
-  return { account: accountSummary(updated, Number(brandCount)) };
 }
 
 export type ArchiveMaterial = {

@@ -33,19 +33,13 @@ export const accounts = pgTable("accounts", {
   generationsUsed: integer("generations_used").notNull().default(0),
   researchUsed: integer("research_used").notNull().default(0),
   editorActionsUsed: integer("editor_actions_used").notNull().default(0),
-  // Technical SEO audits (DataForSEO OnPage) — kept separate from
-  // researchUsed/editorActionsUsed because it's billed against *our* own
-  // prepaid DataForSEO balance per call, not just AI tokens, so it needs
-  // its own tighter per-plan cap rather than sharing an existing one.
-  seoAuditsUsed: integer("seo_audits_used").notNull().default(0),
-  // Mirror the four counters above but never reset on the monthly
+  // Mirror the three counters above but never reset on the monthly
   // rollover in ensureAccount() — the "Ваша статистика" bar on the
   // workspace overview reads these for a lifetime total instead of the
   // current-period used-count the sidebar/plan quota widgets already show.
   lifetimeGenerationsUsed: integer("lifetime_generations_used").notNull().default(0),
   lifetimeResearchUsed: integer("lifetime_research_used").notNull().default(0),
   lifetimeEditorActionsUsed: integer("lifetime_editor_actions_used").notNull().default(0),
-  lifetimeSeoAuditsUsed: integer("lifetime_seo_audits_used").notNull().default(0),
   // Set once the one-time launch discount (see LAUNCH_DISCOUNT_PERCENT in
   // app/billing-pricing.ts) has actually been consumed by a confirmed
   // payment — never on link/invoice creation alone, so an abandoned
@@ -107,6 +101,20 @@ export const invoices = pgTable("invoices", {
 }, (table) => [
   index("invoices_owner_created_idx").on(table.ownerEmail, table.createdAt),
   index("invoices_status_idx").on(table.paymentStatus, table.createdAt),
+]);
+
+// "Задать вопрос" in the workspace account menu — a deliberately simple
+// one-way form (site owner chose this over a full two-way threaded chat):
+// stored here so nothing is lost even if the notification email below
+// fails, and shown in /admin ("Обращения") with a mailto: link. The site
+// owner replies with an ordinary email, not an in-app reply thread.
+export const feedbackMessages = pgTable("feedback_messages", {
+  id: text("id").primaryKey(),
+  ownerEmail: text("owner_email").notNull(),
+  message: text("message").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+  index("feedback_messages_created_idx").on(table.createdAt),
 ]);
 
 export const sessions = pgTable("sessions", {
