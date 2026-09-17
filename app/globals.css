@@ -5331,6 +5331,17 @@ footer nav a {
   border-radius: 50%;
   color: var(--module-accent, #7450bd);
   background: color-mix(in srgb, var(--module-accent, #7450bd) 22%, transparent);
+  /* Site owner: "хоть какая-нибудь анимация в проекте", only if it doesn't
+     cost speed - transform is a compositor-only property (no layout/paint
+     work), so this animates for free regardless of how heavy the page
+     around it is. The "back out" curve (overshoots past 1, settles back)
+     is what gives the little bounce instead of a flat scale-up. */
+  transition: transform 240ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.workspace-sidebar nav a:hover i,
+.workspace-sidebar nav button:hover i {
+  transform: scale(1.12) rotate(-8deg);
 }
 
 .workspace-sidebar nav i svg {
