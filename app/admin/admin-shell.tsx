@@ -20,7 +20,18 @@ export function AdminShell({ sections }: { sections: AdminSection[] }) {
       <aside className="admin-sidebar">
         <nav aria-label="Разделы админки">
           {sections.map((section) => (
-            <button type="button" key={section.id} className={section.id === active ? "active" : ""} onClick={() => setActive(section.id)}>
+            <button type="button" key={section.id} className={section.id === active ? "active" : ""} onClick={() => {
+              setActive(section.id);
+              // Sections vary wildly in height ("Пользователи"/"Расход на
+              // ИИ" run to hundreds of rows, others are a few lines) - with
+              // no scroll reset, switching away from deep inside a tall one
+              // to a much shorter one left the visitor stranded scrolled
+              // past its end, looking at blank space with only the fixed
+              // mobile nav bar in view (site owner: "кнопки меню улетают
+              // вниз за экран" - not the nav moving, the content underneath
+              // it disappearing).
+              window.scrollTo(0, 0);
+            }}>
               <span>{section.label}</span>
               {section.badge !== undefined && <em>{section.badge}</em>}
             </button>

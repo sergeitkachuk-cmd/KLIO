@@ -850,6 +850,13 @@ function AdminStyles() {
           border-top: 1px solid rgba(139, 110, 255, 0.24);
           background: linear-gradient(180deg, rgba(10, 16, 36, 0.92), rgba(8, 13, 30, 0.98));
           box-shadow: 0 -14px 30px rgba(3, 12, 28, 0.35);
+          /* iOS Safari has a known bug where a position:fixed element's
+             rendered position doesn't resync after a JS-driven layout
+             change until the next scroll gesture (own compositing layer
+             works around it) - relevant here because switching section
+             (a big, instant height change via display:none, not a scroll)
+             is exactly this bar's whole job. */
+          transform: translateZ(0);
         }
         .admin-sidebar nav::-webkit-scrollbar { display: none; }
         .admin-sidebar button {
@@ -860,6 +867,12 @@ function AdminStyles() {
           padding: 8px 14px;
           border-radius: 999px;
           white-space: nowrap;
+          /* Base rule's border/background are both transparent - fine
+             against a page background, but on this bar every inactive
+             pill disappeared into it, leaving only the active one reading
+             as a real button (site owner: "кнопки сливаются с фоном"). */
+          border-color: rgba(255, 255, 255, 0.16);
+          background: rgba(255, 255, 255, 0.06);
         }
         /* Room for the now-fixed bar so it never covers the last section's
            own content (mirrors .workspace-content's own bottom padding for
@@ -870,6 +883,23 @@ function AdminStyles() {
           background: rgba(255, 255, 255, 0.96);
           box-shadow: 0 -12px 28px rgba(15, 23, 42, 0.12);
         }
+        body[data-admin-theme="light"] .admin-sidebar button {
+          border-color: rgba(15, 23, 42, 0.14);
+          background: rgba(15, 23, 42, 0.03);
+        }
+        .admin-sidebar button.active {
+          border-color: #4f46e5;
+        }
+        /* Site owner: "карточки... давай сделаем более компактными и в два
+           ряда" - auto-fit(minmax(200px,1fr)) already collapsed these 4 to
+           one cramped column below ~430px (nothing fit two 200px+ cards
+           side by side), each at full desktop padding/font size. Forcing
+           2 columns plus smaller padding/type fits exactly 2 rows of 2. */
+        .admin-cards { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 20px; }
+        .admin-cards article { padding: 10px 12px; }
+        .admin-cards span { font-size: 11px; margin-bottom: 3px; }
+        .admin-cards b { font-size: 17px; }
+        .admin-cards small { font-size: 10px; margin-top: 2px; }
       }
       .admin-block { margin-bottom: 32px; }
       .admin-block h2 { font-size: 16px; margin: 0 0 10px; }
