@@ -4390,6 +4390,7 @@ footer nav a {
 }
 
 .workspace-account i {
+  position: relative;
   grid-row: 1 / 3;
   display: grid;
   place-items: center;
@@ -4403,6 +4404,27 @@ footer nav a {
   font-style: normal;
   font-weight: 700;
   backdrop-filter: blur(7px);
+}
+
+/* Site owner: the unread-reply count only lived inside the account
+   dropdown, invisible until opened ("не видно пока не раскроешь верхнее
+   меню") - this sits on the always-visible avatar in the header instead;
+   the count next to "Задать вопрос" inside the open menu stays too. */
+.workspace-account-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  display: grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--acid);
+  color: var(--night);
+  font-size: 10px;
+  font-weight: 800;
+  font-style: normal;
 }
 
 .workspace-account b {
@@ -12455,7 +12477,11 @@ input[type="radio"] {
 /* Same overlay/modal shell as .publications-channel-modal - one shared
    dark-regardless-of-theme surface language for every workspace modal. */
 .feedback-modal {
-  width: min(560px, 100%);
+  /* Was 560px - a long message/reply wrapped into a tall, narrow column
+     of short lines (site owner: "если будет много текста, то будет
+     длинно слишком"). Wider gives the same text noticeably fewer, longer
+     lines instead. */
+  width: min(760px, 100%);
   max-height: calc(100svh - 44px);
   padding: 25px;
   overflow: auto; -webkit-overflow-scrolling: touch;

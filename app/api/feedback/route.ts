@@ -4,6 +4,7 @@ import { feedbackMessages } from "../../../db/schema";
 import { readBoundedJson, RequestBodyError } from "../_lib/request-body";
 import { getWorkspaceDb, WorkspaceAccessError, workspaceIdentity } from "../_lib/workspace-account";
 import { emailDeliveryAvailable, sendFeedbackNotificationEmail } from "../_lib/email";
+import { adminTelegramAvailable, sendAdminTelegramMessage } from "../_lib/admin-notify";
 
 const MAX_MESSAGE_LENGTH = 4000;
 const HISTORY_LIMIT = 50;
@@ -35,9 +36,16 @@ export async function POST(request: Request) {
     // Best-effort — the message is already durably stored above, so a
     // notification failure (missing config, provider outage) must not turn
     // into an error the visitor sees; it just surfaces later in /admin.
+    // Telegram alongside email, not instead of it — site owner: "чтобы их
+    // не пропустил", a faster/harder-to-miss channel than an inbox.
     if (emailDeliveryAvailable()) {
       const admins = (process.env.ADMIN_EMAILS ?? "").split(",").map((item) => item.trim()).filter(Boolean);
       await Promise.allSettled(admins.map((admin) => sendFeedbackNotificationEmail(admin, { fromEmail: user.email, message })));
+    }
+    if (adminTelegramAvailable()) {
+      await sendAdminTelegramMessage(`Новое обращение в КЛИО\nОт: ${user.email}\n\n${message}`).catch(() => {
+        console.error("Admin Telegram notify failed");
+      });
     }
 
     return Response.json({ ok: true });
