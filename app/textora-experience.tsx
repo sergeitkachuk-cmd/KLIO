@@ -268,6 +268,11 @@ type WorkspaceAccount = {
   launchDiscountAvailable: boolean;
 };
 
+// Mirrors a row of feedbackMessages (db/schema.ts) — one "Задать вопрос"
+// submission plus whatever reply it has so far (null until the site owner
+// answers it from /admin).
+type FeedbackMessageRecord = { id: string; message: string; reply: string | null; createdAt: string; repliedAt: string | null };
+
 type BrandWorkspaceSnapshot = {
   useBrand?: boolean;
   profileMode?: ProfileMode;
@@ -2367,7 +2372,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackBusy, setFeedbackBusy] = useState(false);
   const [feedbackError, setFeedbackError] = useState("");
-  const [feedbackSent, setFeedbackSent] = useState(false);
+  const [feedbackHistory, setFeedbackHistory] = useState<FeedbackMessageRecord[]>([]);
+  const [feedbackUnread, setFeedbackUnread] = useState(0);
   const [newBrandName, setNewBrandName] = useState("");
   const [brandSwitchBusy, setBrandSwitchBusy] = useState(false);
   // Scroll target for resultRevealTick below - the top of the result
@@ -2803,6 +2809,28 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     };
   }, [workspace]);
 
+  // Background load for the "Задать вопрос" unread badge + history, so the
+  // badge is visible before the visitor ever opens the modal — see
+  // submitFeedback/the account-menu button below.
+  useEffect(() => {
+    if (!workspace) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch("/api/feedback", { cache: "no-store", headers: { Accept: "application/json" } });
+        const payload = await safeJson(response) as { messages?: FeedbackMessageRecord[]; unreadCount?: number };
+        if (cancelled || !response.ok) return;
+        setFeedbackHistory(Array.isArray(payload.messages) ? payload.messages : []);
+        setFeedbackUnread(payload.unreadCount ?? 0);
+      } catch {
+        // Background badge/history load - not worth surfacing an error for.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [workspace]);
+
   const signOutOfWorkspace = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
@@ -2827,8 +2855,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "Не удалось отправить сообщение.");
-      setFeedbackSent(true);
+      setFeedbackHistory((current) => [{ id: `local-${Date.now()}`, message, reply: null, repliedAt: null, createdAt: new Date().toISOString() }, ...current]);
       setFeedbackMessage("");
+      showToast("Сообщение отправлено");
     } catch (error) {
       setFeedbackError(error instanceof Error ? error.message : "Не удалось отправить сообщение.");
     } finally {
@@ -5363,7 +5392,18 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </button>
             {accountMenuOpen && <div className="account-menu-list" role="menu">
               <Link href="/account" role="menuitem">Личный кабинет</Link>
-              <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); setFeedbackOpen(true); setFeedbackSent(false); setFeedbackError(""); }}>Задать вопрос</button>
+              <button type="button" role="menuitem" onClick={() => {
+                setAccountMenuOpen(false);
+                setFeedbackOpen(true);
+                setFeedbackError("");
+                // Opening the modal is the "seen" moment — see the PATCH
+                // handler in api/feedback/route.ts. Optimistic clear so the
+                // badge doesn't flash while the request is in flight.
+                if (feedbackUnread > 0) {
+                  setFeedbackUnread(0);
+                  void fetch("/api/feedback", { method: "PATCH" }).catch(() => {});
+                }
+              }}>Задать вопрос{feedbackUnread > 0 && <em className="account-menu-badge">{feedbackUnread}</em>}</button>
               <button type="button" role="menuitem" onClick={() => void signOutOfWorkspace()}>Выйти</button>
             </div>}
           </div>
@@ -5376,21 +5416,23 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <div><span>КЛИО / Обратная связь</span><h2 id="feedback-modal-title">Задать вопрос</h2></div>
             <div className="archive-editor-head-actions"><button type="button" onClick={() => setFeedbackOpen(false)} aria-label="Закрыть">×</button></div>
           </div>
-          {feedbackSent ? (
-            <p className="feedback-modal-sent">Спасибо! Мы получили сообщение и ответим вам на почту в ближайшее время.</p>
-          ) : (
-            <>
-              <p className="feedback-modal-lead">Вопрос, пожелание или что-то не работает — напишите здесь, мы ответим вам на почту.</p>
-              <label className="publications-editor-field">
-                <span>Сообщение</span>
-                <textarea rows={5} value={feedbackMessage} onChange={(event) => setFeedbackMessage(event.target.value)} placeholder="Опишите вопрос или пожелание…"/>
-              </label>
-              {feedbackError && <p className="generation-error" role="alert">{feedbackError}</p>}
-              <div className="publications-editor-actions">
-                <button type="button" className="button primary" disabled={feedbackBusy} onClick={() => void submitFeedback()}>{feedbackBusy ? "Отправляем…" : "Отправить"}</button>
+          <p className="feedback-modal-lead">Вопрос, пожелание или что-то не работает — напишите здесь, мы ответим вам прямо в этом окне.</p>
+          {feedbackHistory.length > 0 && <div className="feedback-modal-history">
+            {feedbackHistory.map((item) => (
+              <div className="feedback-modal-entry" key={item.id}>
+                <p className="feedback-modal-entry-question"><b>Вы:</b> {item.message}</p>
+                {item.reply ? <p className="feedback-modal-entry-answer"><b>КЛИО:</b> {item.reply}</p> : <p className="feedback-modal-entry-pending">Ожидает ответа…</p>}
               </div>
-            </>
-          )}
+            ))}
+          </div>}
+          <label className="publications-editor-field">
+            <span>Новое сообщение</span>
+            <textarea rows={4} value={feedbackMessage} onChange={(event) => setFeedbackMessage(event.target.value)} placeholder="Опишите вопрос или пожелание…"/>
+          </label>
+          {feedbackError && <p className="generation-error" role="alert">{feedbackError}</p>}
+          <div className="publications-editor-actions">
+            <button type="button" className="button primary" disabled={feedbackBusy} onClick={() => void submitFeedback()}>{feedbackBusy ? "Отправляем…" : "Отправить"}</button>
+          </div>
         </section>
       </div>}
 

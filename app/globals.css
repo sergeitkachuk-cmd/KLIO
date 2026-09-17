@@ -4469,6 +4469,21 @@ footer nav a {
   color: var(--acid);
 }
 
+.account-menu-badge {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: auto;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--acid);
+  color: var(--night);
+  font-size: 11px;
+  font-weight: 800;
+  font-style: normal;
+}
+
 .workspace-layout {
   display: grid;
   grid-template-columns: 276px minmax(0, 1fr);
@@ -12460,12 +12475,25 @@ input[type="radio"] {
   font-size: 14px;
   line-height: 1.5;
 }
-.feedback-modal-sent {
-  margin: 0;
-  color: #d8ff65;
-  font-size: 14px;
-  line-height: 1.5;
+.feedback-modal-history {
+  display: grid;
+  gap: 12px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
+.feedback-modal-entry {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px 14px 4px 4px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.feedback-modal-entry p { margin: 0; font-size: 13px; line-height: 1.5; }
+.feedback-modal-entry-question { color: rgba(255, 255, 255, 0.82); }
+.feedback-modal-entry-answer { color: #d8ff65; }
+.feedback-modal-entry-pending { color: rgba(255, 255, 255, 0.5); font-style: italic; }
 
 .publications-editor-modal::-webkit-scrollbar,
 .publications-channel-modal::-webkit-scrollbar { width: 10px; }

@@ -103,18 +103,25 @@ export const invoices = pgTable("invoices", {
   index("invoices_status_idx").on(table.paymentStatus, table.createdAt),
 ]);
 
-// "Задать вопрос" in the workspace account menu — a deliberately simple
-// one-way form (site owner chose this over a full two-way threaded chat):
-// stored here so nothing is lost even if the notification email below
-// fails, and shown in /admin ("Обращения") with a mailto: link. The site
-// owner replies with an ordinary email, not an in-app reply thread.
+// "Задать вопрос" in the workspace account menu — the site owner replies
+// from /admin ("Обращения"), and the reply shows up back in the same
+// workspace modal (not by email — see reply/repliedAt below). Kept as one
+// message + one reply per row rather than a real threaded conversation:
+// asking again just creates another row.
 export const feedbackMessages = pgTable("feedback_messages", {
   id: text("id").primaryKey(),
   ownerEmail: text("owner_email").notNull(),
   message: text("message").notNull(),
+  reply: text("reply"),
+  repliedAt: text("replied_at"),
+  // Set once the owner has actually seen a reply (workspace modal open,
+  // not just the reply existing) — drives the unread badge on "Задать
+  // вопрос" in the account menu without a separate notifications table.
+  readAt: text("read_at"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
   index("feedback_messages_created_idx").on(table.createdAt),
+  index("feedback_messages_owner_idx").on(table.ownerEmail, table.createdAt),
 ]);
 
 export const sessions = pgTable("sessions", {

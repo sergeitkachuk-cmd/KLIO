@@ -12,6 +12,7 @@ import { trialExpiresAt } from "../api/_lib/workspace-account";
 import { AdminThemeToggle } from "./admin-theme-toggle";
 import { AdminAccountControls } from "./admin-account-controls";
 import { AdminUsersTable, type AdminUserRow } from "./admin-users-table";
+import { AdminFeedbackTable } from "./admin-feedback-table";
 import { AdminShell, type AdminSection } from "./admin-shell";
 
 export const metadata = { title: "КЛИО / Админка" };
@@ -766,23 +767,15 @@ export default async function AdminPage() {
     content: (
       <section className="admin-block">
         <h2>Обращения ({feedbackRows.length})</h2>
-        <p className="admin-note">«Задать вопрос» из рабочего пространства. Ответ — обычным письмом на адрес отправителя.</p>
-        <div className="admin-table-scroll">
-          <table className="admin-table admin-table-feedback">
-            <thead><tr><th>Когда</th><th>От кого</th><th>Сообщение</th><th></th></tr></thead>
-            <tbody>
-              {feedbackRows.map((item) => (
-                <tr key={item.id}>
-                  <td>{formatDate(item.createdAt)}</td>
-                  <td>{item.ownerEmail}</td>
-                  <td className="admin-feedback-message">{item.message}</td>
-                  <td><a href={`mailto:${item.ownerEmail}`}>Ответить</a></td>
-                </tr>
-              ))}
-              {!feedbackRows.length && <tr><td colSpan={4} className="admin-empty-row">Обращений пока не было.</td></tr>}
-            </tbody>
-          </table>
-        </div>
+        <p className="admin-note">«Задать вопрос» из рабочего пространства. Ответ виден отправителю прямо там же, в модальном окне.</p>
+        <AdminFeedbackTable rows={feedbackRows.map((item) => ({
+          id: item.id,
+          ownerEmail: item.ownerEmail,
+          message: item.message,
+          reply: item.reply,
+          repliedAt: item.repliedAt,
+          createdAt: formatDate(item.createdAt),
+        }))} />
       </section>
     ),
   });
@@ -971,6 +964,11 @@ function AdminStyles() {
          many columns, and scrolls horizontally via .admin-table-scroll
          exactly like that one already does, rather than reflowing. */
       .admin-table-feedback .admin-feedback-message { min-width: 260px; white-space: normal; word-break: break-word; }
+      .admin-feedback-reply { min-width: 260px; vertical-align: top; }
+      .admin-feedback-reply textarea { width: 100%; min-height: 64px; border: 1px solid #d1d5db; border-radius: 9px; padding: 8px 10px; background: #fff; color: #1c1f26; font: inherit; font-size: 13px; resize: vertical; }
+      .admin-feedback-reply-actions { display: flex; gap: 8px; margin-top: 6px; }
+      .admin-feedback-reply-error { margin: 6px 0 0; color: #b91c1c; font-size: 12px; }
+      body[data-admin-theme="dark"] .admin-feedback-reply textarea { background: #171d3d; border-color: rgba(139, 110, 255, 0.3); color: #e5e7eb; }
       .admin-plan-expiry-soon { color: #b45309; background: rgba(251, 191, 36, 0.12); font-weight: 700; }
       .admin-plan-expiry-critical, .admin-plan-expiry-expired { color: #b91c1c; background: rgba(248, 113, 113, 0.13); font-weight: 700; }
       .admin-plan-expiry-missing { color: #92400e; background: rgba(251, 191, 36, 0.16); font-weight: 700; }

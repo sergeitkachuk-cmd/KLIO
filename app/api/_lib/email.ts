@@ -131,8 +131,8 @@ export async function sendPublicationFailedEmail(email: string, params: { channe
 
 // Notifies the site owner (ADMIN_EMAILS) of a new "Задать вопрос" submission
 // from the workspace account menu — see feedbackMessages in db/schema.ts.
-// The reply itself happens as an ordinary email straight to fromEmail, not
-// through any in-app thread — this is deliberately a one-way notification.
+// Just a heads-up to go check /admin — the reply itself is typed there and
+// shows up back in the same workspace modal, not sent by email.
 export async function sendFeedbackNotificationEmail(to: string, params: { fromEmail: string; message: string }) {
   const safeFrom = escapeHtml(params.fromEmail);
   const safeMessage = escapeHtml(params.message).replace(/\n/g, "<br/>");
@@ -140,10 +140,28 @@ export async function sendFeedbackNotificationEmail(to: string, params: { fromEm
     to,
     subject: `Новое обращение от ${params.fromEmail}`,
     html: emailShell("Новое обращение", `
-      <p><strong>От:</strong> <a href="mailto:${safeFrom}">${safeFrom}</a></p>
+      <p><strong>От:</strong> ${safeFrom}</p>
       <p style="white-space: pre-wrap;">${safeMessage}</p>
+      <p style="color: #686879; font-size: 13px;">Ответить можно в админке КЛИО, в разделе «Обращения» — ответ увидит сам пользователь в рабочем пространстве.</p>
     `),
-    plaintext: `Новое обращение от ${params.fromEmail}:\n\n${params.message}`,
+    plaintext: `Новое обращение от ${params.fromEmail}:\n\n${params.message}\n\nОтветить можно в админке КЛИО ("Обращения").`,
+  });
+}
+
+// Notifies the account owner that the site owner replied to their "Задать
+// вопрос" submission — a nudge to come back and read it in the workspace
+// modal, not the reply text itself (keeps the reply visible only inside
+// the app, matching the in-service reply model).
+export async function sendFeedbackRepliedEmail(email: string, workspaceUrl: string) {
+  const safeUrl = escapeHtml(workspaceUrl);
+  await sendTransactionalEmail({
+    to: email,
+    subject: "Вам ответили в КЛИО",
+    html: emailShell("Вам ответили", `
+      <p>На ваше обращение в КЛИО пришёл ответ — откройте рабочее пространство и посмотрите его в разделе «Задать вопрос».</p>
+      <p><a href="${safeUrl}" style="display: inline-block; padding: 12px 22px; border-radius: 10px; background: #101015; color: #fff; text-decoration: none; font-weight: 650;">Открыть КЛИО</a></p>
+    `),
+    plaintext: `На ваше обращение в КЛИО пришёл ответ — откройте рабочее пространство и посмотрите его в разделе «Задать вопрос»: ${workspaceUrl}`,
   });
 }
 
