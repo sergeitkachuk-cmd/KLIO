@@ -50,7 +50,10 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
     // topics without hitting the ceiling). Every other paid plan's
     // generationLimit is this same 30-per-brand rate × brandLimit.
     generationLimit: 30,
-    researchLimit: 5,
+    // 10 per brand (site owner, 2026-09-17). Same per-brand-rate model as
+    // generationLimit above — every other paid plan's researchLimit is
+    // this rate × brandLimit.
+    researchLimit: 10,
     editorActionLimit: 100,
     brandLimit: 1,
     seatLimit: 1,
@@ -62,7 +65,8 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
     name: "Профи",
     // Five brands × start's 30-per-brand rate.
     generationLimit: 150,
-    researchLimit: 20,
+    // Five brands × start's 10-per-brand rate.
+    researchLimit: 50,
     editorActionLimit: 500,
     brandLimit: 5,
     seatLimit: 1,
@@ -76,7 +80,8 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
     // 2026-09-17 rate change (it was already the most generous per-brand
     // ratio of the three), so this one didn't need to move.
     generationLimit: 300,
-    researchLimit: 60,
+    // Ten brands × start's 10-per-brand rate.
+    researchLimit: 100,
     editorActionLimit: 1000,
     brandLimit: 10,
     seatLimit: 1,
@@ -88,8 +93,8 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
     name: "Тестовый период",
     // Roomier than trial's 5/3/5 — this is meant to actually let someone
     // properly try the product, not just poke at it for two days. Tracks
-    // start's own generationLimit (one brand, same rate) so a courtesy
-    // grant is never stingier than the cheapest real plan.
+    // start's own generationLimit/researchLimit (one brand, same rate) so
+    // a courtesy grant is never stingier than the cheapest real plan.
     generationLimit: 30,
     researchLimit: 10,
     editorActionLimit: 100,
