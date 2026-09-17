@@ -45,9 +45,11 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
   start: {
     id: "start",
     name: "Старт",
-    // A full content plan contains 25 publication slots. The entry plan must
-    // let a customer actually generate the whole first plan for one brand.
-    generationLimit: 25,
+    // 30 per brand (site owner, 2026-09-17: was 25, too tight against a
+    // full 25-slot content plan with no headroom to regenerate a few
+    // topics without hitting the ceiling). Every other paid plan's
+    // generationLimit is this same 30-per-brand rate × brandLimit.
+    generationLimit: 30,
     researchLimit: 5,
     editorActionLimit: 100,
     brandLimit: 1,
@@ -58,8 +60,8 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
   pro: {
     id: "pro",
     name: "Профи",
-    // Five brands × one complete 25-topic content plan.
-    generationLimit: 125,
+    // Five brands × start's 30-per-brand rate.
+    generationLimit: 150,
     researchLimit: 20,
     editorActionLimit: 500,
     brandLimit: 5,
@@ -70,6 +72,9 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
   agency: {
     id: "agency",
     name: "Агентство",
+    // Ten brands × start's 30-per-brand rate — already was 300 before the
+    // 2026-09-17 rate change (it was already the most generous per-brand
+    // ratio of the three), so this one didn't need to move.
     generationLimit: 300,
     researchLimit: 60,
     editorActionLimit: 1000,
@@ -82,8 +87,10 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
     id: "comp",
     name: "Тестовый период",
     // Roomier than trial's 5/3/5 — this is meant to actually let someone
-    // properly try the product, not just poke at it for two days.
-    generationLimit: 25,
+    // properly try the product, not just poke at it for two days. Tracks
+    // start's own generationLimit (one brand, same rate) so a courtesy
+    // grant is never stingier than the cheapest real plan.
+    generationLimit: 30,
     researchLimit: 10,
     editorActionLimit: 100,
     brandLimit: 1,
