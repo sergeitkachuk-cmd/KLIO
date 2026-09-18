@@ -2219,7 +2219,12 @@ select:focus-visible {
   display: grid;
   grid-template-columns: minmax(350px, 410px) minmax(0, 1fr);
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  /* Outer contour removed (site owner: too many outlined boxes) -
+     border-color, not border: 0, so nothing reflows. .brief-panel's own
+     border-right (the divider between the two panes) is untouched - a
+     divider between two functional halves is a different job than an
+     outer contour. */
+  border: 1px solid transparent;
   border-radius: 5px 46px 5px 5px;
   background: rgba(4, 18, 37, 0.4);
   box-shadow: 0 44px 110px rgba(3, 12, 26, 0.35), inset 0 1px rgba(255, 255, 255, 0.1);
@@ -5804,7 +5809,7 @@ footer nav a {
      here is what actually breaks that chain and hands white down. */
   color: #fff;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid transparent;
   border-radius: 4px 38px 4px 4px;
   background:
     radial-gradient(circle at 92% 3%, rgba(124, 58, 237, 0.26), transparent 32%),
@@ -7301,7 +7306,7 @@ footer nav a {
 .competitor-matrix-card,
 .competitor-insights-grid article,
 .competitor-actionbar {
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid transparent;
   box-shadow: 0 24px 70px rgba(3, 12, 26, 0.28), inset 0 1px rgba(255, 255, 255, 0.1);
   /* No backdrop-filter (was blur(13px) saturate(145%)) - all four of
      these selectors' own backgrounds (defined separately per selector
@@ -9728,7 +9733,7 @@ footer nav a {
   grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
   overflow: hidden;
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid transparent;
   border-radius: 4px 38px 4px 4px;
   background:
     radial-gradient(circle at 96% 0%, rgba(124, 58, 237, 0.26), transparent 32%),
@@ -12944,7 +12949,11 @@ input[type="radio"] {
      other module's heading uses that value, this one had drifted to 29/32
      and read as a stray 2px indent difference next to the rest. */
   padding: 27px 30px;
-  border: 1px solid rgba(255, 255, 255, 0.17);
+  /* Site owner: outer contour reads as one outline too many next to the
+     card's own distinct fill - border-color, not border: 0, so the box
+     doesn't reflow. border-left comes after and keeps winning for that
+     one side, so the module-accent stripe is unaffected. */
+  border: 1px solid transparent;
   border-left: 4px solid var(--module-accent, #7450bd);
   border-radius: 4px 38px 4px 4px;
   color: #fff;
@@ -12975,7 +12984,7 @@ input[type="radio"] {
 .brand-profile-body {
   padding: 28px 32px 30px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.17);
+  border: 1px solid transparent;
   border-radius: 4px 38px 4px 4px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.83), rgba(244, 241, 252, 0.72));
   box-shadow: 0 24px 64px rgba(3, 17, 34, 0.22), inset 0 1px rgba(255, 255, 255, 0.06);
@@ -17353,7 +17362,7 @@ input[type="radio"] {
    --------------------------------------------------------------------- */
 .content-plan-setup {
   color: #fff;
-  border-color: rgba(255, 255, 255, 0.16);
+  border-color: transparent;
   background:
     radial-gradient(circle at 93% 4%, rgba(124, 58, 237, 0.26), transparent 32%),
     linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
@@ -18329,7 +18338,7 @@ input[type="radio"] {
    the dark-theme default. */
 [data-theme="light"] .brand-profile-head,
 [data-theme="light"] .brand-profile-body {
-  border-color: rgba(15, 23, 42, 0.12);
+  border-color: transparent;
   box-shadow: 0 28px 82px rgba(20, 40, 80, 0.1), inset 0 1px rgba(255, 255, 255, 0.85);
 }
 
@@ -18820,7 +18829,7 @@ input[type="radio"] {
    they appear ahead of those modules' own installments.
    --------------------------------------------------------------------- */
 [data-theme="light"] .studio {
-  border-color: rgba(15, 23, 42, 0.14);
+  border-color: transparent;
   background: rgba(255, 255, 255, 0.55);
   box-shadow: 0 44px 110px rgba(20, 40, 80, 0.14), inset 0 1px rgba(255, 255, 255, 0.7);
 }
@@ -19370,7 +19379,7 @@ input[type="radio"] {
    ------------------------------------------------------------------- */
 [data-theme="light"] .content-plan-setup {
   color: #0d1b31;
-  border-color: rgba(15, 23, 42, 0.14);
+  border-color: transparent;
   background:
     radial-gradient(circle at 93% 4%, rgba(53, 104, 212, 0.16), transparent 32%),
     linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%);
@@ -19838,7 +19847,7 @@ input[type="radio"] {
   --muted: rgba(13, 27, 49, 0.62);
   --line: rgba(15, 23, 42, 0.14);
   color: #0d1b31;
-  border-color: rgba(15, 23, 42, 0.14);
+  border-color: transparent;
   background:
     radial-gradient(circle at 96% 0%, rgba(53, 104, 212, 0.16), transparent 32%),
     linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%);
@@ -20092,7 +20101,7 @@ input[type="radio"] {
   --muted: rgba(13, 27, 49, 0.62);
   --line: rgba(15, 23, 42, 0.14);
   color: #0d1b31;
-  border-color: rgba(15, 23, 42, 0.14);
+  border-color: transparent;
   background:
     radial-gradient(circle at 92% 3%, rgba(53, 104, 212, 0.16), transparent 32%),
     linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%);
@@ -20582,7 +20591,7 @@ input[type="radio"] {
 [data-theme="light"] .competitor-matrix-card,
 [data-theme="light"] .competitor-insights-grid article,
 [data-theme="light"] .competitor-actionbar {
-  border-color: rgba(15, 23, 42, 0.14);
+  border-color: transparent;
   box-shadow: 0 24px 70px rgba(20, 40, 80, 0.1), inset 0 1px #fff;
 }
 
