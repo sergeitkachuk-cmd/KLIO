@@ -19397,6 +19397,15 @@ input[type="radio"] {
   color: rgba(13, 27, 49, 0.6);
 }
 
+/* The title's dark-theme color (#fff) is hardcoded on .publications-chip
+   span itself, not inherited from the parent's `color`, so the parent
+   override two rules up never reached it - titles stayed white on the
+   light card background here (site owner: "заголовки публикаций белые
+   и их не видно"). */
+[data-theme="light"] .publications-chip span {
+  color: #0d1b31;
+}
+
 /* =======================================================================
    LIGHT THEME - Контент-план. This module has no ambient shell color the
    way .brand-profile-body does - every card inside .content-plan-shell
