@@ -4,6 +4,23 @@ import { createServer } from "node:http";
 import { timingSafeEqual, createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 
+const IMAGE_SIZE_BY_RATIO = {
+  "1:1": "1024x1024",
+  "4:3": "1536x1152",
+  "4:5": "1024x1280",
+  "16:9": "1536x864",
+  "9:16": "1024x1536",
+};
+const IMAGE_QUALITY_VALUES = new Set(["low", "medium", "high"]);
+const IMAGE_FORMAT_VALUES = new Set(["png", "jpeg", "webp"]);
+const IMAGE_BACKGROUND_VALUES = new Set(["auto", "transparent", "opaque"]);
+
+function resolveRequestSize(rawSize, aspectRatio) {
+  if (typeof rawSize === "string" && /^\d+x\d+$/.test(rawSize)) return rawSize;
+  if (typeof aspectRatio === "string" && IMAGE_SIZE_BY_RATIO[aspectRatio]) return IMAGE_SIZE_BY_RATIO[aspectRatio];
+  return "1024x1024";
+}
+
 export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", providerFetch = fetch }) {
   const jobs = new Map(); let running = 0;
   const authorized = value => {
@@ -28,6 +45,10 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", pro
     } catch { return reply(400, { error: "Invalid request" }); }
     finally { clearTimeout(timer); }
     if (!body || typeof body.prompt !== "string" || !body.prompt.trim() || body.prompt.length > 12000) return reply(400, { error: "Invalid prompt" });
+    const size = resolveRequestSize(body.size, body.aspectRatio);
+    const quality = IMAGE_QUALITY_VALUES.has(body.quality) ? body.quality : "medium";
+    const outputFormat = IMAGE_FORMAT_VALUES.has(body.output_format) ? body.output_format : "png";
+    const background = IMAGE_BACKGROUND_VALUES.has(body.background) ? body.background : "auto";
     const hash = createHash("sha256").update(body.prompt).digest("hex");
     const previous = jobs.get(id);
     if (previous && previous.hash !== hash) return reply(409, { error: "Request key already used" });
@@ -39,9 +60,18 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", pro
       running++;
       job.result = (async () => {
         try {
+          const upstreamPayload = {
+            model,
+            prompt: body.prompt,
+            n: 1,
+            ...(body.size || body.aspectRatio ? { size } : {}),
+            ...(body.quality ? { quality } : {}),
+            ...(body.output_format ? { output_format: outputFormat } : {}),
+            ...(body.background ? { background } : {}),
+          };
           const upstream = await providerFetch("https://api.openai.com/v1/images/generations", {
             method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ model, prompt: body.prompt, n: 1, size: "1024x1024", quality: "medium", output_format: "png" }),
+            body: JSON.stringify(upstreamPayload),
             signal: AbortSignal.timeout(150_000),
           });
           if (!upstream.ok) return { status: upstream.status === 400 ? 400 : 502, body: { error: "Image provider did not complete the request" } };

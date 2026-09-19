@@ -44,6 +44,26 @@
   color: var(--chat-text);
   font-family: inherit;
 }
+:root[data-theme="light"] .klio-chat,
+[data-theme="light"] .klio-chat {
+  --chat-bg: #ffffff;
+  --chat-side: #f7f8f6;
+  --chat-text: #1a1f1b;
+  --chat-muted: #617063;
+  --chat-line: #e3e7e0;
+  --chat-accent: #2a4f3d;
+  color: var(--chat-text);
+}
+:root[data-theme="dark"] .klio-chat,
+[data-theme="dark"] .klio-chat {
+  --chat-bg: #171c19;
+  --chat-side: #1e2520;
+  --chat-text: #edf1eb;
+  --chat-muted: #a5afa3;
+  --chat-line: #374138;
+  --chat-accent: #c2d9b9;
+  color: var(--chat-text);
+}
 .klio-chat[hidden] {
   display: none;
 }
@@ -706,9 +726,12 @@
 .workspace-shell.is-dialogue .klio-chat-editor :is(input,textarea){color:var(--chat-text)!important;border:1px solid var(--chat-line)!important;border-radius:12px;outline:0!important;box-shadow:none!important}
 .workspace-shell.is-dialogue .klio-chat-editor :is(input,textarea):focus{border-color:#7ca7c5!important;box-shadow:0 0 0 2px #7ca7c533!important}
 .klio-chat-brand-picker{position:relative;min-width:0}
-.workspace-shell.is-dialogue .klio-chat-business-trigger{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;border:1px solid var(--chat-line);border-radius:12px;background:var(--chat-bg);font-weight:650;text-align:left}
-.klio-chat-brand-options{position:absolute;z-index:30;top:calc(100% + 6px);left:0;right:0;display:grid;gap:4px;padding:7px;border:1px solid var(--chat-line);border-radius:14px;background:var(--chat-bg);box-shadow:0 12px 30px #15233626}
-.klio-chat-brand-options button{padding:10px;border:0;border-radius:9px;text-align:left;background:transparent}
+.workspace-shell.is-dialogue .klio-chat-business-trigger{width:100%;min-height:40px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 11px;border:1px solid var(--chat-line);border-radius:12px;background:var(--chat-bg);color:var(--chat-text);font-size:13px;font-weight:600;line-height:1.3;text-align:left}
+.klio-chat-business-name{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.klio-chat-business-chevron{flex:0 0 auto;font-size:16px;line-height:1;color:var(--chat-muted)!important}
+.klio-chat-brand-options{position:absolute;z-index:30;top:calc(100% + 6px);left:0;right:0;display:grid;gap:4px;padding:6px;border:1px solid var(--chat-line);border-radius:14px;background:var(--chat-bg);box-shadow:0 12px 30px #15233626}
+.klio-chat-brand-options button{min-width:0;padding:8px 9px;border:0;border-radius:9px;text-align:left;background:transparent;color:var(--chat-text);font-size:13px;font-weight:500;line-height:1.35}
+.klio-chat-brand-options button span{display:-webkit-box;overflow:hidden;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
 .klio-chat-brand-options button:hover,.klio-chat-brand-options button.active{background:var(--chat-side)}
 .klio-chat-brand-switch{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1px solid var(--chat-line);border-radius:12px;background:var(--chat-bg);font-size:12px}
 .klio-chat-brand-switch input,.klio-chat-context input{accent-color:var(--chat-accent)}
@@ -725,6 +748,14 @@
    calendar styles contain literal white text, so inherited color is not enough. */
 .workspace-shell.is-dialogue .workspace-content{background:var(--dialogue-paper);color:var(--dialogue-ink)}
 .workspace-shell.is-dialogue .workspace-layout{background:var(--dialogue-paper)}
+.workspace-shell.is-dialogue .workspace-header :is(.brand,.workspace-account,.theme-toggle){color:var(--dialogue-ink)}
+.workspace-shell.is-dialogue .workspace-header :is(.theme-toggle,.workspace-account i){border-color:var(--dialogue-line)}
+.workspace-shell.is-dialogue .workspace-history-head{background:var(--dialogue-soft);border:1px solid var(--dialogue-line);border-radius:16px;box-shadow:none}
+.workspace-shell.is-dialogue .workspace-history-head :is(h2,span){color:var(--dialogue-ink)}
+.workspace-shell.is-dialogue .workspace-history-head>p{color:var(--dialogue-muted)}
+.workspace-shell.is-dialogue .workspace-history-empty{color:var(--dialogue-ink);border-color:var(--dialogue-line);background:var(--dialogue-soft)}
+.workspace-shell.is-dialogue .workspace-history-empty h3{color:var(--dialogue-ink)}
+.workspace-shell.is-dialogue .workspace-history-empty p{color:var(--dialogue-muted)}
 .workspace-shell.is-dialogue .workspace-project :is(b,small),
 .workspace-shell.is-dialogue .workspace-sidebar nav a :is(b,span),
 .workspace-shell.is-dialogue .workspace-sidebar .brand-menu-trigger :is(b,small){color:var(--dialogue-ink)!important}

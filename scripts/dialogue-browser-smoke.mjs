@@ -312,9 +312,26 @@ try {
   await until(
     "document.querySelector('.klio-chat-welcome') && !document.querySelector('.klio-chat[hidden]')",
   );
+  if (await evaluate("document.documentElement.getAttribute('data-theme')") !== "dark")
+    throw new Error("Default theme must be explicit before opening embedded modules");
   await click("Только необходимые");
+  await screenshot("desktop-default-dark");
+  await evaluate("document.querySelectorAll('.klio-chat-sidebar nav button')[1].click()");
+  await until("document.querySelector('.workspace-history')?.getClientRects().length > 0");
+  await screenshot("desktop-materials-empty-dark");
+  await evaluate("document.querySelector('a[href=\"#start\"]').click()");
+  await until("!document.querySelector('.klio-chat').hidden");
   await evaluate("document.documentElement.setAttribute('data-theme','light')");
+  await evaluate("document.querySelectorAll('.klio-chat-sidebar nav button')[1].click()");
+  await until("document.querySelector('.workspace-history')?.getClientRects().length > 0");
+  await screenshot("desktop-materials-empty-light");
+  await evaluate("document.querySelector('a[href=\"#start\"]').click()");
+  await until("!document.querySelector('.klio-chat').hidden");
   await screenshot("desktop-welcome");
+  await evaluate("document.querySelector('.klio-chat-business-trigger').click()");
+  await evaluate("document.querySelector('.klio-chat-business-name').textContent='Санаторий «Марциальные воды»'; document.querySelector('.klio-chat-brand-options button span').textContent='Санаторий «Марциальные воды»'");
+  await screenshot("desktop-business-picker-light");
+  await evaluate("document.querySelector('.klio-chat-business-trigger').click()");
   await fill(
     '[aria-label="Сообщение КЛИО"]',
     "Предложи темы для моего бизнеса",

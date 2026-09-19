@@ -512,7 +512,7 @@ export function DialogueWorkspace(props: Props) {
           ) : (
             <>
               <button disabled={disabled} onClick={() => void save(c, true)}>
-                Запланировать
+                {c.imageUrl ? "В публикацию" : "Запланировать"}
               </button>
               <button
                 disabled={disabled || !imageAvailable}
@@ -530,6 +530,19 @@ export function DialogueWorkspace(props: Props) {
                 }
               >
                 Создать картинку
+              </button>
+              <button
+                disabled={disabled || !imageAvailable || !c.body.trim()}
+                title={!c.body.trim() ? "Сначала у карточки должен быть текст" : "Создать изображение по содержимому карточки"}
+                onClick={() =>
+                  void send(
+                    "image",
+                    `Сделай иллюстрацию для статьи: ${c.title}\n\n${c.body}`.slice(0, 1800),
+                    c.id,
+                  )
+                }
+              >
+                Картинка к статье
               </button>
             </>
           )}
@@ -549,9 +562,9 @@ export function DialogueWorkspace(props: Props) {
           <span>Ваш бизнес</span>
           {props.brands.length ? (
             <div className="klio-chat-brand-picker">
-              <button type="button" className="klio-chat-business-trigger" aria-label="Активный бизнес" aria-expanded={brandMenuOpen} onClick={() => setBrandMenuOpen(open => !open)} disabled={busy}>{props.brandName || "Личное пространство"}<span aria-hidden="true">⌄</span></button>
+              <button type="button" className="klio-chat-business-trigger" aria-label={`Активный бизнес: ${props.brandName || "Личное пространство"}`} title={props.brandName || "Личное пространство"} aria-expanded={brandMenuOpen} onClick={() => setBrandMenuOpen(open => !open)} disabled={busy}><span className="klio-chat-business-name">{props.brandName || "Личное пространство"}</span><span className="klio-chat-business-chevron" aria-hidden="true">⌄</span></button>
               {brandMenuOpen && <div className="klio-chat-brand-options" role="group" aria-label="Выберите бизнес">
-                {props.brands.map(b => <button type="button" key={b.id} className={props.brandId === b.id ? "active" : ""} onClick={() => { setBrandMenuOpen(false); props.onBrandChange(b.id); }}>{b.name}</button>)}
+                {props.brands.map(b => <button type="button" key={b.id} className={props.brandId === b.id ? "active" : ""} title={b.name} onClick={() => { setBrandMenuOpen(false); props.onBrandChange(b.id); }}><span>{b.name}</span></button>)}
               </div>}
             </div>
           ) : (
@@ -572,7 +585,6 @@ export function DialogueWorkspace(props: Props) {
             ▦ Календарь
           </button>
         </nav>
-        {props.brandId && <label className="klio-chat-brand-switch"><input type="checkbox" checked={useBrandContext} onChange={event => setUseBrandContext(event.target.checked)} disabled={busy}/><span><b>Учитывать профиль бренда</b><small>{useBrandContext ? "КЛИО использует данные бизнеса" : "Можно писать на любую тему"}</small></span></label>}
         <div className="klio-chat-history">
           <span>Диалоги</span>
           {threads.map((t) => (

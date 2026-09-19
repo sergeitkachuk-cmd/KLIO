@@ -199,10 +199,8 @@ export async function createDialogueHarness() {
       },
       "../_lib/base-url": { resolveBaseUrl: () => "http://127.0.0.1:3027" },
       "../_lib/image-generation": {
-        imageConfigured: () => false,
-        createImage: async () => {
-          throw new Error("External storage forbidden in tests");
-        },
+        imageConfigured: () => true,
+        createImage: async () => "https://cdn.example.invalid/generated.png",
       },
     },
     {

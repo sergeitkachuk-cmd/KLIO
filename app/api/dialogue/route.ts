@@ -191,13 +191,39 @@ async function runReply(
         baseUrl,
         row.requestId,
       );
+      const materialId = crypto.randomUUID();
+      await db.insert(generations).values({
+        id: materialId,
+        ownerEmail: row.ownerEmail,
+        brandId: row.brandId,
+        format: "external",
+        origin: "generator",
+        topic: "Изображение",
+        title: `${selected.title.slice(0, 100) || "Изображение"}`,
+        body: selected.body.slice(0, 4000) || last,
+        subtitle: "",
+        metaTitle: "",
+        metaDescription: "",
+        editorialComment: "",
+        keywords: "",
+        tone: "",
+        targetLength: 0,
+        imageUrl,
+      });
       data.cards = data.cards.map((card) =>
-        card.id === selectedId ? reviseCard(card, { imageUrl }) : card,
+        card.id === selectedId
+          ? (() => {
+              const updated = reviseCard(card, { imageUrl });
+              updated.savedId = materialId;
+              updated.savedSnapshot = cardSnapshot(updated);
+              return updated;
+            })()
+          : card,
       );
       data.messages.push({
         id: crypto.randomUUID(),
         role: "assistant",
-        text: "Изображение готово. Можно сохранить обновлённый материал или подготовить публикацию.",
+        text: "Изображение готово и сохранено в материалы. Можно сразу подготовить публикацию или вернуть картинку в вариант материала.",
         cardIds: [selectedId],
       });
     } else {

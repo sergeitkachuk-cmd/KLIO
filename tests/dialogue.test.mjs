@@ -19,6 +19,49 @@ test("turning off brand context keeps the chat but omits the business profile", 
   assert.equal(settled.brandId, "coffee-brand");
 });
 
+test("image generation from dialogue saves the result into materials", async (t) => {
+  const h = await createDialogueHarness();
+  t.after(() => h.close());
+  let thread = await h.create();
+  h.setAi(async (input) => {
+    const context = JSON.parse(input.input);
+    const text = context.messages.at(-1).text;
+    if (/пост/i.test(text)) {
+      return {
+        reply: "Пост готов.",
+        action: "create",
+        cards: [{ kind: "post", title: "Пост для соцсетей", body: "Основной текст поста." }],
+        profile: [],
+      };
+    }
+    return { reply: "Готово", action: "reply", cards: [], profile: [] };
+  });
+  await h.post({
+    action: "send",
+    id: thread.id,
+    revision: thread.revision,
+    requestId: randomUUID(),
+    text: "Напиши пост",
+  });
+  thread = await h.settled(thread.id);
+  const card = thread.data.cards[0];
+
+  await h.post({
+    action: "send",
+    id: thread.id,
+    revision: thread.revision,
+    cardId: card.id,
+    requestId: randomUUID(),
+    text: "Сделай картинку к посту",
+    mode: "image",
+  });
+
+  const saved = await h.settled(thread.id);
+  const materials = await h.db.select().from(h.schema.generations);
+  assert.equal(materials.some((item) => item.topic === "Изображение" && item.imageUrl.includes("generated.png")), true);
+  assert.equal(saved.data.cards.some((item) => item.id === card.id && item.imageUrl.includes("generated.png")), true);
+});
+
 test("card revisions preserve manual text and allow undo; context keeps the selected artifact", () => {
   const original = {
     id: "card",

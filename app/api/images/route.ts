@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { brands, generations } from "../../../db/schema";
-import { imageConfigured, createImage } from "../_lib/image-generation";
+import { imageConfigured, createImage, parseImageGenerationOptions } from "../_lib/image-generation";
 import { readBoundedJson, RequestBodyError } from "../_lib/request-body";
 import { hasUnsafeRequestOrigin } from "../_lib/request-origin";
 import { isRateLimited } from "../_lib/rate-limit";
@@ -18,6 +18,7 @@ export async function POST(request: Request) {
     const prompt = typeof input.prompt === "string" ? input.prompt.trim().slice(0, 1800) : "";
     const brandId = typeof input.brandId === "string" ? input.brandId.trim() : "";
     const requestId = typeof input.requestId === "string" ? input.requestId.trim() : "";
+    const imageOptions = parseImageGenerationOptions(input);
     if (!prompt || prompt.length < 8) return Response.json({ error: "Опишите изображение подробнее." }, { status: 400 });
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) return Response.json({ error: "Некорректный запрос." }, { status: 400 });
     const db = await getWorkspaceDb();
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
       if (!brand) throw new WorkspaceAccessError("Бренд не найден.", 404);
       brandContext = `\nКонтекст бренда: ${brand.profileJson.slice(0, 4000)}`;
     }
-    const imageUrl = await createImage(`${prompt}${brandContext}`, user.email, new URL(resolveBaseUrl(request)).origin, requestId);
+    const imageUrl = await createImage(`${prompt}${brandContext}`, user.email, new URL(resolveBaseUrl(request)).origin, requestId, imageOptions);
     const usage = await recordGeneration({
       id: requestId,
       brandId: brandId || undefined,

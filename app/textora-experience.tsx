@@ -2347,6 +2347,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const workspaceVersions = useRef(new Map<string, string>());
   const [workspaceHistory, setWorkspaceHistory] = useState<GenerationArchiveItem[]>([]);
   const [imagePrompt, setImagePrompt] = useState("");
+  const [imageAspectRatio, setImageAspectRatio] = useState<"1:1" | "4:3" | "4:5" | "16:9" | "9:16">("4:3");
+  const [imageOutputFormat, setImageOutputFormat] = useState<"png" | "jpeg" | "webp">("png");
   const [imageBusy, setImageBusy] = useState(false);
   const [imageError, setImageError] = useState("");
   const [imageResult, setImageResult] = useState<GenerationArchiveItem | null>(null);
@@ -5175,23 +5177,35 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     openModule("start");
   }
 
-  async function generateProfessionalImage() {
-    const prompt = imagePrompt.trim();
+  function buildArticleImagePrompt(title: string, subtitle: string, body: string) {
+    return [title, subtitle, body].filter(Boolean).map((part) => part.trim()).filter(Boolean).join("\n\n").slice(0, 1800);
+  }
+
+  async function generateProfessionalImage(promptOverride?: string) {
+    const prompt = (promptOverride ?? imagePrompt).trim();
     if (prompt.length < 8 || imageBusy) return;
     setImageBusy(true);
     setImageError("");
     setImageResult(null);
+    if (promptOverride) setImagePrompt(prompt);
     try {
       const response = await fetch("/api/images", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, brandId: useBrand ? activeBrandId || undefined : undefined, requestId: crypto.randomUUID() }),
+        body: JSON.stringify({
+          prompt,
+          brandId: useBrand ? activeBrandId || undefined : undefined,
+          requestId: crypto.randomUUID(),
+          aspectRatio: imageAspectRatio,
+          outputFormat: imageOutputFormat,
+        }),
       });
       const payload = await safeJson(response) as { error?: string; generation?: GenerationArchiveItem; account?: WorkspaceAccount };
       if (!response.ok || !payload.generation) throw new Error(payload.error || "Не удалось создать изображение.");
       setImageResult(payload.generation);
       setWorkspaceHistory(current => [payload.generation!, ...current.filter(item => item.id !== payload.generation!.id)].slice(0, 60));
       if (payload.account) setWorkspaceAccount(payload.account);
+      openModule("images");
     } catch (error) {
       setImageError(error instanceof Error ? error.message : "Не удалось создать изображение.");
     } finally {
@@ -5653,7 +5667,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 // needs its own label here rather than falling back to the raw
                 // string like an actually-unrecognized value would.
                 const formatLabel = item.topic === "Изображение" ? "Изображение" : item.topic === "Тема из диалога" ? "Тема" : item.topic === "Заметка из диалога" ? "Заметка" : item.topic === "Пост из диалога" ? "Публикация" : item.format === "external" ? "Добавлено вручную" : formats.find((candidate) => candidate.id === item.format)?.label || item.format;
-                return <article className={`material-card material-article ${item.origin === "editor" ? "is-editor" : ""} ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><div className="material-card-badges"><span className="material-format-badge">{formatLabel}</span>{item.origin === "editor" && <span className="material-origin-badge">РЕД</span>}</div><small>{archiveDate(item.createdAt)}</small></div><h3>{item.title}</h3><p>{item.topic}</p>{item.imageUrl && <Image className="material-card-image" src={item.imageUrl} alt={item.title} width={720} height={720} unoptimized/>}<footer><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал" title="Удалить материал"><Icon name="trash"/></button><button type="button" className="material-archive" onClick={() => void archiveArchiveItem(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" className="material-publish" onClick={() => void openPublicationDraft({ title: item.title, body: item.topic === "Изображение" ? "" : item.body, generationId: item.id, imageUrl: item.imageUrl })}>Публикация</button><button type="button" onClick={() => void openMaterialInDialogue(item.id)}>В диалог</button><button type="button" onClick={() => openArchiveItem(item)}>Редактор <Icon name="arrow"/></button></div></footer></article>;
+                return <article className={`material-card material-article ${item.origin === "editor" ? "is-editor" : ""} ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><div className="material-card-badges"><span className="material-format-badge">{formatLabel}</span>{item.origin === "editor" && <span className="material-origin-badge">РЕД</span>}</div><small>{archiveDate(item.createdAt)}</small></div><h3>{item.title}</h3><p>{item.topic}</p>{item.imageUrl && <Image className="material-card-image" src={item.imageUrl} alt={item.title} width={720} height={720} unoptimized/>}<footer><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал" title="Удалить материал"><Icon name="trash"/></button><button type="button" className="material-archive" onClick={() => void archiveArchiveItem(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" className="material-publish" onClick={() => void openPublicationDraft({ title: item.title, body: item.topic === "Изображение" ? "" : item.body, generationId: item.id, imageUrl: item.imageUrl })}>Публикация</button>{item.topic !== "Изображение" && <button type="button" onClick={() => { openModule("images"); void generateProfessionalImage(buildArticleImagePrompt(item.title, item.subtitle, item.body)); }}>Создать картинку</button>}<button type="button" onClick={() => void openMaterialInDialogue(item.id)}>В диалог</button><button type="button" onClick={() => openArchiveItem(item)}>Редактор <Icon name="arrow"/></button></div></footer></article>;
               }
               const typeLabel = item.type === "content_plan" ? "Контент‑план" : item.type === "semantics" ? "Семантика" : "Анализ конкурентов";
               // Full items (not just title strings) so each topic can be sent
@@ -5697,6 +5711,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <div className="archive-editor-actions">
                     <button className="button ghost" type="button" onClick={copyArchiveItem}><Icon name="copy"/> Копировать</button>
                     <button className="button ghost" type="button" onClick={() => void openPublicationDraft({ title: archiveEditorItem.title, body: archiveEditorItem.body, generationId: archiveEditorItem.id })}>В публикацию</button>
+                    <button className="button ghost" type="button" onClick={() => { openModule("images"); void generateProfessionalImage(buildArticleImagePrompt(archiveEditorItem.title, archiveEditorItem.subtitle, archiveEditorItem.body)); }}>Создать картинку</button>
                     <button className="button ghost" type="button" onClick={restoreArchiveOriginal} disabled={!archiveEditorDirty || archiveEditorSaving || archiveEditorBusy}>Вернуть</button>
                     <button className="button ghost" type="button" onClick={() => void saveArchiveItem("copy")} disabled={archiveEditorSaving || archiveEditorBusy}>{archiveEditorSaving ? "Сохраняем…" : "Сохранить копию"}</button>
                     <button className="button primary" type="button" onClick={() => void saveArchiveItem("update")} disabled={archiveEditorSaving || archiveEditorBusy || !archiveEditorDirty}>{archiveEditorSaving ? "Сохраняем…" : "Сохранить"}</button>
@@ -5817,8 +5832,17 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                       if (file) void uploadPubImage(file);
                     }}/>
                   </label>
+                  {workspaceHistory.filter((item) => item.imageUrl && item.topic === "Изображение" && (!activeBrandId || item.brandId === activeBrandId)).length > 0 && <button type="button" className="button ghost" onClick={() => setPubEditor((current) => current && { ...current, imageUrl: workspaceHistory.filter((item) => item.imageUrl && item.topic === "Изображение" && (!activeBrandId || item.brandId === activeBrandId))[0].imageUrl })}>Из материалов</button>}
                   {pubEditor.imageUrl && <button type="button" className="publications-image-remove" onClick={() => setPubEditor((current) => current && { ...current, imageUrl: "" })} disabled={pubImageUploadBusy}>Открепить</button>}
                 </div>
+                {workspaceHistory.filter((item) => item.imageUrl && item.topic === "Изображение" && (!activeBrandId || item.brandId === activeBrandId)).length > 0 && <div className="publications-material-image-list">
+                  {workspaceHistory.filter((item) => item.imageUrl && item.topic === "Изображение" && (!activeBrandId || item.brandId === activeBrandId)).slice(0, 6).map((item) => (
+                    <button type="button" key={item.id} className={pubEditor.imageUrl === item.imageUrl ? "is-active" : ""} onClick={() => setPubEditor((current) => current && { ...current, imageUrl: item.imageUrl, generationId: item.id })}>
+                      <Image unoptimized width={100} height={100} src={item.imageUrl} alt={item.title} />
+                      <span>{item.title || "Изображение"}</span>
+                    </button>
+                  ))}
+                </div>}
               </div>
               {pubImageUploadError && <p role="alert">{pubImageUploadError}</p>}
               {pubEditor.imageUrl && <Image key={pubEditor.imageUrl} unoptimized width={1200} height={800} style={{ height: "auto" }} className="publications-editor-preview" src={pubEditor.imageUrl} alt="Превью картинки" onLoad={() => setPubImageUploadError("")} onError={() => setPubImageUploadError("Картинка по указанному адресу недоступна. Проверьте ссылку или загрузите файл заново.")}/>}
@@ -6284,6 +6308,26 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <div className="image-generator-form">
                 <label htmlFor="image-prompt">Что изобразить</label>
                 <textarea id="image-prompt" value={imagePrompt} onChange={event => setImagePrompt(event.target.value)} placeholder="Например: чашка кофе на деревянном столе у окна, мягкий утренний свет, без надписей" rows={6} maxLength={1800}/>
+                <div className="image-generator-settings">
+                  <label>
+                    <span>Соотношение</span>
+                    <select value={imageAspectRatio} onChange={(event) => setImageAspectRatio(event.target.value as "1:1" | "4:3" | "4:5" | "16:9" | "9:16")}> 
+                      <option value="4:3">4:3 (стандартный)</option>
+                      <option value="1:1">1:1</option>
+                      <option value="4:5">4:5</option>
+                      <option value="16:9">16:9</option>
+                      <option value="9:16">9:16</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Формат</span>
+                    <select value={imageOutputFormat} onChange={(event) => setImageOutputFormat(event.target.value as "png" | "jpeg" | "webp")}>
+                      <option value="png">PNG</option>
+                      <option value="jpeg">JPEG</option>
+                      <option value="webp">WEBP</option>
+                    </select>
+                  </label>
+                </div>
                 <p>Профиль бренда {useBrand && activeBrandId ? "учитывается" : "не используется"}. Один запуск расходует одну генерацию.</p>
                 {imageError && <p className="generation-error" role="alert">{imageError}</p>}
                 <button className="button primary large" type="button" onClick={() => void generateProfessionalImage()} disabled={imageBusy || !workspaceReady || imagePrompt.trim().length < 8 || workspaceAccount.generationsRemaining <= 0}><Icon name="image"/>{imageBusy ? "Создаём изображение…" : workspaceAccount.generationsRemaining <= 0 ? "Лимит генераций исчерпан" : "Создать изображение"}</button>
@@ -6387,7 +6431,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     past the editor note and SEO passport - site owner asked
                     for exactly this once already; the SEO passport fields
                     added afterward pushed these back down below them. */}
-                <div className="result-footer"><span>Материал уже сохранён в «Материалы» — вернуться к нему и продолжить редактирование можно в любой момент</span><div className="result-footer-actions"><button type="button" className="button ghost" onClick={clearGeneratedResult} disabled={!title && !body}><Icon name="erase"/> Очистить</button><button type="button" className="button ghost" onClick={copyResult} disabled={!title && !body}><Icon name="copy"/> Копировать</button><button type="button" className="button ghost" onClick={() => void openPublicationDraft({ title, body: [subtitle, body].filter(Boolean).join("\n\n"), generationId: generatedArchiveId })} disabled={!title && !body}>В публикацию</button><button type="button" className="button primary" onClick={sendResultToAdaptation} disabled={!title && !body}>Адаптировать под площадку <Icon name="arrow"/></button></div></div>
+                <div className="result-footer"><span>Материал уже сохранён в «Материалы» — вернуться к нему и продолжить редактирование можно в любой момент</span><div className="result-footer-actions"><button type="button" className="button ghost" onClick={clearGeneratedResult} disabled={!title && !body}><Icon name="erase"/> Очистить</button><button type="button" className="button ghost" onClick={copyResult} disabled={!title && !body}><Icon name="copy"/> Копировать</button><button type="button" className="button ghost" onClick={() => void openPublicationDraft({ title, body: [subtitle, body].filter(Boolean).join("\n\n"), generationId: generatedArchiveId })} disabled={!title && !body}>В публикацию</button><button type="button" className="button ghost" onClick={() => { openModule("images"); void generateProfessionalImage(buildArticleImagePrompt(title, subtitle, body)); }} disabled={!title && !body}>Создать картинку</button><button type="button" className="button primary" onClick={sendResultToAdaptation} disabled={!title && !body}>Адаптировать под площадку <Icon name="arrow"/></button></div></div>
                 <aside className="editor-note"><span>Комментарий к материалу</span><p>{editorNote || "Служебный комментарий появится после генерации и не попадёт в скопированный текст."}</p><small>Не входит в текст и не копируется</small></aside>
                 <div className="seo-passport">
                   <div className="seo-passport-head"><span>SEO‑паспорт</span><small>Служебные поля для публикации</small></div>
@@ -6545,7 +6589,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <AutoTextarea className="adaptation-result-body" value={adaptationResult.body} onChange={(event) => setAdaptationResult((current) => current ? { ...current, body: event.target.value } : current)} aria-label="Адаптированный текст"/>
                   <div className="adaptation-seo-fields"><label><span className="seo-field-label"><b>SEO‑заголовок</b></span><AutoTextarea rows={1} value={adaptationResult.metaTitle} onChange={(event) => setAdaptationResult((current) => current ? { ...current, metaTitle: event.target.value } : current)}/><button type="button" className="seo-field-copy" onClick={() => copyPlainText(adaptationResult.metaTitle, "SEO‑заголовок")}><Icon name="copy"/> Копировать</button></label><label><span className="seo-field-label"><b>Метаописание</b></span><AutoTextarea rows={2} value={adaptationResult.metaDescription} onChange={(event) => setAdaptationResult((current) => current ? { ...current, metaDescription: event.target.value } : current)}/><button type="button" className="seo-field-copy" onClick={() => copyPlainText(adaptationResult.metaDescription, "Метаописание")}><Icon name="copy"/> Копировать</button></label></div>
                   <aside className="adaptation-changes"><span>Что изменено</span><div>{adaptationResult.changes.map((item) => <p key={item}><i>✓</i>{item}</p>)}</div></aside>
-                  <div className="adaptation-result-footer"><span>Новая версия автоматически сохранена в «Материалы»</span><div><button type="button" className="button ghost" onClick={copyAdaptation}><Icon name="copy"/> Копировать</button><button type="button" className="button ghost" onClick={() => void openPublicationDraft({ title: adaptationResult.title, body: [adaptationResult.subtitle, adaptationResult.body].filter(Boolean).join("\n\n"), generationId: generatedArchiveId })}>В публикацию</button></div></div>
+                  <div className="adaptation-result-footer"><span>Новая версия автоматически сохранена в «Материалы»</span><div><button type="button" className="button ghost" onClick={copyAdaptation}><Icon name="copy"/> Копировать</button><button type="button" className="button ghost" onClick={() => void openPublicationDraft({ title: adaptationResult.title, body: [adaptationResult.subtitle, adaptationResult.body].filter(Boolean).join("\n\n"), generationId: generatedArchiveId })}>В публикацию</button><button type="button" className="button ghost" onClick={() => { openModule("images"); void generateProfessionalImage(buildArticleImagePrompt(adaptationResult.title, adaptationResult.subtitle, adaptationResult.body)); }}>Создать картинку</button></div></div>
                 </> : <div className="adaptation-empty-state"><i>Аа</i><h3>Вторая версия без потери фактов</h3><p>Выберите задачу и запустите редактуру. КЛИО не будет придумывать сведения, которых нет в исходном тексте или профиле бренда.</p><div><span>Исходник</span><b>→</b><span>Нужный формат</span></div></div>}
               </article>
             </div>

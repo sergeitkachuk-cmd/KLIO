@@ -63,7 +63,7 @@ export const metadata: Metadata = {
 // dead script here must never block the rest of the page from loading.
 const themeBootstrapScript = `try {
   var t = localStorage.getItem("klio-theme");
-  if (t === "light") document.documentElement.setAttribute("data-theme", "light");
+  document.documentElement.setAttribute("data-theme", t === "light" ? "light" : "dark");
 } catch (e) {}`;
 
 export default function RootLayout({
