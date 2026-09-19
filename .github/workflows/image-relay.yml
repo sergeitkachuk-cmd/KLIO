@@ -1,0 +1,36 @@
+name: Build combined Telegram and image relay
+on:
+  push:
+    branches: [codex/klio-image-service]
+    paths:
+      - services/klio-images/**
+      - tests/dialogue-images.test.mjs
+      - tests/dialogue-combined.test.mjs
+      - .github/workflows/image-relay.yml
+permissions:
+  contents: read
+  packages: write
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/dialogue-images.test.mjs tests/dialogue-combined.test.mjs
+      - name: Build container
+        run: docker build -f services/klio-images/Dockerfile.combined -t klio-relay-check .
+      - name: Verify image runtimes without customer credentials
+        run: |
+          docker run --rm --entrypoint node klio-relay-check --version
+          docker run --rm --entrypoint telegram-bot-api klio-relay-check --version
+          docker run --rm --entrypoint node klio-relay-check --input-type=module -e "import('/opt/klio/combined.mjs').then(m => { const s = m.combinedService({}); s.listen(0, '127.0.0.1', async () => { const r = await fetch('http://127.0.0.1:' + s.address().port + '/health'); if(r.status !== 503) process.exitCode = 1; s.close(); }); });"
+      - name: Publish tested container
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/klio-relay"
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker tag klio-relay-check "$IMAGE:$GITHUB_SHA"
+          docker push "$IMAGE:$GITHUB_SHA"
