@@ -16130,6 +16130,15 @@ input[type="radio"] {
   isolation: isolate;
 }
 
+/* Yandex button above it is a plain .button (margin-top: 6px from
+   .auth-card .button below), but this VK widget wrapper is a bare div
+   with no class match there, so it had no top margin of its own -
+   the two sat flush against each other with zero gap (site owner:
+   "кнопки яндекс и вк слипаются"). */
+.auth-vk-onetap {
+  margin-top: 10px;
+}
+
 .auth-card .wordmark {
   display: inline-flex;
   text-decoration: none;
