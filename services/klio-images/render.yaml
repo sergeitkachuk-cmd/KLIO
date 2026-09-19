@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: klio-images
+    runtime: node
+    buildCommand: echo "No dependencies"
+    startCommand: node services/klio-images/server.mjs
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.13.0
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: KLIO_IMAGE_SERVICE_TOKEN
+        sync: false
+      - key: KLIO_IMAGE_MODEL
+        value: gpt-image-2.5-flare
