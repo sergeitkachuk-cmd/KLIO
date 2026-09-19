@@ -497,7 +497,11 @@ export function DialogueWorkspace(props: Props) {
         >
           {c.title}
         </button>
-        <p>{c.body.length > 850 ? `${c.body.slice(0, 850)}…` : c.body}</p>
+        {/* Full text, not a truncated "…" preview with no way to read the
+            rest (site owner: "она обрезается... без возможности прочитать
+            целиком... как в гпт или клоде") - a generated article is the
+            actual point of this card, not a summary of it. */}
+        <p>{c.body}</p>
         {c.imageUrl && (
           <Image
             unoptimized
@@ -553,6 +557,14 @@ export function DialogueWorkspace(props: Props) {
               <button disabled={disabled} onClick={() => void save(c, true)}>
                 {c.imageUrl ? "В публикацию" : "Запланировать"}
               </button>
+              {/* One button, not two indistinguishable ones (site owner:
+                  "чем отличаются эти две кнопки?" - they didn't, in any way
+                  a user could predict: one used the draft box as a
+                  fallback-only prompt ignoring the article, the other
+                  always used the article ignoring the draft box). Always
+                  grounds the image in the article's own title+body, and
+                  folds in whatever's typed in the draft box as optional
+                  extra guidance instead of a silent either/or. */}
               <button
                 disabled={disabled || !imageAvailable}
                 title={
@@ -560,28 +572,13 @@ export function DialogueWorkspace(props: Props) {
                     ? "Генерация изображений ещё не подключена. Загрузите картинку в редакторе."
                     : "Одна картинка использует одну генерацию тарифа"
                 }
-                onClick={() =>
-                  void send(
-                    "image",
-                    draft.trim() || "Создай изображение к этому материалу",
-                    c.id,
-                  )
-                }
+                onClick={() => {
+                  const base = `Сделай иллюстрацию для статьи: ${c.title}\n\n${c.body}`.slice(0, 1600);
+                  const extra = draft.trim();
+                  void send("image", extra ? `${base}\n\nПожелания к изображению: ${extra}` : base, c.id);
+                }}
               >
                 Создать картинку
-              </button>
-              <button
-                disabled={disabled || !imageAvailable || !c.body.trim()}
-                title={!c.body.trim() ? "Сначала у карточки должен быть текст" : "Создать изображение по содержимому карточки"}
-                onClick={() =>
-                  void send(
-                    "image",
-                    `Сделай иллюстрацию для статьи: ${c.title}\n\n${c.body}`.slice(0, 1800),
-                    c.id,
-                  )
-                }
-              >
-                Картинка к статье
               </button>
             </>
           )}
