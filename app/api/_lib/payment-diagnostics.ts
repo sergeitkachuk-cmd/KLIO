@@ -1,5 +1,7 @@
 export function paymentErrorDetail(error: unknown): string {
-  let detail = error instanceof Error ? error.message : "Unknown error";
+  let cause = error;
+  for (let depth = 0; depth < 4 && cause instanceof Error && cause.cause instanceof Error; depth++) cause = cause.cause;
+  let detail = cause instanceof Error ? cause.message : "Unknown error";
   for (const name of ["TOCHKA_JWT_TOKEN", "TOCHKA_CLIENT_ID", "TOCHKA_CUSTOMER_CODE", "TOCHKA_MERCHANT_ID", "DATABASE_URL"]) {
     const secret = process.env[name]?.trim();
     if (secret) detail = detail.split(secret).join("[скрыто]");
