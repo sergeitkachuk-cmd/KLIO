@@ -34,10 +34,10 @@ type CompetitorMode = "example" | "demo" | "ai";
 type CompetitorFocusSource = "manual" | "semantics" | "brand";
 type CompetitorMarketScope = "national" | "demand" | "brand";
 type ContentPlanMode = "idle" | "demo" | "ai";
-type WorkspaceModule = "start" | "brand" | "generator" | "semantics" | "competitors" | "content-plan" | "adaptation" | "history" | "publications";
+type WorkspaceModule = "start" | "brand" | "generator" | "images" | "semantics" | "competitors" | "content-plan" | "adaptation" | "history" | "publications";
 
 const WORKSPACE_MODULE_STORAGE_KEY = "klio-workspace-active-module";
-const WORKSPACE_MODULES = new Set<WorkspaceModule>(["start", "brand", "generator", "semantics", "competitors", "content-plan", "adaptation", "history", "publications"]);
+const WORKSPACE_MODULES = new Set<WorkspaceModule>(["start", "brand", "generator", "images", "semantics", "competitors", "content-plan", "adaptation", "history", "publications"]);
 
 function isWorkspaceModule(value: string | null): value is WorkspaceModule {
   return value !== null && WORKSPACE_MODULES.has(value as WorkspaceModule);
@@ -49,6 +49,7 @@ const WORKSPACE_MODULE_HASH: Record<WorkspaceModule, string> = {
   start: "#start",
   brand: "#brand-profile",
   generator: "#generator",
+  images: "#images",
   "content-plan": "#content-plan",
   adaptation: "#adaptation",
   semantics: "#semantics",
@@ -373,7 +374,7 @@ type GenerationArchiveItem = {
 };
 
 type SavedMaterialType = "semantics" | "competitors" | "content_plan";
-type MaterialsFilter = "all" | "article" | "dialogue_topic" | "dialogue_note" | SavedMaterialType | "archived";
+type MaterialsFilter = "all" | "article" | "image" | "dialogue_topic" | "dialogue_note" | SavedMaterialType | "archived";
 type MaterialsDateRange = "all" | "today" | "yesterday" | "week" | "month" | "lastMonth" | "quarter" | "year";
 
 const MATERIALS_DATE_RANGE_OPTIONS: { value: MaterialsDateRange; label: string }[] = [
@@ -2345,6 +2346,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const workspaceSaveQueue = useRef(createWorkspaceSaveQueue());
   const workspaceVersions = useRef(new Map<string, string>());
   const [workspaceHistory, setWorkspaceHistory] = useState<GenerationArchiveItem[]>([]);
+  const [imagePrompt, setImagePrompt] = useState("");
+  const [imageBusy, setImageBusy] = useState(false);
+  const [imageError, setImageError] = useState("");
+  const [imageResult, setImageResult] = useState<GenerationArchiveItem | null>(null);
   const [workspaceMaterials, setWorkspaceMaterials] = useState<SavedWorkspaceMaterial[]>([]);
   const [workspaceUserName, setWorkspaceUserName] = useState("Сергей");
   const [workspaceUserKey, setWorkspaceUserKey] = useState("");
@@ -2628,7 +2633,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   );
   const materialsFilterOptions = useMemo(() => [
     { id: "all" as const, label: "Все материалы", count: activeBrandArticlesLive.length + activeBrandSavedMaterialsLive.length },
-    { id: "article" as const, label: "Статьи и тексты", count: activeBrandArticlesLive.filter(item => item.topic !== "Тема из диалога" && item.topic !== "Заметка из диалога").length },
+    { id: "article" as const, label: "Статьи и тексты", count: activeBrandArticlesLive.filter(item => item.topic !== "Тема из диалога" && item.topic !== "Заметка из диалога" && item.topic !== "Изображение").length },
+    { id: "image" as const, label: "Изображения", count: activeBrandArticlesLive.filter(item => item.topic === "Изображение").length },
     { id: "dialogue_topic" as const, label: "Темы", count: activeBrandArticlesLive.filter(item => item.topic === "Тема из диалога").length },
     { id: "dialogue_note" as const, label: "Заметки", count: activeBrandArticlesLive.filter(item => item.topic === "Заметка из диалога").length },
     { id: "content_plan" as const, label: "Контент‑планы", count: activeBrandSavedMaterialsLive.filter((item) => item.type === "content_plan").length },
@@ -2639,7 +2645,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const visibleBrandArticles = (materialsFilter === "archived"
     ? archivedBrandArticles
     : materialsFilter === "all" ? activeBrandArticlesLive
-    : materialsFilter === "article" ? activeBrandArticlesLive.filter(item => item.topic !== "Тема из диалога" && item.topic !== "Заметка из диалога")
+    : materialsFilter === "article" ? activeBrandArticlesLive.filter(item => item.topic !== "Тема из диалога" && item.topic !== "Заметка из диалога" && item.topic !== "Изображение")
+    : materialsFilter === "image" ? activeBrandArticlesLive.filter(item => item.topic === "Изображение")
     : materialsFilter === "dialogue_topic" ? activeBrandArticlesLive.filter(item => item.topic === "Тема из диалога")
     : materialsFilter === "dialogue_note" ? activeBrandArticlesLive.filter(item => item.topic === "Заметка из диалога") : [])
     .filter((item) => isWithinMaterialsDateRange(item.createdAt, materialsDateRange));
@@ -5168,6 +5175,30 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     openModule("start");
   }
 
+  async function generateProfessionalImage() {
+    const prompt = imagePrompt.trim();
+    if (prompt.length < 8 || imageBusy) return;
+    setImageBusy(true);
+    setImageError("");
+    setImageResult(null);
+    try {
+      const response = await fetch("/api/images", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, brandId: useBrand ? activeBrandId || undefined : undefined, requestId: crypto.randomUUID() }),
+      });
+      const payload = await safeJson(response) as { error?: string; generation?: GenerationArchiveItem; account?: WorkspaceAccount };
+      if (!response.ok || !payload.generation) throw new Error(payload.error || "Не удалось создать изображение.");
+      setImageResult(payload.generation);
+      setWorkspaceHistory(current => [payload.generation!, ...current.filter(item => item.id !== payload.generation!.id)].slice(0, 60));
+      if (payload.account) setWorkspaceAccount(payload.account);
+    } catch (error) {
+      setImageError(error instanceof Error ? error.message : "Не удалось создать изображение.");
+    } finally {
+      setImageBusy(false);
+    }
+  }
+
   async function openPublicationDraft(source: { title: string; body: string; generationId?: string | null; imageUrl?: string }) {
     if (!activeBrandId) {
       showToast("Сначала выберите бренд для публикации");
@@ -5568,13 +5599,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <a href="#semantics" className={activeModule === "semantics" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("semantics"); }}><i><Icon name="search"/></i><span><b>Семантика</b></span></a>
             <a href="#competitors" className={activeModule === "competitors" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("competitors"); }}><i><Icon name="barChart"/></i><span><b>Конкуренты</b></span></a>
             <a href="#publications" className={activeModule === "publications" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("publications"); }}><i><Icon name="calendar"/></i><span><b>Публикации</b></span></a>
-            {/* Teaser, not a real module (no WorkspaceModule entry, no
-                openModule call) - "показать, что проект развивается", per
-                the site owner. Disabled rather than a dead onClick so it's
-                honest that it doesn't go anywhere yet. */}
-            <button type="button" className="nav-coming-soon" disabled aria-disabled="true">
-              <i><Icon name="image"/></i><span><b>Генерация изображений</b><em>Скоро</em></span>
-            </button>
+            <a href="#images" className={activeModule === "images" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("images"); }}><i><Icon name="image"/></i><span><b>Генерация изображений</b></span></a>
           </nav>
           <div className="workspace-stage workspace-quota-stage"><span>Ваш тариф</span><b>{workspaceAccount.planName}</b><div className="workspace-quota-list"><p><span>Материалы</span><em>{workspaceAccount.generationsRemaining} / {workspaceAccount.generationLimit}</em><i><u style={{ width: `${generationProgress}%` }}/></i></p><p><span>Исследования</span><em>{workspaceAccount.researchRemaining} / {workspaceAccount.researchLimit}</em><i><u style={{ width: `${researchProgress}%` }}/></i></p><p><span>AI‑редактура</span><em>{workspaceAccount.editorActionsRemaining} / {workspaceAccount.editorActionLimit}</em><i><u style={{ width: `${editorProgress}%` }}/></i></p></div></div>
         </aside>
@@ -5627,8 +5652,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 // selectable option in the generator's own `formats` list, so it
                 // needs its own label here rather than falling back to the raw
                 // string like an actually-unrecognized value would.
-                const formatLabel = item.topic === "Тема из диалога" ? "Тема" : item.topic === "Заметка из диалога" ? "Заметка" : item.topic === "Пост из диалога" ? "Публикация" : item.format === "external" ? "Добавлено вручную" : formats.find((candidate) => candidate.id === item.format)?.label || item.format;
-                return <article className={`material-card material-article ${item.origin === "editor" ? "is-editor" : ""} ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><div className="material-card-badges"><span className="material-format-badge">{formatLabel}</span>{item.origin === "editor" && <span className="material-origin-badge">РЕД</span>}</div><small>{archiveDate(item.createdAt)}</small></div><h3>{item.title}</h3><p>{item.topic}</p><footer><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал" title="Удалить материал"><Icon name="trash"/></button><button type="button" className="material-archive" onClick={() => void archiveArchiveItem(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" className="material-publish" onClick={() => void openPublicationDraft({ title: item.title, body: item.body, generationId: item.id })}>Публикация</button><button type="button" onClick={() => void openMaterialInDialogue(item.id)}>В диалог</button><button type="button" onClick={() => openArchiveItem(item)}>Редактор <Icon name="arrow"/></button></div></footer></article>;
+                const formatLabel = item.topic === "Изображение" ? "Изображение" : item.topic === "Тема из диалога" ? "Тема" : item.topic === "Заметка из диалога" ? "Заметка" : item.topic === "Пост из диалога" ? "Публикация" : item.format === "external" ? "Добавлено вручную" : formats.find((candidate) => candidate.id === item.format)?.label || item.format;
+                return <article className={`material-card material-article ${item.origin === "editor" ? "is-editor" : ""} ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><div className="material-card-badges"><span className="material-format-badge">{formatLabel}</span>{item.origin === "editor" && <span className="material-origin-badge">РЕД</span>}</div><small>{archiveDate(item.createdAt)}</small></div><h3>{item.title}</h3><p>{item.topic}</p>{item.imageUrl && <Image className="material-card-image" src={item.imageUrl} alt={item.title} width={720} height={720} unoptimized/>}<footer><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал" title="Удалить материал"><Icon name="trash"/></button><button type="button" className="material-archive" onClick={() => void archiveArchiveItem(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" className="material-publish" onClick={() => void openPublicationDraft({ title: item.title, body: item.topic === "Изображение" ? "" : item.body, generationId: item.id, imageUrl: item.imageUrl })}>Публикация</button><button type="button" onClick={() => void openMaterialInDialogue(item.id)}>В диалог</button><button type="button" onClick={() => openArchiveItem(item)}>Редактор <Icon name="arrow"/></button></div></footer></article>;
               }
               const typeLabel = item.type === "content_plan" ? "Контент‑план" : item.type === "semantics" ? "Семантика" : "Анализ конкурентов";
               // Full items (not just title strings) so each topic can be sent
@@ -6249,6 +6274,22 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <div><span>Следующий шаг</span><b>{competitorArticleOpportunities.length ? (selectedCompetitorArticleTopics.length ? `Выбрано тем для статьи: ${selectedCompetitorArticleTopics.length}` : "КЛИО сам выберет подходящие темы") : "Новая статья по этой теме не нужна"}</b><small>{competitorArticleOpportunities.length ? (selectedCompetitorArticleTopics.length ? "КЛИО передаст тему и выбранные разделы в генератор. Там вы сможете дополнить бриф и создать статью." : "Если хотите изменить подборку, отметьте нужные темы в таблице. Иначе КЛИО выберет свои рекомендации автоматически.") : "Текущая страница бренда уже раскрывает найденные темы. Новая статья повторит её и может конкурировать с ней в поиске — выберите другой поисковый кластер."}</small></div>
               <div className="competitor-action-buttons"><button type="button" className="module-save-button" onClick={() => void saveModuleMaterial("competitors")} disabled={materialSavingType === "competitors" || competitorNeedsRefresh}>{materialSavingType === "competitors" ? "Сохраняем…" : moduleMaterialSources.competitors ? "Сохранить анализ" : "Сохранить анализ в материалы"}</button>{moduleMaterialSources.competitors && <button type="button" className="module-copy-button" onClick={() => void saveModuleMaterial("competitors", "copy")} disabled={materialSavingType === "competitors"}>Копия</button>}{competitorArticleOpportunities.length ? <button className={`button primary large ${competitorNeedsRefresh ? "is-blocked" : ""}`} type="button" onClick={sendCompetitorInsightsToGenerator} aria-disabled={competitorNeedsRefresh}>Открыть в генераторе <Icon name="arrow"/></button> : <button className="button primary large" type="button" onClick={() => openModule("semantics")}>Выбрать другой запрос <Icon name="arrow"/></button>}</div>
             </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="workspace-module image-generator-module" id="images" style={{ display: activeModule === "images" ? undefined : "none" }}>
+            <div className="workspace-module-heading tool-heading"><div><span>Визуальные материалы</span><h2>Генерация изображений<span className="klio-mark-dot">.</span></h2><p>Опишите, что должно быть на картинке. КЛИО создаст её и сохранит в «Материалы».</p></div></div>
+            <div className="image-generator-layout">
+              <div className="image-generator-form">
+                <label htmlFor="image-prompt">Что изобразить</label>
+                <textarea id="image-prompt" value={imagePrompt} onChange={event => setImagePrompt(event.target.value)} placeholder="Например: чашка кофе на деревянном столе у окна, мягкий утренний свет, без надписей" rows={6} maxLength={1800}/>
+                <p>Профиль бренда {useBrand && activeBrandId ? "учитывается" : "не используется"}. Один запуск расходует одну генерацию.</p>
+                {imageError && <p className="generation-error" role="alert">{imageError}</p>}
+                <button className="button primary large" type="button" onClick={() => void generateProfessionalImage()} disabled={imageBusy || !workspaceReady || imagePrompt.trim().length < 8 || workspaceAccount.generationsRemaining <= 0}><Icon name="image"/>{imageBusy ? "Создаём изображение…" : workspaceAccount.generationsRemaining <= 0 ? "Лимит генераций исчерпан" : "Создать изображение"}</button>
+              </div>
+              <div className="image-generator-preview" aria-live="polite">
+                {imageResult?.imageUrl ? <><Image src={imageResult.imageUrl} alt={imageResult.title} width={1024} height={1024} unoptimized/><p>Изображение сохранено в «Материалы».</p><div><a className="button ghost" href={imageResult.imageUrl} download>Скачать PNG</a><button className="button ghost" type="button" onClick={() => { setMaterialsFilter("image"); openModule("history"); }}>Открыть материалы</button><button className="button ghost" type="button" onClick={() => void openPublicationDraft({ title: "", body: "", generationId: imageResult.id, imageUrl: imageResult.imageUrl })}>В публикацию</button></div></> : <div className="image-generator-empty"><Icon name="image"/><span>{imageBusy ? "КЛИО рисует. Обычно это занимает до минуты." : "Готовое изображение появится здесь"}</span></div>}
               </div>
             </div>
           </section>

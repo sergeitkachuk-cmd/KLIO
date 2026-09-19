@@ -12,6 +12,7 @@ export type DialogueMessage = {
   id: string;
   role: "user" | "assistant";
   text: string;
+  useBrandContext?: boolean;
   cardIds?: string[];
   action?: "save" | "schedule" | "image" | "profile";
   profile?: Record<string, string>;

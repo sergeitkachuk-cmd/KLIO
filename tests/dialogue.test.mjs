@@ -4,6 +4,21 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { createDialogueHarness, model } from "./helpers/dialogue-harness.mjs";
 
+test("turning off brand context keeps the chat but omits the business profile", async (t) => {
+  const h = await createDialogueHarness();
+  t.after(() => h.close());
+  await h.db.insert(h.schema.brands).values({ id: "coffee-brand", ownerEmail: h.owner, name: "Кофейня", profileJson: JSON.stringify({ name: "Кофейня", audience: "Гости" }) });
+  let sent;
+  h.setAi(async input => { sent = JSON.parse(input.input); return { reply: "Готово", action: "reply", cards: [], profile: [] }; });
+  const thread = await h.create("coffee-brand");
+  await h.post({ action: "send", id: thread.id, revision: thread.revision, requestId: randomUUID(), text: "Расскажи про космос", useBrandContext: false });
+  const settled = await h.settled(thread.id);
+  assert.equal(sent.brandContextEnabled, false);
+  assert.deepEqual(sent.profile, {});
+  assert.equal(settled.data.messages[0].useBrandContext, false);
+  assert.equal(settled.brandId, "coffee-brand");
+});
+
 test("card revisions preserve manual text and allow undo; context keeps the selected artifact", () => {
   const original = {
     id: "card",

@@ -661,8 +661,8 @@
 }
 
 /* Shared library/calendar keep their data and behavior, with the dialogue skin. */
-.workspace-shell.is-dialogue{--dialogue-paper:#fff;--dialogue-soft:#f7f8f6;--dialogue-ink:#202720;--dialogue-line:#e3e7e0;--dialogue-muted:#687268}
-[data-theme=dark] .workspace-shell.is-dialogue{--dialogue-paper:#171c19;--dialogue-soft:#1e2520;--dialogue-ink:#edf1eb;--dialogue-line:#374138;--dialogue-muted:#a5afa3}
+.workspace-shell.is-dialogue{--dialogue-paper:#fcfdff;--dialogue-soft:#f0f4f8;--dialogue-ink:#17283a;--dialogue-line:#d8e1ea;--dialogue-muted:#526579}
+[data-theme=dark] .workspace-shell.is-dialogue{--dialogue-paper:#151d28;--dialogue-soft:#1d2936;--dialogue-ink:#edf3f9;--dialogue-line:#354656;--dialogue-muted:#afbfce}
 .workspace-shell.is-dialogue .workspace-sidebar,.workspace-shell.is-dialogue .workspace-project{background:var(--dialogue-soft)!important;box-shadow:none;border-color:var(--dialogue-line)}
 .workspace-shell.is-dialogue .workspace-sidebar nav a{background:transparent!important;box-shadow:none!important;border-color:transparent!important;border-radius:9px;color:var(--dialogue-ink)!important;min-height:44px}
 .workspace-shell.is-dialogue .workspace-sidebar nav a.active{background:var(--dialogue-line)!important}
@@ -682,3 +682,101 @@
 .workspace-shell.is-dialogue .brand-menu-trigger{background:var(--dialogue-soft)!important;border-color:var(--dialogue-line)!important;color:var(--dialogue-ink)!important;box-shadow:none}
 .workspace-shell.is-dialogue .brand-menu-trigger>i{background:var(--dialogue-line)!important;color:var(--dialogue-ink)!important}
 .workspace-shell.is-dialogue .workspace-project>span{color:var(--dialogue-muted)!important}
+
+/* Calm, cool chat palette; explicit foregrounds prevent workspace theme rules
+   from turning labels white on light surfaces. */
+.workspace-shell.is-dialogue .klio-chat{--chat-bg:#fcfdff;--chat-side:#f0f4f8;--chat-text:#17283a;--chat-muted:#526579;--chat-line:#d8e1ea;--chat-accent:#27506e;color:var(--chat-text)}
+:root[data-theme="dark"] .workspace-shell.is-dialogue .klio-chat{--chat-bg:#151d28;--chat-side:#1d2936;--chat-text:#edf3f9;--chat-muted:#afbfce;--chat-line:#354656;--chat-accent:#a8d6ed}
+:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-header{background:#fcfdff!important;color:#17283a!important;border-color:#d8e1ea}
+:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-header :is(button,a,span,b,small){color:#17283a}
+:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch{background:#edf2f7;border-color:#ccd8e4;color:#17283a}
+:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch button{color:#24384a!important}
+:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"]{background:#274861;color:#fff!important}
+:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch{background:#233345;border-color:#44586b;color:#edf3f9}
+:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch button{color:#edf3f9!important}
+:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"]{background:#c4e4f3;color:#17283a!important}
+.workspace-shell.is-dialogue .klio-chat :is(button,input,textarea){color:var(--chat-text)}
+.workspace-shell.is-dialogue .klio-chat :is(h1,h2,h3,b,strong,p,span,label,small){color:inherit}
+.workspace-shell.is-dialogue .klio-chat :is(.klio-chat-author,.klio-chat-card-meta,.klio-chat-history>span,.klio-chat-business>span,.klio-chat-top span,.klio-chat-compose>small){color:var(--chat-muted)}
+.workspace-shell.is-dialogue .klio-chat-compose form{border:1px solid var(--chat-line);border-radius:20px;box-shadow:0 4px 20px #182b4410}
+.workspace-shell.is-dialogue .klio-chat-compose textarea{color:var(--chat-text)!important;outline:0!important;border:0!important;box-shadow:none!important;background:transparent!important}
+.workspace-shell.is-dialogue .klio-chat-compose textarea::placeholder{color:var(--chat-muted);opacity:1}
+.workspace-shell.is-dialogue .klio-chat-compose form:focus-within{border-color:#7ca7c5;box-shadow:0 0 0 2px #7ca7c533}
+.workspace-shell.is-dialogue .klio-chat-compose textarea:focus-visible{outline:0!important}
+.workspace-shell.is-dialogue .klio-chat-editor :is(input,textarea){color:var(--chat-text)!important;border:1px solid var(--chat-line)!important;border-radius:12px;outline:0!important;box-shadow:none!important}
+.workspace-shell.is-dialogue .klio-chat-editor :is(input,textarea):focus{border-color:#7ca7c5!important;box-shadow:0 0 0 2px #7ca7c533!important}
+.klio-chat-brand-picker{position:relative;min-width:0}
+.workspace-shell.is-dialogue .klio-chat-business-trigger{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;border:1px solid var(--chat-line);border-radius:12px;background:var(--chat-bg);font-weight:650;text-align:left}
+.klio-chat-brand-options{position:absolute;z-index:30;top:calc(100% + 6px);left:0;right:0;display:grid;gap:4px;padding:7px;border:1px solid var(--chat-line);border-radius:14px;background:var(--chat-bg);box-shadow:0 12px 30px #15233626}
+.klio-chat-brand-options button{padding:10px;border:0;border-radius:9px;text-align:left;background:transparent}
+.klio-chat-brand-options button:hover,.klio-chat-brand-options button.active{background:var(--chat-side)}
+.klio-chat-brand-switch{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1px solid var(--chat-line);border-radius:12px;background:var(--chat-bg);font-size:12px}
+.klio-chat-brand-switch input,.klio-chat-context input{accent-color:var(--chat-accent)}
+.klio-chat-brand-switch span{display:grid;gap:3px}
+.klio-chat-brand-switch small{color:var(--chat-muted)!important;font-size:11px}
+.klio-chat-compose-tools{flex-wrap:wrap;justify-content:flex-start;gap:9px 18px}
+.klio-chat-compose-tools>button{margin-left:auto;flex:0 0 auto}
+.klio-chat-context{white-space:nowrap}
+.workspace-shell.is-dialogue .brand-menu-list{border-radius:16px!important;overflow:auto}
+.workspace-shell.is-dialogue .brand-menu-list>button{border-radius:11px!important}
+.workspace-shell.is-dialogue .brand-menu-trigger{border-radius:13px!important}
+
+/* Embedded modules share the same theme as the chat. Their original shell and
+   calendar styles contain literal white text, so inherited color is not enough. */
+.workspace-shell.is-dialogue .workspace-content{background:var(--dialogue-paper);color:var(--dialogue-ink)}
+.workspace-shell.is-dialogue .workspace-layout{background:var(--dialogue-paper)}
+.workspace-shell.is-dialogue .workspace-project :is(b,small),
+.workspace-shell.is-dialogue .workspace-sidebar nav a :is(b,span),
+.workspace-shell.is-dialogue .workspace-sidebar .brand-menu-trigger :is(b,small){color:var(--dialogue-ink)!important}
+.workspace-shell.is-dialogue .workspace-project small,
+.workspace-shell.is-dialogue .workspace-sidebar .brand-menu-trigger small{color:var(--dialogue-muted)!important}
+.workspace-shell.is-dialogue .publications-module{color:var(--dialogue-ink)}
+.workspace-shell.is-dialogue .publications-module .publications-channels-bar{background:var(--dialogue-soft);border-radius:14px}
+.workspace-shell.is-dialogue .publications-module .publications-channel-chip,
+.workspace-shell.is-dialogue .publications-module .publications-view-switch,
+.workspace-shell.is-dialogue .publications-module .publications-nav>button,
+.workspace-shell.is-dialogue .publications-module .publications-day{border-color:var(--dialogue-line);background:var(--dialogue-soft);box-shadow:none}
+.workspace-shell.is-dialogue .publications-module .publications-channel-chip b,
+.workspace-shell.is-dialogue .publications-module .publications-nav>b,
+.workspace-shell.is-dialogue .publications-module .publications-weekday,
+.workspace-shell.is-dialogue .publications-module .publications-day-head>span,
+.workspace-shell.is-dialogue .publications-module .publications-chip span{color:var(--dialogue-ink)}
+.workspace-shell.is-dialogue .publications-module .publications-channel-limit,
+.workspace-shell.is-dialogue .publications-module .publications-view-switch button,
+.workspace-shell.is-dialogue .publications-module .publications-chip b{color:var(--dialogue-muted)}
+.workspace-shell.is-dialogue .publications-module .publications-nav>button,
+.workspace-shell.is-dialogue .publications-module .publications-day-head>button{color:var(--dialogue-ink)}
+.workspace-shell.is-dialogue .publications-module .publications-view-switch button.active{background:#dceaf4;color:#17384e}
+.workspace-shell.is-dialogue .publications-module .publications-day.is-today{background:color-mix(in srgb,var(--dialogue-soft) 75%,#a8d6ed);border-color:#7ca7c5}
+.workspace-shell.is-dialogue .publications-module .publications-day.is-selected{background:color-mix(in srgb,var(--dialogue-soft) 78%,#b5b2ed);border-color:#8a89b5}
+.workspace-shell.is-dialogue .publications-module .publications-day.is-today .publications-day-head>span{color:var(--dialogue-ink)}
+.workspace-shell.is-dialogue .publications-module .publications-chip{color:var(--dialogue-ink);background:color-mix(in srgb,var(--chip-accent,#376fa8) 12%,var(--dialogue-paper))}
+.workspace-shell.is-dialogue .publications-module .publications-empty-note{border-color:var(--dialogue-line);color:var(--dialogue-muted)}
+.workspace-shell.is-dialogue .publications-module .publications-vk-note{color:var(--dialogue-ink);border-color:var(--dialogue-line);background:var(--dialogue-soft)}
+.workspace-shell.is-dialogue .publications-module .publications-vk-note b{color:var(--dialogue-ink)}
+.workspace-shell.is-dialogue .publications-module .publications-channels-bar .button.ghost{color:var(--dialogue-ink);border-color:var(--dialogue-line);background:var(--dialogue-paper)}
+.workspace-shell.is-dialogue .publications-module .publications-mobile-list{color:var(--dialogue-ink)}
+.workspace-shell.is-dialogue .publications-module .publications-mobile-empty{color:var(--dialogue-muted)}
+.workspace-shell.is-dialogue .publications-module .publications-channel-chip button{color:var(--dialogue-muted)}
+.workspace-shell.is-dialogue .publications-module .publications-channel-chip button:hover{color:var(--dialogue-ink);background:var(--dialogue-line)}
+.workspace-shell.is-dialogue .publications-module .publications-day-head>button:hover{background:var(--dialogue-line);color:var(--dialogue-ink)}
+
+/* The schedule editor keeps a dark surface in both themes. Its form labels and
+   time selectors need that surface's foreground, independent of page theme. */
+.workspace-shell.is-dialogue :is(.publications-editor-modal,.publications-channel-modal){border-radius:18px;background:#1d2936;color:#edf3f9;border-color:#44586b}
+.workspace-shell.is-dialogue :is(.publications-editor-modal,.publications-channel-modal) .publications-editor-field>span,
+.workspace-shell.is-dialogue :is(.publications-editor-modal,.publications-channel-modal) .archive-editor-head h2{color:#edf3f9}
+.workspace-shell.is-dialogue :is(.publications-editor-modal,.publications-channel-modal) .publications-editor-field>span>small{color:#afbfce}
+.workspace-shell.is-dialogue :is(.publications-editor-modal,.publications-channel-modal) :is(input,textarea,.module-select-trigger){color:#edf3f9;background:#233345;border-color:#44586b;box-shadow:none;border-radius:10px}
+.workspace-shell.is-dialogue :is(.publications-editor-modal,.publications-channel-modal) :is(input,textarea)::placeholder{color:#afbfce}
+.workspace-shell.is-dialogue :is(.publications-editor-modal,.publications-channel-modal) :is(input,textarea):focus{outline:0;border-color:#7ca7c5;box-shadow:0 0 0 2px #7ca7c544}
+.workspace-shell.is-dialogue :is(.publications-editor-modal,.publications-channel-modal) .publications-editor-row label>span,
+.workspace-shell.is-dialogue :is(.publications-editor-modal,.publications-channel-modal) .module-select>span{color:#edf3f9}
+.workspace-shell.is-dialogue :is(.publications-editor-modal,.publications-channel-modal) .module-select-trigger :is(b,em,i){color:#edf3f9}
+.workspace-shell.is-dialogue :is(.publications-editor-modal,.publications-channel-modal) .module-select-list{color:#edf3f9;background:#233345;border-color:#44586b}
+.workspace-shell.is-dialogue :is(.publications-editor-modal,.publications-channel-modal) .module-select-list>button{color:#edf3f9}
+.workspace-shell.is-dialogue :is(.publications-editor-modal,.publications-channel-modal) .module-select-list>button:hover,
+.workspace-shell.is-dialogue :is(.publications-editor-modal,.publications-channel-modal) .module-select-list>button.active{background:#354656;color:#fff}
+body:has(.workspace-shell.is-dialogue .publications-editor-modal)>.module-select-list{color:#edf3f9;background:#233345;border-color:#44586b}
+body:has(.workspace-shell.is-dialogue .publications-editor-modal)>.module-select-list>button{color:#edf3f9}
+body:has(.workspace-shell.is-dialogue .publications-editor-modal)>.module-select-list>button:is(:hover,.active){color:#fff;background:#354656}

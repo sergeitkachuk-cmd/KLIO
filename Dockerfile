@@ -19,6 +19,7 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/certs ./certs
 # drizzle.config.ts + db/schema.ts, needed for "npm run db:push" at startup
 # below. This host has no separate pre-deploy hook (unlike Render's
 # render.yaml preDeployCommand, which this image used to rely on and which

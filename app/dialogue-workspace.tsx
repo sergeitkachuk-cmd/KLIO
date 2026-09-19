@@ -73,6 +73,7 @@ export function DialogueWorkspace(props: Props) {
   const [draft, setDraft] = useState("");
   const [search, setSearch] = useState(false);
   const [profileMode, setProfileMode] = useState(false);
+  const [useBrandContext, setUseBrandContext] = useState(true);
   const [selected, setSelected] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
   const [editTitle, setEditTitle] = useState("");
@@ -84,6 +85,7 @@ export function DialogueWorkspace(props: Props) {
   const [imageAvailable, setImageAvailable] = useState(false);
   const [next, setNext] = useState<string | null>(null);
   const [mobileMenu, setMobileMenu] = useState(false);
+  const [brandMenuOpen, setBrandMenuOpen] = useState(false);
   const current = useRef<DialogueThread | null>(null);
   const lock = useRef(false);
   const mounted = useRef(true);
@@ -382,6 +384,7 @@ export function DialogueWorkspace(props: Props) {
         mode,
         cardId,
         search,
+        useBrandContext: profileMode || (Boolean(props.brandId) && useBrandContext),
       });
       accept(result.thread);
       pendingSend.current = null;
@@ -542,39 +545,34 @@ export function DialogueWorkspace(props: Props) {
     >
     <aside className="klio-chat-sidebar" aria-label="Диалоги и материалы">
       <button className="klio-chat-menu" aria-label="Закрыть список диалогов" onClick={() => setMobileMenu(false)}>Закрыть ×</button>
-        <label className="klio-chat-business">
+        <div className="klio-chat-business">
           <span>Ваш бизнес</span>
           {props.brands.length ? (
-            <select
-              aria-label="Активный бизнес"
-              value={props.brandId}
-              disabled={busy}
-              onChange={(e) => props.onBrandChange(e.target.value)}
-            >
-              {props.brands.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
+            <div className="klio-chat-brand-picker">
+              <button type="button" className="klio-chat-business-trigger" aria-label="Активный бизнес" aria-expanded={brandMenuOpen} onClick={() => setBrandMenuOpen(open => !open)} disabled={busy}>{props.brandName || "Личное пространство"}<span aria-hidden="true">⌄</span></button>
+              {brandMenuOpen && <div className="klio-chat-brand-options" role="group" aria-label="Выберите бизнес">
+                {props.brands.map(b => <button type="button" key={b.id} className={props.brandId === b.id ? "active" : ""} onClick={() => { setBrandMenuOpen(false); props.onBrandChange(b.id); }}>{b.name}</button>)}
+              </div>}
+            </div>
           ) : (
             <b>Личное пространство</b>
           )}
-        </label>
+        </div>
         <button className="klio-chat-new" onClick={newChat} disabled={busy}>
           ＋ Новый диалог
         </button>
         <nav>
+          <button onClick={() => props.onNavigate("brand")}>
+            ◇ Мой бизнес
+          </button>
           <button onClick={() => props.onNavigate("history")}>
             ▤ Материалы
           </button>
           <button onClick={() => props.onNavigate("publications")}>
             ▦ Календарь
           </button>
-          <button onClick={() => props.onNavigate("brand")}>
-            ◇ Мой бизнес
-          </button>
         </nav>
+        {props.brandId && <label className="klio-chat-brand-switch"><input type="checkbox" checked={useBrandContext} onChange={event => setUseBrandContext(event.target.checked)} disabled={busy}/><span><b>Учитывать профиль бренда</b><small>{useBrandContext ? "КЛИО использует данные бизнеса" : "Можно писать на любую тему"}</small></span></label>}
         <div className="klio-chat-history">
           <span>Диалоги</span>
           {threads.map((t) => (
@@ -865,6 +863,7 @@ export function DialogueWorkspace(props: Props) {
               }}
             />
             <div className="klio-chat-compose-tools">
+              {props.brandId && <label className="klio-chat-context"><input type="checkbox" checked={useBrandContext} onChange={e => setUseBrandContext(e.target.checked)} disabled={busy}/> Профиль бренда</label>}
               <label>
                 <input
                   type="checkbox"
@@ -883,8 +882,7 @@ export function DialogueWorkspace(props: Props) {
             </div>
           </form>
           <small>
-            Ответ — одно AI-редакторское действие · доступно {props.remaining}.
-            Картинка — одна генерация. Публикация только после подтверждения.
+            Доступно {props.remaining} ответов · изображение расходует одну генерацию.
           </small>
         </div>
       </section>

@@ -22964,3 +22964,22 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
    field-label-help row to 40px tall on mobile even though the label text
    only needs about 16-18px, padding out every field it touches (Стиль,
    Ключевые слова, Контекст КЛИО, ...). Left at the same 28px as desktop. */
+/* Professional image studio and saved image previews. */
+.image-generator-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,1fr);gap:22px;padding:24px;color:#eef2fa}
+.image-generator-form,.image-generator-preview{min-width:0;padding:24px;border:1px solid #34425a;border-radius:18px;background:#0d1c33}
+.image-generator-form{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
+.image-generator-form label{font-size:16px;font-weight:750;color:inherit}
+.image-generator-form textarea{width:100%;min-height:180px;resize:vertical;padding:16px;border:1px solid #586782;border-radius:12px;background:#101f37;color:#fff;font:inherit;line-height:1.5}
+.image-generator-form textarea::placeholder{color:#aab8cb}
+.image-generator-form p,.image-generator-preview p{margin:0;color:#bec9d8;font-size:14px;line-height:1.5}
+.image-generator-preview>img{display:block;width:100%;height:auto;max-height:680px;object-fit:contain;border-radius:12px}
+.image-generator-preview>div:not(.image-generator-empty){display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
+.image-generator-preview>p{margin-top:14px}
+.image-generator-empty{display:flex;min-height:360px;align-items:center;justify-content:center;flex-direction:column;gap:16px;text-align:center;color:#bec9d8}
+.image-generator-empty svg{width:44px;height:44px}
+.material-card-image{display:block;width:100%;max-height:280px;height:auto;object-fit:contain;margin:14px 0;border-radius:10px;background:rgba(0,0,0,.06)}
+[data-theme="light"] .image-generator-layout{color:#14253f}
+[data-theme="light"] .image-generator-form,[data-theme="light"] .image-generator-preview{border-color:#d5deea;background:#fff}
+[data-theme="light"] .image-generator-form textarea{border-color:#aebdd0;background:#fff;color:#14253f}
+[data-theme="light"] .image-generator-form textarea::placeholder,[data-theme="light"] .image-generator-form p,[data-theme="light"] .image-generator-preview p,[data-theme="light"] .image-generator-empty{color:#4e6078}
+@media(max-width:750px){.image-generator-layout{grid-template-columns:1fr;padding:16px}.image-generator-form,.image-generator-preview{padding:18px}.image-generator-empty{min-height:220px}}

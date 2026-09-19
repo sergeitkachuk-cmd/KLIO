@@ -1,7 +1,30 @@
 import { createPublicKey, createVerify, type JsonWebKey as NodeJsonWebKey } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { rootCertificates } from "node:tls";
+import { Agent } from "undici";
 
 const TOCHKA_BASE_URL = "https://enter.tochka.com/uapi";
 const TOCHKA_WEBHOOK_KEY_URL = "https://enter.tochka.com/doc/openapi/static/keys/public";
+let tochkaDispatcher: Agent | undefined;
+
+function bankDispatcher() {
+  if (!tochkaDispatcher) {
+    // Tochka documents these two Ministry-issued CAs for its API. Trust them
+    // only on calls to the bank; do not weaken TLS verification globally.
+    const ca = [
+      ...rootCertificates,
+      readFileSync(join(process.cwd(), "certs/russian_trusted_root_ca_pem.crt"), "utf8"),
+      readFileSync(join(process.cwd(), "certs/russian_trusted_sub_ca_pem.crt"), "utf8"),
+    ];
+    tochkaDispatcher = new Agent({ connect: { ca } });
+  }
+  return tochkaDispatcher;
+}
+
+function fetchBank(url: string, init: RequestInit) {
+  return fetch(url, { ...init, dispatcher: bankDispatcher() } as RequestInit & { dispatcher: Agent });
+}
 
 export class TochkaConfigError extends Error {}
 
@@ -14,7 +37,7 @@ async function webhookKey() {
   if (webhookKeyPromise && Date.now() >= webhookKeyExpiresAt) webhookKeyPromise = undefined;
   if (!webhookKeyPromise) {
     webhookKeyExpiresAt = Date.now() + 5 * 60_000;
-    webhookKeyPromise = fetch(TOCHKA_WEBHOOK_KEY_URL, { cache: "no-store", signal: AbortSignal.timeout(5000) })
+    webhookKeyPromise = fetchBank(TOCHKA_WEBHOOK_KEY_URL, { cache: "no-store", signal: AbortSignal.timeout(5000) })
     .then(async (response) => {
       if (!response.ok) throw new Error(`Tochka public key request failed (${response.status}).`);
       const value = await response.json() as NodeJsonWebKey | { keys?: NodeJsonWebKey[] };
@@ -136,7 +159,7 @@ export async function tochkaRequest<T>(path: string, init: RequestInit = {}) {
   const { token, clientId } = credentials();
   const deadline = AbortSignal.timeout(30_000);
   const signal = init.signal ? AbortSignal.any([init.signal, deadline]) : deadline;
-  const response = await fetch(`${TOCHKA_BASE_URL}${path}`, {
+  const response = await fetchBank(`${TOCHKA_BASE_URL}${path}`, {
     ...init,
     signal,
     headers: {
@@ -166,7 +189,7 @@ export async function tochkaRequest<T>(path: string, init: RequestInit = {}) {
 
 export async function tochkaFileRequest(path: string) {
   const { token, clientId } = credentials();
-  const response = await fetch(`${TOCHKA_BASE_URL}${path}`, {
+  const response = await fetchBank(`${TOCHKA_BASE_URL}${path}`, {
     signal: AbortSignal.timeout(60_000),
     headers: {
       Authorization: `Bearer ${token}`,

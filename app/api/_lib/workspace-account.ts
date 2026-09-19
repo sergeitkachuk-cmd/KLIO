@@ -331,6 +331,7 @@ export async function recordEditorialAction(job?: JobResult) {
 }
 
 export type ArchiveMaterial = {
+  id?: string;
   brandId?: string;
   format: string;
   topic: string;
@@ -343,6 +344,7 @@ export type ArchiveMaterial = {
   keywords: string;
   tone: string;
   targetLength: number;
+  imageUrl?: string;
 };
 
 export async function recordGeneration(material: ArchiveMaterial, job?: { id: string; result: Record<string, unknown> }) {
@@ -385,7 +387,7 @@ export async function recordGeneration(material: ArchiveMaterial, job?: { id: st
   }
 
   const [archive] = await tx.insert(generations).values({
-    id: crypto.randomUUID(),
+    id: material.id ?? crypto.randomUUID(),
     ownerEmail: user.email,
     brandId,
     format: material.format,
@@ -400,6 +402,7 @@ export async function recordGeneration(material: ArchiveMaterial, job?: { id: st
     keywords: material.keywords,
     tone: material.tone,
     targetLength: material.targetLength,
+    imageUrl: material.imageUrl ?? "",
   }).returning();
 
   const [{ count: brandCount = 0 } = { count: 0 }] = await tx.select({ count: sql<number>`count(*)` }).from(brands).where(eq(brands.ownerEmail, user.email));

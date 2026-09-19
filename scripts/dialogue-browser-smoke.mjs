@@ -262,14 +262,14 @@ try {
     return r.result.value;
   };
   const until = async (expression) => {
-    for (let i = 0; i < 100; i++) {
-      if (await evaluate(expression)) return;
+    for (let i = 0; i < 300; i++) {
+      try { if (await evaluate(expression)) return; } catch { /* page still loading */ }
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
     console.log(
       JSON.stringify({
         errors,
-        body: await evaluate("document.body.innerText.slice(0,3000)"),
+        body: await evaluate("document.body?.innerText.slice(0,3000) || document.documentElement?.outerHTML.slice(0,1000)"),
       }),
     );
     const shot = await cmd("Page.captureScreenshot", { format: "png" });
@@ -334,6 +334,13 @@ try {
     "document.querySelectorAll('.klio-chat-card').length===3 && !document.querySelector('.klio-chat-thinking')",
   );
   await screenshot("desktop-conversation");
+  await evaluate("document.querySelector('.klio-chat-context input').click()");
+  await until("document.querySelector('.klio-chat-context input')?.checked === false");
+  await screenshot("desktop-brand-off-light");
+  await evaluate("document.querySelector('.klio-chat-context input').click()");
+  await evaluate("document.documentElement.setAttribute('data-theme','dark')");
+  await screenshot("desktop-conversation-dark");
+  await evaluate("document.documentElement.setAttribute('data-theme','light')");
   await evaluate(
     "[...document.querySelectorAll('.klio-chat-card')].at(-1).querySelector('.klio-chat-card-actions button').click()",
   );
@@ -363,6 +370,12 @@ try {
   await until(
     "document.querySelector('.workspace-mode-switch button[aria-pressed=true]')?.textContent==='Профессиональный'",
   );
+  await evaluate("document.querySelector('a[href=\"#images\"]')?.click()");
+  await until("document.querySelector('#images')?.getClientRects().length > 0");
+  await screenshot("desktop-images-light");
+  await evaluate("document.documentElement.setAttribute('data-theme','dark')");
+  await screenshot("desktop-images-dark");
+  await evaluate("document.documentElement.setAttribute('data-theme','light')");
   await click("Диалоговый");
   await until("!document.querySelector('.klio-chat').hidden");
   await until("!document.querySelector('.klio-chat-loading')");
@@ -371,6 +384,19 @@ try {
     "document.querySelectorAll('.klio-chat-card').length>=3 && !document.querySelector('.klio-chat').hidden",
   );
   await screenshot("desktop-restored");
+  await click("▦ Календарь");
+  await until("document.querySelector('.publications-module')?.getClientRects().length > 0");
+  await screenshot("desktop-calendar-light");
+  await evaluate("document.documentElement.setAttribute('data-theme','dark')");
+  await screenshot("desktop-calendar-dark");
+  await evaluate("document.documentElement.setAttribute('data-theme','light')");
+  await evaluate("document.querySelector('a[href=\"#brand-profile\"]').click()");
+  await until("document.querySelector('.brand-profile')?.getClientRects().length > 0");
+  await screenshot("desktop-business-light");
+  await evaluate("document.documentElement.setAttribute('data-theme','dark')");
+  await screenshot("desktop-business-dark");
+  await evaluate("document.querySelector('a[href=\"#start\"]').click()");
+  await until("!document.querySelector('.klio-chat').hidden");
   for (const theme of ["light", "dark"]) {
     await cmd("Emulation.setDeviceMetricsOverride", {
       width: 390,

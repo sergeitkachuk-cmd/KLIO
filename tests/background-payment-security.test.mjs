@@ -15,14 +15,22 @@ function load(path, dependencies, globals = {}) {
   });
   return exports;
 }
+const bankDeps = {
+  "node:crypto": crypto,
+  "node:fs": { readFileSync: () => "test CA" },
+  "node:path": { join: (...parts) => parts.join("/") },
+  "node:tls": { rootCertificates: [] },
+  undici: { Agent: class {} },
+};
 
 test("bank requests preserve cancellation and never replay POST after body timeout", async () => {
   const controller = new AbortController();
   let calls = 0;
-  const loaded = load("app/api/_lib/tochka.ts", { "node:crypto": crypto }, {
-    process: { env: { TOCHKA_JWT_TOKEN: "test", TOCHKA_CLIENT_ID: "test" } },
+  const loaded = load("app/api/_lib/tochka.ts", bankDeps, {
+    process: { cwd: () => ".", env: { TOCHKA_JWT_TOKEN: "test", TOCHKA_CLIENT_ID: "test" } },
     fetch: async (_url, options) => {
       calls++;
+      assert.ok(options.dispatcher);
       assert.equal(options.method, "POST");
       assert.ok(options.signal);
       return { ok: true, json: async () => {
@@ -38,10 +46,10 @@ test("bank requests preserve cancellation and never replay POST after body timeo
 
 test("bank JSON and PDF requests use finite provider deadlines", async () => {
   const deadlines = [];
-  const loaded = load("app/api/_lib/tochka.ts", { "node:crypto": crypto }, {
-    process: { env: { TOCHKA_JWT_TOKEN: "test", TOCHKA_CLIENT_ID: "test" } },
+  const loaded = load("app/api/_lib/tochka.ts", bankDeps, {
+    process: { cwd: () => ".", env: { TOCHKA_JWT_TOKEN: "test", TOCHKA_CLIENT_ID: "test" } },
     AbortSignal: { timeout: ms => { deadlines.push(ms); return new AbortController().signal; } },
-    fetch: async (_url, options) => { assert.ok(options.signal); return { ok: true, json: async () => ({ ok: true }) }; },
+    fetch: async (_url, options) => { assert.ok(options.signal); assert.ok(options.dispatcher); return { ok: true, json: async () => ({ ok: true }) }; },
   });
   await loaded.tochkaRequest("/test");
   await loaded.tochkaFileRequest("/test.pdf");
@@ -54,7 +62,7 @@ test("webhook key lookup recovers after an outage and verifies real RSA signatur
   const content = `${encode({ alg: "RS256" })}.${encode({ webhookType: "test", exp: Math.floor(Date.now() / 1000) + 600 })}`;
   const token = `${content}.${crypto.sign("RSA-SHA256", Buffer.from(content), privateKey).toString("base64url")}`;
   let calls = 0;
-  const loaded = load("app/api/_lib/tochka.ts", { "node:crypto": crypto }, { fetch: async (_url, options) => {
+  const loaded = load("app/api/_lib/tochka.ts", bankDeps, { process: { cwd: () => ".", env: {} }, fetch: async (_url, options) => {
     assert.ok(options.signal);
     if (++calls === 1) throw new Error("temporary outage");
     return Response.json(publicKey.export({ format: "jwk" }));
