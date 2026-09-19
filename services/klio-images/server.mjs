@@ -4,11 +4,16 @@ import { createServer } from "node:http";
 import { timingSafeEqual, createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 
+// gpt-image-1 only accepts three literal size values - "1024x1024",
+// "1536x1024" or "1024x1536" (or "auto") - not an arbitrary WxH per aspect
+// ratio. "1536x1152"/"1024x1280"/"1536x864" made OpenAI reject the request
+// outright for 4:3/4:5/16:9. Each requested ratio now snaps to the nearest
+// of the three real sizes.
 const IMAGE_SIZE_BY_RATIO = {
   "1:1": "1024x1024",
-  "4:3": "1536x1152",
-  "4:5": "1024x1280",
-  "16:9": "1536x864",
+  "4:3": "1536x1024",
+  "16:9": "1536x1024",
+  "4:5": "1024x1536",
   "9:16": "1024x1536",
 };
 const IMAGE_QUALITY_VALUES = new Set(["low", "medium", "high"]);

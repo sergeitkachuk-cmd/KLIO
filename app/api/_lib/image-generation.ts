@@ -11,11 +11,18 @@ export type ImageGenerationOptions = {
   background?: "auto" | "transparent" | "opaque";
 };
 
+// gpt-image-1 only accepts three literal size values - "1024x1024",
+// "1536x1024" or "1024x1536" (or "auto") - not an arbitrary WxH per aspect
+// ratio. Sending "1536x1152"/"1024x1280"/"1536x864" (site owner: image
+// generation broke right after adding this aspect-ratio picker) made
+// OpenAI reject the request outright for 4:3/4:5/16:9 - every ratio except
+// the two that happened to already be exact matches (1:1, 9:16). Each
+// requested ratio now snaps to the nearest of the three real sizes.
 const IMAGE_SIZE_BY_RATIO: Record<ImageAspectRatio, string> = {
   "1:1": "1024x1024",
-  "4:3": "1536x1152",
-  "4:5": "1024x1280",
-  "16:9": "1536x864",
+  "4:3": "1536x1024",
+  "16:9": "1536x1024",
+  "4:5": "1024x1536",
   "9:16": "1024x1536",
 };
 
