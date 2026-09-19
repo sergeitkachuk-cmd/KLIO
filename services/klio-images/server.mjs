@@ -21,7 +21,7 @@ function resolveRequestSize(rawSize, aspectRatio) {
   return "1024x1024";
 }
 
-export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", providerFetch = fetch }) {
+export function imageService({ token, apiKey, model = "gpt-image-1", providerFetch = fetch }) {
   const jobs = new Map(); let running = 0;
   const authorized = value => {
     if (!token || token.length < 32) return false;

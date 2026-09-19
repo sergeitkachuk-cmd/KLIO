@@ -77,7 +77,14 @@ export async function createImage(prompt: string, email: string, baseUrl: string
     ...(options.outputFormat ? { output_format: resolved.outputFormat } : {}),
     ...(options.background ? { background: resolved.background } : {}),
   } : {
-    model: process.env.KLIO_IMAGE_MODEL?.trim() || "gpt-image-2.5-flare",
+    // "gpt-image-2.5-flare" was never a real OpenAI model — every request
+    // without an explicit KLIO_IMAGE_MODEL override was failing outright
+    // (site owner: tried generating an image, got an error three times in
+    // a row). gpt-image-1 is OpenAI's actual current image-generation
+    // model and the one whose parameters (size/quality/output_format/
+    // background) this file's own resolveImageGenerationOptions already
+    // matches.
+    model: process.env.KLIO_IMAGE_MODEL?.trim() || "gpt-image-1",
     prompt: prompt.slice(0, 12000),
     n: 1,
     ...(options.size || options.aspectRatio ? { size: resolved.size } : {}),

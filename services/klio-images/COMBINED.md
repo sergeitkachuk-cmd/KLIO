@@ -40,7 +40,7 @@ the tested immutable combined image reference. Add:
 
 - `OPENAI_API_KEY`: eligible image provider key.
 - `KLIO_IMAGE_SERVICE_TOKEN`: new random secret of at least 32 characters.
-- `KLIO_IMAGE_MODEL`: optional, default `gpt-image-2.5-flare`.
+- `KLIO_IMAGE_MODEL`: optional, default `gpt-image-1`.
 
 Use `/health/telegram` as Health Check Path. This probes the loopback listener,
 not the Telegram account's authorization. `/health` separately checks image
