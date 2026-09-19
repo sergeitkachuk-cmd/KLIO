@@ -47,6 +47,11 @@ const IMAGE_FORMAT_OPTIONS = [
   { value: "jpeg", label: "JPEG" },
   { value: "webp", label: "WEBP" },
 ];
+const INTENT_OPTIONS: { value: "topics" | "text" | "image"; label: string; hint: string }[] = [
+  { value: "topics", label: "Темы для контент-плана", hint: "Список идей под формат и бренд" },
+  { value: "text", label: "Написать текст", hint: "Пост, статья или другой формат" },
+  { value: "image", label: "Изображение", hint: "К выбранной теме или с нуля по описанию" },
+];
 
 type Summary = Pick<DialogueThread, "id" | "title" | "updatedAt" | "status">;
 type SharedGeneration = {
@@ -133,7 +138,15 @@ export function DialogueWorkspace(props: Props) {
   const [topicCount, setTopicCount] = useState("5");
   const [imageAspectRatio, setImageAspectRatio] = useState("4:3");
   const [imageOutputFormat, setImageOutputFormat] = useState("png");
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  // Replaces one always-visible settings panel (site owner: "мы реально
+  // путаем человека предлагая ему кучу настроек разом") with a ChatGPT-
+  // style "+" picker: chat stays plain by default, and choosing a task
+  // surfaces only the settings that apply to it - формат+количество for a
+  // topic list, тон+объём for text, соотношение+формат for an image. Resets
+  // to "chat" after every send, same as ChatGPT's own tool picker - each
+  // message chooses its own task fresh instead of a sticky mode.
+  const [composeIntent, setComposeIntent] = useState<"chat" | "topics" | "text" | "image">("chat");
+  const [intentMenuOpen, setIntentMenuOpen] = useState(false);
   const current = useRef<DialogueThread | null>(null);
   const lock = useRef(false);
   const mounted = useRef(true);
@@ -473,6 +486,39 @@ export function DialogueWorkspace(props: Props) {
     });
   }
 
+  // Shared by the card's own "Создать картинку" button and the "+"
+  // picker's image intent, so the two prompts can't drift apart. Grounded
+  // in the source card's title+body when there is one, with extra folded
+  // in as optional wishes; without a card, extra (the typed description)
+  // is the whole prompt.
+  function buildImagePrompt(source: DialogueCard | undefined, extra: string) {
+    const wishes = extra.trim();
+    if (!source) return wishes;
+    const base = `Сделай иллюстрацию для статьи: ${source.title}\n\n${source.body}`.slice(0, 1600);
+    return wishes ? `${base}\n\nПожелания к изображению: ${wishes}` : base;
+  }
+
+  // Shared by the form's submit and the textarea's Enter-to-send, so the
+  // two can't drift apart. An image grounded in a selected card still
+  // works with an empty draft (the draft is only optional extra wishes
+  // there) - the server always needs non-empty text, so that only works
+  // here because buildImagePrompt constructs real text from the card.
+  // Without a card (site owner: "у нас свободный диалог, свободная
+  // генерация" - no topic needs to exist first, same as professional
+  // mode's own image generator), the draft itself is the description and
+  // can't be empty.
+  function submitCompose() {
+    if (composeIntent === "image") {
+      if (!card && !draft.trim()) return;
+      setComposeIntent("chat");
+      void send("image", buildImagePrompt(card, draft), selected);
+      return;
+    }
+    if (!draft.trim()) return;
+    setComposeIntent("chat");
+    void send();
+  }
+
   function edit(c: DialogueCard) {
     setSelected(c.id);
     setEditTitle(c.title);
@@ -625,11 +671,7 @@ export function DialogueWorkspace(props: Props) {
                     ? "Генерация изображений ещё не подключена. Загрузите картинку в редакторе."
                     : "Одна картинка использует одну генерацию тарифа"
                 }
-                onClick={() => {
-                  const base = `Сделай иллюстрацию для статьи: ${c.title}\n\n${c.body}`.slice(0, 1600);
-                  const extra = draft.trim();
-                  void send("image", extra ? `${base}\n\nПожелания к изображению: ${extra}` : base, c.id);
-                }}
+                onClick={() => void send("image", buildImagePrompt(c, draft), c.id)}
               >
                 Создать картинку
               </button>
@@ -977,42 +1019,61 @@ export function DialogueWorkspace(props: Props) {
               </button>
             </div>
           )}
-          {/* Optional and explicit, not a required form (site owner: "они
-              должны быть необязательны... но очень явными, как в chatgpt") -
-              a person can just chat naturally (everything stays "Авто") or
-              pin down format/tone/length/topic count/image options the way
-              the professional Генератор lets them. The toggle button always
-              shows the current picks, so nothing is hidden state even
-              collapsed. */}
-          <div className="klio-chat-settings">
+          {/* ChatGPT-style task picker (site owner: "мы реально путаем
+              человека предлагая ему кучу настроек разом") - chat stays plain
+              by default; "+" picks a task and only then shows the 2-3
+              settings that actually apply to it, instead of all 6 at once. */}
+          <div className="klio-chat-intent">
             <button
               type="button"
-              className="klio-chat-settings-toggle"
-              aria-expanded={settingsOpen}
-              onClick={() => setSettingsOpen((open) => !open)}
+              className="klio-chat-intent-add"
+              aria-haspopup="menu"
+              aria-expanded={intentMenuOpen}
+              aria-label="Выбрать задачу"
+              onClick={() => setIntentMenuOpen((open) => !open)}
             >
-              Настройки генерации: {[
-                FORMAT_OPTIONS.find((o) => o.value === genFormat)?.label,
-                TONE_OPTIONS.find((o) => o.value === genTone)?.label,
-                LENGTH_OPTIONS.find((o) => o.value === genLength)?.label,
-              ].filter(Boolean).join(" · ")}
-              <em className="ui-chevron" aria-hidden="true" />
+              ＋
             </button>
-            {settingsOpen && (
-              <div className="klio-chat-settings-grid">
-                <ModuleSelect variant="dialogue" label="Формат" value={genFormat} options={FORMAT_OPTIONS} onChange={(value) => setGenFormat(value as ContentFormat | "")}/>
-                <ModuleSelect variant="dialogue" label="Тон" value={genTone} options={TONE_OPTIONS} onChange={(value) => setGenTone(value as ContentTone | "")}/>
-                <ModuleSelect variant="dialogue" label="Объём" value={genLength} options={LENGTH_OPTIONS} onChange={setGenLength}/>
-                <ModuleSelect variant="dialogue" label="Тем при подборе" value={topicCount} options={TOPIC_COUNT_OPTIONS} onChange={setTopicCount}/>
-                <ModuleSelect variant="dialogue" label="Соотношение картинки" value={imageAspectRatio} options={IMAGE_ASPECT_OPTIONS} onChange={setImageAspectRatio}/>
-                <ModuleSelect variant="dialogue" label="Формат картинки" value={imageOutputFormat} options={IMAGE_FORMAT_OPTIONS} onChange={setImageOutputFormat}/>
+            {composeIntent !== "chat" && (
+              <span className="klio-chat-intent-chip">
+                {INTENT_OPTIONS.find((option) => option.value === composeIntent)?.label}
+                <button type="button" aria-label="Вернуться к обычному общению" onClick={() => setComposeIntent("chat")}>×</button>
+              </span>
+            )}
+            {intentMenuOpen && (
+              <div className="klio-chat-intent-menu" role="menu" aria-label="Выберите задачу">
+                <button type="button" role="menuitem" className={composeIntent === "chat" ? "active" : ""} onClick={() => { setComposeIntent("chat"); setIntentMenuOpen(false); }}>
+                  <b>Просто общение</b><small>Обсудить идею, задать вопрос</small>
+                </button>
+                {INTENT_OPTIONS.map((option) => (
+                  <button type="button" role="menuitem" key={option.value} className={composeIntent === option.value ? "active" : ""} onClick={() => { setComposeIntent(option.value); setIntentMenuOpen(false); }}>
+                    <b>{option.label}</b><small>{option.hint}</small>
+                  </button>
+                ))}
               </div>
             )}
           </div>
+          {composeIntent !== "chat" && (
+            <div className="klio-chat-settings-grid">
+              {composeIntent === "topics" && <>
+                <ModuleSelect variant="dialogue" label="Формат" value={genFormat} options={FORMAT_OPTIONS} onChange={(value) => setGenFormat(value as ContentFormat | "")}/>
+                <ModuleSelect variant="dialogue" label="Тем при подборе" value={topicCount} options={TOPIC_COUNT_OPTIONS} onChange={setTopicCount}/>
+              </>}
+              {composeIntent === "text" && <>
+                <ModuleSelect variant="dialogue" label="Формат" value={genFormat} options={FORMAT_OPTIONS} onChange={(value) => setGenFormat(value as ContentFormat | "")}/>
+                <ModuleSelect variant="dialogue" label="Тон" value={genTone} options={TONE_OPTIONS} onChange={(value) => setGenTone(value as ContentTone | "")}/>
+                <ModuleSelect variant="dialogue" label="Объём" value={genLength} options={LENGTH_OPTIONS} onChange={setGenLength}/>
+              </>}
+              {composeIntent === "image" && <>
+                <ModuleSelect variant="dialogue" label="Соотношение картинки" value={imageAspectRatio} options={IMAGE_ASPECT_OPTIONS} onChange={setImageAspectRatio}/>
+                <ModuleSelect variant="dialogue" label="Формат картинки" value={imageOutputFormat} options={IMAGE_FORMAT_OPTIONS} onChange={setImageOutputFormat}/>
+              </>}
+            </div>
+          )}
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              void send();
+              submitCompose();
             }}
           >
             <textarea
@@ -1021,7 +1082,9 @@ export function DialogueWorkspace(props: Props) {
               placeholder={
                 profileMode
                   ? "Ссылка на сайт или несколько слов о вашем бизнесе…"
-                  : "Спросите КЛИО или опишите задачу…"
+                  : composeIntent === "image"
+                    ? (card ? "Пожелания к изображению (необязательно)…" : "Опишите, что изобразить…")
+                    : "Спросите КЛИО или опишите задачу…"
               }
               maxLength={8000}
               rows={2}
@@ -1035,7 +1098,7 @@ export function DialogueWorkspace(props: Props) {
                   window.matchMedia("(min-width: 761px)").matches
                 ) {
                   e.preventDefault();
-                  void send();
+                  submitCompose();
                 }
               }}
             />

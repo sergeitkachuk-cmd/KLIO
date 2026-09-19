@@ -194,10 +194,16 @@ async function runReply(
     const useBrandContext = data.messages.at(-1)!.useBrandContext !== false;
     let saveRequested = false;
     if (mode === "image") {
-      if (!selected)
-        throw new Error("Сначала выберите материал для изображения.");
+      // Free-standing image generation (site owner: "у нас свободный диалог,
+      // свободная генерация" - no topic/article needs to exist first, same
+      // as the professional mode's own image generator). Grounded in the
+      // selected card when there is one, otherwise directly in whatever the
+      // person typed.
+      const prompt = selected
+        ? `Создай изображение для публикации. Не добавляй надписи, если они не запрошены. Контекст бизнеса: ${useBrandContext ? brand?.profileJson ?? "не указан" : "отключён пользователем"}. Материал: ${selected.title}\n${selected.body}\nПожелания: ${last}`
+        : `Создай изображение по описанию. Не добавляй надписи, если они не запрошены. Контекст бизнеса: ${useBrandContext ? brand?.profileJson ?? "не указан" : "отключён пользователем"}. Описание: ${last}`;
       const imageUrl = await createImage(
-        `Создай изображение для публикации. Не добавляй надписи, если они не запрошены. Контекст бизнеса: ${useBrandContext ? brand?.profileJson ?? "не указан" : "отключён пользователем"}. Материал: ${selected.title}\n${selected.body}\nПожелания: ${last}`,
+        prompt,
         row.ownerEmail,
         baseUrl,
         row.requestId,
@@ -207,6 +213,8 @@ async function runReply(
         },
       );
       const materialId = crypto.randomUUID();
+      const title = (selected?.title.slice(0, 100) || last.slice(0, 100)) || "Изображение";
+      const body = (selected?.body.slice(0, 4000) || last.slice(0, 4000)) || last;
       await db.insert(generations).values({
         id: materialId,
         ownerEmail: row.ownerEmail,
@@ -214,8 +222,8 @@ async function runReply(
         format: "external",
         origin: "generator",
         topic: "Изображение",
-        title: `${selected.title.slice(0, 100) || "Изображение"}`,
-        body: selected.body.slice(0, 4000) || last,
+        title,
+        body,
         subtitle: "",
         metaTitle: "",
         metaDescription: "",
@@ -225,21 +233,37 @@ async function runReply(
         targetLength: 0,
         imageUrl,
       });
-      data.cards = data.cards.map((card) =>
-        card.id === selectedId
-          ? (() => {
-              const updated = reviseCard(card, { imageUrl });
-              updated.savedId = materialId;
-              updated.savedSnapshot = cardSnapshot(updated);
-              return updated;
-            })()
-          : card,
-      );
+      let cardId = selectedId;
+      if (selected) {
+        data.cards = data.cards.map((card) =>
+          card.id === selectedId
+            ? (() => {
+                const updated = reviseCard(card, { imageUrl });
+                updated.savedId = materialId;
+                updated.savedSnapshot = cardSnapshot(updated);
+                return updated;
+              })()
+            : card,
+        );
+      } else {
+        const newCard: DialogueCard = {
+          id: crypto.randomUUID(),
+          kind: "post",
+          title,
+          body: last,
+          imageUrl,
+          savedId: materialId,
+          versions: [],
+        };
+        newCard.savedSnapshot = cardSnapshot(newCard);
+        data.cards.push(newCard);
+        cardId = newCard.id;
+      }
       data.messages.push({
         id: crypto.randomUUID(),
         role: "assistant",
-        text: "Изображение готово и сохранено в материалы. Можно сразу подготовить публикацию или вернуть картинку в вариант материала.",
-        cardIds: [selectedId],
+        text: "Изображение готово и сохранено в материалы. Можно сразу подготовить публикацию или доработать карточку.",
+        cardIds: [cardId],
       });
     } else {
       const url = last.match(/https?:\/\/[^\s<>]+/i)?.[0];
@@ -643,11 +667,6 @@ export async function POST(request: Request) {
         if (data.messages.length >= 160 || data.cards.length >= 100)
           throw new WorkspaceAccessError(
             "Этот диалог заполнен. Начните новый; материалы останутся доступны.",
-            400,
-          );
-        if (mode === "image" && !card)
-          throw new WorkspaceAccessError(
-            "Выберите материал для изображения.",
             400,
           );
         // Refresh unchanged saved cards from the shared material, including professional edits.
