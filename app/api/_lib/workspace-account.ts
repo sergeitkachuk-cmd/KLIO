@@ -85,6 +85,7 @@ export async function ensureAccount(user: ChatGPTUser, signupMethod: "email" | "
     [account] = await db.insert(accounts).values({
       email: user.email,
       displayName: user.displayName,
+      workspaceMode: "dialogue",
       planId: isTestAccount(user.email) ? "agency" : "trial",
       signupMethod,
       generationMonth: currentMonth,
@@ -228,7 +229,7 @@ function assertTrialActive(account: typeof accounts.$inferSelect) {
   );
 }
 
-function assertPlanActive(account: typeof accounts.$inferSelect) {
+export function assertPlanActive(account: typeof accounts.$inferSelect) {
   assertTrialActive(account);
   if (isPaidPlanExpired(account)) {
     throw new WorkspaceAccessError(

@@ -115,6 +115,7 @@ export function estimateCostUsd(model: AiModelId, usage: {
 // endpoints...) was left out rather than stubbed — see the router
 // integration report for the full mapping and reasoning.
 export type AiOperation =
+  | "dialogue"
   // Luna — user-facing generation
   | "generate_seo_article"
   | "generate_social_post"
@@ -150,6 +151,7 @@ export type OperationConfig = {
 const { CONTENT, UTILITY } = AI_MODELS;
 
 export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
+  dialogue: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 16_000, structuredOutput: true, retryable: false, useWebSearch: false },
   // Full materials are grounded by one bounded Tavily request in the route,
   // not by a model-owned web tool. DeepSeek can otherwise spend minutes in
   // search/tool loops before it starts writing; a single compact digest keeps

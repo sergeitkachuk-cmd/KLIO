@@ -10,7 +10,7 @@ function harness({ failDelete = false, generation = false, archiveRows = null, b
   if (generation) Object.assign(row, { title: "Initial", body: "Body", subtitle: "", metaTitle: "", metaDescription: "", editorialComment: "", tone: "" });
   let writes = 0;
   const brands = { id: "id", ownerEmail: "ownerEmail", updatedAt: "updatedAt" };
-  const tables = { accounts: { email: "email" }, brands, publications: {}, socialChannels: {}, materials: {}, generations: {} };
+  const tables = { accounts: { email: "email" }, brands, dialogueThreads: { brandId: "brandId", ownerEmail: "ownerEmail" }, publications: {}, socialChannels: {}, materials: {}, generations: {} };
   for (const table of [tables.generations, tables.materials]) for (const field of ["id", "ownerEmail", "brandId", "createdAt", "title", "body", "subtitle", "metaTitle", "metaDescription", "editorialComment", "tone"]) table[field] = field;
   let deleted = [];
   let created = 0;
@@ -93,10 +93,10 @@ test("brand deletion rolls back earlier deletions after a storage failure", asyn
   assert.equal(h.deleted(), 0);
 });
 
-test("successful brand deletion commits all five scoped deletions", async () => {
+test("successful brand deletion commits all six scoped deletions including conversations", async () => {
   const h = harness();
   assert.equal((await h.remove()).status, 200);
-  assert.equal(h.deleted(), 5);
+  assert.equal(h.deleted(), 6);
 });
 
 test("material editor rejects a stale second tab and accepts the next edit of the saved version", async () => {

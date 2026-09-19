@@ -5,6 +5,7 @@ import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode, TextareaH
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
+import { DialogueWorkspace } from "./dialogue-workspace";
 import { ProfileField } from "./profile-field";
 import { createWorkspaceSaveQueue } from "./workspace-save-queue";
 import { HelpTip } from "./help-tip";
@@ -372,7 +373,7 @@ type GenerationArchiveItem = {
 };
 
 type SavedMaterialType = "semantics" | "competitors" | "content_plan";
-type MaterialsFilter = "all" | "article" | SavedMaterialType | "archived";
+type MaterialsFilter = "all" | "article" | "dialogue_topic" | "dialogue_note" | SavedMaterialType | "archived";
 type MaterialsDateRange = "all" | "today" | "yesterday" | "week" | "month" | "lastMonth" | "quarter" | "year";
 
 const MATERIALS_DATE_RANGE_OPTIONS: { value: MaterialsDateRange; label: string }[] = [
@@ -1842,7 +1843,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // A generated text can start the publishing flow before any channel exists.
   // Keep it here while the person connects the first channel, then reopen the
   // prepared post instead of dropping them back onto an empty calendar.
-  const [pubPendingDraft, setPubPendingDraft] = useState<{ title: string; body: string; generationId: string | null } | null>(null);
+  const [pubPendingDraft, setPubPendingDraft] = useState<{ title: string; body: string; generationId: string | null; imageUrl?: string } | null>(null);
   const [pubImageUploadBusy, setPubImageUploadBusy] = useState(false);
   const [pubImageUploadError, setPubImageUploadError] = useState("");
   // null = closed. `id` set means editing an already-scheduled row (single
@@ -2196,7 +2197,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           telegramDeliveryChoice: null,
           title: pubPendingDraft.title,
           body: pubPendingDraft.body,
-          imageUrl: "",
+          imageUrl: pubPendingDraft.imageUrl || "",
           date: localDayKey(now),
           time: `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`,
           channelIds: [channel.id],
@@ -2346,6 +2347,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [workspaceHistory, setWorkspaceHistory] = useState<GenerationArchiveItem[]>([]);
   const [workspaceMaterials, setWorkspaceMaterials] = useState<SavedWorkspaceMaterial[]>([]);
   const [workspaceUserName, setWorkspaceUserName] = useState("Сергей");
+  const [workspaceUserKey, setWorkspaceUserKey] = useState("");
+  const [workspaceMode, setWorkspaceMode] = useState<"dialogue" | "professional">("professional");
+  const [modeSaving, setModeSaving] = useState(false);
+  const [dialogueImport, setDialogueImport] = useState<{ id: string; nonce: number } | null>(null);
   const [workspaceReady, setWorkspaceReady] = useState(!workspace);
   const [, setWorkspaceSaving] = useState(false);
   const [workspaceDataError, setWorkspaceDataError] = useState("");
@@ -2623,7 +2628,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   );
   const materialsFilterOptions = useMemo(() => [
     { id: "all" as const, label: "Все материалы", count: activeBrandArticlesLive.length + activeBrandSavedMaterialsLive.length },
-    { id: "article" as const, label: "Статьи и тексты", count: activeBrandArticlesLive.length },
+    { id: "article" as const, label: "Статьи и тексты", count: activeBrandArticlesLive.filter(item => item.topic !== "Тема из диалога" && item.topic !== "Заметка из диалога").length },
+    { id: "dialogue_topic" as const, label: "Темы", count: activeBrandArticlesLive.filter(item => item.topic === "Тема из диалога").length },
+    { id: "dialogue_note" as const, label: "Заметки", count: activeBrandArticlesLive.filter(item => item.topic === "Заметка из диалога").length },
     { id: "content_plan" as const, label: "Контент‑планы", count: activeBrandSavedMaterialsLive.filter((item) => item.type === "content_plan").length },
     { id: "semantics" as const, label: "Семантика", count: activeBrandSavedMaterialsLive.filter((item) => item.type === "semantics").length },
     { id: "competitors" as const, label: "Анализ конкурентов", count: activeBrandSavedMaterialsLive.filter((item) => item.type === "competitors").length },
@@ -2631,7 +2638,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   ], [activeBrandArticlesLive, activeBrandSavedMaterialsLive, archivedBrandArticles, archivedBrandSavedMaterials]);
   const visibleBrandArticles = (materialsFilter === "archived"
     ? archivedBrandArticles
-    : materialsFilter === "all" || materialsFilter === "article" ? activeBrandArticlesLive : [])
+    : materialsFilter === "all" ? activeBrandArticlesLive
+    : materialsFilter === "article" ? activeBrandArticlesLive.filter(item => item.topic !== "Тема из диалога" && item.topic !== "Заметка из диалога")
+    : materialsFilter === "dialogue_topic" ? activeBrandArticlesLive.filter(item => item.topic === "Тема из диалога")
+    : materialsFilter === "dialogue_note" ? activeBrandArticlesLive.filter(item => item.topic === "Заметка из диалога") : [])
     .filter((item) => isWithinMaterialsDateRange(item.createdAt, materialsDateRange));
   const visibleBrandSavedMaterials = (materialsFilter === "archived"
     ? archivedBrandSavedMaterials
@@ -2785,6 +2795,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           user?: { displayName?: string };
           account?: WorkspaceAccount;
           brands?: unknown[];
+          workspaceMode?: "dialogue" | "professional";
           history?: GenerationArchiveItem[];
           materials?: SavedWorkspaceMaterial[];
         };
@@ -2794,6 +2805,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
         if (cancelled) return;
         setWorkspaceUserName(payload.user?.displayName || "Пользователь");
+        setWorkspaceUserKey((payload.user as { email?: string } | undefined)?.email || "account");
+        setWorkspaceMode(payload.workspaceMode === "dialogue" ? "dialogue" : "professional");
         setWorkspaceAccount(account);
         setWorkspaceBrands(records);
         setWorkspaceHistory(Array.isArray(payload.history) ? payload.history : []);
@@ -5121,7 +5134,41 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     showToast("Скопированы заголовок, зацепка и текст без служебного комментария");
   }
 
-  async function openPublicationDraft(source: { title: string; body: string; generationId?: string | null }) {
+  async function refreshDialogueUsage() {
+    try {
+      const response = await fetch("/api/workspace", { cache: "no-store" });
+      const payload = await safeJson(response) as { account?: WorkspaceAccount; history?: GenerationArchiveItem[] };
+      if (response.ok && payload.account) {
+        setWorkspaceAccount(payload.account);
+        if (payload.history) setWorkspaceHistory(list => [...payload.history!, ...list.filter(item => !payload.history!.some(newItem => newItem.id === item.id))]);
+      }
+    } catch { /* Chat result remains available when a quota refresh is offline. */ }
+  }
+
+  async function changeWorkspaceMode(mode: "dialogue" | "professional") {
+    if (modeSaving) return false;
+    if (mode === workspaceMode) return true;
+    setModeSaving(true);
+    try {
+      if (activeBrandId && !await saveActiveWorkspaceBrand(false)) return false;
+      const response = await fetch("/api/dialogue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "mode", mode }) });
+      const payload = await safeJson(response) as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Не удалось сохранить режим.");
+      setWorkspaceMode(mode);
+      if (mode === "dialogue") openModule("start");
+      return true;
+    } catch (error) { showToast(error instanceof Error ? error.message : "Не удалось переключить режим."); return false; }
+    finally { setModeSaving(false); }
+  }
+
+  async function openMaterialInDialogue(id: string) {
+    if (activeBrandId && !await saveActiveWorkspaceBrand(false)) return;
+    if (workspaceMode !== "dialogue" && !await changeWorkspaceMode("dialogue")) return;
+    setDialogueImport({ id, nonce: Date.now() });
+    openModule("start");
+  }
+
+  async function openPublicationDraft(source: { title: string; body: string; generationId?: string | null; imageUrl?: string }) {
     if (!activeBrandId) {
       showToast("Сначала выберите бренд для публикации");
       return;
@@ -5146,6 +5193,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         title: source.title.trim(),
         body: source.body.trim(),
         generationId: source.generationId ?? null,
+        imageUrl: source.imageUrl || workspaceHistory.find(item => item.id === source.generationId)?.imageUrl || "",
       });
       setPubChannelModalOpen(true);
       showToast("Сначала подключите канал VK или Telegram");
@@ -5163,7 +5211,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       telegramDeliveryChoice: null,
       title: source.title.trim(),
       body: source.body.trim(),
-      imageUrl: "",
+      imageUrl: source.imageUrl || workspaceHistory.find(item => item.id === source.generationId)?.imageUrl || "",
       date: localDayKey(now),
       time: `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`,
       channelIds: [channels[0].id],
@@ -5391,10 +5439,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       return <main className="workspace-shell workspace-loading is-error"><Brand/><div><h1>Кабинет временно недоступен</h1><p>{workspaceDataError}</p><button className="button primary" type="button" onClick={() => window.location.reload()}>Повторить</button></div></main>;
     }
 
-    return <main className="workspace-shell">
+    return <main className={`workspace-shell ${workspaceMode === "dialogue" ? "is-dialogue" : ""}`}>
       <header className="workspace-header">
         <Link className="wordmark" href="/" aria-label="КЛИО — вернуться на сайт"><Brand/></Link>
         <div className="workspace-header-actions">
+          <div className="workspace-mode-switch" role="group" aria-label="Режим работы">
+            {(["dialogue", "professional"] as const).map(mode => <button key={mode} type="button" aria-pressed={workspaceMode === mode} disabled={modeSaving} onClick={() => void changeWorkspaceMode(mode)}>{mode === "dialogue" ? "Диалоговый" : "Профессиональный"}</button>)}
+          </div>
           <Link href="/">На главную</Link>
           <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"} title={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"}><Icon name={theme === "dark" ? "sun" : "moon"}/></button>
           <a className="telegram-header-link" href="https://t.me/kliopress" target="_blank" rel="noreferrer" aria-label="Telegram КЛИО"><Icon name="telegram"/><span className="telegram-header-link-text">Telegram КЛИО</span></a>
@@ -5468,7 +5519,20 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           window.setTimeout(() => URL.revokeObjectURL(url), 1000);
         }}>Скачать копию правок</button>
       </section>}
-      <div className="workspace-layout">
+      {workspaceReady && workspaceUserKey && <DialogueWorkspace
+        key={`${workspaceUserKey}:${activeBrandId}`} userKey={workspaceUserKey}
+        visible={workspaceMode === "dialogue" && activeModule === "start"}
+        brandId={activeBrandId} brandName={activeWorkspaceBrand?.name || ""} brands={workspaceBrands}
+        remaining={workspaceAccount.editorActionsRemaining}
+        onNavigate={openModule} onBrandChange={id => void switchWorkspaceBrand(id)}
+        onSaved={generation => setWorkspaceHistory(list => [{ ...list.find(item => item.id === generation.id), ...generation } as GenerationArchiveItem, ...list.filter(item => item.id !== generation.id)])}
+        onProfessional={generation => void (async () => { if (await changeWorkspaceMode("professional")) { openModule("history"); openArchiveItem(generation as GenerationArchiveItem); } })()}
+        onProfile={value => { const record = normalizeWorkspaceBrand(value); if (record) { setWorkspaceBrands(list => [record, ...list.filter(item => item.id !== record.id)]); applyWorkspaceBrand(record); } void refreshDialogueUsage(); }}
+        onUsage={() => void refreshDialogueUsage()}
+        beforeProfile={() => activeBrandId ? saveActiveWorkspaceBrand(false) : Promise.resolve(true)}
+        onSchedule={source => void openPublicationDraft(source)} importMaterial={dialogueImport}
+      />}
+      <div className="workspace-layout" style={workspaceMode === "dialogue" && activeModule === "start" ? { display: "none" } : undefined}>
         <aside className="workspace-sidebar">
           <div className={`workspace-project brand-project-switcher${brandMenuOpen ? " brand-menu-layer-open" : ""}`}>
             <span>Активный бренд</span>
@@ -5495,7 +5559,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             {brandCreatorOpen && <div className="brand-create-form"><input value={newBrandName} onChange={(event) => setNewBrandName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void createWorkspaceBrand(); }} placeholder="Название бренда" autoFocus autoComplete="off"/><button type="button" onClick={() => void createWorkspaceBrand()} disabled={brandSwitchBusy || !newBrandName.trim()}>{brandSwitchBusy ? "Создаём…" : "Создать"}</button></div>}
           </div>
           <nav aria-label="Рабочие модули">
-            <a href="#start" className={activeModule === "start" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("start"); }}><i><Icon name="home"/></i><span><b>Начните здесь</b></span></a>
+            <a href="#start" className={activeModule === "start" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("start"); }}><i><Icon name="home"/></i><span><b>{workspaceMode === "dialogue" ? "Диалоги" : "Начните здесь"}</b></span></a>
             <a href="#brand-profile" className={activeModule === "brand" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("brand"); }}><i><Icon name="building"/></i><span><b>Профиль бренда</b></span></a>
             <a href="#history" className={activeModule === "history" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("history"); }}><i><Icon name="folder"/></i><span><b>Материалы</b></span></a>
             <a href="#generator" className={activeModule === "generator" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("generator"); }}><i><Icon name="spark"/></i><span><b>Генератор материалов</b></span></a>
@@ -5549,10 +5613,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             {archiveLoading && <p role="status">Загружаем материалы бренда…</p>}
             {archiveLoadError && <p role="alert">{archiveLoadError} <button type="button" onClick={() => void loadArchivePage(activeBrandId, archivePage?.brandId === activeBrandId ? archivePage : null)}>Повторить</button></p>}
             {archivePage?.brandId === activeBrandId && (archivePage.history || archivePage.materials) && <div><p>Показана часть архива. Счётчики и фильтры относятся к загруженным материалам.</p><button className="button ghost" type="button" disabled={archiveLoading} onClick={() => void loadArchivePage(activeBrandId, archivePage)}>Загрузить ещё материалы</button></div>}
-            <div className="workspace-history-head"><div><span>Кабинет бренда · {activeWorkspaceBrand?.name || brand.name}</span><h2>Материалы<span className="klio-mark-dot">.</span></h2></div><p>Здесь хранятся только статьи, планы и исследования текущего бренда. Сохранённый результат можно открыть в своём модуле и продолжить работу.</p></div>
+            <div className="workspace-history-head"><div><span>{activeWorkspaceBrand?.name || "Личное пространство"}</span><h2>Материалы<span className="klio-mark-dot">.</span></h2></div><p>{workspaceMode === "dialogue" ? "Сохранённые тексты, темы и заметки. Продолжайте работу в диалоге или редакторе." : "Здесь хранятся тексты, темы, заметки, планы и исследования текущего бренда. Откройте материал, чтобы продолжить работу."}</p></div>
             {activeMaterialCount > 0 && <div className="workspace-history-toolbar">
               <div className="workspace-history-filters" role="group" aria-label="Фильтр материалов по типу">
-                {materialsFilterOptions.map((option) => <button type="button" className={materialsFilter === option.id ? "active" : ""} aria-pressed={materialsFilter === option.id} onClick={() => setMaterialsFilter(option.id)} key={option.id}><span>{option.label}</span><b>{option.count}</b></button>)}
+                {materialsFilterOptions.filter(option => workspaceMode !== "dialogue" || option.count > 0 || ["all", "article", "dialogue_topic", "dialogue_note"].includes(option.id)).map((option) => <button type="button" className={materialsFilter === option.id ? "active" : ""} aria-pressed={materialsFilter === option.id} onClick={() => setMaterialsFilter(option.id)} key={option.id}><span>{option.label}</span><b>{option.count}</b></button>)}
               </div>
               <ModuleSelect label="Период" value={materialsDateRange} options={MATERIALS_DATE_RANGE_OPTIONS} onChange={(value) => setMaterialsDateRange(value as MaterialsDateRange)}/>
             </div>}
@@ -5563,8 +5627,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 // selectable option in the generator's own `formats` list, so it
                 // needs its own label here rather than falling back to the raw
                 // string like an actually-unrecognized value would.
-                const formatLabel = item.format === "external" ? "Добавлено вручную" : formats.find((candidate) => candidate.id === item.format)?.label || item.format;
-                return <article className={`material-card material-article ${item.origin === "editor" ? "is-editor" : ""} ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><div className="material-card-badges"><span className="material-format-badge">{formatLabel}</span>{item.origin === "editor" && <span className="material-origin-badge">РЕД</span>}</div><small>{archiveDate(item.createdAt)}</small></div><h3>{item.title}</h3><p>{item.topic}</p><footer><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал" title="Удалить материал"><Icon name="trash"/></button><button type="button" className="material-archive" onClick={() => void archiveArchiveItem(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" className="material-publish" onClick={() => void openPublicationDraft({ title: item.title, body: item.body, generationId: item.id })}>Публикация</button><button type="button" onClick={() => openArchiveItem(item)}>Редактор <Icon name="arrow"/></button></div></footer></article>;
+                const formatLabel = item.topic === "Тема из диалога" ? "Тема" : item.topic === "Заметка из диалога" ? "Заметка" : item.topic === "Пост из диалога" ? "Публикация" : item.format === "external" ? "Добавлено вручную" : formats.find((candidate) => candidate.id === item.format)?.label || item.format;
+                return <article className={`material-card material-article ${item.origin === "editor" ? "is-editor" : ""} ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><div className="material-card-badges"><span className="material-format-badge">{formatLabel}</span>{item.origin === "editor" && <span className="material-origin-badge">РЕД</span>}</div><small>{archiveDate(item.createdAt)}</small></div><h3>{item.title}</h3><p>{item.topic}</p><footer><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал" title="Удалить материал"><Icon name="trash"/></button><button type="button" className="material-archive" onClick={() => void archiveArchiveItem(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" className="material-publish" onClick={() => void openPublicationDraft({ title: item.title, body: item.body, generationId: item.id })}>Публикация</button><button type="button" onClick={() => void openMaterialInDialogue(item.id)}>В диалог</button><button type="button" onClick={() => openArchiveItem(item)}>Редактор <Icon name="arrow"/></button></div></footer></article>;
               }
               const typeLabel = item.type === "content_plan" ? "Контент‑план" : item.type === "semantics" ? "Семантика" : "Анализ конкурентов";
               // Full items (not just title strings) so each topic can be sent

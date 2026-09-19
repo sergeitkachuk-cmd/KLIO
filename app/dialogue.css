@@ -1,0 +1,684 @@
+.workspace-mode-switch {
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  border: 1px solid var(--line, #ddd);
+  border-radius: 12px;
+  background: var(--surface, #f6f6f4);
+}
+.workspace-mode-switch button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 7px 11px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.workspace-mode-switch button[aria-pressed="true"] {
+  background: #23352d;
+  color: #fff;
+}
+[data-theme="dark"] .workspace-mode-switch {
+  background: #1e2520;
+  color: #edf1eb;
+  border-color: #374138;
+}
+[data-theme="dark"] .workspace-mode-switch button[aria-pressed="true"] {
+  background: #c2d9b9;
+  color: #172018;
+}
+.klio-chat {
+  --chat-bg: #fff;
+  --chat-side: #f7f8f6;
+  --chat-text: #202720;
+  --chat-muted: #687268;
+  --chat-line: #e3e7e0;
+  --chat-accent: #294b3b;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  height: calc(100dvh - 84px);
+  min-height: 560px;
+  background: var(--chat-bg);
+  color: var(--chat-text);
+  font-family: inherit;
+}
+.klio-chat[hidden] {
+  display: none;
+}
+.workspace-shell.is-dialogue:has(.klio-chat:not([hidden])) {
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.workspace-shell.is-dialogue:has(.klio-chat:not([hidden])) > .workspace-header {
+  flex-shrink: 0;
+}
+.workspace-shell.is-dialogue:has(.klio-chat:not([hidden])) > .klio-chat {
+  height: auto;
+  min-height: 0;
+  flex: 1;
+}
+.workspace-shell.is-dialogue .workspace-header {
+  background: #fff;
+  box-shadow: none;
+  border-bottom: 1px solid #e3e7e0;
+}
+.workspace-shell.is-dialogue .workspace-header-actions > a {
+  display: none;
+}
+[data-theme="dark"] .workspace-shell.is-dialogue .workspace-header {
+  background: #171c19;
+  border-color: #374138;
+}
+[data-theme="dark"] .klio-chat {
+  --chat-bg: #171c19;
+  --chat-side: #1e2520;
+  --chat-text: #edf1eb;
+  --chat-muted: #a5afa3;
+  --chat-line: #374138;
+  --chat-accent: #c2d9b9;
+}
+.klio-chat button,
+.klio-chat select,
+.klio-chat input,
+.klio-chat textarea {
+  font: inherit;
+  color: inherit;
+}
+.klio-chat button {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.klio-chat button:disabled {
+  cursor: default;
+  opacity: 0.48;
+}
+.klio-chat button:focus-visible,
+.klio-chat a:focus-visible,
+.klio-chat textarea:focus-visible,
+.klio-chat input:focus-visible,
+.klio-chat select:focus-visible {
+  outline: 2px solid var(--chat-accent);
+  outline-offset: 3px;
+}
+.klio-chat-sidebar {
+  background: var(--chat-side);
+  border-right: 1px solid var(--chat-line);
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 0;
+}
+.klio-chat-business {
+  display: grid;
+  gap: 8px;
+  padding: 0 8px;
+}
+.klio-chat-business > span,
+.klio-chat-history > span {
+  font-size: 11px;
+  color: var(--chat-muted);
+}
+.klio-chat-business select {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  font-weight: 600;
+  min-width: 0;
+}
+.klio-chat-new {
+  background: var(--chat-bg);
+  border: 1px solid var(--chat-line);
+  padding: 12px;
+  border-radius: 10px;
+  text-align: left;
+}
+.klio-chat-sidebar nav {
+  display: grid;
+  gap: 3px;
+}
+.klio-chat-sidebar nav button,
+.klio-chat-history button {
+  border: 0;
+  background: transparent;
+  padding: 10px 12px;
+  border-radius: 8px;
+  text-align: left;
+  font-size: 13px;
+}
+.klio-chat-sidebar button:hover:not(:disabled),
+.klio-chat-history button.active {
+  background: var(--chat-line);
+}
+.klio-chat-history {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: auto;
+  flex: 1;
+}
+.klio-chat-history > span {
+  padding: 6px 12px;
+}
+.klio-chat-history button {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.klio-chat-sidebar-bottom {
+  display: grid;
+  gap: 12px;
+  padding: 12px 8px 0;
+  border-top: 1px solid var(--chat-line);
+}
+.klio-chat-sidebar-bottom button {
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 0;
+  font-size: 12px;
+}
+.klio-chat-sidebar-bottom a {
+  color: var(--chat-muted);
+  font-size: 12px;
+  text-decoration: none;
+}
+.klio-chat-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.klio-chat-top {
+  padding: 16px 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--chat-line);
+  gap: 14px;
+}
+.klio-chat-top > div {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.klio-chat-top span {
+  font-size: 12px;
+  color: var(--chat-muted);
+}
+.klio-chat-top button {
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  color: var(--chat-muted);
+}
+.klio-chat-menu {
+  display: none;
+}
+.klio-chat-messages {
+  flex: 1;
+  overflow: auto;
+  padding: 28px max(24px, calc((100% - 800px) / 2));
+  overscroll-behavior: contain;
+}
+.klio-chat-loading {
+  color: var(--chat-muted);
+  text-align: center;
+}
+.klio-chat-welcome {
+  max-width: 700px;
+  margin: clamp(24px, 7vh, 110px) auto 36px;
+  text-align: center;
+}
+.klio-chat-mark {
+  font-family: Georgia, serif;
+  font-size: 48px;
+  color: var(--chat-accent);
+  margin-bottom: 20px;
+}
+.klio-chat-welcome h1 {
+  font-size: clamp(25px, 3vw, 36px);
+  font-weight: 500;
+  letter-spacing: -0.8px;
+  margin: 0 0 14px;
+}
+.klio-chat-welcome > p {
+  font-size: 15px;
+  color: var(--chat-muted);
+  line-height: 1.6;
+}
+.klio-chat-suggestions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 30px;
+}
+.klio-chat-suggestions button {
+  border: 1px solid var(--chat-line);
+  border-radius: 12px;
+  background: var(--chat-bg);
+  padding: 17px;
+  text-align: left;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+}
+.klio-chat-suggestions span {
+  color: var(--chat-muted);
+}
+.klio-chat-onboarding {
+  margin-top: 24px;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  color: var(--chat-accent) !important;
+}
+.klio-chat-message {
+  margin: 0 0 34px;
+  line-height: 1.7;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.klio-chat-author {
+  display: block;
+  font-size: 11px;
+  color: var(--chat-muted);
+  margin-bottom: 8px;
+}
+.klio-chat-message.user {
+  margin-left: 18%;
+  background: var(--chat-side);
+  padding: 14px 20px;
+  border-radius: 16px;
+}
+.klio-chat-message-text {
+  white-space: pre-wrap;
+}
+.klio-chat-note {
+  margin-top: 12px;
+  border: 0;
+  background: none;
+  color: var(--chat-muted) !important;
+  font-size: 11px !important;
+  padding: 0;
+}
+.klio-chat-card {
+  border: 1px solid var(--chat-line);
+  border-radius: 14px;
+  padding: 20px;
+  margin: 18px 0;
+  background: var(--chat-bg);
+}
+.klio-chat-card.is-selected {
+  border-color: var(--chat-accent);
+}
+.klio-chat-card-meta {
+  display: flex;
+  justify-content: space-between;
+  color: var(--chat-muted);
+  font-size: 10px;
+  gap: 10px;
+}
+.klio-chat-card-title {
+  display: block;
+  text-align: left;
+  font-size: 19px !important;
+  font-weight: 600 !important;
+  border: 0;
+  background: none;
+  padding: 12px 0;
+  line-height: 1.4;
+}
+.klio-chat-card > p {
+  white-space: pre-wrap;
+  font-size: 14px;
+  margin: 0 0 15px;
+}
+.klio-chat-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.klio-chat-card-actions button,
+.klio-chat-profile button,
+.klio-chat-editor footer button,
+.klio-chat-upload {
+  background: var(--chat-side);
+  border: 1px solid var(--chat-line);
+  border-radius: 8px;
+  padding: 8px 11px;
+  font-size: 12px !important;
+}
+.klio-chat-image {
+  display: block;
+  max-width: 100%;
+  max-height: 330px;
+  object-fit: contain;
+  border-radius: 10px;
+  margin: 14px 0;
+}
+.klio-chat-compose {
+  padding: 12px max(24px, calc((100% - 800px) / 2)) 18px;
+  background: var(--chat-bg);
+}
+.klio-chat-compose form {
+  border: 1px solid var(--chat-line);
+  border-radius: 18px;
+  padding: 14px 16px;
+  background: var(--chat-side);
+}
+.klio-chat-compose textarea {
+  resize: vertical;
+  max-height: 180px;
+  min-height: 58px;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  outline: none;
+  line-height: 1.6;
+  font-size: 14px;
+}
+.klio-chat-compose-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.klio-chat-compose-tools label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--chat-muted);
+}
+.klio-chat-compose-tools input {
+  accent-color: var(--chat-accent);
+}
+.klio-chat-compose-tools > button {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  font-size: 24px;
+  background: #294b3b;
+  color: #fff;
+}
+.klio-chat-compose > small {
+  display: block;
+  text-align: center;
+  font-size: 10px;
+  color: var(--chat-muted);
+  margin-top: 9px;
+  line-height: 1.6;
+}
+.klio-chat-selection {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  font-size: 12px;
+  padding: 9px 5px;
+  color: var(--chat-muted);
+}
+.klio-chat-selection span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.klio-chat-selection button {
+  border: 0;
+  background: transparent;
+  font-size: 20px;
+}
+.klio-chat-error,
+.klio-chat-notice {
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  margin-bottom: 10px;
+  line-height: 1.6;
+}
+.klio-chat-error {
+  background: #fff0e8;
+  color: #7c3219;
+}
+.klio-chat-notice {
+  background: var(--chat-side);
+  color: var(--chat-accent);
+}
+.klio-chat-error button,
+.klio-chat-notice button {
+  background: transparent;
+  border: 0;
+  text-decoration: underline;
+  font-size: 12px;
+}
+.klio-chat-thinking {
+  font-size: 12px;
+  color: var(--chat-muted);
+  padding: 15px 0;
+}
+.klio-chat-thinking span {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--chat-accent);
+  margin-right: 10px;
+  animation: klio-pulse 1.5s ease-in-out infinite;
+}
+@keyframes klio-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+.klio-chat-profile {
+  background: var(--chat-side);
+  border: 1px solid var(--chat-line);
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 16px;
+}
+.klio-chat-profile dl {
+  font-size: 12px;
+}
+.klio-chat-profile dl > div {
+  margin: 12px 0;
+}
+.klio-chat-profile dt {
+  color: var(--chat-muted);
+}
+.klio-chat-profile dd {
+  margin: 3px 0;
+}
+.klio-chat-profile > p {
+  font-size: 12px;
+}
+.klio-chat-profile button {
+  margin-right: 8px;
+}
+.klio-chat-editor {
+  position: fixed;
+  inset: 5vh 3vw 5vh auto;
+  width: min(640px, 94vw);
+  max-height: 90dvh;
+  margin: 0;
+  padding: 24px;
+  border: 1px solid var(--chat-line);
+  border-radius: 16px;
+  background: var(--chat-bg);
+  color: var(--chat-text);
+  overflow: auto;
+  box-shadow: 0 20px 70px #0003;
+}
+.klio-chat-editor::backdrop {
+  background: #0c161a66;
+}
+.klio-chat-editor header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+.klio-chat-editor header button {
+  background: none;
+  border: 0;
+  font-size: 25px;
+}
+.klio-chat-editor > label {
+  display: grid;
+  gap: 9px;
+  font-size: 12px;
+  margin-bottom: 20px;
+}
+.klio-chat-editor input,
+.klio-chat-editor textarea {
+  border: 1px solid var(--chat-line);
+  background: var(--chat-side);
+  border-radius: 8px;
+  padding: 12px;
+  width: 100%;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.klio-chat-editor textarea {
+  min-height: 40vh;
+  resize: vertical;
+}
+.klio-chat-editor footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.klio-chat-upload {
+  cursor: pointer;
+}
+.klio-chat-upload input {
+  display: block;
+  font-size: 11px;
+  max-width: 240px;
+  padding: 4px;
+  margin-top: 8px;
+}
+.workspace-shell.is-dialogue
+  .workspace-sidebar
+  nav
+  > a:not([href="#start"]):not([href="#history"]):not(
+    [href="#publications"]
+  ):not([href="#brand-profile"]) {
+  display: none;
+}
+.workspace-shell.is-dialogue .workspace-sidebar .workspace-quota,
+.workspace-shell.is-dialogue .workspace-heading-status {
+  display: none;
+}
+.workspace-shell.is-dialogue .workspace-content {
+  background: var(--surface, #fff);
+}
+@media (max-width: 760px) {
+  .workspace-mode-switch button {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+  .workspace-shell.is-dialogue .workspace-header-actions > a {
+    display: none;
+  }
+  .klio-chat {
+    grid-template-columns: minmax(0, 1fr);
+    height: calc(100dvh - 120px);
+    min-height: 480px;
+    position: relative;
+  }
+  .klio-chat-sidebar {
+    display: none;
+  }
+  .klio-chat.menu-open .klio-chat-sidebar {
+    display: flex;
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 260px;
+    z-index: 20;
+    box-shadow: 15px 0 40px #0003;
+  }
+  .klio-chat-menu {
+    display: block;
+  }
+  .klio-chat-top {
+    padding: 12px 16px;
+  }
+  .klio-chat-top > div {
+    flex: 1;
+  }
+  .klio-chat-messages {
+    padding: 20px 16px;
+  }
+  .klio-chat-compose {
+    padding: 8px 12px 14px;
+  }
+  .klio-chat-welcome {
+    margin: 25px auto;
+  }
+  .klio-chat-suggestions {
+    gap: 8px;
+  }
+  .klio-chat-suggestions button {
+    padding: 13px;
+    font-size: 12px;
+  }
+  .klio-chat-message {
+    font-size: 14px;
+  }
+  .klio-chat-card {
+    padding: 15px;
+  }
+  .klio-chat-message.user {
+    margin-left: 9%;
+  }
+  .klio-chat-editor {
+    inset: 10px;
+    width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+    padding: 18px;
+  }
+  .klio-chat-compose > small {
+    font-size: 9px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .klio-chat-thinking span {
+    animation: none;
+  }
+  .klio-chat * {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}
+
+/* Shared library/calendar keep their data and behavior, with the dialogue skin. */
+.workspace-shell.is-dialogue{--dialogue-paper:#fff;--dialogue-soft:#f7f8f6;--dialogue-ink:#202720;--dialogue-line:#e3e7e0;--dialogue-muted:#687268}
+[data-theme=dark] .workspace-shell.is-dialogue{--dialogue-paper:#171c19;--dialogue-soft:#1e2520;--dialogue-ink:#edf1eb;--dialogue-line:#374138;--dialogue-muted:#a5afa3}
+.workspace-shell.is-dialogue .workspace-sidebar,.workspace-shell.is-dialogue .workspace-project{background:var(--dialogue-soft)!important;box-shadow:none;border-color:var(--dialogue-line)}
+.workspace-shell.is-dialogue .workspace-sidebar nav a{background:transparent!important;box-shadow:none!important;border-color:transparent!important;border-radius:9px;color:var(--dialogue-ink)!important;min-height:44px}
+.workspace-shell.is-dialogue .workspace-sidebar nav a.active{background:var(--dialogue-line)!important}
+.workspace-shell.is-dialogue .workspace-sidebar nav a i{color:var(--dialogue-muted)!important;background:transparent!important;box-shadow:none}
+.workspace-shell.is-dialogue .workspace-sidebar nav a b{text-transform:none;font-size:14px;letter-spacing:0}
+.workspace-shell.is-dialogue .workspace-sidebar .nav-coming-soon,.workspace-shell.is-dialogue .workspace-quota-stage,.workspace-shell.is-dialogue .workspace-heading,.workspace-shell.is-dialogue .workspace-launch-banner{display:none}
+.workspace-shell.is-dialogue .workspace-history,.workspace-shell.is-dialogue .brand-profile,.workspace-shell.is-dialogue .publications{background:var(--dialogue-paper)!important;box-shadow:none!important;border:0!important;color:var(--dialogue-ink)}
+.workspace-shell.is-dialogue .workspace-history-head h2{font-size:30px;letter-spacing:-.5px}
+.workspace-shell.is-dialogue .workspace-history-head p,.workspace-shell.is-dialogue .workspace-history-head span{color:var(--dialogue-muted)!important;font-size:13px}
+.workspace-shell.is-dialogue .workspace-history-filters button{background:var(--dialogue-soft)!important;border-color:var(--dialogue-line)!important;color:var(--dialogue-ink)!important;box-shadow:none;border-radius:9px}
+.workspace-shell.is-dialogue .workspace-history-filters button.active{background:var(--dialogue-line)!important}
+.workspace-shell.is-dialogue .material-card,.workspace-shell.is-dialogue .material-card.is-editor{background:var(--dialogue-paper)!important;color:var(--dialogue-ink)!important;box-shadow:none!important;border:1px solid var(--dialogue-line)!important;border-radius:12px;padding:20px}
+.workspace-shell.is-dialogue .material-card :is(h3,p,small){color:var(--dialogue-ink)!important}
+.workspace-shell.is-dialogue .material-card button,.workspace-shell.is-dialogue .material-format-badge{background:var(--dialogue-soft)!important;color:var(--dialogue-ink)!important;border-color:var(--dialogue-line)!important;box-shadow:none;border-radius:8px}
+.workspace-shell.is-dialogue .material-origin-badge{display:none}
+.workspace-shell.is-dialogue .material-card footer{border-color:var(--dialogue-line)}
+.workspace-shell.is-dialogue .brand-menu-trigger{background:var(--dialogue-soft)!important;border-color:var(--dialogue-line)!important;color:var(--dialogue-ink)!important;box-shadow:none}
+.workspace-shell.is-dialogue .brand-menu-trigger>i{background:var(--dialogue-line)!important;color:var(--dialogue-ink)!important}
+.workspace-shell.is-dialogue .workspace-project>span{color:var(--dialogue-muted)!important}

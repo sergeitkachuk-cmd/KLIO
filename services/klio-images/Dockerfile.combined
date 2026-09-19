@@ -1,0 +1,6 @@
+FROM aiogram/telegram-bot-api:latest
+LABEL org.opencontainers.image.source="https://github.com/sergeitkachuk-cmd/KLIO"
+USER root
+RUN apk add --no-cache nodejs tini
+COPY services/klio-images/server.mjs services/klio-images/combined.mjs /opt/klio/
+ENTRYPOINT ["/sbin/tini", "--", "node", "/opt/klio/combined.mjs"]

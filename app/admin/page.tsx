@@ -106,6 +106,7 @@ function formatDuration(value: unknown): string {
 // without a matching label here is a compile error, not a silent
 // snake_case fallback in the table.
 const OPERATION_LABELS: Record<AiOperation, string> = {
+  dialogue: "Диалог с КЛИО",
   generate_seo_article: "Генерация: SEO-статья",
   generate_social_post: "Генерация: соцсети",
   generate_ad_copy: "Генерация: реклама",

@@ -4,6 +4,7 @@ import { boolean, index, integer, pgTable, real, text } from "drizzle-orm/pg-cor
 export const accounts = pgTable("accounts", {
   email: text("email").primaryKey(),
   displayName: text("display_name").notNull().default("Пользователь"),
+  workspaceMode: text("workspace_mode").notNull().default(""),
   // Null for accounts that only ever authenticated via the ChatGPT embed
   // (no site password was ever set for them).
   passwordHash: text("password_hash"),
@@ -372,3 +373,20 @@ export const materials = pgTable("materials", {
   index("materials_brand_created_idx").on(table.brandId, table.createdAt),
   index("materials_group_version_idx").on(table.groupId, table.versionNumber),
 ]);
+
+// Independent of brand autosave; generic conversations also work without a brand.
+export const dialogueThreads = pgTable("dialogue_threads", {
+  id: text("id").primaryKey(),
+  ownerEmail: text("owner_email").notNull(),
+  brandId: text("brand_id"),
+  title: text("title").notNull().default("Новый диалог"),
+  dataJson: text("data_json").notNull().default('{"messages":[],"cards":[]}'),
+  revision: integer("revision").notNull().default(0),
+  status: text("status").notNull().default("idle"),
+  requestId: text("request_id").notNull().default(""),
+  debitPeriod: text("debit_period").notNull().default(""),
+  debitKind: text("debit_kind").notNull().default("editor"),
+  error: text("error").notNull().default(""),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, table => [index("dialogue_owner_brand_updated_idx").on(table.ownerEmail, table.brandId, table.updatedAt)]);

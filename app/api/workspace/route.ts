@@ -1,5 +1,5 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
-import { accounts, brands, generations, materials, publications, socialChannels } from "../../../db/schema";
+import { accounts, brands, dialogueThreads, generations, materials, publications, socialChannels } from "../../../db/schema";
 import { planRule } from "../../plans";
 import {
   accountSummary,
@@ -164,6 +164,7 @@ export async function GET(request?: Request) {
     const materialRows = await db.select().from(materials).where(eq(materials.ownerEmail, user.email)).orderBy(desc(materials.createdAt)).limit(120);
     return Response.json({
       user,
+      workspaceMode: account.workspaceMode || (brandCount > 0 || archiveRows.length > 0 ? "professional" : "dialogue"),
       account: accountSummary(account, brandCount),
       brands: brandRows.map((item) => ({
         id: item.id,
@@ -263,6 +264,7 @@ export async function POST(request: Request) {
       // first, but never the user's account or billing history. A failed
       // deletion must roll back every preceding step, not leave half a brand.
       await db.transaction(async (tx) => {
+        await tx.delete(dialogueThreads).where(and(eq(dialogueThreads.brandId, brandId), eq(dialogueThreads.ownerEmail, user.email)));
         await tx.delete(publications).where(and(eq(publications.brandId, brandId), eq(publications.ownerEmail, user.email)));
         await tx.delete(socialChannels).where(and(eq(socialChannels.brandId, brandId), eq(socialChannels.ownerEmail, user.email)));
         await tx.delete(materials).where(and(eq(materials.brandId, brandId), eq(materials.ownerEmail, user.email)));
