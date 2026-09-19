@@ -14,6 +14,7 @@ for (const [path, method] of [["create", "POST"], ["invoice", "POST"], ["reconci
     const body = load("../app/api/_lib/request-body.ts");
     const route = load(`../app/api/payments/tochka/${path}/route.ts`, { require: name => {
       if (name.endsWith("/request-body")) return body;
+      if (name.endsWith("/admin")) return { isAdminEmail: () => false };
       if (name.endsWith("/workspace-account")) return { workspaceIdentity: async () => ({ email: "test@example.invalid" }), getWorkspaceDb: async () => ({}), WorkspaceAccessError: class extends Error {} };
       return {};
     } });

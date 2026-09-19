@@ -8,10 +8,16 @@ import { ensureAccount } from "../../../_lib/workspace-account";
 import { getWorkspaceDb } from "../../../_lib/workspace-account";
 import { isBillingPeriod, periodAmount, billingDescription, isPurchasablePlan, PLAN_PRICES, LAUNCH_DISCOUNT_BILLING, launchDiscountWindowOpen, applyLaunchDiscount } from "../../../../billing-pricing";
 import { PAYMENT_LINK_TTL_MINUTES } from "../../../../payment-link";
+import { resolveBaseUrl } from "../../../_lib/base-url";
+import { isAdminEmail } from "../../../_lib/admin";
+import { paymentErrorDetail } from "../../../_lib/payment-diagnostics";
 
 export async function POST(request: Request) {
+  let admin = false;
+  let stage = "account";
   try {
     const user = await workspaceIdentity();
+    admin = isAdminEmail(user.email);
     const input = await readBoundedJson(request, 4096);
     const account = await ensureAccount(user);
     const planId = input?.planId as PlanId;
@@ -26,10 +32,12 @@ export async function POST(request: Request) {
     // can't apply a discount that has already expired or been used.
     const discountApplied = billing === LAUNCH_DISCOUNT_BILLING && launchDiscountWindowOpen() && !account.launchDiscountUsedAt;
     const amount = discountApplied ? applyLaunchDiscount(baseAmount) : baseAmount;
+    stage = "bank-settings";
     const { customerCode, merchantId } = await discoverTochkaIds();
-    const baseUrl = process.env.APP_BASE_URL?.trim() || new URL(request.url).origin;
+    const baseUrl = new URL(resolveBaseUrl(request)).origin;
     const paymentLinkId = `klio-${planId}-${crypto.randomUUID()}`.slice(0, 45);
     const db = await getWorkspaceDb();
+    stage = "save-payment";
     await db.insert(payments).values({
       id: paymentLinkId,
       ownerEmail: user.email,
@@ -74,19 +82,23 @@ export async function POST(request: Request) {
         measure: "шт.",
       }],
     };
+    stage = "bank-create-link";
     const response = await tochkaRequest<unknown>("/acquiring/v1.0/payments_with_receipt", {
       method: "POST",
       body: JSON.stringify({ Data: operation }),
     });
+    stage = "bank-response";
     const paymentUrl = extractPaymentUrl(response);
     if (!paymentUrl) throw new Error("Точка не вернула ссылку на оплату.");
     const operationId = extractOperationId(response);
+    stage = "save-operation";
     if (operationId) await db.update(payments).set({ operationId, updatedAt: new Date().toISOString() }).where(eq(payments.id, paymentLinkId));
     return Response.json({ paymentUrl, paymentLinkId, planId, amount, billing, mode, discountApplied });
   } catch (error) {
     if (error instanceof RequestBodyError) return Response.json({ error: error.message }, { status: error.status });
     if (error instanceof WorkspaceAccessError || error instanceof TochkaConfigError) return Response.json({ error: error.message }, { status: error instanceof WorkspaceAccessError ? error.status : 503 });
-    console.error("Tochka payment link failed");
-    return Response.json({ error: "Не удалось создать платёжную ссылку." }, { status: 502 });
+    const detail = paymentErrorDetail(error);
+    console.error("Tochka payment link failed", { stage, detail });
+    return Response.json({ error: admin ? `Не удалось создать платёжную ссылку. ${stage}: ${detail}` : "Не удалось создать платёжную ссылку. Попробуйте позже или обратитесь в поддержку.", code: "PAYMENT_LINK_FAILED" }, { status: 502 });
   }
 }

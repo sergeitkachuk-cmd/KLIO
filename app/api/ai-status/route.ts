@@ -11,6 +11,7 @@ export async function GET() {
   return Response.json({ connected, configured: connected, health: "unknown" }, { headers: {
     "Cache-Control": "no-store",
     "X-Klio-Dialogue-Release": "2026-09-19-shared-dialogue-v1",
+    "X-Klio-Payment-Diagnostics": "2026-09-19-checkout-stage-v1",
     "X-Klio-Publication-Safety": "2026-09-14-network-errors-v1",
     "X-Klio-Audit-Release": "2026-09-12-ai-publish-safety-v3",
     "X-Klio-Auth-Release": "2026-09-12-request-time-session-v2",
