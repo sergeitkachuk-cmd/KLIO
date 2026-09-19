@@ -6024,15 +6024,24 @@ footer nav a {
   min-height: 72px;
   padding: 10px 12px;
   border: 0;
-  border-radius: 999px;
+  /* 12px, not 999px - a full stadium radius on a row this wide only
+     rounds the two ends, reading as a stray floating oval sitting on
+     top of the card instead of a subtle highlight (site owner: "что
+     это за овал вылез"). Matches the picker/menu's own rounding scale. */
+  border-radius: 12px;
   color: var(--ink);
   background: transparent;
   text-align: left;
   cursor: pointer;
 }
 
-.semantic-geo-trigger:hover {
-  background: rgba(255, 255, 255, 0.06);
+/* (hover: hover) only - touch browsers keep :hover active after a tap
+   with no pointer to "leave", so on mobile this highlight would stay
+   stuck lit after opening the menu (the same "oval" complaint). */
+@media (hover: hover) {
+  .semantic-geo-trigger:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
 }
 
 .semantic-geo-trigger > span {
@@ -6153,7 +6162,12 @@ footer nav a {
 .semantic-geo-menu {
   overflow: hidden;
   margin: 2px 4px 4px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  /* No border of its own - the drop shadow already reads as a distinct
+     panel; a full outline here on top of the picker's own outer border
+     was one "frame in a frame" too many (site owner: "рамки в рамках и
+     в рамках... перегружает"). Space kept via border-color, not a
+     removed border, so the radius/box-model don't shift. */
+  border: 1px solid transparent;
   border-radius: 14px;
   background: linear-gradient(155deg, #051a31 0%, #0c3459 55%, #041225 100%);
   box-shadow: 0 24px 64px rgba(2, 10, 22, 0.4);
@@ -6223,15 +6237,19 @@ footer nav a {
   scrollbar-width: thin;
 }
 
-.semantic-geo-district + .semantic-geo-district {
-  margin-top: 6px;
+.semantic-geo-district {
+  /* Flat divider list instead of one bordered/radius'd box per district -
+     with ~9 federal districts this was the heaviest "frame in a frame"
+     in the picker (picker > menu > district, each with its own border).
+     A bottom rule reads as one continuous list, same information, far
+     less boxed-in-a-box weight, and it costs no side padding either -
+     more width back for the text on narrow screens. */
+  overflow: hidden;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.semantic-geo-district {
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
+.semantic-geo-district:last-child {
+  border-bottom: 0;
 }
 
 .semantic-geo-node {
@@ -12311,7 +12329,10 @@ input[type="radio"] {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  min-height: 108px;
+  /* Tall enough for 3 stacked two-row chips (icon+time on their own
+     line, title given its own full-width line below - see .publications-chip)
+     plus the day-number head row, so a fuller day doesn't clip mid-chip. */
+  min-height: 172px;
   padding: 8px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
@@ -12396,10 +12417,24 @@ input[type="radio"] {
 }
 
 .publications-chip {
+  /* Two rows, not one: icon+time+status share a compact meta row, and
+     the title gets its OWN full-width row below instead of fighting
+     them for space on one line. Cramming all four into one row left
+     the title only a sliver of a ~1/7-of-the-grid-wide cell to work
+     with, so a normal-length title truncated to one or two letters
+     even on a full desktop width (site owner: "жирные и ничего не
+     влезает") - giving it the whole row fixes that at every width. */
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  /* time (not status) gets the flexible 1fr track: a long status word
+     ("Ошибка"/"Повтор") in a fr track can be squeezed toward its 0
+     minimum by the two fixed auto columns and still paint at full
+     width past its own box, overlapping the time text next to it.
+     time is always short/fixed ("17:30"), so giving IT the flexible
+     track and status a fixed auto slot removes that failure mode. */
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "icon time status" "title title title";
   align-items: center;
-  gap: 5px;
+  gap: 2px 5px;
   padding: 4px 6px;
   border: 1px solid transparent;
   border-left: 3px solid var(--chip-accent, #376fa8);
@@ -12420,6 +12455,7 @@ input[type="radio"] {
 .publications-chip-failed { --chip-accent: #c0546a; }
 
 .publications-chip-platform {
+  grid-area: icon;
   display: grid;
   width: 19px;
   height: 19px;
@@ -12445,21 +12481,36 @@ input[type="radio"] {
 }
 
 .publications-chip b {
-  color: rgba(255, 255, 255, 0.65);
-  font-weight: 650;
+  grid-area: time;
+  /* Thin/small, the metadata line - the title below is the one thing
+     that should read as bold and prominent, matching the reference
+     layout the site owner pointed to (small light time, bold title). */
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 500;
+  font-size: 10px;
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .publications-chip span {
+  grid-area: title;
   overflow: hidden;
+  color: #fff;
+  font-weight: 650;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .publications-chip em {
+  grid-area: status;
+  overflow: hidden;
+  justify-self: end;
   color: inherit;
   font-style: normal;
   font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   opacity: 0.85;
 }
 
@@ -12859,25 +12910,11 @@ input[type="radio"] {
 }
 
 @media (max-width: 720px) {
-  .publications-grid {
-    grid-template-columns: repeat(7, minmax(0, 1fr));
-    gap: 4px;
-  }
-
-  .publications-day {
-    min-height: 72px;
-    padding: 5px;
-  }
-
-  .publications-weekday {
-    font-size: 9px;
-    padding: 2px 0 6px;
-  }
-
-  .publications-chip b {
-    display: none;
-  }
-
+  /* .publications-grid/-day/-weekday and .publications-chip b used to be
+     set here too, but a second (max-width: 720px) block further down
+     (same condition, later in source, so it always wins ties) redeclares
+     every one of them with different values - those lines here were dead
+     weight that never took effect. Left only what nothing else touches. */
   .publications-editor-row {
     grid-template-columns: 1fr;
   }
@@ -20150,8 +20187,10 @@ input[type="radio"] {
   box-shadow: 0 16px 42px rgba(20, 40, 80, 0.12);
 }
 
-[data-theme="light"] .semantic-geo-trigger:hover {
-  background: rgba(15, 23, 42, 0.04);
+@media (hover: hover) {
+  [data-theme="light"] .semantic-geo-trigger:hover {
+    background: rgba(15, 23, 42, 0.04);
+  }
 }
 
 [data-theme="light"] .semantic-geo-trigger > span > small {
@@ -20184,7 +20223,6 @@ input[type="radio"] {
 }
 
 [data-theme="light"] .semantic-geo-menu {
-  border-color: rgba(15, 23, 42, 0.14);
   background: linear-gradient(155deg, #e3eaf6 0%, #f2f5fa 55%, #ffffff 100%);
   box-shadow: 0 24px 64px rgba(20, 40, 80, 0.18);
 }
@@ -20215,8 +20253,7 @@ input[type="radio"] {
 }
 
 [data-theme="light"] .semantic-geo-district {
-  border-color: rgba(15, 23, 42, 0.1);
-  background: rgba(255, 255, 255, 0.35);
+  border-bottom-color: rgba(15, 23, 42, 0.1);
 }
 
 [data-theme="light"] .region-node {
