@@ -22971,6 +22971,12 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 .image-generator-form label{font-size:16px;font-weight:750;color:inherit}
 .image-generator-form textarea{width:100%;min-height:180px;resize:vertical;padding:16px;border:1px solid #586782;border-radius:12px;background:#101f37;color:#fff;font:inherit;line-height:1.5}
 .image-generator-form textarea::placeholder{color:#aab8cb}
+/* Was two bare <select> elements - their own dropdown option list can't be
+   restyled to match the app's dark theme in most browsers (site owner: a
+   screenshot of the stock white/blue browser popup). Same ModuleSelect used
+   everywhere else in this file, just needed a row to sit in. */
+.image-generator-settings{display:flex;flex-wrap:wrap;gap:14px;width:100%}
+.image-generator-settings .module-select{flex:1 1 180px;min-width:160px}
 .image-generator-form p,.image-generator-preview p{margin:0;color:#bec9d8;font-size:14px;line-height:1.5}
 .image-generator-preview>img{display:block;width:100%;height:auto;max-height:680px;object-fit:contain;border-radius:12px}
 .image-generator-preview>div:not(.image-generator-empty){display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}

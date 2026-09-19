@@ -13,7 +13,40 @@ import {
   type DialogueCard,
   type DialogueThread,
 } from "./dialogue-model";
+import { ModuleSelect } from "./module-select";
+import { TONE_PLANS, type ContentFormat, type ContentTone } from "./content-plans";
 import "./dialogue.css";
+
+const FORMAT_OPTIONS: { value: ContentFormat | ""; label: string }[] = [
+  { value: "", label: "Авто" },
+  { value: "social", label: "Пост для соцсетей" },
+  { value: "seo", label: "SEO-статья" },
+  { value: "ads", label: "Рекламный текст" },
+  { value: "landing", label: "Текст для сайта" },
+];
+const TONE_OPTIONS: { value: ContentTone | ""; label: string }[] = [
+  { value: "", label: "Голос бренда" },
+  ...(Object.keys(TONE_PLANS) as ContentTone[]).map((tone) => ({ value: tone, label: tone })),
+];
+const LENGTH_OPTIONS = [
+  { value: "", label: "Авто" },
+  { value: "short", label: "Короткий" },
+  { value: "medium", label: "Средний" },
+  { value: "long", label: "Длинный" },
+];
+const TOPIC_COUNT_OPTIONS = [3, 5, 8, 10].map((n) => ({ value: String(n), label: String(n) }));
+const IMAGE_ASPECT_OPTIONS = [
+  { value: "4:3", label: "4:3 (стандартный)" },
+  { value: "1:1", label: "1:1" },
+  { value: "4:5", label: "4:5" },
+  { value: "16:9", label: "16:9" },
+  { value: "9:16", label: "9:16" },
+];
+const IMAGE_FORMAT_OPTIONS = [
+  { value: "png", label: "PNG" },
+  { value: "jpeg", label: "JPEG" },
+  { value: "webp", label: "WEBP" },
+];
 
 type Summary = Pick<DialogueThread, "id" | "title" | "updatedAt" | "status">;
 type SharedGeneration = {
@@ -89,6 +122,18 @@ export function DialogueWorkspace(props: Props) {
   const [titleEditing, setTitleEditing] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [cardMenuOpen, setCardMenuOpen] = useState(false);
+  // Explicit, optional generation settings (site owner: "они должны быть
+  // необязательны... но очень явными, как в chatgpt") - "" means "let КЛИО
+  // decide naturally", matching a person who just wants to chat without
+  // configuring anything. Persist across sends within this session the
+  // same way useBrandContext already does, not per-message.
+  const [genFormat, setGenFormat] = useState<ContentFormat | "">("");
+  const [genTone, setGenTone] = useState<ContentTone | "">("");
+  const [genLength, setGenLength] = useState("");
+  const [topicCount, setTopicCount] = useState("5");
+  const [imageAspectRatio, setImageAspectRatio] = useState("4:3");
+  const [imageOutputFormat, setImageOutputFormat] = useState("png");
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const current = useRef<DialogueThread | null>(null);
   const lock = useRef(false);
   const mounted = useRef(true);
@@ -407,6 +452,14 @@ export function DialogueWorkspace(props: Props) {
         cardId,
         search,
         useBrandContext: profileMode || (Boolean(props.brandId) && useBrandContext),
+        settings: {
+          format: genFormat || undefined,
+          tone: genTone || undefined,
+          length: genLength || undefined,
+          topicCount: Number(topicCount),
+          imageAspectRatio,
+          imageOutputFormat,
+        },
       });
       accept(result.thread);
       pendingSend.current = null;
@@ -924,6 +977,38 @@ export function DialogueWorkspace(props: Props) {
               </button>
             </div>
           )}
+          {/* Optional and explicit, not a required form (site owner: "они
+              должны быть необязательны... но очень явными, как в chatgpt") -
+              a person can just chat naturally (everything stays "Авто") or
+              pin down format/tone/length/topic count/image options the way
+              the professional Генератор lets them. The toggle button always
+              shows the current picks, so nothing is hidden state even
+              collapsed. */}
+          <div className="klio-chat-settings">
+            <button
+              type="button"
+              className="klio-chat-settings-toggle"
+              aria-expanded={settingsOpen}
+              onClick={() => setSettingsOpen((open) => !open)}
+            >
+              Настройки генерации: {[
+                FORMAT_OPTIONS.find((o) => o.value === genFormat)?.label,
+                TONE_OPTIONS.find((o) => o.value === genTone)?.label,
+                LENGTH_OPTIONS.find((o) => o.value === genLength)?.label,
+              ].filter(Boolean).join(" · ")}
+              <em className="ui-chevron" aria-hidden="true" />
+            </button>
+            {settingsOpen && (
+              <div className="klio-chat-settings-grid">
+                <ModuleSelect variant="dialogue" label="Формат" value={genFormat} options={FORMAT_OPTIONS} onChange={(value) => setGenFormat(value as ContentFormat | "")}/>
+                <ModuleSelect variant="dialogue" label="Тон" value={genTone} options={TONE_OPTIONS} onChange={(value) => setGenTone(value as ContentTone | "")}/>
+                <ModuleSelect variant="dialogue" label="Объём" value={genLength} options={LENGTH_OPTIONS} onChange={setGenLength}/>
+                <ModuleSelect variant="dialogue" label="Тем при подборе" value={topicCount} options={TOPIC_COUNT_OPTIONS} onChange={setTopicCount}/>
+                <ModuleSelect variant="dialogue" label="Соотношение картинки" value={imageAspectRatio} options={IMAGE_ASPECT_OPTIONS} onChange={setImageAspectRatio}/>
+                <ModuleSelect variant="dialogue" label="Формат картинки" value={imageOutputFormat} options={IMAGE_FORMAT_OPTIONS} onChange={setImageOutputFormat}/>
+              </div>
+            )}
+          </div>
           <form
             onSubmit={(e) => {
               e.preventDefault();

@@ -2,13 +2,13 @@
 
 import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode, TextareaHTMLAttributes } from "react";
-import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
 import { DialogueWorkspace } from "./dialogue-workspace";
 import { ProfileField } from "./profile-field";
 import { createWorkspaceSaveQueue } from "./workspace-save-queue";
 import { HelpTip } from "./help-tip";
+import { ModuleSelect } from "./module-select";
 import { FOUNDATION_FIELDS, VOICE_FIELDS, mergeProfileFill, missingVoiceFoundation } from "./brand-profile-fill";
 import { russianGeoTree } from "./geo-data";
 import { ADAPTATION_PLANS, FORMAT_PLANS, TONE_PLANS } from "./content-plans";
@@ -1429,115 +1429,6 @@ function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" | 
     trash: <><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6"/><path d="M14 11v6"/></>,
   };
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
-}
-
-// Custom dropdown matching the brand-switcher's visual language (trigger +
-// floating list, checkmark on the active item) instead of a native <select>.
-// The list portals to document.body and positions itself via a measured
-// rect — several of this component's homes (e.g. the generator's brief
-// panel) have overflow:hidden ancestors for their own rounded-corner/
-// background clipping, which would otherwise cut the open list off.
-function ModuleSelect({ label, value, options, onChange, help }: {
-  label: string;
-  value: string;
-  options: { value: string; label: string }[];
-  onChange: (value: string) => void;
-  help?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const [menuRect, setMenuRect] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-  // Which side the menu opens on is decided once, when it opens (below,
-  // unless there's more room above) — not re-decided on every scroll event.
-  // Re-deciding on scroll used to flip the menu between above and below the
-  // trigger mid-scroll as the available space above/below crossed the same
-  // threshold that chose the side in the first place, reading as the menu
-  // randomly jumping (site owner: "скачет вверх... прыгает вниз если
-  // прокрутить"). Scrolling should only ever slide the menu to keep
-  // tracking the trigger on whichever side it already committed to.
-  const openUpRef = useRef(false);
-
-  useEffect(() => {
-    if (!open) return;
-    const closeOnOutsideClick = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (containerRef.current?.contains(target) || listRef.current?.contains(target)) return;
-      setOpen(false);
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    // Reposition on scroll instead of closing — the list is portaled and
-    // position:fixed, so it needs to track the trigger if the page scrolls.
-    // Scrolling *inside* the option list itself (a capture-phase scroll
-    // event bubbling up from listRef) must not close the menu — that used
-    // to make picking a style/length impossible to scroll to.
-    const measureMenu = () => {
-      if (!triggerRef.current) return;
-      const rect = triggerRef.current.getBoundingClientRect();
-      const edgeGap = 12;
-      const maxMenuHeight = 480;
-      const openUp = openUpRef.current;
-      const spaceBelow = Math.max(0, window.innerHeight - rect.bottom - edgeGap);
-      const spaceAbove = Math.max(0, rect.top - edgeGap);
-      const maxHeight = Math.max(120, Math.min(maxMenuHeight, openUp ? spaceAbove : spaceBelow));
-      setMenuRect({
-        top: openUp ? Math.max(edgeGap, rect.top - maxHeight) : rect.bottom + 8,
-        left: rect.left,
-        width: rect.width,
-        maxHeight,
-      });
-    };
-    const repositionOnScroll = (event: Event) => {
-      if (listRef.current?.contains(event.target as Node)) return;
-      measureMenu();
-    };
-    document.addEventListener("mousedown", closeOnOutsideClick);
-    document.addEventListener("keydown", closeOnEscape);
-    window.addEventListener("scroll", repositionOnScroll, true);
-    window.addEventListener("resize", repositionOnScroll);
-    return () => {
-      document.removeEventListener("mousedown", closeOnOutsideClick);
-      document.removeEventListener("keydown", closeOnEscape);
-      window.removeEventListener("scroll", repositionOnScroll, true);
-      window.removeEventListener("resize", repositionOnScroll);
-    };
-  }, [open]);
-
-  function toggleOpen() {
-    if (!open && triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      const edgeGap = 12;
-      const maxMenuHeight = 480;
-      const spaceBelow = Math.max(0, window.innerHeight - rect.bottom - edgeGap);
-      const spaceAbove = Math.max(0, rect.top - edgeGap);
-      const openUp = spaceBelow < 240 && spaceAbove > spaceBelow;
-      openUpRef.current = openUp;
-      const maxHeight = Math.max(120, Math.min(maxMenuHeight, openUp ? spaceAbove : spaceBelow));
-      setMenuRect({ top: openUp ? Math.max(edgeGap, rect.top - maxHeight) : rect.bottom + 8, left: rect.left, width: rect.width, maxHeight });
-    }
-    setOpen((current) => !current);
-  }
-
-  const activeOption = options.find((item) => item.value === value);
-
-  return <div className={`field module-select ${open ? "is-open" : ""}`} ref={containerRef}>
-    <span className="field-label-help">{label}{help && <HelpTip label={label} text={help}/>}</span>
-    <button type="button" ref={triggerRef} className="module-select-trigger" onClick={toggleOpen} aria-haspopup="listbox" aria-expanded={open}>
-      <b>{activeOption?.label || value}</b>
-      <em className="ui-chevron" aria-hidden="true" />
-    </button>
-    {open && menuRect && createPortal(
-      <div className="module-select-list" role="listbox" aria-label={label} ref={listRef} style={{ position: "fixed", top: menuRect.top, left: menuRect.left, width: menuRect.width, maxHeight: menuRect.maxHeight }}>
-        {options.map((item) => <button type="button" role="option" aria-selected={item.value === value} className={item.value === value ? "active" : ""} onClick={() => { onChange(item.value); setOpen(false); }} key={item.value}>
-          <span>{item.label}</span><em>{item.value === value ? "✓" : ""}</em>
-        </button>)}
-      </div>,
-      document.body,
-    )}
-  </div>;
 }
 
 function CoverageIcon({ coverage }: { coverage: CompetitorCoverage }) {
@@ -3155,6 +3046,29 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       document.removeEventListener("keydown", closeOnEscape);
     };
   }, [accountMenuOpen]);
+
+  // Every full-screen "archive-editor-overlay" backdrop dismisses on a click
+  // outside the modal card. Closing straight from onMouseDown used to unmount
+  // the overlay before the browser's own mouseup/click for that same press
+  // ever fired - hit-testing for those trailing events is redone live, so
+  // they landed on whatever was directly underneath in the page behind it
+  // (a nav link, a mode toggle, a per-card button), triggering it as a ghost
+  // click the user never intended (reported: closing the professional
+  // material editor over "Материалы" left the workspace switched into
+  // dialogue mode - a button in that list, not the editor, was the real
+  // click target). Recording the mousedown target and only closing once the
+  // matching click arrives defers the unmount until after that click has
+  // already been fully dispatched, so there is nothing left underneath for a
+  // trailing event to hit.
+  const backdropDownTarget = useRef<EventTarget | null>(null);
+  function handleOverlayBackdropDown(event: ReactMouseEvent<HTMLDivElement>) {
+    backdropDownTarget.current = event.target === event.currentTarget ? event.currentTarget : null;
+  }
+  function handleOverlayBackdropClick(event: ReactMouseEvent<HTMLDivElement>, close: () => void) {
+    const matched = backdropDownTarget.current === event.currentTarget && event.target === event.currentTarget;
+    backdropDownTarget.current = null;
+    if (matched) close();
+  }
 
   useEffect(() => {
     if (!archiveEditorItem) return;
@@ -5518,7 +5432,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         </div>
       </header>
 
-      {feedbackOpen && <div className="archive-editor-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget && !feedbackBusy) setFeedbackOpen(false); }}>
+      {feedbackOpen && <div className="archive-editor-overlay" onMouseDown={handleOverlayBackdropDown} onClick={(event) => handleOverlayBackdropClick(event, () => { if (!feedbackBusy) setFeedbackOpen(false); })}>
         <section className="feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-modal-title">
           <div className="archive-editor-head">
             <div><span>КЛИО / Обратная связь</span><h2 id="feedback-modal-title">Задать вопрос</h2></div>
@@ -5692,7 +5606,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             })}</div> : <div className="workspace-history-empty"><i>Аа</i><div><h3>{activeMaterialCount > 0 ? "Нет материалов за выбранный период" : "У этого бренда пока нет материалов"}</h3><p>{activeMaterialCount > 0 ? "Попробуйте выбрать другой период или фильтр." : "Сгенерированные тексты появятся здесь автоматически. Семантику, анализ конкурентов и контент‑планы можно зафиксировать кнопкой «Сохранить в материалы»."}</p></div></div>}
           </section>}
 
-          {archiveEditorItem && <div className="archive-editor-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) closeArchiveEditor(); }}>
+          {archiveEditorItem && <div className="archive-editor-overlay" onMouseDown={handleOverlayBackdropDown} onClick={(event) => handleOverlayBackdropClick(event, closeArchiveEditor)}>
             <section className="archive-editor-modal" role="dialog" aria-modal="true" aria-labelledby="archive-editor-title">
               <div className="archive-editor-head">
                 <div><span>Материалы / редактор КЛИО</span><h2 id="archive-editor-title">{formats.find((item) => item.id === archiveEditorItem.format)?.label || archiveEditorItem.format}</h2><p>Работайте с сохранённой статьёй отдельно: текущий черновик генератора не изменяется.</p></div>
@@ -5811,7 +5725,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </div>
           </section>}
 
-          {pubEditor && <div className="archive-editor-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget && !pubEditor.busy) setPubEditor(null); }}>
+          {pubEditor && <div className="archive-editor-overlay" onMouseDown={handleOverlayBackdropDown} onClick={(event) => handleOverlayBackdropClick(event, () => { if (!pubEditor.busy) setPubEditor(null); })}>
             <section className="publications-editor-modal" role="dialog" aria-modal="true" aria-labelledby="publications-editor-title">
               <div className="archive-editor-head">
                 <div><span>Публикации / {pubEditor.id ? "изменить" : "новая запись"}</span><h2 id="publications-editor-title">{pubEditor.id ? "Публикация" : "Новая публикация"}</h2><p>Текст можно править прямо здесь — правки касаются только этой публикации.</p></div>
@@ -5886,7 +5800,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </section>
           </div>}
 
-          {pubChannelModalOpen && <div className="archive-editor-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget && !pubChannelBusy) setPubChannelModalOpen(false); }}>
+          {pubChannelModalOpen && <div className="archive-editor-overlay" onMouseDown={handleOverlayBackdropDown} onClick={(event) => handleOverlayBackdropClick(event, () => { if (!pubChannelBusy) setPubChannelModalOpen(false); })}>
             <section className="publications-channel-modal" role="dialog" aria-modal="true" aria-labelledby="publications-channel-title">
               <div className="archive-editor-head">
                 <div><span>Публикации / новый канал</span><h2 id="publications-channel-title">Подключить канал</h2></div>
@@ -6309,24 +6223,28 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <label htmlFor="image-prompt">Что изобразить</label>
                 <textarea id="image-prompt" value={imagePrompt} onChange={event => setImagePrompt(event.target.value)} placeholder="Например: чашка кофе на деревянном столе у окна, мягкий утренний свет, без надписей" rows={6} maxLength={1800}/>
                 <div className="image-generator-settings">
-                  <label>
-                    <span>Соотношение</span>
-                    <select value={imageAspectRatio} onChange={(event) => setImageAspectRatio(event.target.value as "1:1" | "4:3" | "4:5" | "16:9" | "9:16")}> 
-                      <option value="4:3">4:3 (стандартный)</option>
-                      <option value="1:1">1:1</option>
-                      <option value="4:5">4:5</option>
-                      <option value="16:9">16:9</option>
-                      <option value="9:16">9:16</option>
-                    </select>
-                  </label>
-                  <label>
-                    <span>Формат</span>
-                    <select value={imageOutputFormat} onChange={(event) => setImageOutputFormat(event.target.value as "png" | "jpeg" | "webp")}>
-                      <option value="png">PNG</option>
-                      <option value="jpeg">JPEG</option>
-                      <option value="webp">WEBP</option>
-                    </select>
-                  </label>
+                  <ModuleSelect
+                    label="Соотношение"
+                    value={imageAspectRatio}
+                    onChange={(value) => setImageAspectRatio(value as "1:1" | "4:3" | "4:5" | "16:9" | "9:16")}
+                    options={[
+                      { value: "4:3", label: "4:3 (стандартный)" },
+                      { value: "1:1", label: "1:1" },
+                      { value: "4:5", label: "4:5" },
+                      { value: "16:9", label: "16:9" },
+                      { value: "9:16", label: "9:16" },
+                    ]}
+                  />
+                  <ModuleSelect
+                    label="Формат"
+                    value={imageOutputFormat}
+                    onChange={(value) => setImageOutputFormat(value as "png" | "jpeg" | "webp")}
+                    options={[
+                      { value: "png", label: "PNG" },
+                      { value: "jpeg", label: "JPEG" },
+                      { value: "webp", label: "WEBP" },
+                    ]}
+                  />
                 </div>
                 <p>Профиль бренда {useBrand && activeBrandId ? "учитывается" : "не используется"}. Один запуск расходует одну генерацию.</p>
                 {imageError && <p className="generation-error" role="alert">{imageError}</p>}

@@ -17,7 +17,7 @@ import {
   type DialogueData,
 } from "../../dialogue-model";
 import { planRule } from "../../plans";
-import { CORE_SYSTEM_RULES, FINAL_QA_RULES, sanitizePublicationText } from "../../content-plans";
+import { CORE_SYSTEM_RULES, FINAL_QA_RULES, FORMAT_PLANS, TONE_PLANS, sanitizePublicationText, type ContentFormat, type ContentTone } from "../../content-plans";
 import { aiConfigured } from "../_lib/ai-config";
 import { callAiModel } from "../_lib/ai-router";
 import { readBoundedJson, RequestBodyError } from "../_lib/request-body";
@@ -36,7 +36,7 @@ import {
 import { researchAdaptationFacts } from "../_lib/tavily";
 import { readWebsiteContext } from "../_lib/website-context";
 import { resolveBaseUrl } from "../_lib/base-url";
-import { createImage, imageConfigured } from "../_lib/image-generation";
+import { createImage, imageConfigured, type ImageAspectRatio, type ImageOutputFormat } from "../_lib/image-generation";
 
 export const runtime = "nodejs";
 export const maxDuration = 240;
@@ -174,6 +174,16 @@ async function runReply(
   mode: string,
   baseUrl: string,
   search: boolean,
+  settings: {
+    format: ContentFormat | null;
+    format_contract: { objective: string; steps: readonly string[]; rules: readonly string[] } | null;
+    tone: ContentTone | null;
+    tone_contract: readonly string[] | null;
+    target_characters_with_spaces: number | null;
+    topic_count: number;
+    imageAspectRatio: ImageAspectRatio | null;
+    imageOutputFormat: ImageOutputFormat | null;
+  },
 ) {
   try {
     const db = await getWorkspaceDb();
@@ -191,6 +201,10 @@ async function runReply(
         row.ownerEmail,
         baseUrl,
         row.requestId,
+        {
+          ...(settings.imageAspectRatio ? { aspectRatio: settings.imageAspectRatio } : {}),
+          ...(settings.imageOutputFormat ? { outputFormat: settings.imageOutputFormat } : {}),
+        },
       );
       const materialId = crypto.randomUUID();
       await db.insert(generations).values({
@@ -263,7 +277,17 @@ async function runReply(
           "Профиль меняется только через action=profile и подтверждение. Собери краткие факты о бизнесе и самостоятельно предложи voice, positioning, vocabulary, cta, restrictions. Не выдумывай цены, сертификаты, преимущества, географию и гарантии. Гипотезы пользователя не превращай в факты. В reply отделяй рекомендации от фактов. Существующие заполненные поля не заменяй без явной просьбы.",
           "Если в profile переданы voice, restrictions, prohibited, vocabulary, signature или cta — это обязательные редакционные правила для КАЖДОЙ создаваемой или редактируемой карточки (action=create/edit), не только для профиля: пиши в голосе бренда (voice), не используй фразы и слова из prohibited, соблюдай restrictions, используй фирменную лексику (vocabulary) где уместно, добавляй signature только когда это уместно для формата, и предлагай cta как естественный следующий шаг, а не рекламный лозунг.",
           "Если задача простая, не задавай анкету. Если нет профиля, всё равно отвечай и создавай универсальные материалы. Для персонализации попроси описание бизнеса или ссылку, только когда нужно.",
-          "Для подбора тем (например «предложи темы для моего бизнеса») без явно указанного количества создай ровно 5 карточек kind=topic — не меньше и не больше; каждая тема должна раскрывать свой отдельный ракурс без пересечений с другими. Если пользователь сам назвал число, следуй ему. В reply одним коротким предложением уточни, что можно попросить больше, меньше или конкретные темы.",
+          "Для подбора тем (например «предложи темы для моего бизнеса») создай ровно settings.topic_count карточек kind=topic — не меньше и не больше; каждая тема должна раскрывать свой отдельный ракурс без пересечений с другими. Если пользователь сам назвал другое число текстом, следуй его числу вместо settings.topic_count. В reply одним коротким предложением уточни, что можно попросить больше, меньше или конкретные темы.",
+          // Explicit, optional settings from the UI (site owner: "они
+          // должны быть необязательны... но очень явными, как в chatgpt") -
+          // a person can just chat naturally (all of these are null/absent
+          // by default) or pin down format/tone/length the way the
+          // professional Генератор lets them via its own format/tone
+          // pickers. When set, these are a firmer contract than a casual
+          // request phrased in chat; when absent, decide by context as usual.
+          "Если передан settings.format_contract, он обязателен для новых или редактируемых материалов (action=create/edit): следуй его objective, steps и rules — они важнее общей стилистики. Если settings.format не передан (null), выбирай формат по смыслу задачи сам, как обычно.",
+          "Если передан settings.tone_contract, следуй ему для интонации текста вместо стиля по умолчанию; факты, ограничения бренда и авторская позиция всё равно соблюдаются. Если settings.tone не передан (null), пиши обычным голосом бренда (voice) без явно навязанного тона.",
+          "Если передан settings.target_characters_with_spaces (число), это целевой объём знаков с пробелами для title+body вместе для каждой создаваемой или редактируемой карточки; отклонение до 20% допустимо. Если не передан (null), выбери объём по смыслу задачи, как обычно.",
           "При отсутствии research не утверждай, что проверила свежие данные или выполнила поиск. Для актуальных сведений предложи включить Поиск. При наличии research укажи источники в reply. Не изображай отсутствующие возможности: файлы/изображения здесь не анализируются; доступен текст, сайт при настройке бизнеса и поиск.",
           ...FINAL_QA_RULES,
         ].join("\n"),
@@ -276,6 +300,7 @@ async function runReply(
           research,
           website,
           searchRequested: search,
+          settings,
         }),
       });
       const a = answer.result;
@@ -497,6 +522,61 @@ export async function POST(request: Request) {
     const requestId = clean(p.requestId);
     const mode = clean(p.mode);
     const selectedId = clean(p.cardId);
+    // Optional, explicit generation settings (site owner: "они должны быть
+    // необязательны... но очень явными, как в chatgpt") - a person can just
+    // chat naturally (everything below stays null/default) or pin down
+    // format/tone/length/topic count the way the professional Генератор
+    // lets them. Unrecognized/missing values fall back to "let the model
+    // decide", never a hard error - this is a convenience layer over the
+    // free-form chat, not a required form.
+    const settingsRaw = p.settings && typeof p.settings === "object" ? p.settings as Record<string, unknown> : {};
+    const requestedFormat: ContentFormat | null =
+      typeof settingsRaw.format === "string" && settingsRaw.format in FORMAT_PLANS
+        ? settingsRaw.format as ContentFormat
+        : null;
+    const requestedTone: ContentTone | null =
+      typeof settingsRaw.tone === "string" && settingsRaw.tone in TONE_PLANS
+        ? settingsRaw.tone as ContentTone
+        : null;
+    const LENGTH_TARGETS: Record<string, number> = { short: 600, medium: 1800, long: 4000 };
+    const targetLength: number | null =
+      typeof settingsRaw.length === "string" && settingsRaw.length in LENGTH_TARGETS
+        ? LENGTH_TARGETS[settingsRaw.length]
+        : null;
+    const rawTopicCount = Number(settingsRaw.topicCount);
+    const topicCount = Number.isFinite(rawTopicCount) && rawTopicCount >= 1 && rawTopicCount <= 12
+      ? Math.round(rawTopicCount)
+      : 5;
+    // Same idea as format/tone/length above, for the image side of this
+    // mode (site owner: "не появилась отдельная настройка для генерации
+    // картинок... соотношение сторон или что ещё позволяет по api
+    // настраивать?") - the professional Генератор already exposes these
+    // two on its own image form; dialogue mode called createImage() with
+    // no options at all, always landing on the 4:3/png defaults.
+    const IMAGE_ASPECT_RATIOS: readonly ImageAspectRatio[] = ["1:1", "4:3", "4:5", "16:9", "9:16"];
+    const imageAspectRatio: ImageAspectRatio | null =
+      typeof settingsRaw.imageAspectRatio === "string" && (IMAGE_ASPECT_RATIOS as readonly string[]).includes(settingsRaw.imageAspectRatio)
+        ? settingsRaw.imageAspectRatio as ImageAspectRatio
+        : null;
+    const IMAGE_OUTPUT_FORMATS: readonly ImageOutputFormat[] = ["png", "jpeg", "webp"];
+    const imageOutputFormat: ImageOutputFormat | null =
+      typeof settingsRaw.imageOutputFormat === "string" && (IMAGE_OUTPUT_FORMATS as readonly string[]).includes(settingsRaw.imageOutputFormat)
+        ? settingsRaw.imageOutputFormat as ImageOutputFormat
+        : null;
+    const genSettings = {
+      format: requestedFormat,
+      format_contract: requestedFormat ? {
+        objective: FORMAT_PLANS[requestedFormat].result,
+        steps: FORMAT_PLANS[requestedFormat].steps,
+        rules: FORMAT_PLANS[requestedFormat].aiRules,
+      } : null,
+      tone: requestedTone,
+      tone_contract: requestedTone ? TONE_PLANS[requestedTone] : null,
+      target_characters_with_spaces: targetLength,
+      topic_count: topicCount,
+      imageAspectRatio,
+      imageOutputFormat,
+    };
     if (action === "send") {
       if (!aiConfigured() && mode !== "image")
         throw new WorkspaceAccessError(
@@ -901,6 +981,7 @@ export async function POST(request: Request) {
         mode,
         resolveBaseUrl(request),
         p.search === true,
+        genSettings,
       );
     return Response.json(result, {
       headers: { "Cache-Control": "private, no-store" },
