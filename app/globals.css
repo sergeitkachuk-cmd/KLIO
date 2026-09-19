@@ -22167,7 +22167,15 @@ input[type="radio"] {
   }
 
   .publications-mobile-thumb { grid-area: thumb; width: 62px; height: 62px; border-radius: 10px; background-position: center; background-size: cover; }
+  /* Size/border/color only, no background - the -telegram/-vk/-unknown
+     modifier classes that actually paint it were only ever defined in
+     the (max-width: 720px) block above, never mirrored here, so on any
+     wider viewport this badge rendered as a bare outline with nothing
+     behind the text (site owner: "значки соцсетей прозрачные"). */
   .publications-mobile-platform { position: absolute; left: 52px; bottom: 9px; display: grid; width: 22px; height: 22px; place-items: center; border: 2px solid #0b2947; border-radius: 50%; color: #fff; font-size: 7px; font-style: normal; font-weight: 850; }
+  .publications-mobile-platform-telegram { background: #229ed9; }
+  .publications-mobile-platform-vk { background: #0077ff; }
+  .publications-mobile-platform-unknown { background: #687385; }
   .publications-mobile-time { grid-area: time; color: rgba(255, 255, 255, 0.64); font-size: 12px; font-weight: 650; }
   .publications-mobile-item b { grid-area: title; overflow: hidden; color: #fff; font-size: 16px; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
   .publications-mobile-item em { grid-area: status; color: rgba(255, 255, 255, 0.78); font-size: 12px; font-style: normal; text-align: right; }
