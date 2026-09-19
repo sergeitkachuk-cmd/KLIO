@@ -4319,9 +4319,15 @@ footer nav a {
      own - its own colors are fixed alongside this for that reason; every
      other module already paints an opaque background over whatever's
      behind it, so nothing else needed to change. */
+  /* Site owner: the bottom of this gradient read as "почти чёрный...
+     очень мрачно" - the original stops actually got DARKER at the 100%
+     (bottom) mark than at 0% (top), so scrolled-down content faded toward
+     black instead of staying level. Raised all three stops (same navy
+     hue, no re-hueing) and evened the bottom back up to roughly match the
+     top instead of dipping below it. */
   background:
     radial-gradient(1100px 700px at 88% 4%, rgba(124, 58, 237, 0.16), transparent 62%),
-    linear-gradient(180deg, #050d1c 0%, #081b30 55%, #04101f 100%);
+    linear-gradient(180deg, #0a1930 0%, #0d2542 55%, #0a1a2f 100%);
 }
 
 .workspace-header {
