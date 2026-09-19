@@ -5129,7 +5129,15 @@ footer nav a {
   width: 14px;
 }
 
+/* Icon-only now, not a text pill (site owner: shorten this button so
+   all four card actions fit one row on mobile instead of wrapping to a
+   second, shrinking the card). Square rather than the shared button's
+   own text padding, sized off its min-height so it reads as a
+   deliberate icon button rather than a pill with the label stripped. */
 .material-delete {
+  width: 34px;
+  padding: 0;
+  justify-content: center;
   color: rgba(255, 255, 255, 0.55) !important;
 }
 
@@ -13644,7 +13652,11 @@ input[type="radio"] {
   cursor: pointer;
   flex: 0 0 auto;
   min-height: 34px;
-  padding: 0 10px;
+  /* 8px, not 10px - freeing a few px per side is part of fitting all
+     four card actions on one row on mobile (site owner request), same
+     pass as Удалить going icon-only and В публикацию/В редактор
+     dropping their "в "/"в " prefixes below. */
+  padding: 0 8px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 999px;
   color: #fff;
@@ -15520,8 +15532,10 @@ input[type="radio"] {
   /* Was 7px — read as "buttons stuck together" once a 4th one (В
      публикацию) joined Удалить/В архив/В редактор on the same narrow
      row (site owner report). flex-wrap above keeps a 4th button from
-     overflowing the card on narrow widths instead of forcing a squeeze. */
-  gap: 10px;
+     overflowing the card on narrow widths instead of forcing a squeeze.
+     6px now that Удалить is icon-only (below) - the freed-up width is
+     the main saving, this is just re-tuned alongside it. */
+  gap: 6px;
 }
 
 .workspace-history-list article footer .material-export {
