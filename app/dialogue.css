@@ -47,6 +47,34 @@
 .klio-chat[hidden] {
   display: none;
 }
+/* Temporary "in development" gate - see DIALOGUE_GATE_ENABLED in
+   dialogue-workspace.tsx. Plain block, not the grid layout above, since
+   there's no sidebar/main split to show while gated. */
+.klio-chat-gate {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 40px;
+}
+.klio-chat-gate-card {
+  max-width: 420px;
+  padding: 32px 28px;
+  border: 1px solid var(--chat-line);
+  border-radius: 16px;
+  background: var(--chat-side);
+  text-align: center;
+}
+.klio-chat-gate-card h2 {
+  margin: 0 0 10px;
+  color: var(--chat-text);
+  font-size: 20px;
+}
+.klio-chat-gate-card p {
+  margin: 0;
+  color: var(--chat-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
 .workspace-shell.is-dialogue:has(.klio-chat:not([hidden])) {
   height: 100dvh;
   overflow: hidden;
