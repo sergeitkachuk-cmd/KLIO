@@ -53,17 +53,6 @@ type ApiResult = {
   imageAvailable?: boolean;
 };
 
-// Temporary gate — a real user hit a generation request stuck forever in
-// "processing" (the poll loop below has no timeout, so a stuck server-side
-// job just polls forever with no way out for the user). Root cause is very
-// likely the image-generation service not actually being wired up yet on
-// Render/Timeweb (see DIALOGUE_MODE.md's own "remains a separate step"
-// note), not a bug in this component - blocking the entire surface here
-// until that's confirmed fixed is safer than patching just image posts.
-// Flip to false once the underlying hang is fixed and verified live.
-const DIALOGUE_GATE_ENABLED = true;
-const DIALOGUE_GATE_MESSAGE = "Мы дорабатываем этот раздел. Доступ откроется завтра — загляните чуть позже.";
-
 async function requestApi(body: Record<string, unknown>): Promise<ApiResult> {
   const response = await fetch("/api/dialogue", {
     method: "POST",
@@ -546,19 +535,6 @@ export function DialogueWorkspace(props: Props) {
           )}
         </div>
       </article>
-    );
-  }
-
-  if (DIALOGUE_GATE_ENABLED) {
-    return (
-      <div className="klio-chat" hidden={!props.visible}>
-        <div className="klio-chat-gate">
-          <div className="klio-chat-gate-card">
-            <h2>Диалоговый режим в разработке</h2>
-            <p>{DIALOGUE_GATE_MESSAGE}</p>
-          </div>
-        </div>
-      </div>
     );
   }
 
