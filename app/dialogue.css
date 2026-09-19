@@ -237,6 +237,42 @@
   font-size: 12px;
   color: var(--chat-muted);
 }
+/* Replaces a header block that used to repeat "КЛИО + brand name" a
+   second time (already shown in the sidebar's own business picker) -
+   now shows and edits the current dialogue's own title instead, so a
+   fresh dialogue actually reads as *something* distinct in the header,
+   not just a generic duplicate (site owner: "дублируется логотип",
+   "название не редактируется"). */
+.klio-chat-title {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.klio-chat-title-button {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 5px 9px !important;
+  border-radius: 8px;
+  color: var(--chat-text) !important;
+  font-size: 14px !important;
+  font-weight: 650;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.klio-chat-title-button:hover:not(:disabled) {
+  background: var(--chat-side);
+}
+.klio-chat-title input {
+  width: 100%;
+  max-width: 360px;
+  padding: 4px 8px;
+  border: 1px solid var(--chat-line);
+  border-radius: 8px;
+  background: var(--chat-bg);
+  color: var(--chat-text);
+  font-size: 14px;
+  font-weight: 650;
+}
 .klio-chat-menu {
   display: none;
 }
@@ -727,7 +763,11 @@
 .workspace-shell.is-dialogue .klio-chat-editor :is(input,textarea):focus{border-color:#7ca7c5!important;box-shadow:0 0 0 2px #7ca7c533!important}
 .klio-chat-brand-picker{position:relative;min-width:0}
 .workspace-shell.is-dialogue .klio-chat-business-trigger{width:100%;min-height:40px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 11px;border:1px solid var(--chat-line);border-radius:12px;background:var(--chat-bg);color:var(--chat-text);font-size:13px;font-weight:600;line-height:1.3;text-align:left}
-.klio-chat-business-name{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Shrinks and wraps instead of clipping to one ellipsized line (site
+   owner: "уменьшить текст, сделать компактнее... когда обрезается
+   название - это некрасиво") - same 2-line clamp as the options list
+   below it, just smaller since this is the single always-visible name. */
+.klio-chat-business-name{display:-webkit-box;min-width:0;overflow:hidden;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere;font-size:11.5px;line-height:1.25}
 .klio-chat-business-chevron{flex:0 0 auto;font-size:16px;line-height:1;color:var(--chat-muted)!important}
 .klio-chat-brand-options{position:absolute;z-index:30;top:calc(100% + 6px);left:0;right:0;display:grid;gap:4px;padding:6px;border:1px solid var(--chat-line);border-radius:14px;background:var(--chat-bg);box-shadow:0 12px 30px #15233626}
 .klio-chat-brand-options button{min-width:0;padding:8px 9px;border:0;border-radius:9px;text-align:left;background:transparent;color:var(--chat-text);font-size:13px;font-weight:500;line-height:1.35}
@@ -735,6 +775,16 @@
 .klio-chat-brand-options button:hover,.klio-chat-brand-options button.active{background:var(--chat-side)}
 .klio-chat-brand-switch{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1px solid var(--chat-line);border-radius:12px;background:var(--chat-bg);font-size:12px}
 .klio-chat-brand-switch input,.klio-chat-context input{accent-color:var(--chat-accent)}
+/* Jump-back-to-any-card dropdown in the header, same visual language as
+   the brand picker above (site owner: topics generated earlier in a long
+   dialogue "floated away" with no way back except manual scrolling). */
+.klio-chat-cards-menu{position:relative;flex:0 0 auto}
+.klio-chat-cards-menu>button{border:1px solid var(--chat-line)!important;border-radius:999px;padding:6px 12px!important;font-size:12px!important;color:var(--chat-text)!important}
+.klio-chat-cards-options{position:absolute;z-index:30;top:calc(100% + 6px);right:0;width:min(320px,80vw);max-height:60vh;overflow:auto;display:grid;gap:4px;padding:6px;border:1px solid var(--chat-line);border-radius:14px;background:var(--chat-bg);box-shadow:0 12px 30px #15233626}
+.klio-chat-cards-options button{display:grid;gap:2px;min-width:0;padding:8px 9px;border:0;border-radius:9px;text-align:left;background:transparent;color:var(--chat-text)}
+.klio-chat-cards-options button span{font-size:10px;color:var(--chat-muted)}
+.klio-chat-cards-options button b{font-size:13px;font-weight:500;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.klio-chat-cards-options button:hover{background:var(--chat-side)}
 .klio-chat-brand-switch span{display:grid;gap:3px}
 .klio-chat-brand-switch small{color:var(--chat-muted)!important;font-size:11px}
 .klio-chat-compose-tools{flex-wrap:wrap;justify-content:flex-start;gap:9px 18px}

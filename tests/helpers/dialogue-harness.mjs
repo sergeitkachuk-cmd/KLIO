@@ -88,6 +88,7 @@ export async function createDialogueHarness() {
     }
   }
   const plans = load("app/plans.ts");
+  const contentPlans = load("app/content-plans.ts");
   const account = async () =>
     (
       await db
@@ -177,6 +178,7 @@ export async function createDialogueHarness() {
       "../../../db/schema": schema,
       "../../dialogue-model": model,
       "../../plans": plans,
+      "../../content-plans": contentPlans,
       "../_lib/ai-config": { aiConfigured: () => true },
       "../_lib/ai-router": {
         callAiModel: async (input) => {

@@ -86,6 +86,9 @@ export function DialogueWorkspace(props: Props) {
   const [next, setNext] = useState<string | null>(null);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
+  const [titleEditing, setTitleEditing] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [cardMenuOpen, setCardMenuOpen] = useState(false);
   const current = useRef<DialogueThread | null>(null);
   const lock = useRef(false);
   const mounted = useRef(true);
@@ -338,6 +341,25 @@ export function DialogueWorkspace(props: Props) {
     }
   }
 
+  function commitTitle() {
+    setTitleEditing(false);
+    const value = titleDraft.trim();
+    if (!value || !thread || value === thread.title) return;
+    void perform(() => mutate("rename", { title: value }));
+  }
+
+  // Cards (topics, posts, notes) generated earlier in a long dialogue
+  // scroll out of view once you keep working on one of them (site owner:
+  // "темы... уже далеко улетели и неудобно их найти") - this jumps back
+  // to any card by id instead of manually scrolling the whole thread.
+  function jumpToCard(id: string) {
+    setCardMenuOpen(false);
+    setSelected(id);
+    document
+      .getElementById(`klio-chat-card-${id}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
   const importRef = useRef(0);
   const importEvent = useEffectEvent(async (id: string) => {
     await perform(async () => {
@@ -448,6 +470,7 @@ export function DialogueWorkspace(props: Props) {
     const saved = c.savedSnapshot && sameCard(c, c.savedSnapshot);
     return (
       <article
+        id={`klio-chat-card-${c.id}`}
         className={`klio-chat-card ${selected === c.id ? "is-selected" : ""}`}
         key={c.id}
       >
@@ -497,18 +520,34 @@ export function DialogueWorkspace(props: Props) {
                 : "В материалы"}
           </button>
           {c.kind === "topic" ? (
-            <button
-              disabled={disabled}
-              onClick={() =>
-                void send(
-                  "chat",
-                  `Напиши готовый пост на тему «${c.title}». ${c.body}`,
-                  c.id,
-                )
-              }
-            >
-              Создать пост
-            </button>
+            <>
+              <button
+                disabled={disabled}
+                title="Короткий текст для соцсетей, ~600-900 знаков"
+                onClick={() =>
+                  void send(
+                    "chat",
+                    `Напиши короткий пост для соцсетей на тему «${c.title}», примерно 600–900 знаков с пробелами, обычными абзацами без подзаголовков. ${c.body}`,
+                    c.id,
+                  )
+                }
+              >
+                Пост
+              </button>
+              <button
+                disabled={disabled}
+                title="Развёрнутый текст с подзаголовками, ~3000-4500 знаков"
+                onClick={() =>
+                  void send(
+                    "chat",
+                    `Напиши развёрнутую статью на тему «${c.title}», примерно 3000–4500 знаков с пробелами, с подзаголовками по смыслу. ${c.body}`,
+                    c.id,
+                  )
+                }
+              >
+                Статья
+              </button>
+            </>
           ) : (
             <>
               <button disabled={disabled} onClick={() => void save(c, true)}>
@@ -637,10 +676,54 @@ export function DialogueWorkspace(props: Props) {
           >
             ☰
           </button>
-          <div>
-            <b>КЛИО</b>
-            <span>{props.brandName || "Ваш ИИ-помощник"}</span>
+          <div className="klio-chat-title">
+            {titleEditing ? (
+              <input
+                autoFocus
+                value={titleDraft}
+                maxLength={80}
+                aria-label="Название диалога"
+                onChange={(event) => setTitleDraft(event.target.value)}
+                onBlur={commitTitle}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") { event.preventDefault(); commitTitle(); }
+                  if (event.key === "Escape") setTitleEditing(false);
+                }}
+              />
+            ) : (
+              <button
+                type="button"
+                className="klio-chat-title-button"
+                disabled={!thread || busy}
+                title="Переименовать диалог"
+                onClick={() => { setTitleDraft(thread?.title || ""); setTitleEditing(true); }}
+              >
+                {thread?.title || "Новый диалог"}
+              </button>
+            )}
           </div>
+          {Boolean(thread?.data.cards.length) && (
+            <div className="klio-chat-cards-menu">
+              <button
+                type="button"
+                aria-expanded={cardMenuOpen}
+                aria-label="Все карточки этого диалога"
+                onClick={() => setCardMenuOpen((open) => !open)}
+              >
+                Карточки ({thread!.data.cards.length})
+              </button>
+              {cardMenuOpen && (
+                <div className="klio-chat-cards-options" role="group" aria-label="Карточки диалога">
+                  {thread!.data.cards.map((c) => (
+                    <button type="button" key={c.id} onClick={() => jumpToCard(c.id)}>
+                      <span>{c.kind === "topic" ? "Тема" : c.kind === "note" ? "Заметка" : "Публикация"}</span>
+                      <b>{c.title}</b>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <button
             disabled={busy || !thread}
             onClick={() => thread && void perform(() => loadThread(thread.id))}

@@ -1,3 +1,28 @@
+// Deterministic backstop, not just a prompt instruction: CORE_SYSTEM_RULES
+// below already tells the model not to use Markdown, but a model doesn't
+// reliably obey that 100% of the time (site owner hit literal "**" in a
+// dialogue-generated post even with the instruction in place). Shared here
+// so every generation surface — professional Генератор and the dialogue
+// mode's own cards — strips the same syntax the same way, rather than each
+// keeping its own copy that can drift out of sync.
+export function sanitizePublicationText(value: string) {
+  return value
+    // Text is edited and copied from plain textarea fields, not rendered as
+    // Markdown. Keep the wording, but never leak Markdown punctuation to a
+    // client-facing material.
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/(?:https?:\/\/|www\.)[^\s<>)\]]+/gi, "")
+    .replace(/<\/?[a-z][^>]*>/gi, "")
+    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
+    .replace(/^\s*>\s?/gm, "")
+    .replace(/^\s*(?:[-*+] |\d+[.)] )/gm, "")
+    .replace(/\*\*|__|~~/g, "")
+    .replace(/\(\s*\)/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 export const FORMAT_PLANS = {
   seo: {
     title: "SEO‑статья",

@@ -7,6 +7,7 @@ import {
   authorPositionRules,
   normalizeAuthorPosition,
   GENERATION_RESEARCH_RULES,
+  sanitizePublicationText,
   type ContentFormat,
   type ContentTone,
 } from "../../content-plans";
@@ -288,24 +289,6 @@ const META_LEAKAGE_PATTERNS = [
 
 function hasMetaLeakage(value: string) {
   return META_LEAKAGE_PATTERNS.some((pattern) => pattern.test(value));
-}
-
-function sanitizePublicationText(value: string) {
-  return value
-    // Text is edited and copied from plain textarea fields, not rendered as
-    // Markdown. Keep the wording, but never leak Markdown punctuation to a
-    // client-facing material.
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-    .replace(/(?:https?:\/\/|www\.)[^\s<>)\]]+/gi, "")
-    .replace(/<\/?[a-z][^>]*>/gi, "")
-    .replace(/^\s{0,3}#{1,6}\s+/gm, "")
-    .replace(/^\s*>\s?/gm, "")
-    .replace(/^\s*(?:[-*+] |\d+[.)] )/gm, "")
-    .replace(/\*\*|__|~~/g, "")
-    .replace(/\(\s*\)/g, "")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
 }
 
 const GEO_GENERIC_WORDS = new Set([
