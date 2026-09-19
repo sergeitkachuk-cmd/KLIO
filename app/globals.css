@@ -4732,7 +4732,10 @@ footer nav a {
   margin-bottom: 18px;
   padding: 24px;
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  /* Outer contour removed (site owner: too many outlined boxes across
+     modules) - border-color, not border: 0, so nothing reflows. Matches
+     .studio/.semantic-shell/.adaptation-shell/etc. */
+  border: 1px solid transparent;
   border-radius: 4px 24px 4px 4px;
   background:
     radial-gradient(circle at 92% 0%, rgba(124, 58, 237, 0.24), transparent 30%),
@@ -21213,7 +21216,6 @@ input[type="radio"] {
    inside the light workspace. */
 [data-theme="light"] .workspace-history {
   color: #0d1b31;
-  border-color: rgba(15, 23, 42, 0.14);
   background:
     radial-gradient(circle at 92% 0%, rgba(53, 104, 212, 0.18), transparent 32%),
     linear-gradient(135deg, #e3eaf6, #f0f4fa 57%, #fff);
@@ -22002,18 +22004,24 @@ input[type="radio"] {
     line-height: 1.4;
   }
 
+  /* Shorter row (54px -> 42px) and a lighter title weight - the site
+     owner flagged that even after the calendar-chip pass, each post in
+     this agenda list still read as tall and bold, not the thin/compact
+     style used elsewhere. The 36px thumb column was the main height
+     driver (most posts have no image at all - VK here is text-only per
+     the note above - so that space was usually empty regardless). */
   .publications-mobile-item {
     position: relative;
     display: grid;
-    grid-template-columns: 36px minmax(0, 1fr) auto;
+    grid-template-columns: 26px minmax(0, 1fr) auto;
     grid-template-areas: "thumb time status" "thumb title status";
     align-items: center;
-    column-gap: 9px;
-    min-height: 54px;
-    padding: 7px 9px 7px 7px;
+    column-gap: 7px;
+    min-height: 42px;
+    padding: 5px 8px 5px 6px;
     border: 1px solid rgba(255, 255, 255, 0.13);
     border-left: 3px solid var(--chip-accent, #376fa8);
-    border-radius: 10px;
+    border-radius: 9px;
     color: #fff;
     background: color-mix(in srgb, var(--chip-accent, #376fa8) 14%, rgba(255, 255, 255, 0.035));
     text-align: left;
@@ -22025,25 +22033,25 @@ input[type="radio"] {
 
   .publications-mobile-thumb {
     grid-area: thumb;
-    width: 36px;
-    height: 36px;
-    border-radius: 7px;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
     background-position: center;
     background-size: cover;
   }
 
   .publications-mobile-platform {
     position: absolute;
-    left: 30px;
-    bottom: 5px;
+    left: 20px;
+    bottom: 3px;
     display: grid;
-    width: 18px;
-    height: 18px;
+    width: 15px;
+    height: 15px;
     place-items: center;
     border: 2px solid #0b2947;
     border-radius: 50%;
     color: #fff;
-    font-size: 6px;
+    font-size: 5px;
     font-style: normal;
     font-weight: 850;
     letter-spacing: -0.04em;
@@ -22055,7 +22063,8 @@ input[type="radio"] {
 
   .publications-mobile-time {
     grid-area: time;
-    color: rgba(255, 255, 255, 0.58);
+    color: rgba(255, 255, 255, 0.55);
+    font-weight: 500;
     font-size: 10px;
   }
 
@@ -22063,6 +22072,7 @@ input[type="radio"] {
     grid-area: title;
     overflow: hidden;
     color: #fff;
+    font-weight: 600;
     font-size: 12px;
     line-height: 1.2;
     text-overflow: ellipsis;
