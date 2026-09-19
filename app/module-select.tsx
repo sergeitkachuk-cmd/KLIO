@@ -29,7 +29,7 @@ export function ModuleSelect({ label, value, options, onChange, help, variant }:
   variant?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [menuRect, setMenuRect] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
+  const [menuRect, setMenuRect] = useState<{ top?: number; bottom?: number; left: number; width: number; maxHeight: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -67,12 +67,9 @@ export function ModuleSelect({ label, value, options, onChange, help, variant }:
       const spaceBelow = Math.max(0, window.innerHeight - rect.bottom - edgeGap);
       const spaceAbove = Math.max(0, rect.top - edgeGap);
       const maxHeight = Math.max(120, Math.min(maxMenuHeight, openUp ? spaceAbove : spaceBelow));
-      setMenuRect({
-        top: openUp ? Math.max(edgeGap, rect.top - maxHeight) : rect.bottom + 8,
-        left: rect.left,
-        width: rect.width,
-        maxHeight,
-      });
+      setMenuRect(openUp
+        ? { bottom: window.innerHeight - rect.top + 8, left: rect.left, width: rect.width, maxHeight }
+        : { top: rect.bottom + 8, left: rect.left, width: rect.width, maxHeight });
     };
     const repositionOnScroll = (event: Event) => {
       if (listRef.current?.contains(event.target as Node)) return;
@@ -100,7 +97,9 @@ export function ModuleSelect({ label, value, options, onChange, help, variant }:
       const openUp = spaceBelow < 240 && spaceAbove > spaceBelow;
       openUpRef.current = openUp;
       const maxHeight = Math.max(120, Math.min(maxMenuHeight, openUp ? spaceAbove : spaceBelow));
-      setMenuRect({ top: openUp ? Math.max(edgeGap, rect.top - maxHeight) : rect.bottom + 8, left: rect.left, width: rect.width, maxHeight });
+      setMenuRect(openUp
+        ? { bottom: window.innerHeight - rect.top + 8, left: rect.left, width: rect.width, maxHeight }
+        : { top: rect.bottom + 8, left: rect.left, width: rect.width, maxHeight });
     }
     setOpen((current) => !current);
   }
@@ -115,7 +114,16 @@ export function ModuleSelect({ label, value, options, onChange, help, variant }:
       <em className="ui-chevron" aria-hidden="true" />
     </button>
     {open && menuRect && createPortal(
-      <div className={`module-select-list ${variantClass}`} role="listbox" aria-label={label} ref={listRef} style={{ position: "fixed", top: menuRect.top, left: menuRect.left, width: menuRect.width, maxHeight: menuRect.maxHeight }}>
+      /* Opening upward is anchored by `bottom`, not a computed `top` -
+         anchoring via `top: rect.top - maxHeight` assumed the list would
+         render at exactly maxHeight tall, but max-height only caps it; a
+         short list (e.g. 3 image-format options) renders far shorter than
+         that budget, so anchoring from the top left a large empty gap
+         between the list and its trigger (site owner: dropdown "flies
+         away" when there's no room below, i.e. exactly the branch that
+         opens upward). `bottom` pins the list's actual bottom edge to the
+         trigger regardless of how tall the content turns out to be. */
+      <div className={`module-select-list ${variantClass}`} role="listbox" aria-label={label} ref={listRef} style={{ position: "fixed", top: menuRect.top, bottom: menuRect.bottom, left: menuRect.left, width: menuRect.width, maxHeight: menuRect.maxHeight }}>
         {options.map((item) => <button type="button" role="option" aria-selected={item.value === value} className={item.value === value ? "active" : ""} onClick={() => { onChange(item.value); setOpen(false); }} key={item.value}>
           <span>{item.label}</span><em>{item.value === value ? "✓" : ""}</em>
         </button>)}
