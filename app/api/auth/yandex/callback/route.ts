@@ -16,11 +16,18 @@ export async function GET(request: Request) {
   const jar = await cookies();
   const savedState = jar.get(STATE_COOKIE)?.value;
   const returnTo = safeReturnPath(jar.get(RETURN_TO_COOKIE)?.value);
+  const failed = (error: string) => {
+    const target = new URL("/login", baseUrl);
+    target.searchParams.set("error", error);
+    target.searchParams.set("provider", "yandex");
+    target.searchParams.set("return_to", returnTo);
+    return NextResponse.redirect(target.href);
+  };
   jar.delete(STATE_COOKIE);
   jar.delete(RETURN_TO_COOKIE);
 
   if (!yandexOAuthConfigured() || !await workspaceDatabaseAvailable()) {
-    return NextResponse.redirect(`${baseUrl}/login?error=oauth_unavailable&provider=yandex`);
+    return failed("oauth_unavailable");
   }
 
   const url = new URL(request.url);
@@ -29,7 +36,7 @@ export async function GET(request: Request) {
   // Also covers the visitor clicking "Отменить" on Yandex's consent screen
   // (arrives back with an `error` param and no `code`).
   if (!code || !state || !savedState || state !== savedState) {
-    return NextResponse.redirect(`${baseUrl}/login?error=oauth_failed&provider=yandex`);
+    return failed("oauth_failed");
   }
 
   try {
@@ -57,7 +64,7 @@ export async function GET(request: Request) {
     const info = await infoResponse.json() as YandexUserInfo;
 
     const email = (info.default_email || info.emails?.[0] || "").trim().toLowerCase();
-    if (!email) return NextResponse.redirect(`${baseUrl}/login?error=oauth_no_email&provider=yandex`);
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return failed("oauth_no_email");
 
     const displayName = info.real_name || info.display_name || info.login || email.split("@")[0];
     const account = await ensureAccount({ email, displayName, fullName: displayName }, "yandex");
@@ -75,6 +82,6 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${baseUrl}${returnTo}`);
   } catch (error) {
     console.error("Yandex OAuth sign-in failed", error instanceof Error ? error.message : "unknown error");
-    return NextResponse.redirect(`${baseUrl}/login?error=oauth_failed&provider=yandex`);
+    return failed("oauth_failed");
   }
 }

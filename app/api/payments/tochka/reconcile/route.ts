@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     const db = await getWorkspaceDb();
     const [payment] = await db.select().from(payments).where(and(eq(payments.id, paymentLinkId), eq(payments.ownerEmail, user.email))).limit(1);
     if (!payment) return Response.json({ error: "Платёж не найден." }, { status: 404 });
-    if (!payment.operationId) return Response.json({ status: "pending" });
+    if (!payment.operationId) return Response.json({ status: payment.status });
 
     const operation = await tochkaRequest<unknown>(`/acquiring/v1.0/payments/${encodeURIComponent(payment.operationId)}`);
     const providerStatus = statusOf(operation)?.toUpperCase();
@@ -31,13 +31,14 @@ export async function POST(request: Request) {
       const now = new Date();
       let revoked = false;
       await db.transaction(async (tx) => {
-        const [current] = await tx.select().from(payments).where(eq(payments.id, paymentLinkId)).limit(1);
+        const [current] = await tx.select().from(payments).where(eq(payments.id, paymentLinkId)).limit(1).for("update");
         if (!current || (current.status !== "paid" && current.status !== "refunded")) return;
         const [updatedPayment] = current.status === "paid"
           ? await tx.update(payments).set({ status: "refunded", updatedAt: now.toISOString() })
             .where(and(eq(payments.id, paymentLinkId), eq(payments.status, "paid"))).returning()
           : [current];
         if (!updatedPayment) return;
+        await tx.select({ email: accounts.email }).from(accounts).where(eq(accounts.email, updatedPayment.ownerEmail)).limit(1).for("update");
         // A refund revokes the access granted by this purchase. Do not touch an
         // account that has a newer successful payment.
         const successful = await tx.select({ id: payments.id, paidAt: payments.paidAt }).from(payments)
@@ -55,20 +56,24 @@ export async function POST(request: Request) {
       });
       return Response.json({ status: "refunded", revoked });
     }
-    if (providerStatus !== "APPROVED") return Response.json({ status: payment.status });
+    if (providerStatus !== "APPROVED") return Response.json({ status: providerStatus === "EXPIRED" && payment.status === "pending" ? "expired" : payment.status });
     if (payment.status === "paid") return Response.json({ status: "paid" });
 
     const now = new Date();
-    await db.transaction(async (tx) => {
-      const [current] = await tx.select().from(payments).where(eq(payments.id, paymentLinkId)).limit(1);
-      if (!current || current.status === "paid" || current.status === "refunded") return;
+    const status = await db.transaction(async (tx) => {
+      // Match webhook lock order: payment first, account second.
+      const [current] = await tx.select().from(payments).where(eq(payments.id, paymentLinkId)).limit(1).for("update");
+      if (!current) return "pending";
+      if (current.status !== "pending") return current.status;
       const [account] = await tx.select().from(accounts).where(eq(accounts.email, current.ownerEmail)).limit(1).for("update");
       if (!account) throw new Error("Payment account is missing.");
       const [confirmedPayment] = await tx.update(payments).set({ status: "paid", paidAt: now.toISOString(), updatedAt: now.toISOString() }).where(and(eq(payments.id, paymentLinkId), eq(payments.status, "pending"))).returning();
-      if (!confirmedPayment) return;
+      if (!confirmedPayment) return current.status;
+      if (confirmedPayment.discountApplied) await tx.update(accounts).set({ launchDiscountUsedAt: now.toISOString() }).where(eq(accounts.email, confirmedPayment.ownerEmail));
       await tx.update(accounts).set({ planId: confirmedPayment.planId, planExpiresAt: subscriptionExpiry(account?.planExpiresAt, confirmedPayment.billing as BillingPeriod, now), generationsUsed: 0, researchUsed: 0, editorActionsUsed: 0, generationMonth: `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`, quotaPeriodEndsAt: nextQuotaPeriodEnd(now), updatedAt: now.toISOString() }).where(eq(accounts.email, confirmedPayment.ownerEmail));
+      return "paid";
     });
-    return Response.json({ status: "paid" });
+    return Response.json({ status });
   } catch (error) {
     if (error instanceof RequestBodyError) return Response.json({ error: error.message }, { status: error.status });
     if (error instanceof WorkspaceAccessError || error instanceof TochkaConfigError) return Response.json({ error: error.message }, { status: error instanceof WorkspaceAccessError ? error.status : 503 });

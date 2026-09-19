@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "../../../identity";
 import { isAdminEmail } from "../../_lib/admin";
 import { getDb } from "../../../../db";
-import { accounts, aiUsage, asyncJobs, brands, emailVerifications, generations, invoices, materials, passwordResets, payments, sessions } from "../../../../db/schema";
+import { accounts, aiUsage, asyncJobs, brands, dialogueThreads, emailVerifications, generations, invoices, materials, passwordResets, payments, sessions } from "../../../../db/schema";
 import { isPlanId, type PlanId } from "../../../plans";
 import { nextQuotaPeriodEnd } from "../../_lib/subscription";
 
@@ -96,6 +96,7 @@ export async function DELETE(request: Request) {
   await db.delete(materials).where(eq(materials.ownerEmail, email));
   await db.delete(aiUsage).where(eq(aiUsage.ownerEmail, email));
   await db.delete(asyncJobs).where(eq(asyncJobs.ownerEmail, email));
+  await db.delete(dialogueThreads).where(eq(dialogueThreads.ownerEmail, email));
   await db.delete(accounts).where(eq(accounts.email, email));
   return NextResponse.json({ ok: true, email });
 }

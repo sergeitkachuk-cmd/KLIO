@@ -9,7 +9,7 @@ import * as orm from "drizzle-orm";
 import * as pg from "drizzle-orm/pg-core";
 
 const root = new URL("../../", import.meta.url);
-function load(path, dependencies = {}, globals = {}) {
+export function load(path, dependencies = {}, globals = {}) {
   const output = ts.transpileModule(readFileSync(new URL(path, root), "utf8"), {
     compilerOptions: {
       module: ts.ModuleKind.CommonJS,

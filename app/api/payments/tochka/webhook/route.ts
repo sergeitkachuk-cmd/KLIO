@@ -4,6 +4,7 @@ import { getWorkspaceDb } from "../../../_lib/workspace-account";
 import { verifyTochkaWebhook } from "../../../_lib/tochka";
 import { subscriptionExpiry, nextQuotaPeriodEnd } from "../../../_lib/subscription";
 import type { BillingPeriod } from "../../../../billing-pricing";
+import { readBoundedBody, RequestBodyError } from "../../../_lib/request-body";
 
 function stringClaim(value: unknown) {
   return typeof value === "string" ? value : undefined;
@@ -19,8 +20,8 @@ function numericAmount(value: unknown) {
 // below now logs something, so "did Tochka even call us" is a log search
 // away instead of a guess next time.
 export async function POST(request: Request) {
-  const raw = await request.text();
   try {
+    const raw = new TextDecoder().decode(await readBoundedBody(request, 65_536));
     const claims = await verifyTochkaWebhook(raw);
     if (!claims || claims.webhookType !== "acquiringInternetPayment") {
       console.error("Tochka webhook rejected: bad signature or unexpected type", claims?.webhookType ?? "(signature failed)");
@@ -42,10 +43,11 @@ export async function POST(request: Request) {
     const db = await getWorkspaceDb();
     let outcome: "confirmed" | "already_processed" | "unknown_payment" = "unknown_payment";
     await db.transaction(async (tx) => {
-      const [payment] = await tx.select().from(payments).where(eq(payments.id, paymentLinkId)).limit(1);
+      const [payment] = await tx.select().from(payments).where(eq(payments.id, paymentLinkId)).limit(1).for("update");
       if (!payment) return;
       if (payment.status === "paid" || payment.status === "refunded") { outcome = "already_processed"; return; }
       if (payment.status !== "pending" || payment.amountKopecks !== amountKopecks) throw new Error("Payment verification failed.");
+      if (payment.operationId && payment.operationId !== operationId) throw new Error("Payment operation mismatch.");
       const [confirmedPayment] = await tx.update(payments).set({
         status: "paid",
         operationId,
@@ -75,6 +77,7 @@ export async function POST(request: Request) {
     console.log("Tochka webhook processed", outcome, paymentLinkId, operationId);
     return new Response(null, { status: 200 });
   } catch (error) {
+    if (error instanceof RequestBodyError) return new Response(null, { status: error.status });
     console.error("Tochka webhook failed", error instanceof Error ? error.message : "unknown error");
     return new Response(null, { status: 500 });
   }
