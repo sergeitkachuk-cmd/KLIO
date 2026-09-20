@@ -61,6 +61,23 @@ test("stalled upload is cancelled within its request deadline", async () => {
   assert.equal(cancelled, true);
 });
 
+test("brand logo upload rejects a file over 8MB before ever touching storage or reading its bytes", async () => {
+  let touchedStorage = false;
+  const env = { NODE_ENV: "production", S3_ENDPOINT: "https://s3.example.invalid", S3_REGION: "us-east-1", S3_BUCKET: "bucket", S3_ACCESS_KEY_ID: "id", S3_SECRET_ACCESS_KEY: "secret" };
+  const { uploadBrandLogo } = load("app/api/_lib/storage.ts", {
+    "@aws-sdk/client-s3": { S3Client: class { send() { touchedStorage = true; } }, PutObjectCommand: class {}, GetObjectCommand: class {} },
+    "node:crypto": await import("node:crypto"),
+    "./image-type": { imageContentType: () => { touchedStorage = true; return "image/png"; } },
+    "./pdf-type": { isPdfSignature: () => false },
+  }, env);
+  const overLimit = { size: 8 * 1024 * 1024 + 1, arrayBuffer: () => { touchedStorage = true; return new ArrayBuffer(0); } };
+  await assert.rejects(uploadBrandLogo(overLimit, "owner@example.invalid"), error => error.status === 400 && /8 МБ/.test(error.message));
+  assert.equal(touchedStorage, false);
+  const atLimit = { size: 8 * 1024 * 1024, arrayBuffer: () => { touchedStorage = true; return new ArrayBuffer(0); } };
+  await assert.rejects(uploadBrandLogo(atLimit, "owner@example.invalid"));
+  assert.equal(touchedStorage, true);
+});
+
 test("image signature rejects HTML and SVG regardless of the declared MIME", () => {
   const { imageContentType } = load("app/api/_lib/image-type.ts");
   assert.equal(imageContentType(new TextEncoder().encode("<html>pretending to be PNG</html>")), null);
