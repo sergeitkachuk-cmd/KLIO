@@ -664,13 +664,20 @@ export function DialogueWorkspace(props: Props) {
           onClick={() => setSelected(c.id)}
           aria-pressed={selected === c.id}
         >
-          {c.title}
+          {/* A standalone generation (no source card) fills both title and
+              body from the same typed description, so an image card showed
+              that description twice, styled like an article's heading and
+              lead paragraph (site owner, pointing at exactly this: "почему
+              отдельную генерацию воспринимает как текстовую публикацию?").
+              Its title is a label, not a heading to read. */}
+          {c.imageUrl ? "Изображение" : c.title}
         </button>
         {/* Full text, not a truncated "…" preview with no way to read the
             rest (site owner: "она обрезается... без возможности прочитать
             целиком... как в гпт или клоде") - a generated article is the
-            actual point of this card, not a summary of it. */}
-        <p>{c.body}</p>
+            actual point of this card, not a summary of it. Not shown for
+            an image card - see the title button above. */}
+        {!c.imageUrl && <p>{c.body}</p>}
         {c.imageUrl && (
           <Image
             unoptimized
