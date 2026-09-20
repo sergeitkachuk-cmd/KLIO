@@ -1,6 +1,4 @@
-FROM aiogram/telegram-bot-api:latest
+FROM ghcr.io/sergeitkachuk-cmd/klio-relay:e146b677f511f1177cda3e8b9198d982d8f22c59
 LABEL org.opencontainers.image.source="https://github.com/sergeitkachuk-cmd/KLIO"
-USER root
-RUN apk add --no-cache nodejs tini
+# Keep the tested Telegram binary and image endpoint from the prior release.
 COPY services/klio-images/server.mjs services/klio-images/combined.mjs /opt/klio/
-ENTRYPOINT ["/sbin/tini", "--", "node", "/opt/klio/combined.mjs"]

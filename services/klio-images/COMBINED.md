@@ -54,6 +54,12 @@ is `/generate`, requires the shared token, and permits two concurrent jobs.
 Child process failure terminates the container. Raw Telegram child logs are
 suppressed to avoid exposing bot-token URLs; only lifecycle failures are logged.
 
+The same authenticated listener also accepts `POST /responses` for dialogue
+text. It forwards bounded `gpt-5.6-luna` Responses API requests using the
+existing Render `OPENAI_API_KEY`, with the same relay bearer token. No second
+Render service or new secret is required. The website uses this route only for
+dialogue; other content operations keep their existing provider routing.
+
 ## Timeweb App Platform
 
 After deploying the dialogue feature on the main website, add:

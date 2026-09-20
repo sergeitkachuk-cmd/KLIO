@@ -22,6 +22,27 @@ test("image service authenticates, reuses duplicate work and never exposes provi
   assert.equal(calls, 1);
 });
 
+test("relay forwards authenticated bounded dialogue requests without exposing its OpenAI key", async t => {
+  const token = "test-only-token-with-at-least-32-characters";
+  const calls = [];
+  const server = imageService({ token, apiKey: "fixture-provider-key", providerFetch: async (url, options) => {
+    calls.push({ url, options });
+    return Response.json({ status: "completed", output: [{ type: "message", content: [{ type: "output_text", text: "Привет" }] }] });
+  } });
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const endpoint = `http://127.0.0.1:${server.address().port}/responses`;
+  const body = JSON.stringify({ model: "gpt-5.6-luna", store: false, max_output_tokens: 100, input: "Привет", instructions: "Ответь" });
+  assert.equal((await fetch(endpoint, { method: "POST", body })).status, 401);
+  assert.equal((await fetch(endpoint, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ model: "other", input: "x" }) })).status, 400);
+  assert.equal(calls.length, 0);
+  const result = await fetch(endpoint, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body });
+  assert.equal(result.status, 200);
+  assert.equal((await result.json()).output[0].content[0].text, "Привет");
+  assert.equal(calls[0].url, "https://api.openai.com/v1/responses");
+  assert.equal(calls[0].options.headers.Authorization, "Bearer fixture-provider-key");
+});
+
 test("image service forwards the caller's size, quality and format instead of hardcoding them", async t => {
   const requests = [];
   const token = "test-only-token-with-at-least-32-characters";

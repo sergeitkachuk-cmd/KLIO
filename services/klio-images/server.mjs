@@ -38,7 +38,7 @@ const ALLOWED_IMAGE_TYPE = new Set(["image/png", "image/jpeg", "image/webp"]);
 const MAX_REQUEST_BYTES = 16 * 1024 * 1024;
 
 export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", providerFetch = fetch }) {
-  const jobs = new Map(); let running = 0;
+  const jobs = new Map(); let running = 0; let textRunning = 0;
   const authorized = value => {
     if (!token || token.length < 32) return false;
     const actual = Buffer.from(value || ""); const expected = Buffer.from(`Bearer ${token}`);
@@ -47,9 +47,59 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", pro
   return createServer(async (request, response) => {
     const reply = (status, body) => { response.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" }); response.end(JSON.stringify(body)); };
     if (request.method === "GET" && request.url === "/health") return reply(apiKey && token?.length >= 32 ? 200 : 503, { ready: Boolean(apiKey && token?.length >= 32) });
-    if (request.method !== "POST" || request.url !== "/generate") return reply(404, { error: "Not found" });
+    if (request.method !== "POST" || (request.url !== "/generate" && request.url !== "/responses")) return reply(404, { error: "Not found" });
     if (!authorized(request.headers.authorization)) return reply(401, { error: "Unauthorized" });
     if (!apiKey) return reply(503, { error: "Image provider is not configured" });
+    if (request.url === "/responses") {
+      if (textRunning >= 4) return reply(429, { error: "Text service is busy" });
+      let payload;
+      const timer = setTimeout(() => request.destroy(), 10_000);
+      try {
+        let size = 0; const chunks = [];
+        for await (const chunk of request) {
+          size += chunk.length;
+          if (size > 128_000) return reply(413, { error: "Request too large" });
+          chunks.push(chunk);
+        }
+        payload = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+      } catch { return reply(400, { error: "Invalid request" }); }
+      finally { clearTimeout(timer); }
+      if (!payload || payload.model !== "gpt-5.6-luna"
+        || typeof payload.input !== "string" || payload.input.length > 65_000
+        || typeof payload.instructions !== "string" || payload.instructions.length > 45_000
+        || !Number.isInteger(payload.max_output_tokens) || payload.max_output_tokens < 1 || payload.max_output_tokens > 16_000
+        || payload.store !== false) return reply(400, { error: "Invalid text request" });
+      textRunning++;
+      try {
+        const upstream = await providerFetch("https://api.openai.com/v1/responses", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(60_000),
+        });
+        const reader = upstream.body?.getReader();
+        if (!reader) return reply(502, { error: "Text provider returned no body" });
+        const chunks = []; let size = 0;
+        try {
+          while (true) {
+            const part = await reader.read();
+            if (part.done) break;
+            size += part.value.length;
+            if (size > 2_000_000) { await reader.cancel(); return reply(502, { error: "Text response too large" }); }
+            chunks.push(part.value);
+          }
+        } finally { reader.releaseLock(); }
+        let data;
+        try { data = JSON.parse(Buffer.concat(chunks).toString("utf8")); }
+        catch { return reply(502, { error: "Invalid text provider response" }); }
+        if (!upstream.ok) {
+          const code = typeof data.error?.code === "string" ? data.error.code.slice(0, 80) : "provider_error";
+          return reply(upstream.status, { error: { code } });
+        }
+        return reply(200, data);
+      } catch { return reply(502, { error: "Text request failed" }); }
+      finally { textRunning--; }
+    }
     const id = request.headers["idempotency-key"];
     if (typeof id !== "string" || !/^[a-zA-Z0-9-]{16,100}$/.test(id)) return reply(400, { error: "Idempotency key required" });
     let body;
