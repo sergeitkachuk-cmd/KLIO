@@ -695,11 +695,26 @@ export function DialogueWorkspace(props: Props) {
       >
         <div className="klio-chat-card-meta">
           <span>
-            {c.kind === "topic"
-              ? "Тема"
-              : c.kind === "note"
-                ? "Заметка"
-                : "Публикация"}
+            {/* A standalone generation (no source card) fills both title
+                and body from the same typed description, so an image card
+                used to show that description twice, styled like an
+                article's heading and lead paragraph (site owner, pointing
+                at exactly this: "почему отдельную генерацию воспринимает
+                как текстовую публикацию?"). Fixed by moving the "this is
+                an image" label into this existing small status row - a
+                dedicated heading above the image ate space for a label
+                nobody needed to read that large (site owner: "зачем
+                надпись изображение? она столько места съедает над
+                картинкой"), and selecting an image card as context
+                contributes nothing useful to a follow-up prompt anyway
+                (its title/body carry no real text - see below). */}
+            {c.imageUrl
+              ? "Изображение"
+              : c.kind === "topic"
+                ? "Тема"
+                : c.kind === "note"
+                  ? "Заметка"
+                  : "Публикация"}
           </span>
           <span>
             {saved
@@ -709,24 +724,21 @@ export function DialogueWorkspace(props: Props) {
                 : "В диалоге"}
           </span>
         </div>
-        <button
-          className="klio-chat-card-title"
-          onClick={() => setSelected(c.id)}
-          aria-pressed={selected === c.id}
-        >
-          {/* A standalone generation (no source card) fills both title and
-              body from the same typed description, so an image card showed
-              that description twice, styled like an article's heading and
-              lead paragraph (site owner, pointing at exactly this: "почему
-              отдельную генерацию воспринимает как текстовую публикацию?").
-              Its title is a label, not a heading to read. */}
-          {c.imageUrl ? "Изображение" : c.title}
-        </button>
+        {!c.imageUrl && (
+          <button
+            className="klio-chat-card-title"
+            onClick={() => setSelected(c.id)}
+            aria-pressed={selected === c.id}
+          >
+            {c.title}
+          </button>
+        )}
         {/* Full text, not a truncated "…" preview with no way to read the
             rest (site owner: "она обрезается... без возможности прочитать
             целиком... как в гпт или клоде") - a generated article is the
             actual point of this card, not a summary of it. Not shown for
-            an image card - see the title button above. */}
+            an image card - it has no real body text, just the empty
+            string (see runReply's image branch server-side). */}
         {!c.imageUrl && <p>{c.body}</p>}
         {c.imageUrl && (
           <button
