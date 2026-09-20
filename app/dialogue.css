@@ -209,11 +209,14 @@
   min-height: 0;
 }
 .klio-chat-top {
-  padding: 16px 30px;
+  /* No border - a hard divider line directly under the header's own
+     floating capsule added a third visible edge to an already busy top
+     of the screen (site owner: "какое-то нагромождение"). The padding
+     alone gives it enough breathing room from the messages below. */
+  padding: 14px 30px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--chat-line);
   gap: 14px;
 }
 .klio-chat-top > div {
@@ -1006,7 +1009,14 @@ body:has(.workspace-shell.is-dialogue)>.module-select-list>button>em{color:#2750
    the brand picker above (site owner: topics generated earlier in a long
    dialogue "floated away" with no way back except manual scrolling). */
 .klio-chat-cards-menu{position:relative;flex:0 0 auto}
-.klio-chat-cards-menu>button{border:1px solid var(--chat-line)!important;border-radius:999px;padding:6px 12px!important;font-size:12px!important;color:var(--chat-text)!important}
+/* Was a fully bordered pill (border-radius:999px) - the same rounded-pill
+   weight as the header capsule's own mode-switch/account chip sitting
+   right above it, which read as two competing stacks of pills rather
+   than one clear hierarchy (site owner: "какое-то нагромождение").
+   Borderless/hover-only, matching the same minimal direction already
+   applied to card action buttons elsewhere today. */
+.klio-chat-cards-menu>button{border:0!important;border-radius:8px;padding:6px 10px!important;font-size:12px!important;color:var(--chat-muted)!important}
+.klio-chat-cards-menu>button:hover{background:var(--chat-side);color:var(--chat-text)!important}
 .klio-chat-cards-options{position:absolute;z-index:30;top:calc(100% + 6px);right:0;width:min(320px,80vw);max-height:60vh;overflow:auto;display:grid;gap:4px;padding:6px;border:1px solid var(--chat-line);border-radius:14px;background:var(--chat-bg);box-shadow:0 12px 30px #15233626}
 .klio-chat-cards-options button{display:grid;gap:2px;min-width:0;padding:8px 9px;border:0;border-radius:9px;text-align:left;background:transparent;color:var(--chat-text)}
 .klio-chat-cards-options button span{font-size:10px;color:var(--chat-muted)}

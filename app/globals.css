@@ -4362,7 +4362,9 @@ footer nav a {
   align-items: center;
   justify-content: space-between;
   height: 76px;
-  max-width: min(calc(100% - 44px), 1500px);
+  /* Site owner: "капсулы растяни немного, у неё по бокам ещё есть
+     запасы" - was 44px total side gap, now 20px. */
+  max-width: min(calc(100% - 20px), 1500px);
   margin: 12px auto 0;
   padding: 0 30px;
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -4522,6 +4524,17 @@ footer nav a {
   text-align: left;
   text-decoration: none;
   cursor: pointer;
+}
+/* A bare inline <svg> with no width/height falls back to inconsistent
+   browser-default sizing instead of a fixed box - the same root cause
+   documented for Icon() elsewhere on the site (see .button svg and its
+   own comment) - which is exactly what made the theme-toggle icon
+   render oversized once it moved into this menu (site owner: "сам
+   значок какой-то огромный"), the one spot that had no explicit size. */
+.account-menu-list svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .account-menu-list button:hover,
@@ -15009,7 +15022,7 @@ input[type="radio"] {
 
   .workspace-header {
     height: 62px;
-    max-width: calc(100% - 20px);
+    max-width: calc(100% - 12px);
     margin: 8px auto 0;
     padding: 0 12px;
   }
