@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       const [confirmedPayment] = await tx.update(payments).set({ status: "paid", paidAt: now.toISOString(), updatedAt: now.toISOString() }).where(and(eq(payments.id, paymentLinkId), eq(payments.status, "pending"))).returning();
       if (!confirmedPayment) return current.status;
       if (confirmedPayment.discountApplied) await tx.update(accounts).set({ launchDiscountUsedAt: now.toISOString() }).where(eq(accounts.email, confirmedPayment.ownerEmail));
-      await tx.update(accounts).set({ planId: confirmedPayment.planId, planExpiresAt: subscriptionExpiry(account?.planExpiresAt, confirmedPayment.billing as BillingPeriod, now), generationsUsed: 0, researchUsed: 0, editorActionsUsed: 0, generationMonth: `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`, quotaPeriodEndsAt: nextQuotaPeriodEnd(now), updatedAt: now.toISOString() }).where(eq(accounts.email, confirmedPayment.ownerEmail));
+      await tx.update(accounts).set({ planId: confirmedPayment.planId, planExpiresAt: subscriptionExpiry(account?.planExpiresAt, confirmedPayment.billing as BillingPeriod, now), generationsUsed: 0, researchUsed: 0, editorActionsUsed: 0, dialogueActionsUsed: 0, generationMonth: `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`, quotaPeriodEndsAt: nextQuotaPeriodEnd(now), updatedAt: now.toISOString() }).where(eq(accounts.email, confirmedPayment.ownerEmail));
       return "paid";
     });
     return Response.json({ status });

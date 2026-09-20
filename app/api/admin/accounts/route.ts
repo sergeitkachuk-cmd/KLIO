@@ -64,6 +64,7 @@ export async function PATCH(request: Request) {
     generationsUsed: 0,
     researchUsed: 0,
     editorActionsUsed: 0,
+    dialogueActionsUsed: 0,
     generationMonth: `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`,
     quotaPeriodEndsAt: isTrialOrClear ? null : nextQuotaPeriodEnd(now),
     updatedAt: now.toISOString(),

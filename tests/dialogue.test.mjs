@@ -97,12 +97,13 @@ test("dialogue API persists results, isolates owners and protects shared materia
     revision: thread.revision,
     requestId: randomUUID(),
     text: "Напиши пост",
+    mode: "text",
   };
   const replies = await Promise.all([h.post(send), h.post(send)]);
   assert.equal(replies[0].thread.id, replies[1].thread.id);
   thread = await h.settled(thread.id);
   assert.equal(h.calls(), 1);
-  assert.equal((await h.account()).editorActionsUsed, 1);
+  assert.equal((await h.account()).generationsUsed, 1);
   assert.equal(thread.data.cards.length, 1);
   await h.post(send);
   assert.equal(h.calls(), 1, "replaying a completed request is free");
@@ -236,10 +237,11 @@ test("failed replies refund their reservation and stale workers cannot overwrite
     revision: 0,
     requestId: randomUUID(),
     text: "Привет",
+    mode: "chat",
   });
   thread = await h.settled(thread.id);
   assert.equal(thread.status, "failed");
-  assert.equal((await h.account()).editorActionsUsed, 0);
+  assert.equal((await h.account()).dialogueActionsUsed, 0);
   let finish;
   h.setAi(
     () =>
@@ -253,6 +255,7 @@ test("failed replies refund their reservation and stale workers cannot overwrite
     revision: thread.revision,
     requestId: randomUUID(),
     text: "Ещё раз",
+    mode: "chat",
   });
   while (!finish) await new Promise((resolve) => setTimeout(resolve, 5));
   await h.db
@@ -261,7 +264,7 @@ test("failed replies refund their reservation and stale workers cannot overwrite
     .where(eq(h.schema.dialogueThreads.id, thread.id));
   thread = (await h.read(thread.id)).thread;
   assert.equal(thread.status, "failed");
-  assert.equal((await h.account()).editorActionsUsed, 0);
+  assert.equal((await h.account()).dialogueActionsUsed, 0);
   finish({ reply: "Поздний ответ", action: "reply", cards: [], profile: [] });
   await new Promise((resolve) => setTimeout(resolve, 30));
   assert.equal(
@@ -381,4 +384,42 @@ test("profile confirmation protects manual values and post saving never silently
     .from(h.schema.generations)
     .where(eq(h.schema.generations.id, card.id));
   assert.equal(article.body, "Исходный текст");
+});
+
+test("each dialogue intent debits the pool matching what it actually produces", async (t) => {
+  const h = await createDialogueHarness();
+  t.after(() => h.close());
+  let thread = await h.create();
+  const send = async (mode, text) => {
+    await h.post({
+      action: "send",
+      id: thread.id,
+      revision: thread.revision,
+      requestId: randomUUID(),
+      text,
+      mode,
+    });
+    thread = await h.settled(thread.id);
+  };
+
+  // "topics" - a topic-ideation list, the same thing professional mode's
+  // own content-plan generation already debits research for.
+  await send("topics", "Нужны темы для постов");
+  assert.deepEqual(
+    (({ researchUsed, generationsUsed, editorActionsUsed, dialogueActionsUsed }) =>
+      ({ researchUsed, generationsUsed, editorActionsUsed, dialogueActionsUsed }))(await h.account()),
+    { researchUsed: 1, generationsUsed: 0, editorActionsUsed: 0, dialogueActionsUsed: 0 },
+  );
+
+  // "image" - unchanged from before this rework, still the generation pool.
+  await send("image", "Нарисуй логотип");
+  assert.equal((await h.account()).generationsUsed, 1);
+
+  // "chat" - plain advice/discussion, no content produced - its own pool,
+  // never editorActionsUsed (that stays exclusively the professional
+  // mode's own AI-editor tool from here on).
+  await send("chat", "Как лучше вести соцсети кофейни?");
+  const after = await h.account();
+  assert.equal(after.dialogueActionsUsed, 1);
+  assert.equal(after.editorActionsUsed, 0);
 });

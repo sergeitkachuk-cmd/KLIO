@@ -129,6 +129,7 @@ export default async function AccountPage() {
             <Progress label="Материалы" used={summary.generationsUsed} remaining={summary.generationsRemaining} limit={summary.generationLimit} />
             <Progress label="Исследования" used={summary.researchUsed} remaining={summary.researchRemaining} limit={summary.researchLimit} />
             <Progress label="AI‑редактура" used={summary.editorActionsUsed} remaining={summary.editorActionsRemaining} limit={summary.editorActionLimit} />
+            <Progress label="Диалог" used={summary.dialogueActionsUsed} remaining={summary.dialogueActionsRemaining} limit={summary.dialogueActionLimit} />
           </div>
           <small className="account-plan-note">Брендов подключено: {summary.brandCount} из {summary.brandLimit}. Нужен другой тариф или больше лимитов раньше конца периода — <a href="#billing">оформите оплату</a>, доступ обновится автоматически.</small>
         </section>

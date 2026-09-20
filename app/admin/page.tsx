@@ -346,6 +346,8 @@ export default async function AdminPage() {
       researchLimit: plan.researchLimit,
       editorActionsUsed: account.editorActionsUsed,
       editorActionLimit: plan.editorActionLimit,
+      dialogueActionsUsed: account.dialogueActionsUsed,
+      dialogueActionLimit: plan.dialogueActionLimit,
       brandCount: brandMap.get(account.email) ?? 0,
       brandProfileCompletion: brandProfileMap.get(account.email) ?? null,
       textsGenerated: gen.generator,
@@ -641,6 +643,7 @@ export default async function AdminPage() {
             generations: `${item.generationsUsed} / ${item.generationLimit}`,
             research: `${item.researchUsed} / ${item.researchLimit}`,
             editor: `${item.editorActionsUsed} / ${item.editorActionLimit}`,
+            dialogue: `${item.dialogueActionsUsed} / ${item.dialogueActionLimit}`,
             brandCount: item.brandCount,
             brandProfileCompletion: item.brandProfileCompletion,
             textsGenerated: item.textsGenerated,
@@ -673,6 +676,7 @@ export default async function AdminPage() {
                 <th>Генерации</th>
                 <th>Семантика</th>
                 <th>Редактор</th>
+                <th>Диалог</th>
                 <th>Брендов</th>
                 <th>Расход</th>
                 <th>Последний вызов ИИ</th>
@@ -690,6 +694,7 @@ export default async function AdminPage() {
                   <td>{item.generationsUsed} / {item.generationLimit}</td>
                   <td>{item.researchUsed} / {item.researchLimit}</td>
                   <td>{item.editorActionsUsed} / {item.editorActionLimit}</td>
+                  <td>{item.dialogueActionsUsed} / {item.dialogueActionLimit}</td>
                   <td>{item.brandCount}</td>
                   <td>{formatUsd(item.totalCostUsd)}</td>
                   <td>{formatDate(item.lastCallAt)}</td>

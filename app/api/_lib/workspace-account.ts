@@ -92,9 +92,11 @@ export async function ensureAccount(user: ChatGPTUser, signupMethod: "email" | "
       generationsUsed: 0,
       researchUsed: 0,
       editorActionsUsed: 0,
+      dialogueActionsUsed: 0,
       lifetimeGenerationsUsed: 0,
       lifetimeResearchUsed: 0,
       lifetimeEditorActionsUsed: 0,
+      lifetimeDialogueActionsUsed: 0,
     }).onConflictDoNothing({ target: accounts.email }).returning();
     if (!account) [account] = await db.select().from(accounts).where(eq(accounts.email, user.email)).limit(1);
   } else if (quotaPeriodElapsed(account, now)) {
@@ -111,6 +113,7 @@ export async function ensureAccount(user: ChatGPTUser, signupMethod: "email" | "
       generationsUsed: 0,
       researchUsed: 0,
       editorActionsUsed: 0,
+      dialogueActionsUsed: 0,
       updatedAt: sql`CURRENT_TIMESTAMP`,
     }).where(and(
       eq(accounts.email, user.email),
@@ -191,6 +194,9 @@ export function accountSummary(account: typeof accounts.$inferSelect, brandCount
     editorActionsUsed: account.editorActionsUsed,
     editorActionLimit: expired ? 0 : rule.editorActionLimit,
     editorActionsRemaining: expired ? 0 : Math.max(0, rule.editorActionLimit - account.editorActionsUsed),
+    dialogueActionsUsed: account.dialogueActionsUsed,
+    dialogueActionLimit: expired ? 0 : rule.dialogueActionLimit,
+    dialogueActionsRemaining: expired ? 0 : Math.max(0, rule.dialogueActionLimit - account.dialogueActionsUsed),
     // Lifetime totals for the "Ваша статистика" bar — never reset by the
     // monthly rollover in ensureAccount(), unlike the period counters
     // above (which still drive the plan quota widgets on /account and
@@ -198,6 +204,7 @@ export function accountSummary(account: typeof accounts.$inferSelect, brandCount
     lifetimeGenerationsUsed: account.lifetimeGenerationsUsed,
     lifetimeResearchUsed: account.lifetimeResearchUsed,
     lifetimeEditorActionsUsed: account.lifetimeEditorActionsUsed,
+    lifetimeDialogueActionsUsed: account.lifetimeDialogueActionsUsed,
     daysWithKlio: Number.isNaN(createdAtMs) ? 0 : Math.max(0, Math.floor((Date.now() - createdAtMs) / 86400000)),
     brandCount,
     brandLimit: rule.brandLimit,
@@ -308,17 +315,22 @@ export async function assertGenerationQuotaAvailable(brandId?: string) {
   }
 }
 
-export async function assertSecondaryQuotaAvailable(kind: "research" | "editor") {
+const SECONDARY_QUOTA_LABELS = {
+  research: "исследований",
+  editor: "редакторских действий",
+  dialogue: "диалоговых ответов",
+} as const;
+
+export async function assertSecondaryQuotaAvailable(kind: keyof typeof SECONDARY_QUOTA_LABELS) {
   if (!await workspaceDatabaseAvailable()) return;
   const user = await workspaceIdentity();
   const current = await ensureAccount(user);
   assertPlanActive(current);
   const rule = planRule(current.planId);
-  const used = kind === "research" ? current.researchUsed : current.editorActionsUsed;
-  const limit = kind === "research" ? rule.researchLimit : rule.editorActionLimit;
+  const used = kind === "research" ? current.researchUsed : kind === "editor" ? current.editorActionsUsed : current.dialogueActionsUsed;
+  const limit = kind === "research" ? rule.researchLimit : kind === "editor" ? rule.editorActionLimit : rule.dialogueActionLimit;
   if (used >= limit) {
-    const label = kind === "research" ? "исследований" : "редакторских действий";
-    throw new WorkspaceAccessError(`Лимит тарифа «${rule.name}» исчерпан: ${limit} ${label} ${rule.periodLabel}.`, 429);
+    throw new WorkspaceAccessError(`Лимит тарифа «${rule.name}» исчерпан: ${limit} ${SECONDARY_QUOTA_LABELS[kind]} ${rule.periodLabel}.`, 429);
   }
 }
 

@@ -12,6 +12,14 @@ export type PlanRule = {
   generationLimit: number;
   researchLimit: number;
   editorActionLimit: number;
+  // Dialogue mode's plain conversational turns (advice/discussion — the
+  // "chat" and brand-onboarding "profile" intents, not topics/text/image,
+  // which produce actual content and draw on researchLimit/generationLimit
+  // instead, the same as their professional-mode equivalents). Split out
+  // 2026-09-20 from editorActionLimit, which every dialogue reply used to
+  // debit regardless of intent (site owner: "это недосмотр, стоит
+  // развести" — see the accounts.dialogueActionsUsed column comment).
+  dialogueActionLimit: number;
   brandLimit: number;
   seatLimit: 1;
   // Total VK/Telegram channels connectable across all of the account's
@@ -34,9 +42,15 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
   trial: {
     id: "trial",
     name: "Пробный",
-    generationLimit: 5,
+    // Doubled 2026-09-20 alongside every paid plan below - dialogue mode's
+    // own text/image generations now correctly draw on this same pool
+    // (previously miscounted as an editor action for text, so this pool
+    // saw none of that traffic before), not a change in what a single
+    // material itself costs.
+    generationLimit: 10,
     researchLimit: 3,
     editorActionLimit: 5,
+    dialogueActionLimit: 8,
     brandLimit: 1,
     seatLimit: 1,
     channelLimit: 0,
@@ -45,16 +59,22 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
   start: {
     id: "start",
     name: "Старт",
-    // 30 per brand (site owner, 2026-09-17: was 25, too tight against a
-    // full 25-slot content plan with no headroom to regenerate a few
-    // topics without hitting the ceiling). Every other paid plan's
-    // generationLimit is this same 30-per-brand rate × brandLimit.
-    generationLimit: 30,
+    // 60 per brand (site owner, 2026-09-20: doubled from 30 when dialogue
+    // mode's own text/image generations were correctly reclassified onto
+    // this pool instead of editorActionLimit — see the PlanRule field's own
+    // comment). Every other paid plan's generationLimit is this same
+    // 60-per-brand rate × brandLimit.
+    generationLimit: 60,
     // 10 per brand (site owner, 2026-09-17). Same per-brand-rate model as
     // generationLimit above — every other paid plan's researchLimit is
     // this rate × brandLimit.
     researchLimit: 10,
     editorActionLimit: 100,
+    // 150 per brand (site owner, 2026-09-20, confirmed): dialogue's plain
+    // chat turns are lighter than a professional-mode editor action, so
+    // this starts above editorActionLimit rather than matching it —
+    // retune once real usage data comes in.
+    dialogueActionLimit: 150,
     brandLimit: 1,
     seatLimit: 1,
     channelLimit: 1,
@@ -63,11 +83,13 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
   pro: {
     id: "pro",
     name: "Профи",
-    // Five brands × start's 30-per-brand rate.
-    generationLimit: 150,
+    // Five brands × start's 60-per-brand rate.
+    generationLimit: 300,
     // Five brands × start's 10-per-brand rate.
     researchLimit: 50,
     editorActionLimit: 500,
+    // Five brands × start's 150-per-brand rate.
+    dialogueActionLimit: 700,
     brandLimit: 5,
     seatLimit: 1,
     channelLimit: 3,
@@ -76,13 +98,16 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
   agency: {
     id: "agency",
     name: "Агентство",
-    // Ten brands × start's 30-per-brand rate — already was 300 before the
+    // Ten brands × start's 60-per-brand rate — already was 300 before the
     // 2026-09-17 rate change (it was already the most generous per-brand
-    // ratio of the three), so this one didn't need to move.
-    generationLimit: 300,
+    // ratio of the three), so this one didn't need to move that time; it
+    // doubled to 600 in the same 2026-09-20 pass as start/pro above.
+    generationLimit: 600,
     // Ten brands × start's 10-per-brand rate.
     researchLimit: 100,
     editorActionLimit: 1000,
+    // Ten brands × start's 150-per-brand rate.
+    dialogueActionLimit: 1500,
     brandLimit: 10,
     seatLimit: 1,
     channelLimit: 10,
@@ -93,11 +118,13 @@ export const PLAN_RULES: Record<PlanId, PlanRule> = {
     name: "Тестовый период",
     // Roomier than trial's 5/3/5 — this is meant to actually let someone
     // properly try the product, not just poke at it for two days. Tracks
-    // start's own generationLimit/researchLimit (one brand, same rate) so
-    // a courtesy grant is never stingier than the cheapest real plan.
-    generationLimit: 30,
+    // start's own generationLimit/researchLimit/dialogueActionLimit (one
+    // brand, same rate) so a courtesy grant is never stingier than the
+    // cheapest real plan.
+    generationLimit: 60,
     researchLimit: 10,
     editorActionLimit: 100,
+    dialogueActionLimit: 150,
     brandLimit: 1,
     seatLimit: 1,
     channelLimit: 1,

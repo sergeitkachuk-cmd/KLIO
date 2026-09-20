@@ -4,7 +4,7 @@ import { Fragment, useMemo, useState } from "react";
 
 export type AdminUserRow = {
   email: string; displayName: string; emailStatus: string; createdAt: string; planName: string; planExpires: string;
-  planExpiryState: "soon" | "critical" | "expired" | "missing" | "normal"; generations: string; research: string; editor: string;
+  planExpiryState: "soon" | "critical" | "expired" | "missing" | "normal"; generations: string; research: string; editor: string; dialogue: string;
   brandCount: number; totalCost: string; lastCallAt: string; invoiceRefs: string; transactionRefs: string; payerNames: string;
   // Detailed usage breakdown (site owner: "чтобы это было не общее
   // обозначение") — null completion means the account has no brand at all,
@@ -38,13 +38,13 @@ export function AdminUsersTable({ users }: Props) {
     </div>
     <div className="admin-table-scroll">
       <table className="admin-table admin-table-users">
-        <thead><tr><th>Email</th><th>Имя</th><th>Тариф</th><th>Действует до</th><th>Генерации</th><th>Семантика</th><th>Редактор</th><th>Брендов</th><th>Расход</th><th>Детали</th></tr></thead>
+        <thead><tr><th>Email</th><th>Имя</th><th>Тариф</th><th>Действует до</th><th>Генерации</th><th>Семантика</th><th>Редактор</th><th>Диалог</th><th>Брендов</th><th>Расход</th><th>Детали</th></tr></thead>
         <tbody>
           {filteredUsers.map((item) => { const expanded = expandedEmail === item.email; return <Fragment key={item.email}>
             <tr className={item.registeredToday ? "admin-user-row-new" : undefined}><td>{item.email}</td><td><span>{item.displayName}</span><small className="admin-user-muted">{item.emailStatus} · {item.createdAt}</small></td><td>{item.planName}</td>
-              <td className={`admin-plan-expiry admin-plan-expiry-${item.planExpiryState}`}>{item.planExpires}</td><td>{item.generations}</td><td>{item.research}</td><td>{item.editor}</td><td>{item.brandCount}</td><td>{item.totalCost}</td>
+              <td className={`admin-plan-expiry admin-plan-expiry-${item.planExpiryState}`}>{item.planExpires}</td><td>{item.generations}</td><td>{item.research}</td><td>{item.editor}</td><td>{item.dialogue}</td><td>{item.brandCount}</td><td>{item.totalCost}</td>
               <td><button type="button" className="admin-details-toggle" onClick={() => setExpandedEmail(expanded ? null : item.email)}>{expanded ? "Свернуть" : "Подробнее"}</button></td></tr>
-            {expanded && <tr className="admin-user-details-row"><td colSpan={10}><div className="admin-user-details">
+            {expanded && <tr className="admin-user-details-row"><td colSpan={11}><div className="admin-user-details">
               <div><b>Почта:</b> {item.emailStatus}</div><div><b>Регистрация:</b> {item.createdAt}</div><div><b>Последний вызов ИИ:</b> {item.lastCallAt}</div>
               <div><b>Профиль бренда заполнен:</b> {item.brandProfileCompletion === null ? "бренд не создан" : `${item.brandProfileCompletion}%`}</div>
               <div><b>Тексты (генератор):</b> {item.textsGenerated}</div>
@@ -59,7 +59,7 @@ export function AdminUsersTable({ users }: Props) {
               <div><b>Способ регистрации:</b> {item.signupMethod}</div>
               <div className="admin-user-details-wide"><b>Счета:</b> {listValue(item.invoiceRefs)}</div><div className="admin-user-details-wide"><b>Операции:</b> {listValue(item.transactionRefs)}</div><div className="admin-user-details-wide"><b>Плательщик:</b> {listValue(item.payerNames)}</div></div></td></tr>}
           </Fragment>; })}
-          {!filteredUsers.length && <tr><td colSpan={10} className="admin-empty-row">По этому запросу клиентов не найдено.</td></tr>}
+          {!filteredUsers.length && <tr><td colSpan={11} className="admin-empty-row">По этому запросу клиентов не найдено.</td></tr>}
         </tbody>
       </table>
     </div>

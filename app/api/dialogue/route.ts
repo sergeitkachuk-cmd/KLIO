@@ -60,6 +60,23 @@ const periodOf = (a: typeof accounts.$inferSelect) =>
   `${a.generationMonth}|${a.quotaPeriodEndsAt ?? ""}`;
 const owned = (id: string, email: string) =>
   and(eq(dialogueThreads.id, id), eq(dialogueThreads.ownerEmail, email));
+// Which quota pool a reply draws from, by what it actually produces —
+// matching the same classification professional mode's equivalent action
+// already uses, not which mode/tool it came through: an image is an image
+// whether it's generated here or in the professional image generator, a
+// topics list is the same "research" professional mode's own content-plan
+// generation already is, and a written post/article is the same
+// "generation" the professional generator already is. Only the plain
+// "chat" (advice/discussion, no content produced) and "profile" (brand
+// onboarding by conversation) intents are genuinely dialogue-mode-only,
+// hence their own pool (site owner: "это недосмотр, стоит развести" — see
+// PlanRule.dialogueActionLimit's own comment for the full history).
+type QuotaKind = "generation" | "research" | "dialogue";
+function quotaKindForMode(mode: string): QuotaKind {
+  if (mode === "image" || mode === "text") return "generation";
+  if (mode === "topics") return "research";
+  return "dialogue";
+}
 
 async function verifyBrand(
   db: Pick<Db, "select">,
@@ -141,18 +158,23 @@ async function failRequest(
       .for("update")
       .limit(1);
     if (account && periodOf(account) === row.debitPeriod) {
-      const image = row.debitKind === "image";
+      const kind = row.debitKind as QuotaKind;
       await tx
         .update(accounts)
         .set(
-          image
+          kind === "generation"
             ? {
                 generationsUsed: sql`GREATEST(0, ${accounts.generationsUsed} - 1)`,
                 lifetimeGenerationsUsed: sql`GREATEST(0, ${accounts.lifetimeGenerationsUsed} - 1)`,
               }
+            : kind === "research"
+            ? {
+                researchUsed: sql`GREATEST(0, ${accounts.researchUsed} - 1)`,
+                lifetimeResearchUsed: sql`GREATEST(0, ${accounts.lifetimeResearchUsed} - 1)`,
+              }
             : {
-                editorActionsUsed: sql`GREATEST(0, ${accounts.editorActionsUsed} - 1)`,
-                lifetimeEditorActionsUsed: sql`GREATEST(0, ${accounts.lifetimeEditorActionsUsed} - 1)`,
+                dialogueActionsUsed: sql`GREATEST(0, ${accounts.dialogueActionsUsed} - 1)`,
+                lifetimeDialogueActionsUsed: sql`GREATEST(0, ${accounts.lifetimeDialogueActionsUsed} - 1)`,
               },
         )
         .where(eq(accounts.email, email));
@@ -633,9 +655,10 @@ export async function POST(request: Request) {
         .limit(1);
       if (previous?.requestId === requestId)
         return Response.json({ thread: resultOf(previous) });
-      if (mode === "image")
+      const quotaKind = quotaKindForMode(mode);
+      if (quotaKind === "generation")
         await assertGenerationQuotaAvailable(previous?.brandId ?? undefined);
-      else await assertSecondaryQuotaAvailable("editor");
+      else await assertSecondaryQuotaAvailable(quotaKind);
     }
     let start: Row | undefined;
     const result = await db.transaction(async (tx) => {
@@ -699,26 +722,33 @@ export async function POST(request: Request) {
           .for("update")
           .limit(1);
         assertPlanActive(account);
-        const image = mode === "image";
+        const quotaKind = quotaKindForMode(mode);
         const rule = planRule(account.planId);
-        const used = image
-          ? account.generationsUsed
-          : account.editorActionsUsed;
-        const limit = image ? rule.generationLimit : rule.editorActionLimit;
+        const used = quotaKind === "generation" ? account.generationsUsed
+          : quotaKind === "research" ? account.researchUsed
+          : account.dialogueActionsUsed;
+        const limit = quotaKind === "generation" ? rule.generationLimit
+          : quotaKind === "research" ? rule.researchLimit
+          : rule.dialogueActionLimit;
         if (used >= limit)
           throw new WorkspaceAccessError("Лимит тарифа исчерпан.", 429);
         await tx
           .update(accounts)
           .set(
-            image
+            quotaKind === "generation"
               ? {
                   generationsUsed: used + 1,
                   lifetimeGenerationsUsed: account.lifetimeGenerationsUsed + 1,
                 }
+              : quotaKind === "research"
+              ? {
+                  researchUsed: used + 1,
+                  lifetimeResearchUsed: account.lifetimeResearchUsed + 1,
+                }
               : {
-                  editorActionsUsed: used + 1,
-                  lifetimeEditorActionsUsed:
-                    account.lifetimeEditorActionsUsed + 1,
+                  dialogueActionsUsed: used + 1,
+                  lifetimeDialogueActionsUsed:
+                    account.lifetimeDialogueActionsUsed + 1,
                 },
           )
           .where(eq(accounts.email, user.email));
@@ -736,7 +766,7 @@ export async function POST(request: Request) {
             status: "processing",
             error: "",
             requestId,
-            debitKind: image ? "image" : "editor",
+            debitKind: quotaKind,
             debitPeriod: periodOf(account),
             revision: row.revision + 1,
             updatedAt: new Date().toISOString(),

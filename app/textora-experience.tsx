@@ -261,6 +261,9 @@ type WorkspaceAccount = {
   editorActionsUsed: number;
   editorActionLimit: number;
   editorActionsRemaining: number;
+  dialogueActionsUsed: number;
+  dialogueActionLimit: number;
+  dialogueActionsRemaining: number;
   // Lifetime totals, never reset by the monthly/trial period rollover —
   // only used for the "Ваша статистика" bar. generationsUsed etc. above
   // stay period-scoped and keep driving the quota widgets (sidebar,
@@ -268,6 +271,7 @@ type WorkspaceAccount = {
   lifetimeGenerationsUsed: number;
   lifetimeResearchUsed: number;
   lifetimeEditorActionsUsed: number;
+  lifetimeDialogueActionsUsed: number;
   daysWithKlio: number;
   brandCount: number;
   brandLimit: number;
@@ -1066,15 +1070,23 @@ const faq = [
 
 // Prices themselves come from PLAN_PRICES (billing-pricing.ts) — the same
 // source the account cabinet and /invoice use — so this marketing copy can
-// never drift from what a customer is actually charged there. Only the
-// landing-page-only fields (description, limit, features) live here.
+// never drift from what a customer is actually charged there. The limit
+// numbers used to be a separate hand-typed string here that could silently
+// drift from PLAN_RULES (app/plans.ts), the numbers actually enforced —
+// found during the 2026-09-20 quota rework, alongside adding the dialogue
+// pool that wasn't mentioned here at all before. Built from PLAN_RULES
+// directly now; only the landing-page-only fields (description, features)
+// stay hand-written here.
+const formatPlanLimit = (value: number) => value.toLocaleString("ru-RU");
+const planLimitSummary = (rule: (typeof PLAN_RULES)[PlanId]) =>
+  `${formatPlanLimit(rule.generationLimit)} материалов · ${formatPlanLimit(rule.researchLimit)} исследований · ${formatPlanLimit(rule.editorActionLimit)} AI‑правок · ${formatPlanLimit(rule.dialogueActionLimit)} диалоговых ответов`;
 const pricing = [
   {
     name: PLAN_PRICES.start.name,
     description: "Для эксперта и небольшого проекта",
     monthly: PLAN_PRICES.start.monthly,
     yearly: PLAN_PRICES.start.yearly,
-    limit: "30 материалов · 10 исследований · 100 AI‑правок",
+    limit: planLimitSummary(PLAN_RULES.start),
     planId: "start" as PlanId,
     features: ["Все форматы контента", "1 профиль бренда", "1 пользователь", "Семантика, контент‑план и конкуренты", "Редакторы КЛИО, материалы и экспорт"],
   },
@@ -1083,7 +1095,7 @@ const pricing = [
     description: "Для маркетолога и контент‑команды",
     monthly: PLAN_PRICES.pro.monthly,
     yearly: PLAN_PRICES.pro.yearly,
-    limit: "150 материалов · 50 исследований · 500 AI‑правок",
+    limit: planLimitSummary(PLAN_RULES.pro),
     planId: "pro" as PlanId,
     features: ["Все форматы контента", "5 профилей бренда", "1 пользователь", "Семантика, контент‑план и конкуренты", "Редакторы КЛИО, материалы и экспорт"],
   },
@@ -1093,7 +1105,7 @@ const pricing = [
     monthly: PLAN_PRICES.agency.monthly,
     yearly: PLAN_PRICES.agency.yearly,
     planId: "agency" as PlanId,
-    limit: "300 материалов · 100 исследований · 1 000 AI‑правок",
+    limit: planLimitSummary(PLAN_RULES.agency),
     features: ["Все форматы контента", "10 профилей бренда", "1 пользователь", "Семантика, контент‑план и конкуренты", "Редакторы КЛИО, материалы и экспорт"],
     popular: true,
   },
@@ -2239,9 +2251,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     editorActionsUsed: 0,
     editorActionLimit: PLAN_RULES.start.editorActionLimit,
     editorActionsRemaining: PLAN_RULES.start.editorActionLimit,
+    dialogueActionsUsed: 0,
+    dialogueActionLimit: PLAN_RULES.start.dialogueActionLimit,
+    dialogueActionsRemaining: PLAN_RULES.start.dialogueActionLimit,
     lifetimeGenerationsUsed: 0,
     lifetimeResearchUsed: 0,
     lifetimeEditorActionsUsed: 0,
+    lifetimeDialogueActionsUsed: 0,
     daysWithKlio: 0,
     brandCount: 0,
     brandLimit: PLAN_RULES.start.brandLimit,
@@ -5556,8 +5572,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         visible={workspaceMode === "dialogue" && activeModule === "start"}
         brandId={activeBrandId} brandName={activeWorkspaceBrand?.name || ""} brands={workspaceBrands}
         hasLogo={Boolean(brand.logoKey)}
-        remaining={workspaceAccount.editorActionsRemaining}
-        imagesRemaining={workspaceAccount.generationsRemaining}
+        dialogueRemaining={workspaceAccount.dialogueActionsRemaining}
+        researchRemaining={workspaceAccount.researchRemaining}
+        generationsRemaining={workspaceAccount.generationsRemaining}
         onNavigate={openModule} onBrandChange={id => void switchWorkspaceBrand(id)}
         onSaved={generation => setWorkspaceHistory(list => [{ ...list.find(item => item.id === generation.id), ...generation } as GenerationArchiveItem, ...list.filter(item => item.id !== generation.id)])}
         onProfessional={generation => void (async () => { if (await changeWorkspaceMode("professional")) { openModule("history"); openArchiveItem(generation as GenerationArchiveItem); } })()}

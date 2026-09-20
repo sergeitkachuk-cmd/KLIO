@@ -75,8 +75,9 @@ type Props = {
   visible: boolean;
   brands: Array<{ id: string; name: string }>;
   hasLogo: boolean;
-  remaining: number;
-  imagesRemaining: number;
+  dialogueRemaining: number;
+  researchRemaining: number;
+  generationsRemaining: number;
   onNavigate: (section: "history" | "publications" | "brand") => void;
   onBrandChange: (id: string) => void;
   onSaved: (generation: SharedGeneration) => void;
@@ -1308,13 +1309,14 @@ export function DialogueWorkspace(props: Props) {
             </div>
           </form>
           <small>
-            {/* Only the text-reply quota was shown here - images draw from a
-                separate, much smaller pool (generationsRemaining, shared
-                with the professional generator's own materials count) that
-                had no visibility in dialogue mode at all beyond "costs one
-                generation" (site owner: "у нас никак не обозначается и не
-                регулируется в тарифе генерация картинок и диалога"). */}
-            Доступно {props.remaining} ответов и {props.imagesRemaining} {props.imagesRemaining === 1 ? "генерация изображения" : "генераций изображений"}.
+            {/* Three different pools now, matching whichever professional-
+                mode equivalent produces the same kind of output (site
+                owner: "у нас никак не обозначается и не регулируется в
+                тарифе генерация картинок и диалога", "это недосмотр, стоит
+                развести") - same labels as the account page's own quota
+                bars, not new wording, so the same number reads the same
+                way in both places. */}
+            Диалог: {props.dialogueRemaining} · Исследования: {props.researchRemaining} · Материалы: {props.generationsRemaining}.
           </small>
         </div>
       </section>

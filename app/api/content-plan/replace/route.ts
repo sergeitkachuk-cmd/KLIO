@@ -1,6 +1,6 @@
 import { AiResponseError, openAiErrorResponse } from "../../_lib/openai-response";
 import { callAiModel } from "../../_lib/ai-router";
-import { assertSecondaryQuotaAvailable, recordEditorialAction, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../../_lib/workspace-account";
+import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../../_lib/workspace-account";
 
 type ReplacementPayload = {
   query?: unknown;
@@ -158,7 +158,11 @@ export async function POST(request: Request) {
     const input = normalizePayload(await request.json() as ReplacementPayload);
     if (!input.query) return Response.json({ error: "Укажите тему контент‑плана." }, { status: 400 });
     if (!input.selectedItems.length) return Response.json({ error: "Выберите от одной до пяти тем для замены." }, { status: 400 });
-    await assertSecondaryQuotaAvailable("editor");
+    // Same feature as content-plan generation (10-25 topic list), which
+    // already debits research - replacing a handful of its topics
+    // afterward was inconsistently charged as an editor action instead
+    // (found during the 2026-09-20 quota rework).
+    await assertSecondaryQuotaAvailable("research");
     const identity = await workspaceIdentity();
 
     const instructions = [
@@ -209,7 +213,7 @@ export async function POST(request: Request) {
     }
     if (seenGroups.size !== input.selectedItems.length) throw new AiResponseError("Не для всех выбранных тем подготовлены альтернативы.", 422);
 
-    const usage = await recordEditorialAction();
+    const usage = await recordResearch();
     return Response.json({ mode: "ai", model, replacements, usage });
   } catch (error) {
     if (error instanceof WorkspaceAccessError) return workspaceErrorResponse(error);

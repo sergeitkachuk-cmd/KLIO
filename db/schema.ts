@@ -34,13 +34,22 @@ export const accounts = pgTable("accounts", {
   generationsUsed: integer("generations_used").notNull().default(0),
   researchUsed: integer("research_used").notNull().default(0),
   editorActionsUsed: integer("editor_actions_used").notNull().default(0),
-  // Mirror the three counters above but never reset on the monthly
+  // Dialogue mode's plain "just talking to KLIO" turns (advice/discussion,
+  // not one of the topics/text/image intents that produce actual content)
+  // used to be billed as an editorActionsUsed action, indistinguishable
+  // from the professional mode's own AI-editor tool - undisclosed anywhere
+  // (site owner: "у нас никак не обозначается и не регулируется в тарифе
+  // генерация картинок и диалога", "это недосмотр, стоит развести"). Its
+  // own counter, reset on the same monthly rollover as the three above.
+  dialogueActionsUsed: integer("dialogue_actions_used").notNull().default(0),
+  // Mirror the four counters above but never reset on the monthly
   // rollover in ensureAccount() — the "Ваша статистика" bar on the
   // workspace overview reads these for a lifetime total instead of the
   // current-period used-count the sidebar/plan quota widgets already show.
   lifetimeGenerationsUsed: integer("lifetime_generations_used").notNull().default(0),
   lifetimeResearchUsed: integer("lifetime_research_used").notNull().default(0),
   lifetimeEditorActionsUsed: integer("lifetime_editor_actions_used").notNull().default(0),
+  lifetimeDialogueActionsUsed: integer("lifetime_dialogue_actions_used").notNull().default(0),
   // Set once the one-time launch discount (see LAUNCH_DISCOUNT_PERCENT in
   // app/billing-pricing.ts) has actually been consumed by a confirmed
   // payment — never on link/invoice creation alone, so an abandoned
@@ -385,7 +394,7 @@ export const dialogueThreads = pgTable("dialogue_threads", {
   status: text("status").notNull().default("idle"),
   requestId: text("request_id").notNull().default(""),
   debitPeriod: text("debit_period").notNull().default(""),
-  debitKind: text("debit_kind").notNull().default("editor"),
+  debitKind: text("debit_kind").notNull().default("dialogue"),
   error: text("error").notNull().default(""),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
