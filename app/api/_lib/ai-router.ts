@@ -462,7 +462,8 @@ export async function callAiModel<T = Record<string, unknown>>(
   let lastError: unknown;
 
   // Generous but finite: at most 2 transient retries + 1 fallback attempt
-  // + 1 invalid-output retry, never an unbounded loop.
+  // + 2 invalid-output retries, never an unbounded loop (worst case
+  // 1 + 2 + 1 + 2 = 6, exactly this loop's own cap).
   for (let attempt = 0; attempt < 6; attempt += 1) {
     try {
       if (Date.now() >= deadline) throw timeoutError();
@@ -562,7 +563,14 @@ export async function callAiModel<T = Record<string, unknown>>(
         continue;
       }
 
-      if (isInvalidOutput && config.retryable && invalidOutputRetries < 1) {
+      // 1 -> 2 (site owner, re-testing the dialogue fix above: "он
+      // по-прежнему возвращает ошибку" - one retry still left a
+      // meaningful chance of two bad responses in a row at DeepSeek's
+      // "low" reasoning effort). A second retry only ever runs on the
+      // subset of calls that already failed once, so the added cost
+      // lands on the failure rate, not on every call the way raising
+      // reasoningEffort for every dialogue message would.
+      if (isInvalidOutput && config.retryable && invalidOutputRetries < 2) {
         invalidOutputRetries += 1;
         continue;
       }
