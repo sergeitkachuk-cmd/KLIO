@@ -10,7 +10,7 @@ export type AdminUserRow = {
   // обозначение") — null completion means the account has no brand at all,
   // distinct from 0% (a brand row exists but nothing in it is filled in).
   brandProfileCompletion: number | null;
-  textsGenerated: number; textsEdited: number; textsManual: number;
+  textsGenerated: number; textsEdited: number; textsManual: number; imagesGenerated: number;
   contentPlans: number; semanticsRuns: number; competitorAnalyses: number;
   publicationsCount: number; everPaid: boolean;
   signupMethod: string;
@@ -50,6 +50,7 @@ export function AdminUsersTable({ users }: Props) {
               <div><b>Тексты (генератор):</b> {item.textsGenerated}</div>
               <div><b>Тексты (редактор):</b> {item.textsEdited}</div>
               <div><b>Тексты (вручную):</b> {item.textsManual}</div>
+              <div><b>Изображения:</b> {item.imagesGenerated}</div>
               <div><b>Контент-планы:</b> {item.contentPlans}</div>
               <div><b>Семантика:</b> {item.semanticsRuns}</div>
               <div><b>Анализ конкурентов:</b> {item.competitorAnalyses}</div>

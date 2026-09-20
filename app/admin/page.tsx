@@ -174,7 +174,7 @@ export default async function AdminPage() {
     await db.delete(accounts).where(eq(accounts.email, stale.email));
   }
 
-  const [userRows, usageByUser, brandRows, invoiceRefsByUser, transactionRefsByUser, totalsRows, last30Rows, byModelRows, byOperationRows, recentAiRows, externalServices, paymentRows, generationsByOriginRows, materialsByTypeRows, publicationsByOwnerRows, paidPaymentOwners, paidInvoiceOwners, socialChannelsByOwnerRows] = await Promise.all([
+  const [userRows, usageByUser, brandRows, invoiceRefsByUser, transactionRefsByUser, totalsRows, last30Rows, byModelRows, byOperationRows, recentAiRows, externalServices, paymentRows, generationsByOriginRows, imagesByOwnerRows, materialsByTypeRows, publicationsByOwnerRows, paidPaymentOwners, paidInvoiceOwners, socialChannelsByOwnerRows] = await Promise.all([
     db.select().from(accounts).orderBy(desc(accounts.createdAt)),
     db.select({
       ownerEmail: aiUsage.ownerEmail,
@@ -254,6 +254,17 @@ export default async function AdminPage() {
       origin: generations.origin,
       count: sql<number>`count(*)`,
     }).from(generations).groupBy(generations.ownerEmail, generations.origin),
+    // Every image generation (dialogue's own image mode and the
+    // professional generator's /api/images both go through recordGeneration
+    // with topic:"Изображение", origin left at its "generator" default) —
+    // site owner: "чтобы я видел генерации изображений у кого сколько
+    // сделано". Counted separately rather than folded into origin above:
+    // without this, an image silently inflated "Тексты (генератор)" since
+    // it shares that same origin value - see textsGenerated below.
+    db.select({
+      ownerEmail: generations.ownerEmail,
+      count: sql<number>`count(*)`,
+    }).from(generations).where(eq(generations.topic, "Изображение")).groupBy(generations.ownerEmail),
     // materials.type is "content_plan" | "semantics" | "competitors" (see
     // SavedMaterialType in app/textora-experience.tsx) — the other half of
     // "сколько контент-плана" etc.
@@ -309,6 +320,7 @@ export default async function AdminPage() {
     else if (row.type === "competitors") entry.competitors += num(row.count);
     materialsByOwner.set(row.ownerEmail, entry);
   }
+  const imagesByOwner = new Map(imagesByOwnerRows.map((row) => [row.ownerEmail, num(row.count)]));
   const publicationsMap = new Map(publicationsByOwnerRows.map((row) => [row.ownerEmail, num(row.count)]));
   const paidOwners = new Set([...paidPaymentOwners.map((row) => row.ownerEmail), ...paidInvoiceOwners.map((row) => row.ownerEmail)]);
   const socialChannelsByOwner = new Map<string, { vk: number; telegram: number }>();
@@ -325,6 +337,7 @@ export default async function AdminPage() {
     const plan = planRule(account.planId);
     const usage = usageMap.get(account.email);
     const gen = generationsByOwner.get(account.email) ?? { generator: 0, editor: 0, manual: 0 };
+    const images = imagesByOwner.get(account.email) ?? 0;
     const mat = materialsByOwner.get(account.email) ?? { contentPlan: 0, semantics: 0, competitors: 0 };
     const social = socialChannelsByOwner.get(account.email) ?? { vk: 0, telegram: 0 };
     const modulesUsed = [gen.generator > 0, gen.editor > 0, mat.contentPlan > 0, mat.semantics > 0, mat.competitors > 0].filter(Boolean).length;
@@ -352,9 +365,13 @@ export default async function AdminPage() {
       dialogueActionLimit: plan.dialogueActionLimit,
       brandCount: brandMap.get(account.email) ?? 0,
       brandProfileCompletion: brandProfileMap.get(account.email) ?? null,
-      textsGenerated: gen.generator,
+      // Images share the "generator" origin (see the imagesByOwnerRows
+      // query above), so they're subtracted here to keep this field meaning
+      // what its label says instead of silently including images too.
+      textsGenerated: gen.generator - images,
       textsEdited: gen.editor,
       textsManual: gen.manual,
+      imagesGenerated: images,
       contentPlans: mat.contentPlan,
       semanticsRuns: mat.semantics,
       competitorAnalyses: mat.competitors,
@@ -651,6 +668,7 @@ export default async function AdminPage() {
             textsGenerated: item.textsGenerated,
             textsEdited: item.textsEdited,
             textsManual: item.textsManual,
+            imagesGenerated: item.imagesGenerated,
             contentPlans: item.contentPlans,
             semanticsRuns: item.semanticsRuns,
             competitorAnalyses: item.competitorAnalyses,
