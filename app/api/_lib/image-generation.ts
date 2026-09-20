@@ -108,6 +108,15 @@ export async function createImage(prompt: string, email: string, baseUrl: string
     ...(options.outputFormat ? { output_format: resolved.outputFormat } : {}),
     ...(options.background ? { background: resolved.background } : {}),
   };
+  // Temporary: site owner reports every aspect ratio produces a square
+  // image regardless of selection, after two prior guesses about how the
+  // relay (a separate deployment this repo doesn't control) handles
+  // size/aspectRatio both turned out wrong. Logging exactly what we send
+  // is something checkable in Timeweb's own application logs (this
+  // request originates from our app, not the relay) - confirms whether
+  // our own payload is correct before guessing a third time. Remove once
+  // the actual cause is confirmed.
+  if (serviceUrl) console.log("Image request to relay", JSON.stringify(imageRequest));
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -129,6 +138,20 @@ export async function createImage(prompt: string, email: string, baseUrl: string
   if (!encoded || encoded.length > 12_000_000)
     throw new Error("Сервис изображений вернул некорректный файл.");
   const bytes = new Uint8Array(Buffer.from(encoded, "base64"));
+  // Temporary, same reasoning as the request log above - confirms the
+  // actual returned image's real pixel dimensions regardless of what any
+  // log or field name claims, since a mismatch there is exactly what
+  // "every ratio produces a square" would look like from the bytes
+  // themselves. PNG only (the current default/most-tested format); logs
+  // "unknown" for jpeg/webp rather than a fuller multi-format parser,
+  // since this is throwaway diagnostic code, not a permanent utility.
+  if (bytes.length >= 24 && bytes[0] === 0x89 && bytes[1] === 0x50) {
+    const width = (bytes[16] << 24) | (bytes[17] << 16) | (bytes[18] << 8) | bytes[19];
+    const height = (bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23];
+    console.log(`Image response actual size: ${width}x${height} (requested ${resolved.size})`);
+  } else {
+    console.log(`Image response actual size: unknown format, ${bytes.length} bytes (requested ${resolved.size})`);
+  }
   // Detected from the actual bytes, not assumed from resolved.outputFormat
   // (site owner: generation "didn't work at all for jpg, only png worked").
   // The relay is a separate deployment this repo doesn't control (see the

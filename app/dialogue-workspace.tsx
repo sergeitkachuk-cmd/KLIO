@@ -165,6 +165,7 @@ export function DialogueWorkspace(props: Props) {
   const intentContainerRef = useRef<HTMLDivElement>(null);
   const intentTriggerRef = useRef<HTMLButtonElement>(null);
   const intentMenuRef = useRef<HTMLDivElement>(null);
+  const composeFormRef = useRef<HTMLFormElement>(null);
   useEffect(() => {
     if (!intentMenuOpen) return;
     const measure = () => {
@@ -172,10 +173,13 @@ export function DialogueWorkspace(props: Props) {
       const rect = intentTriggerRef.current.getBoundingClientRect();
       const edgeGap = 12;
       const maxHeight = Math.max(160, Math.min(360, rect.top - edgeGap));
-      // Clamped to the viewport, not a flat 240 (site owner asked for a
-      // mobile pass on this mode) - a phone narrower than ~264px would
-      // otherwise overflow past the right edge.
-      const width = Math.min(240, window.innerWidth - edgeGap * 2);
+      // Sized off the compose field itself, not a flat px value (site
+      // owner: a fixed 240px truncated every label+hint hard - "текст не
+      // влезает весь") - full width of the field on mobile, half on web,
+      // still clamped to the viewport as a last-resort safety net.
+      const formWidth = composeFormRef.current?.getBoundingClientRect().width || 320;
+      const isMobile = window.innerWidth <= 760;
+      const width = Math.min(isMobile ? formWidth : formWidth / 2, window.innerWidth - edgeGap * 2);
       const left = Math.min(rect.left, window.innerWidth - width - edgeGap);
       setIntentMenuRect({ bottom: window.innerHeight - rect.top + 8, left, width, maxHeight });
     };
@@ -1098,6 +1102,7 @@ export function DialogueWorkspace(props: Props) {
             </div>
           )}
           <form
+            ref={composeFormRef}
             onSubmit={(e) => {
               e.preventDefault();
               submitCompose();

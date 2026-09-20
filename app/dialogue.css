@@ -1006,10 +1006,22 @@ body:has(.workspace-shell.is-dialogue .publications-editor-modal)>.module-select
    items (site owner: "более компактное и не такой крупный текст") -
    label and hint share one line instead of stacking, closer to ChatGPT's
    own "+" menu density. */
-.klio-chat-intent-menu{z-index:3100;display:grid;gap:2px;padding:6px;overflow-y:auto;-webkit-overflow-scrolling:touch;border-radius:14px;box-shadow:0 12px 30px #15233626}
+/* text-size-adjust:100% - without it, mobile Chrome/Safari's automatic
+   font-boosting inflated this menu's 12px text far past its coded size
+   (site owner screenshot: labels/hints rendering two-plus times larger
+   than set, hints truncating despite width already being sized for
+   them) - narrow text blocks are exactly what that heuristic targets. */
+.klio-chat-intent-menu{z-index:3100;display:grid;gap:2px;padding:6px;overflow-y:auto;-webkit-overflow-scrolling:touch;border-radius:14px;box-shadow:0 12px 30px #15233626;text-size-adjust:100%;-webkit-text-size-adjust:100%;scrollbar-width:thin}
+.klio-chat-intent-menu::-webkit-scrollbar{width:6px}
+.klio-chat-intent-menu::-webkit-scrollbar-track{background:transparent}
+.klio-chat-intent-menu::-webkit-scrollbar-thumb{border-radius:999px}
+:root[data-theme="light"] .klio-chat-intent-menu{scrollbar-color:#27506e transparent}
+:root[data-theme="light"] .klio-chat-intent-menu::-webkit-scrollbar-thumb{background:#27506e99}
+:root[data-theme="dark"] .klio-chat-intent-menu{scrollbar-color:#a8d6ed transparent}
+:root[data-theme="dark"] .klio-chat-intent-menu::-webkit-scrollbar-thumb{background:#a8d6ed99}
 .klio-chat-intent-menu>button{display:flex;align-items:baseline;gap:6px;min-width:0;padding:7px 10px;border:0;border-radius:9px;text-align:left;background:transparent;font-size:12px}
 .klio-chat-intent-menu>button b{flex:0 0 auto;font-size:12px;font-weight:650}
-.klio-chat-intent-menu>button small{overflow:hidden;font-size:11px;text-overflow:ellipsis;white-space:nowrap}
+.klio-chat-intent-menu>button small{overflow:hidden;min-width:0;font-size:11px;text-overflow:ellipsis;white-space:nowrap}
 :root[data-theme="light"] .klio-chat-intent-menu{color:#17283a;background:#fcfdff;border:1px solid #d8e1ea}
 :root[data-theme="light"] .klio-chat-intent-menu>button small{color:#526579}
 :root[data-theme="light"] .klio-chat-intent-menu>button:hover,
@@ -1020,6 +1032,31 @@ body:has(.workspace-shell.is-dialogue .publications-editor-modal)>.module-select
 :root[data-theme="dark"] .klio-chat-intent-menu>button.active{background:#1d2936}
 .klio-chat-settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 12px;margin-bottom:8px;padding:12px;border:1px solid var(--chat-line);border-radius:16px;background:var(--chat-side)}
 .klio-chat-settings-grid .field{margin:0;color:var(--chat-muted);font-size:12px;font-weight:600}
+
+/* Themed scrollbars for every scrollable area in dialogue mode (site
+   owner: "эти страшные ползунки" - the bare OS scrollbar on the cards
+   jump menu and the message list both clash hard with the dark theme).
+   Same thin/accent-thumb treatment as .module-select-list elsewhere. */
+.klio-chat-history,
+.klio-chat-messages,
+.klio-chat-editor,
+.klio-chat-cards-options{scrollbar-width:thin;scrollbar-color:var(--chat-accent) transparent}
+.klio-chat-history::-webkit-scrollbar,
+.klio-chat-messages::-webkit-scrollbar,
+.klio-chat-editor::-webkit-scrollbar,
+.klio-chat-cards-options::-webkit-scrollbar{width:6px}
+.klio-chat-history::-webkit-scrollbar-track,
+.klio-chat-messages::-webkit-scrollbar-track,
+.klio-chat-editor::-webkit-scrollbar-track,
+.klio-chat-cards-options::-webkit-scrollbar-track{background:transparent}
+.klio-chat-history::-webkit-scrollbar-thumb,
+.klio-chat-messages::-webkit-scrollbar-thumb,
+.klio-chat-editor::-webkit-scrollbar-thumb,
+.klio-chat-cards-options::-webkit-scrollbar-thumb{border-radius:999px;background:var(--chat-accent);opacity:.6}
+.klio-chat-history::-webkit-scrollbar-thumb:hover,
+.klio-chat-messages::-webkit-scrollbar-thumb:hover,
+.klio-chat-editor::-webkit-scrollbar-thumb:hover,
+.klio-chat-cards-options::-webkit-scrollbar-thumb:hover{background:var(--chat-accent)}
 
 /* ModuleSelect reused here instead of a native <select> (site owner: "опять
    же поправить все css и все меню... как в профессиональном режиме в
