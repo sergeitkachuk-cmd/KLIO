@@ -76,6 +76,7 @@ type Props = {
   brands: Array<{ id: string; name: string }>;
   hasLogo: boolean;
   remaining: number;
+  imagesRemaining: number;
   onNavigate: (section: "history" | "publications" | "brand") => void;
   onBrandChange: (id: string) => void;
   onSaved: (generation: SharedGeneration) => void;
@@ -1215,6 +1216,18 @@ export function DialogueWorkspace(props: Props) {
               rows={2}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
+              onFocus={(e) => {
+                // On some mobile browsers, 100dvh doesn't settle to its new
+                // (keyboard-shrunk) value until after the keyboard's own
+                // open animation finishes, so the compose bar can end up
+                // sitting below the actually-visible area right when it's
+                // most needed (site owner: "поле ввода иногда проваливается
+                // ниже экрана и надо прокручивать"). A delayed scrollIntoView
+                // (after that animation, not before it) pulls the field back
+                // into view without waiting on dvh to catch up on its own.
+                const field = e.currentTarget;
+                window.setTimeout(() => field.scrollIntoView({ block: "end", behavior: "smooth" }), 300);
+              }}
               onKeyDown={(e) => {
                 if (
                   e.key === "Enter" &&
@@ -1295,7 +1308,13 @@ export function DialogueWorkspace(props: Props) {
             </div>
           </form>
           <small>
-            Доступно {props.remaining} ответов · изображение расходует одну генерацию.
+            {/* Only the text-reply quota was shown here - images draw from a
+                separate, much smaller pool (generationsRemaining, shared
+                with the professional generator's own materials count) that
+                had no visibility in dialogue mode at all beyond "costs one
+                generation" (site owner: "у нас никак не обозначается и не
+                регулируется в тарифе генерация картинок и диалога"). */}
+            Доступно {props.remaining} ответов и {props.imagesRemaining} {props.imagesRemaining === 1 ? "генерация изображения" : "генераций изображений"}.
           </small>
         </div>
       </section>

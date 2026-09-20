@@ -680,6 +680,29 @@
   .workspace-shell.is-dialogue .workspace-header-actions > a {
     display: none;
   }
+  /* justify-content: space-between on .workspace-header only guarantees
+     the wordmark and .workspace-header-actions stay at the two edges - it
+     doesn't guarantee any gap between them, so once their combined width
+     stopped leaving slack (mode-switch pill + theme toggle + avatar, even
+     compacted above), they visually touched (site owner: "КЛИО и выбор
+     режима слипаются"). An explicit gap floors the distance instead of
+     letting it collapse to zero; the wordmark shrinks to make room for it
+     rather than overflowing. */
+  .workspace-shell.is-dialogue .workspace-header {
+    gap: 10px;
+  }
+  .workspace-shell.is-dialogue .brand small {
+    display: none;
+  }
+  .workspace-shell.is-dialogue .brand b {
+    font-size: 18px;
+  }
+  .workspace-shell.is-dialogue .brand i {
+    grid-row: 1;
+    width: 28px;
+    height: 28px;
+    font-size: 15px;
+  }
   .klio-chat {
     grid-template-columns: minmax(0, 1fr);
     height: calc(100dvh - 120px);
@@ -855,7 +878,7 @@ body:has(.workspace-shell.is-dialogue)>.module-select-list>button>em{color:#2750
 .workspace-shell.is-dialogue .brand-fields :is(label,.brand-profile-field)>small{color:var(--dialogue-muted)!important}
 .workspace-shell.is-dialogue .brand-fields :is(input,textarea){border-color:var(--dialogue-line)!important;background:var(--dialogue-paper)!important;box-shadow:none!important;color:var(--dialogue-ink)!important}
 .workspace-shell.is-dialogue .brand-fields :is(input,textarea):focus{border-color:var(--dialogue-accent)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--dialogue-accent) 18%,transparent)!important}
-.workspace-shell.is-dialogue .brand-website-row button{border-color:var(--dialogue-line)!important;background:var(--dialogue-paper)!important}
+.workspace-shell.is-dialogue .brand-website-row button{border-color:var(--dialogue-line)!important;background:var(--dialogue-paper)!important;color:var(--dialogue-ink)!important}
 .workspace-shell.is-dialogue .brand-website-row .brand-book-status{color:var(--dialogue-muted)!important}
 .workspace-shell.is-dialogue :is(.profile-ai-note,.profile-assistant-row,.profile-foundation-warning){border-color:var(--dialogue-line)!important;background:var(--dialogue-soft)!important}
 .workspace-shell.is-dialogue .workspace-sidebar,.workspace-shell.is-dialogue .workspace-project{background:var(--dialogue-soft)!important;box-shadow:none;border-color:var(--dialogue-line)}

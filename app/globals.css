@@ -12664,6 +12664,16 @@ input[type="radio"] {
 
 .publications-editor-field input,
 .publications-editor-field textarea {
+  /* A grid item's default minimum width is its min-content size, not 0 -
+     for a field whose value is (or later becomes) one long unbroken
+     string, e.g. a pasted URL with no spaces to wrap at, that stretched
+     .publications-editor-field's single column, and with it the whole
+     modal, wider than the viewport with no way to shrink it back down
+     (site owner: "поле разъезжается за экран"). width:100% plus
+     min-width:0 lets it fill the column without ever forcing it wider. */
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
   padding: 11px 13px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 10px;

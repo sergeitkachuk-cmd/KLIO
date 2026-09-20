@@ -5550,6 +5550,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         brandId={activeBrandId} brandName={activeWorkspaceBrand?.name || ""} brands={workspaceBrands}
         hasLogo={Boolean(brand.logoKey)}
         remaining={workspaceAccount.editorActionsRemaining}
+        imagesRemaining={workspaceAccount.generationsRemaining}
         onNavigate={openModule} onBrandChange={id => void switchWorkspaceBrand(id)}
         onSaved={generation => setWorkspaceHistory(list => [{ ...list.find(item => item.id === generation.id), ...generation } as GenerationArchiveItem, ...list.filter(item => item.id !== generation.id)])}
         onProfessional={generation => void (async () => { if (await changeWorkspaceMode("professional")) { openModule("history"); openArchiveItem(generation as GenerationArchiveItem); } })()}
