@@ -1,4 +1,5 @@
 import { storageConfigured, uploadPublicationImage } from "./storage";
+import { imageContentType } from "./image-type";
 
 export type ImageAspectRatio = "1:1" | "4:3" | "4:5" | "16:9" | "9:16";
 export type ImageOutputFormat = "png" | "jpeg" | "webp";
@@ -128,8 +129,20 @@ export async function createImage(prompt: string, email: string, baseUrl: string
   if (!encoded || encoded.length > 12_000_000)
     throw new Error("Сервис изображений вернул некорректный файл.");
   const bytes = new Uint8Array(Buffer.from(encoded, "base64"));
-  const fileName = resolved.outputFormat === "jpeg" ? "klio.jpeg" : resolved.outputFormat === "webp" ? "klio.webp" : "klio.png";
-  const contentType = resolved.outputFormat === "jpeg" ? "image/jpeg" : resolved.outputFormat === "webp" ? "image/webp" : "image/png";
+  // Detected from the actual bytes, not assumed from resolved.outputFormat
+  // (site owner: generation "didn't work at all for jpg, only png worked").
+  // The relay is a separate deployment this repo doesn't control (see the
+  // aspectRatio comment above) - if it silently returns png regardless of
+  // the requested output_format, trusting the request meant this file's
+  // declared type mismatched what uploadPublicationImage's own signature
+  // check found in the bytes, and every non-png result was rejected
+  // outright. Uploading under whatever format the bytes actually are
+  // means a substituted png still succeeds, just as png, instead of
+  // failing.
+  const detectedType = imageContentType(bytes);
+  const contentType = detectedType ||
+    (resolved.outputFormat === "jpeg" ? "image/jpeg" : resolved.outputFormat === "webp" ? "image/webp" : "image/png");
+  const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
   return uploadPublicationImage(
     new File([bytes], fileName, { type: contentType }),
     email,
