@@ -740,8 +740,13 @@
        sitting below the actually-visible area on first load, not just
        after the keyboard opens (site owner: "поле ввода не влезло внизу").
        Trades a little unused space back when the chrome auto-hides for
-       reliably fitting when it doesn't. */
-    height: calc(100svh - 120px);
+       reliably fitting when it doesn't. +8px versus before: the header
+       became a floating pill with an 8px margin-top at this same
+       breakpoint (site owner: "сделай шапку пилюлей как на главной"),
+       which - being position: sticky, not fixed - still occupies that
+       extra space in normal flow, same as if the header had simply
+       gotten 8px taller. */
+    height: calc(100svh - 128px);
     min-height: 480px;
     position: relative;
   }
@@ -749,13 +754,27 @@
     display: none;
   }
   .klio-chat.menu-open .klio-chat-sidebar {
+    /* A floating rounded card with a gap on every side, not a flush
+       full-height slab - matching the same "floating pill" language as
+       the header and chat cards elsewhere today (site owner: "в меню в
+       диалоге тоже всё скругли... придумай как красиво расположить
+       чтобы не мешалось"). The explicit "Закрыть ×" button is gone -
+       clicking outside the drawer already closes it (see the
+       sidebarRef effect), so it was a redundant control once the
+       drawer reads as its own floating card rather than a pinned panel. */
     display: flex;
     position: absolute;
-    inset: 0 auto 0 0;
+    inset: 8px auto 8px 8px;
     width: 260px;
+    border-radius: 18px;
     z-index: 20;
-    box-shadow: 15px 0 40px #0003;
+    box-shadow: 0 15px 45px #0004;
+    overflow: hidden;
   }
+  /* The hamburger open-button and the sidebar's own close-button used to
+     share this exact class - removing the close button (see above) must
+     not also hide the still-needed open one, since this is the only rule
+     that shows either of them on mobile at all. */
   .klio-chat-menu {
     display: block;
   }

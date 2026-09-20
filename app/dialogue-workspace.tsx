@@ -854,7 +854,6 @@ export function DialogueWorkspace(props: Props) {
       hidden={!props.visible}
     >
     <aside className="klio-chat-sidebar" aria-label="Диалоги и материалы" ref={sidebarRef}>
-      <button className="klio-chat-menu" aria-label="Закрыть список диалогов" onClick={() => setMobileMenu(false)}>Закрыть ×</button>
         <div className="klio-chat-business">
           <span>Ваш бизнес</span>
           {props.brands.length ? (
@@ -987,12 +986,6 @@ export function DialogueWorkspace(props: Props) {
               )}
             </div>
           )}
-          <button
-            disabled={busy || !thread}
-            onClick={() => thread && void perform(() => loadThread(thread.id))}
-          >
-            Обновить
-          </button>
         </header>
         <div className="klio-chat-messages" aria-busy={processing || loading}>
           {loading ? (

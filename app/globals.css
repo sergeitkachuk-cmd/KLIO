@@ -6,7 +6,7 @@
 
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: 94px;
+  scroll-padding-top: 106px;
   /* Reserves the vertical scrollbar's track permanently instead of only
      when a page is tall enough to need one. Without this, .workspace-content
      (centered via margin: 0 auto, width: min(100%, 1520px)) recenters
@@ -4342,27 +4342,31 @@ footer nav a {
 }
 
 .workspace-header {
+  /* A true floating pill, matching .site-header (site owner: "хотел
+     чтобы ты сделал шапку пилюлей как на главной, она красиво
+     смотрится в стиле современного оформления айфонов") - kept as
+     position: sticky rather than switching to fixed, deliberately: a
+     sticky element still occupies its own normal-flow space (margin
+     included), so everything downstream that already sizes itself
+     around "whatever the header doesn't take up" (dialogue mode's
+     mobile chat height math above all) keeps working automatically,
+     just with a slightly taller number to make room for. margin-top
+     (not just `top`) is what makes the gap present even before any
+     scrolling - sticky's own `top` alone only closes a gap that
+     scrolling would otherwise remove, it doesn't create one from a
+     flush starting position. */
   position: sticky;
   z-index: 80;
-  top: 0;
+  top: 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 76px;
+  max-width: min(calc(100% - 44px), 1500px);
+  margin: 12px auto 0;
   padding: 0 30px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
-  /* Rounded like .site-header (the landing page's own floating pill),
-     bottom corners only - this bar sits flush against the viewport's top
-     edge (position: sticky; top: 0), where rounding the top corners
-     wouldn't be visible against anything anyway, unlike the landing
-     page's header, which floats with a gap on every side (site owner:
-     "сделай шапку везде единую как на главной странице закруглённую").
-     Kept as position: sticky rather than matching that floating/inset
-     treatment exactly - dialogue mode's mobile layout depends on this bar
-     staying in normal document flow for its own height math (see
-     .workspace-shell.is-dialogue's flex-column rules), and fixed/floating
-     would remove it from flow entirely. */
-  border-radius: 0 0 20px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
   color: #fff;
   background:
     radial-gradient(circle at 78% -60%, rgba(124, 58, 237, 0.65), transparent 42%),
@@ -4505,6 +4509,7 @@ footer nav a {
 .account-menu-list a {
   display: flex;
   align-items: center;
+  gap: 10px;
   width: 100%;
   min-height: 40px;
   padding: 0 12px;
@@ -15004,6 +15009,8 @@ input[type="radio"] {
 
   .workspace-header {
     height: 62px;
+    max-width: calc(100% - 20px);
+    margin: 8px auto 0;
     padding: 0 12px;
   }
 

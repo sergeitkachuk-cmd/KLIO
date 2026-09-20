@@ -5495,7 +5495,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             {(["dialogue", "professional"] as const).map(mode => <button key={mode} type="button" aria-pressed={workspaceMode === mode} disabled={modeSaving} onClick={() => void changeWorkspaceMode(mode)}><span className="mode-switch-full">{mode === "dialogue" ? "Диалоговый" : "Профессиональный"}</span><span className="mode-switch-short">{mode === "dialogue" ? "Диалог" : "Профи"}</span></button>)}
           </div>
           <Link href="/">На главную</Link>
-          <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"} title={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"}><Icon name={theme === "dark" ? "sun" : "moon"}/></button>
           <a className="telegram-header-link" href="https://t.me/kliopress" target="_blank" rel="noreferrer" aria-label="Telegram КЛИО"><Icon name="telegram"/><span className="telegram-header-link-text">Telegram КЛИО</span></a>
           <div className={`account-menu ${accountMenuOpen ? "is-open" : ""}`} ref={accountMenuRef}>
             <button type="button" className="workspace-account" onClick={() => setAccountMenuOpen((value) => !value)} aria-haspopup="menu" aria-expanded={accountMenuOpen}>
@@ -5503,6 +5502,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </button>
             {accountMenuOpen && <div className="account-menu-list" role="menu">
               <Link href="/account" role="menuitem">Личный кабинет</Link>
+              {/* Moved out of the main header bar into here (site owner:
+                  "чтобы шапка аккуратно смотрелась может переключение
+                  темы убрать в меню выпадающее профиля?") - one less
+                  icon competing for room in an already-tight row. */}
+              <button type="button" role="menuitem" onClick={() => { toggleTheme(); setAccountMenuOpen(false); }}>
+                <Icon name={theme === "dark" ? "sun" : "moon"}/> {theme === "dark" ? "Светлая тема" : "Тёмная тема"}
+              </button>
               <button type="button" role="menuitem" onClick={() => {
                 setAccountMenuOpen(false);
                 setFeedbackOpen(true);
