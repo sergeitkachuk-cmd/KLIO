@@ -281,9 +281,24 @@ export async function researchMaterialWeb(topic: string, geography: Geography[])
 // asked for lab-marker specifics, got "not in the sources provided" even
 // though a real search should have found them). This query is deliberately
 // biased toward pages that carry citable specifics.
-export async function researchAdaptationFacts(topic: string): Promise<TavilyResearch | null> {
-  const query = `${topic} первоисточники, исследования, конкретные цифры, показатели, критерии, нормы и подтверждённые факты`;
-  return await tavilySearch(query, 6, `adaptation-facts-v2:${cacheKey(topic, [])}`, { depth: "advanced", contentLength: 1_800, timeoutMs: 12_000 })
+// `recent` (dialogue's own needsWebSearch passes this for "новости"/
+// "изменения"/"актуальн-" style questions) switches the query itself toward
+// current events and adds Tavily's time_range:"month" - without it, a
+// "general" search treats a decade-old evergreen page and yesterday's
+// article as equally relevant, which is fine for a GOST number (the current
+// standard can genuinely be a 2012 document) but wrong for "что изменилось
+// в правилах". Kept a separate cache namespace so a recent-mode and a
+// standard-mode search on the same topic text never collide.
+export async function researchAdaptationFacts(topic: string, recent = false): Promise<TavilyResearch | null> {
+  const query = recent
+    ? `${topic} последние новости, изменения и актуальное состояние на сегодня`
+    : `${topic} первоисточники, исследования, конкретные цифры, показатели, критерии, нормы и подтверждённые факты`;
+  return await tavilySearch(query, 6, `adaptation-facts-${recent ? "recent-v1" : "v2"}:${cacheKey(topic, [])}`, {
+    depth: "advanced",
+    contentLength: 1_800,
+    timeoutMs: 12_000,
+    ...(recent ? { timeRange: "month" as const } : {}),
+  })
     ?? yandexResearch(query, 6);
 }
 

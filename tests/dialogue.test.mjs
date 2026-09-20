@@ -24,9 +24,10 @@ test("web search runs automatically for fact-seeking questions and stays off for
   t.after(() => h.close());
   let thread = await h.create();
   let sent;
+  let lastTavilyCall;
   let tavilyCalls = 0;
   h.setAi(async input => { sent = JSON.parse(input.input); return { raw: "Готово" }; });
-  h.setTavily(async topic => { tavilyCalls++; return { query: topic, results: [{ title: "ГОСТ 31805-2012", url: "https://example.invalid/gost", content: "Требования к упаковке." }] }; });
+  h.setTavily(async (topic, recent) => { tavilyCalls++; lastTavilyCall = { topic, recent }; return { query: topic, results: [{ title: "ГОСТ 31805-2012", url: "https://example.invalid/gost", content: "Требования к упаковке." }] }; });
   const send = async (text) => {
     await h.post({ action: "send", id: thread.id, revision: thread.revision, requestId: randomUUID(), text, mode: "chat" });
     thread = await h.settled(thread.id);
@@ -37,10 +38,20 @@ test("web search runs automatically for fact-seeking questions and stays off for
   assert.equal(sent.searchAttempted, false);
   assert.equal(sent.research, null);
 
+  // A standard/GOST lookup is a fact question, not a recency one - the
+  // current standard can genuinely be a decade-old document, so this must
+  // NOT get time-scoped the way a news question does below.
   await send("Какой ГОСТ регулирует упаковку кофе?");
   assert.equal(tavilyCalls, 1);
   assert.equal(sent.searchAttempted, true);
   assert.equal(sent.research.results[0].title, "ГОСТ 31805-2012");
+  assert.equal(lastTavilyCall.recent, false);
+
+  // "что изменилось" is exactly the site owner's own "не старые из памяти"
+  // complaint - must trigger the recency-biased search, not just any search.
+  await send("Что изменилось в правилах маркировки за последний месяц?");
+  assert.equal(tavilyCalls, 2);
+  assert.equal(lastTavilyCall.recent, true);
 });
 
 test("image generation from dialogue saves the result into materials", async (t) => {
