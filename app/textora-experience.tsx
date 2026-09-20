@@ -6015,6 +6015,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                       }}/>
                       {brand.logoFileName && <button type="button" className="brand-book-remove" onClick={removeBrandLogo} disabled={brandLogoBusy}>Открепить</button>}
                     </div>
+                    <small>PNG, JPEG, WEBP или GIF — до 8 МБ</small>
                     {brandLogoError && <small className="is-error" role="alert">{brandLogoError}</small>}
                   </ProfileField>
                   <ProfileField id="brand-description" label="О компании" help="Короткая фактическая справка: сфера, география, услуги и масштаб." wide><AutoTextarea id="brand-description" aria-describedby="brand-description-help" rows={3} value={brand.description} onChange={(event) => updateBrand("description", event.target.value)}/></ProfileField>
