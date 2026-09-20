@@ -10,6 +10,7 @@ import { createWorkspaceSaveQueue } from "./workspace-save-queue";
 import { HelpTip } from "./help-tip";
 import { ModuleSelect } from "./module-select";
 import { PublicationImagePicker } from "./publication-image-picker";
+import { ImageLightbox } from "./image-lightbox";
 import { FOUNDATION_FIELDS, VOICE_FIELDS, mergeProfileFill, missingVoiceFoundation } from "./brand-profile-fill";
 import { russianGeoTree } from "./geo-data";
 import { ADAPTATION_PLANS, FORMAT_PLANS, TONE_PLANS } from "./content-plans";
@@ -2263,6 +2264,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [imageBusy, setImageBusy] = useState(false);
   const [imageError, setImageError] = useState("");
   const [imageResult, setImageResult] = useState<GenerationArchiveItem | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [workspaceMaterials, setWorkspaceMaterials] = useState<SavedWorkspaceMaterial[]>([]);
   const [workspaceUserName, setWorkspaceUserName] = useState("Сергей");
   const [workspaceUserKey, setWorkspaceUserKey] = useState("");
@@ -5671,6 +5673,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             })}</div> : <div className="workspace-history-empty"><i>Аа</i><div><h3>{activeMaterialCount > 0 ? "Нет материалов за выбранный период" : "У этого бренда пока нет материалов"}</h3><p>{activeMaterialCount > 0 ? "Попробуйте выбрать другой период или фильтр." : "Сгенерированные тексты появятся здесь автоматически. Семантику, анализ конкурентов и контент‑планы можно зафиксировать кнопкой «Сохранить в материалы»."}</p></div></div>}
           </section>}
 
+          {lightboxUrl && <ImageLightbox src={lightboxUrl} alt="Изображение" onClose={() => setLightboxUrl(null)} />}
           {archiveEditorItem && <div className="archive-editor-overlay" onMouseDown={handleOverlayBackdropDown} onClick={(event) => handleOverlayBackdropClick(event, closeArchiveEditor)}>
             <section className="archive-editor-modal" role="dialog" aria-modal="true" aria-labelledby="archive-editor-title">
               <div className="archive-editor-head">
@@ -6342,7 +6345,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <button className="button primary large" type="button" onClick={() => void generateProfessionalImage()} disabled={imageBusy || !workspaceReady || imagePrompt.trim().length < 8 || workspaceAccount.generationsRemaining <= 0}><Icon name="image"/>{imageBusy ? "Создаём изображение…" : workspaceAccount.generationsRemaining <= 0 ? "Лимит генераций исчерпан" : "Создать изображение"}</button>
               </div>
               <div className="image-generator-preview" aria-live="polite">
-                {imageResult?.imageUrl ? <><Image src={imageResult.imageUrl} alt={imageResult.title} width={1024} height={1024} unoptimized/><p>Изображение сохранено в «Материалы».</p><div><a className="button ghost" href={imageResult.imageUrl} download>Скачать {imageFormatLabel(imageResult.imageUrl)}</a><button className="button ghost" type="button" onClick={() => { setMaterialsFilter("image"); openModule("history"); }}>Открыть материалы</button><button className="button ghost" type="button" onClick={() => void openPublicationDraft({ title: "", body: "", generationId: imageResult.id, imageUrl: imageResult.imageUrl })}>В публикацию</button></div></> : <div className="image-generator-empty"><Icon name="image"/><span>{imageBusy ? "КЛИО рисует. Обычно это занимает до минуты." : "Готовое изображение появится здесь"}</span></div>}
+                {imageResult?.imageUrl ? <><button type="button" className="image-generator-result-trigger" aria-label="Открыть изображение крупнее" onClick={() => setLightboxUrl(imageResult.imageUrl)}><Image src={imageResult.imageUrl} alt={imageResult.title} width={1024} height={1024} unoptimized/></button><p>Изображение сохранено в «Материалы».</p><div><a className="button ghost" href={imageResult.imageUrl} download>Скачать {imageFormatLabel(imageResult.imageUrl)}</a><button className="button ghost" type="button" onClick={() => { setMaterialsFilter("image"); openModule("history"); }}>Открыть материалы</button><button className="button ghost" type="button" onClick={() => void openPublicationDraft({ title: "", body: "", generationId: imageResult.id, imageUrl: imageResult.imageUrl })}>В публикацию</button></div></> : <div className="image-generator-empty"><Icon name="image"/><span>{imageBusy ? "КЛИО рисует. Обычно это занимает до минуты." : "Готовое изображение появится здесь"}</span></div>}
               </div>
             </div>
           </section>

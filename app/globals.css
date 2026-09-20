@@ -14569,6 +14569,45 @@ input[type="radio"] {
   background: linear-gradient(135deg, #6f3dd6, #8b5cf6);
 }
 
+.image-lightbox-overlay {
+  position: fixed;
+  z-index: 3100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(3, 10, 20, 0.86);
+  backdrop-filter: blur(4px);
+  cursor: zoom-out;
+}
+.image-lightbox-image {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  cursor: default;
+}
+.image-lightbox-close {
+  position: fixed;
+  top: 18px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.image-lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
 .publications-published-note {
   margin: 12px 0 0;
   padding: 10px 12px;
@@ -23053,6 +23092,7 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 .image-generator-preview>div:not(.image-generator-empty){display:flex;flex-wrap:nowrap;gap:8px;margin-top:16px;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .image-generator-preview>div:not(.image-generator-empty)>.button{flex:0 0 auto;min-height:38px;padding:0 14px;font-size:13px;white-space:nowrap}
 .image-generator-preview>p{margin-top:14px}
+.image-generator-result-trigger{display:block;padding:0;border:0;background:none;cursor:zoom-in;width:100%}
 .image-generator-empty{display:flex;min-height:360px;align-items:center;justify-content:center;flex-direction:column;gap:16px;text-align:center;color:#bec9d8}
 .image-generator-empty svg{width:44px;height:44px}
 .material-card-image{display:block;width:100%;max-height:280px;height:auto;object-fit:contain;margin:14px 0;border-radius:10px;background:rgba(0,0,0,.06)}
