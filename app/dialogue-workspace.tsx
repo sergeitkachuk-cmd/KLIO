@@ -73,6 +73,7 @@ type Props = {
   userKey: string;
   visible: boolean;
   brands: Array<{ id: string; name: string }>;
+  hasLogo: boolean;
   remaining: number;
   onNavigate: (section: "history" | "publications" | "brand") => void;
   onBrandChange: (id: string) => void;
@@ -144,6 +145,7 @@ export function DialogueWorkspace(props: Props) {
   const [topicCount, setTopicCount] = useState("5");
   const [imageAspectRatio, setImageAspectRatio] = useState("4:3");
   const [imageOutputFormat, setImageOutputFormat] = useState("png");
+  const [useLogoInImage, setUseLogoInImage] = useState(false);
   // Replaces one always-visible settings panel (site owner: "мы реально
   // путаем человека предлагая ему кучу настроек разом") with a ChatGPT-
   // style "+" picker: chat stays plain by default, and choosing a task
@@ -532,6 +534,7 @@ export function DialogueWorkspace(props: Props) {
           topicCount: Number(topicCount),
           imageAspectRatio,
           imageOutputFormat,
+          useLogo: props.hasLogo && useLogoInImage,
         },
       });
       accept(result.thread);
@@ -1098,6 +1101,7 @@ export function DialogueWorkspace(props: Props) {
               {composeIntent === "image" && <>
                 <ModuleSelect variant="dialogue" label="Соотношение картинки" value={imageAspectRatio} options={IMAGE_ASPECT_OPTIONS} onChange={setImageAspectRatio}/>
                 <ModuleSelect variant="dialogue" label="Формат картинки" value={imageOutputFormat} options={IMAGE_FORMAT_OPTIONS} onChange={setImageOutputFormat}/>
+                {props.hasLogo && <label className="klio-chat-logo-toggle"><input type="checkbox" checked={useLogoInImage} onChange={(event) => setUseLogoInImage(event.target.checked)}/> Использовать логотип бренда</label>}
               </>}
             </div>
           )}

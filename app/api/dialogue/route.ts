@@ -36,7 +36,8 @@ import {
 import { researchAdaptationFacts } from "../_lib/tavily";
 import { readWebsiteContext } from "../_lib/website-context";
 import { resolveBaseUrl } from "../_lib/base-url";
-import { createImage, imageConfigured, type ImageAspectRatio, type ImageOutputFormat } from "../_lib/image-generation";
+import { createImage, createImageFromLogo, imageConfigured, type ImageAspectRatio, type ImageOutputFormat } from "../_lib/image-generation";
+import { downloadBrandLogo } from "../_lib/storage";
 
 export const runtime = "nodejs";
 export const maxDuration = 240;
@@ -183,6 +184,7 @@ async function runReply(
     topic_count: number;
     imageAspectRatio: ImageAspectRatio | null;
     imageOutputFormat: ImageOutputFormat | null;
+    useLogo: boolean;
   },
 ) {
   try {
@@ -202,16 +204,18 @@ async function runReply(
       const prompt = selected
         ? `Создай изображение для публикации. Не добавляй надписи, если они не запрошены. Контекст бизнеса: ${useBrandContext ? brand?.profileJson ?? "не указан" : "отключён пользователем"}. Материал: ${selected.title}\n${selected.body}\nПожелания: ${last}`
         : `Создай изображение по описанию. Не добавляй надписи, если они не запрошены. Контекст бизнеса: ${useBrandContext ? brand?.profileJson ?? "не указан" : "отключён пользователем"}. Описание: ${last}`;
-      const imageUrl = await createImage(
-        prompt,
-        row.ownerEmail,
-        baseUrl,
-        row.requestId,
-        {
-          ...(settings.imageAspectRatio ? { aspectRatio: settings.imageAspectRatio } : {}),
-          ...(settings.imageOutputFormat ? { outputFormat: settings.imageOutputFormat } : {}),
-        },
-      );
+      const imageOptions = {
+        ...(settings.imageAspectRatio ? { aspectRatio: settings.imageAspectRatio } : {}),
+        ...(settings.imageOutputFormat ? { outputFormat: settings.imageOutputFormat } : {}),
+      };
+      let logoKey = "";
+      if (settings.useLogo && brand) {
+        const profile = JSON.parse(brand.profileJson) as { logoKey?: unknown };
+        if (typeof profile.logoKey === "string") logoKey = profile.logoKey;
+      }
+      const imageUrl = logoKey
+        ? await createImageFromLogo(prompt, await downloadBrandLogo(logoKey), row.ownerEmail, baseUrl, row.requestId, imageOptions)
+        : await createImage(prompt, row.ownerEmail, baseUrl, row.requestId, imageOptions);
       const materialId = crypto.randomUUID();
       const title = (selected?.title.slice(0, 100) || last.slice(0, 100)) || "Изображение";
       const body = (selected?.body.slice(0, 4000) || last.slice(0, 4000)) || last;
@@ -587,6 +591,7 @@ export async function POST(request: Request) {
       typeof settingsRaw.imageOutputFormat === "string" && (IMAGE_OUTPUT_FORMATS as readonly string[]).includes(settingsRaw.imageOutputFormat)
         ? settingsRaw.imageOutputFormat as ImageOutputFormat
         : null;
+    const useLogo = settingsRaw.useLogo === true;
     const genSettings = {
       format: requestedFormat,
       format_contract: requestedFormat ? {
@@ -600,6 +605,7 @@ export async function POST(request: Request) {
       topic_count: topicCount,
       imageAspectRatio,
       imageOutputFormat,
+      useLogo,
     };
     if (action === "send") {
       if (!aiConfigured() && mode !== "image")

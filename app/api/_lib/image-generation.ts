@@ -173,3 +173,68 @@ export async function createImage(prompt: string, email: string, baseUrl: string
   );
 }
 
+// Attaches the brand's real logo file via OpenAI's image-edit endpoint,
+// instead of the model inventing its own logo from the prompt text alone
+// (site owner: "чтобы он каждый раз сам не придумывал логотип при
+// генерации изображения"). Always calls OpenAI directly, never through
+// the relay (KLIO_IMAGE_SERVICE_URL) - the relay's own /generate contract
+// is JSON-only (see createImage above) and has no way to carry a file
+// upload; only this server, with its own OPENAI_API_KEY, can make a
+// multipart request to /v1/images/edits.
+export async function createImageFromLogo(
+  prompt: string,
+  logo: { bytes: Uint8Array<ArrayBuffer>; contentType: string },
+  email: string,
+  baseUrl: string,
+  requestId: string,
+  options: ImageGenerationOptions = {},
+) {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey)
+    throw new Error(
+      "Использование логотипа требует прямого подключения к OpenAI (переменная OPENAI_API_KEY на сервере) — сервис-релей эту функцию не поддерживает.",
+    );
+  const resolved = resolveImageGenerationOptions(options);
+  const extension = logo.contentType === "image/png" ? "png" : logo.contentType === "image/webp" ? "webp" : logo.contentType === "image/gif" ? "gif" : "jpg";
+  const form = new FormData();
+  form.set("model", process.env.KLIO_IMAGE_MODEL?.trim() || "gpt-image-1");
+  form.set(
+    "prompt",
+    `${prompt}\n\nВ приложенном файле — логотип бренда. Сохрани его без изменений (форму, цвета, надписи) и естественно размести на итоговом изображении, не перерисовывая и не искажая сам логотип.`.slice(0, 32000),
+  );
+  form.set("size", resolved.size);
+  if (options.quality) form.set("quality", resolved.quality);
+  if (options.background) form.set("background", resolved.background);
+  if (options.outputFormat) form.set("output_format", resolved.outputFormat);
+  form.set("image", new File([logo.bytes], `logo.${extension}`, { type: logo.contentType }));
+  const response = await fetch("https://api.openai.com/v1/images/edits", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Idempotency-Key": requestId,
+    },
+    body: form,
+    signal: AbortSignal.timeout(150_000),
+  });
+  if (!response.ok)
+    throw new Error(
+      "Сервис изображений не выполнил запрос с логотипом. Попробуйте другое описание или отключите использование логотипа.",
+    );
+  const payload = (await response.json()) as {
+    data?: Array<{ b64_json?: string }>;
+  };
+  const encoded = payload.data?.[0]?.b64_json;
+  if (!encoded || encoded.length > 12_000_000)
+    throw new Error("Сервис изображений вернул некорректный файл.");
+  const bytes = new Uint8Array(Buffer.from(encoded, "base64"));
+  const detectedType = imageContentType(bytes);
+  const contentType = detectedType ||
+    (resolved.outputFormat === "jpeg" ? "image/jpeg" : resolved.outputFormat === "webp" ? "image/webp" : "image/png");
+  const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
+  return uploadPublicationImage(
+    new File([bytes], fileName, { type: contentType }),
+    email,
+    baseUrl,
+  );
+}
+

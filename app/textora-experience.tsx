@@ -213,6 +213,13 @@ type BrandProfile = {
   // api/brand/book/route.ts, the only thing that ever reads it back).
   brandBookFileName: string;
   brandBookKey: string;
+  // Same private-S3-key pattern as the brand book above (see
+  // api/brand/logo/route.ts) - lets image generation attach the real
+  // logo (via OpenAI's edit endpoint) instead of the model inventing one
+  // from the prompt alone (site owner: "чтобы он каждый раз сам не
+  // придумывал логотип при генерации изображения").
+  logoFileName: string;
+  logoKey: string;
 };
 
 type GeneratedMaterial = {
@@ -474,6 +481,8 @@ const defaultBrand: BrandProfile = {
   prohibited: "гарантированное исцеление; чудодейственный; лучший санаторий; уникальный результат; успейте любой ценой",
   brandBookFileName: "",
   brandBookKey: "",
+  logoFileName: "",
+  logoKey: "",
 };
 
 // Demo data belongs only to the public example. A brand created in a real
@@ -498,6 +507,8 @@ function emptyBrandProfile(name = "Мой бренд"): BrandProfile {
     prohibited: "",
     brandBookFileName: "",
     brandBookKey: "",
+    logoFileName: "",
+    logoKey: "",
   };
 }
 
@@ -1675,6 +1686,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const brandFillEpoch = useRef(0);
   const [brandAnalyzeBusy, setBrandAnalyzeBusy] = useState(false);
   const [brandAnalyzeError, setBrandAnalyzeError] = useState("");
+  const brandLogoInputRef = useRef<HTMLInputElement | null>(null);
+  const [brandLogoBusy, setBrandLogoBusy] = useState(false);
+  const [brandLogoError, setBrandLogoError] = useState("");
   const [semanticQuery, setSemanticQuery] = useState("");
   const [semanticGeo, setSemanticGeo] = useState<SemanticGeo>(defaultSemanticGeo);
   const [semanticGeoOpen, setSemanticGeoOpen] = useState(false);
@@ -2245,6 +2259,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [imagePrompt, setImagePrompt] = useState("");
   const [imageAspectRatio, setImageAspectRatio] = useState<"1:1" | "4:3" | "4:5" | "16:9" | "9:16">("4:3");
   const [imageOutputFormat, setImageOutputFormat] = useState<"png" | "jpeg" | "webp">("png");
+  const [useLogoInImage, setUseLogoInImage] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
   const [imageError, setImageError] = useState("");
   const [imageResult, setImageResult] = useState<GenerationArchiveItem | null>(null);
@@ -3711,6 +3726,37 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setBrandSaved(false);
   }
 
+  // No AI analysis attached (unlike uploadBrandBook above) - a logo is
+  // just an asset image generation can reference, not something to read
+  // facts out of.
+  async function uploadBrandLogo(file: File) {
+    if (brandLogoBusy) return;
+    const maxBytes = 8 * 1024 * 1024;
+    if (!["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)) { setBrandLogoError("Поддерживаются только PNG, JPEG, WEBP или GIF."); return; }
+    if (file.size > maxBytes) { setBrandLogoError(`Файл больше ${Math.round(maxBytes / 1024 / 1024)} МБ — уменьшите файл и попробуйте снова.`); return; }
+    setBrandLogoBusy(true);
+    setBrandLogoError("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch("/api/brand/logo", { method: "POST", body: form });
+      const payload = await safeJson(response) as { error?: string; key?: string; fileName?: string };
+      if (!response.ok || !payload.key) throw new Error(payload.error || "Не удалось загрузить логотип. Попробуйте ещё раз.");
+      setBrand((current) => ({ ...current, logoFileName: payload.fileName || file.name, logoKey: payload.key! }));
+      setBrandSaved(false);
+      showToast("Логотип прикреплён. Не забудьте сохранить профиль.");
+    } catch (error) {
+      setBrandLogoError(error instanceof Error ? error.message : "Не удалось загрузить логотип.");
+    } finally {
+      setBrandLogoBusy(false);
+    }
+  }
+
+  function removeBrandLogo() {
+    setBrand((current) => ({ ...current, logoFileName: "", logoKey: "" }));
+    setBrandSaved(false);
+  }
+
   function persistSemantics(
     result: SemanticResult,
     selectedIds: string[],
@@ -5117,6 +5163,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           requestId: crypto.randomUUID(),
           aspectRatio: imageAspectRatio,
           outputFormat: imageOutputFormat,
+          useLogo: useBrand && Boolean(brand.logoKey) && useLogoInImage,
         }),
       });
       const payload = await safeJson(response) as { error?: string; generation?: GenerationArchiveItem; account?: WorkspaceAccount };
@@ -5487,6 +5534,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         key={`${workspaceUserKey}:${activeBrandId}`} userKey={workspaceUserKey}
         visible={workspaceMode === "dialogue" && activeModule === "start"}
         brandId={activeBrandId} brandName={activeWorkspaceBrand?.name || ""} brands={workspaceBrands}
+        hasLogo={Boolean(brand.logoKey)}
         remaining={workspaceAccount.editorActionsRemaining}
         onNavigate={openModule} onBrandChange={id => void switchWorkspaceBrand(id)}
         onSaved={generation => setWorkspaceHistory(list => [{ ...list.find(item => item.id === generation.id), ...generation } as GenerationArchiveItem, ...list.filter(item => item.id !== generation.id)])}
@@ -5625,6 +5673,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </div>
               <div className="archive-editor-grid">
                 <article className="archive-editor-document">
+                  {/* The editor showed only title/body text fields, even
+                      for a pure "Изображение" material where those fields
+                      hold the generation prompt, not readable content
+                      (site owner: "текст запроса генерации картинки
+                      распределяет в заголовок и текст... есть текст
+                      запроса, но нет картинки самой"). */}
+                  {archiveEditorItem.imageUrl && <Image className="archive-editor-image-preview" src={archiveEditorItem.imageUrl} alt={archiveEditorItem.title} width={800} height={800} unoptimized/>}
                   <label><span>Заголовок материала</span><AutoTextarea className="archive-editor-title" rows={1} value={archiveEditorItem.title} onChange={(event) => setArchiveEditorItem((current) => current ? { ...current, title: event.target.value } : current)}/></label>
                   <label><span>Текст материала</span><AutoTextarea className="archive-editor-body" rows={16} value={archiveEditorItem.body} onChange={(event) => setArchiveEditorItem((current) => current ? { ...current, body: event.target.value } : current)}/></label>
                   <div className="archive-editor-actions">
@@ -5901,6 +5956,20 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                       {brand.brandBookFileName && <button type="button" className="brand-book-remove" onClick={removeBrandBook} disabled={brandAnalyzeBusy || voiceBusy}>Открепить</button>}
                     </div>
                     <small>КЛИО попробует дополнить профиль по файлу — спишется 1 исследование, если в файле найдётся текст</small>
+                  </ProfileField>
+                  <ProfileField id="brand-logo" label="Логотип" help="Загрузите файл логотипа, чтобы использовать его при генерации изображений — КЛИО разместит именно ваш логотип на картинке вместо того, чтобы придумывать свой на каждой генерации.">
+                    <div className="brand-website-row">
+                      {brand.logoKey && activeBrandId && <img className="brand-logo-preview" src={`/api/brand/logo?brandId=${encodeURIComponent(activeBrandId)}`} alt="Логотип бренда"/>}
+                      <span className="brand-book-status">{brand.logoFileName || "Файл не прикреплён"}</span>
+                      <button type="button" className={brandLogoBusy ? "is-busy" : ""} disabled={brandLogoBusy} onClick={() => brandLogoInputRef.current?.click()}>{brandLogoBusy ? "Загружаем…" : brand.logoFileName ? "Заменить файл" : "Загрузить логотип"}</button>
+                      <input ref={brandLogoInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden disabled={brandLogoBusy} onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        event.target.value = "";
+                        if (file) void uploadBrandLogo(file);
+                      }}/>
+                      {brand.logoFileName && <button type="button" className="brand-book-remove" onClick={removeBrandLogo} disabled={brandLogoBusy}>Открепить</button>}
+                    </div>
+                    {brandLogoError && <small className="is-error" role="alert">{brandLogoError}</small>}
                   </ProfileField>
                   <ProfileField id="brand-description" label="О компании" help="Короткая фактическая справка: сфера, география, услуги и масштаб." wide><AutoTextarea id="brand-description" aria-describedby="brand-description-help" rows={3} value={brand.description} onChange={(event) => updateBrand("description", event.target.value)}/></ProfileField>
                   <ProfileField id="brand-positioning" label="Позиционирование" help="Какое место бренд хочет занимать в сознании аудитории — не рекламный слоган, а редакционный ориентир." wide><AutoTextarea id="brand-positioning" aria-describedby="brand-positioning-help" rows={3} value={brand.positioning} onChange={(event) => updateBrand("positioning", event.target.value)}/></ProfileField>
@@ -6255,6 +6324,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     ]}
                   />
                 </div>
+                {useBrand && activeBrandId && brand.logoKey && <label className="image-generator-logo-toggle"><input type="checkbox" checked={useLogoInImage} onChange={(event) => setUseLogoInImage(event.target.checked)}/> Использовать логотип бренда на картинке</label>}
                 <p>Профиль бренда {useBrand && activeBrandId ? "учитывается" : "не используется"}. Один запуск расходует одну генерацию.</p>
                 {imageError && <p className="generation-error" role="alert">{imageError}</p>}
                 <button className="button primary large" type="button" onClick={() => void generateProfessionalImage()} disabled={imageBusy || !workspaceReady || imagePrompt.trim().length < 8 || workspaceAccount.generationsRemaining <= 0}><Icon name="image"/>{imageBusy ? "Создаём изображение…" : workspaceAccount.generationsRemaining <= 0 ? "Лимит генераций исчерпан" : "Создать изображение"}</button>

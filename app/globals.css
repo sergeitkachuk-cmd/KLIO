@@ -1605,6 +1605,17 @@ select:focus-visible {
   margin-top: 8px;
 }
 
+.brand-logo-preview {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  align-self: center;
+  object-fit: contain;
+  border: 1px solid rgba(47, 40, 79, 0.13);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
 /* Higher specificity than the base .brand-fields input rule on purpose
    (this file has a known history of equal-specificity duplicate-ish
    rules not reliably resolving by source order through the build's CSS
@@ -13252,6 +13263,16 @@ input[type="radio"] {
   margin-bottom: 14px;
 }
 
+.archive-editor-image-preview {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 360px;
+  margin-bottom: 14px;
+  object-fit: contain;
+  border-radius: 12px;
+}
+
 .archive-editor-document {
   border-color: rgba(255, 255, 255, 0.16);
 }
@@ -23021,6 +23042,7 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
    everywhere else in this file, just needed a row to sit in. */
 .image-generator-settings{display:flex;flex-wrap:wrap;gap:14px;width:100%}
 .image-generator-settings .module-select{flex:1 1 180px;min-width:160px}
+.image-generator-logo-toggle{display:flex;align-items:center;gap:8px;width:100%;margin-top:10px;color:#dbe4f2;font-size:13px}
 .image-generator-form p,.image-generator-preview p{margin:0;color:#bec9d8;font-size:14px;line-height:1.5}
 .image-generator-preview>img{display:block;width:100%;height:auto;max-height:680px;object-fit:contain;border-radius:12px}
 /* Kept to one row, not wrapped (site owner: "некрасиво, когда они на

@@ -203,6 +203,10 @@ export async function createDialogueHarness() {
       "../_lib/image-generation": {
         imageConfigured: () => true,
         createImage: async () => "https://cdn.example.invalid/generated.png",
+        createImageFromLogo: async () => "https://cdn.example.invalid/generated-with-logo.png",
+      },
+      "../_lib/storage": {
+        downloadBrandLogo: async () => ({ bytes: new Uint8Array(), contentType: "image/png" }),
       },
     },
     {

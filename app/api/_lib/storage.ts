@@ -229,3 +229,57 @@ export async function downloadBrandBookPdf(key: string): Promise<Uint8Array<Arra
     throw new StorageError("Не удалось прочитать файл из хранилища.", 502);
   }
 }
+
+const MAX_BRAND_LOGO_BYTES = 8 * 1024 * 1024;
+
+// Same private-only reasoning as uploadBrandBookPdf above: read back only
+// by our own server, both for the owner's own preview (api/brand/logo/
+// route.ts's GET) and for attaching the real file to an OpenAI image-edit
+// request (see createImageFromLogo in image-generation.ts) - never a
+// public S3 URL.
+export async function uploadBrandLogo(file: File, ownerEmail: string): Promise<{ key: string; contentType: string }> {
+  if (!storageConfigured()) {
+    throw new StorageError("Загрузка файлов пока не настроена на сервере.", 503);
+  }
+  if (file.size > MAX_BRAND_LOGO_BYTES) {
+    throw new StorageError(`Файл больше ${Math.round(MAX_BRAND_LOGO_BYTES / 1024 / 1024)} МБ — уменьшите файл и попробуйте снова.`, 400);
+  }
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const contentType = imageContentType(bytes);
+  if (!contentType) throw new StorageError("Поддерживаются только картинки JPEG, PNG, WEBP или GIF.", 400);
+  const extension = ALLOWED_CONTENT_TYPES[contentType] || "png";
+
+  const ownerKey = createHash("sha256").update(ownerEmail.trim().toLowerCase()).digest("hex");
+  const key = `brand-logos/${ownerKey}/${crypto.randomUUID()}.${extension}`;
+
+  try {
+    await client().send(new PutObjectCommand({
+      Bucket: requiredEnv("S3_BUCKET"),
+      Key: key,
+      Body: bytes,
+      ContentType: contentType,
+    }), { abortSignal: AbortSignal.timeout(40_000) });
+  } catch (error) {
+    if (error instanceof StorageError) throw error;
+    console.error("S3 brand-logo upload failed", error instanceof Error ? error.message : error);
+    throw new StorageError("Не удалось загрузить файл в хранилище.");
+  }
+
+  return { key, contentType };
+}
+
+// Owner-scoped, authenticated read-back - both for the profile page's own
+// <img> preview and for createImageFromLogo's OpenAI edit request. Keys
+// are namespaced the same way uploadBrandLogo writes them; the caller
+// (api/brand/logo/route.ts) checks the "brand-logos/" prefix before this
+// is ever reached, same defense-in-depth as downloadPublicationImage.
+export async function downloadBrandLogo(key: string): Promise<{ bytes: Uint8Array<ArrayBuffer>; contentType: string }> {
+  if (!storageConfigured()) throw new StorageError("Хранилище файлов пока не настроено на сервере.", 503);
+  try {
+    return await getObjectBytes(key);
+  } catch (error) {
+    if (error instanceof StorageError) throw error;
+    console.error("S3 brand-logo download failed", error instanceof Error ? error.message : error);
+    throw new StorageError("Не удалось прочитать файл из хранилища.", 502);
+  }
+}
