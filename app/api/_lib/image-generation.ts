@@ -79,7 +79,15 @@ export async function createImage(prompt: string, email: string, baseUrl: string
   const resolved = resolveImageGenerationOptions(options);
   const imageRequest = serviceUrl ? {
     prompt: prompt.slice(0, 12000),
-    ...(options.size || options.aspectRatio ? { size: resolved.size, aspectRatio: resolved.aspectRatio } : {}),
+    // aspectRatio deliberately not sent (site owner confirmed: "1:1"
+    // generates fine, every non-square ratio still fails even after
+    // resolved.size above was fixed to a real OpenAI size). The relay
+    // service is a separate deployment this repo doesn't control - if its
+    // own code recomputes a size from aspectRatio instead of trusting the
+    // size already sent, that recomputation can't be fixed here. Not
+    // sending aspectRatio at all removes that option: the relay only ever
+    // sees the already-correct, already-resolved size.
+    ...(options.size || options.aspectRatio ? { size: resolved.size } : {}),
     ...(options.quality ? { quality: resolved.quality } : {}),
     ...(options.outputFormat ? { output_format: resolved.outputFormat } : {}),
     ...(options.background ? { background: resolved.background } : {}),
