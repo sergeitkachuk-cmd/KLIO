@@ -60,10 +60,10 @@ function fakeHttpsModule(fetchImpl, calls) {
   };
 }
 
-function harness(fetchImpl, clock = Date) {
+function harness(fetchImpl, clock = Date, env = {}) {
   const calls = [];
   const globals = {
-    process: { env: { AI_PROVIDER: "deepseek", DEEPSEEK_API_KEY: "test-only" } },
+    process: { env: { AI_PROVIDER: "deepseek", DEEPSEEK_API_KEY: "test-only", ...env } },
     Date: clock, AbortSignal, DOMException, setTimeout, URL, Buffer,
     console: { error() {} },
   };
@@ -108,6 +108,17 @@ test("all DeepSeek operations use the canonical V4.1 Flash model and current pri
     cachedInputTokens: 0,
     outputTokens: 1_000_000,
   }, new Date("2026-09-10T00:00:00Z")), 0.75);
+});
+
+test("dialogue uses OpenAI when configured while content keeps DeepSeek", async () => {
+  const h = harness(() => json({ output: [message("A helpful reply")], usage: { input_tokens: 10, output_tokens: 4 } }), Date, { OPENAI_API_KEY: "test-openai" });
+  assert.equal(h.config.OPERATION_CONFIG.dialogue.model, "gpt-5.6-luna");
+  assert.equal(h.config.OPERATION_CONFIG.generate_social_post.model, "deepseek-flash");
+  assert.equal(h.config.aiConfigured("dialogue"), true);
+  const result = await h.callAiModel({ operation: "dialogue_plain", instructions: "Answer", input: "Hello" });
+  assert.equal(result.result.raw, "A helpful reply");
+  assert.equal(h.calls[0].url, "https://api.openai.com/v1/responses");
+  assert.equal(h.calls[0].body.model, "gpt-5.6-luna");
 });
 
 test("5600-character article keeps thinking with extra headroom and externally supplied research", async () => {

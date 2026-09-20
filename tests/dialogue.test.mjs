@@ -423,3 +423,25 @@ test("each dialogue intent debits the pool matching what it actually produces", 
   assert.equal(after.dialogueActionsUsed, 1);
   assert.equal(after.editorActionsUsed, 0);
 });
+
+test("ordinary chat recovers a reply when structured output is invalid", async (t) => {
+  const h = await createDialogueHarness();
+  t.after(() => h.close());
+  h.setAi(async (input) => {
+    if (input.operation === "dialogue") {
+      const error = new Error("Provider omitted the structured envelope");
+      error.invalidOutput = true;
+      throw error;
+    }
+    assert.equal(input.operation, "dialogue_plain");
+    return { raw: "КЛИО отвечает на обычный вопрос." };
+  });
+  let thread = await h.create();
+  await h.post({ action: "send", id: thread.id, revision: thread.revision, requestId: randomUUID(), text: "Расскажи, как составить план на неделю", mode: "chat" });
+  thread = await h.settled(thread.id);
+  assert.equal(thread.status, "idle");
+  assert.equal(thread.data.messages.at(-1).text, "КЛИО отвечает на обычный вопрос.");
+  assert.equal(thread.data.cards.length, 0);
+  assert.equal((await h.account()).dialogueActionsUsed, 1);
+  assert.equal(h.calls(), 2);
+});

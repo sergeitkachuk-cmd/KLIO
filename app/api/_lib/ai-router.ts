@@ -4,6 +4,7 @@ import { aiUsage } from "../../../db/schema";
 import { assertValidAiOutput } from "./ai-output-validation";
 import {
   activeProvider,
+  providerForModel,
   AI_MODELS,
   FALLBACKS,
   OPERATION_CONFIG,
@@ -55,6 +56,9 @@ type CallAiModelInput = {
   // adapt_text overrides reasoning per KLIO editor goal — see
   // adaptationReasoningEffort() in ai-config.ts.
   reasoningEffortOverride?: ReasoningEffort;
+  // Plain chat gets one structured attempt, then a simpler text response.
+  // Content creation retains the operation's normal bounded retries.
+  retryableOverride?: boolean;
   // discover_competitors forces an actual web_search tool call and needs
   // the raw citations/annotations back — see toolChoice/includeSources
   // below and rawResponse on the result.
@@ -260,7 +264,7 @@ async function requestOnce(params: {
   toolChoice?: "required";
   includeSources?: boolean;
 }) {
-  const provider = activeProvider();
+  const provider = providerForModel(params.model);
   const apiKey = process.env[PROVIDER_API_KEY_ENV[provider]]?.trim();
   if (!apiKey) {
     const error = new AiCallError(`ИИ пока не подключён. Добавьте ${PROVIDER_API_KEY_ENV[provider]} на сервере.`, 503);
@@ -448,6 +452,7 @@ export async function callAiModel<T = Record<string, unknown>>(
   params: CallAiModelInput,
 ): Promise<CallAiModelResult<T>> {
   const config = OPERATION_CONFIG[params.operation];
+  const retryable = params.retryableOverride ?? config.retryable;
   const reasoningEffort = params.reasoningEffortOverride ?? config.reasoningEffort;
   const maxOutputTokens = Math.max(1, Math.min(params.maxOutputTokensOverride ?? config.maxOutputTokens, config.maxOutputTokens));
   const startedAt = Date.now();
@@ -555,7 +560,7 @@ export async function callAiModel<T = Record<string, unknown>>(
       // Auth/config errors (bad key, missing key) never retry or fall back.
       if (isAuthOrConfig || (error instanceof AiCallError && error.status === 504) || Date.now() >= deadline) break;
 
-      if (isTransient && config.retryable && transientRetries < 2) {
+      if (isTransient && retryable && transientRetries < 2) {
         transientRetries += 1;
         const delay = 400 * 2 ** transientRetries;
         if (Date.now() + delay >= deadline) break;
@@ -570,7 +575,7 @@ export async function callAiModel<T = Record<string, unknown>>(
       // subset of calls that already failed once, so the added cost
       // lands on the failure rate, not on every call the way raising
       // reasoningEffort for every dialogue message would.
-      if (isInvalidOutput && config.retryable && invalidOutputRetries < 2) {
+      if (isInvalidOutput && retryable && invalidOutputRetries < 2) {
         invalidOutputRetries += 1;
         continue;
       }
@@ -578,7 +583,7 @@ export async function callAiModel<T = Record<string, unknown>>(
       // Exhausted this model's own retries. Nano may fall back to Luna
       // once; Luna never falls back anywhere.
       const fallback = FALLBACKS[attemptModel];
-      if (config.retryable && (isTransient || isInvalidOutput) && fallback && fallback !== attemptModel && !fallbackFrom) {
+      if (retryable && (isTransient || isInvalidOutput) && fallback && fallback !== attemptModel && !fallbackFrom) {
         fallbackFrom = attemptModel;
         attemptModel = fallback;
         continue;

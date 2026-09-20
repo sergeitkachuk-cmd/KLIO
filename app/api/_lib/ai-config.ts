@@ -8,9 +8,8 @@ import type { AdaptationPlan } from "../../content-plans";
 
 export type AiProvider = "openai" | "deepseek";
 
-// One env var switches every operation at once — see ai-router.ts's
-// requestOnce for the actual per-provider HTTP call. Defaults to openai so
-// an unset/misspelled value never silently changes behavior in production.
+// AI_PROVIDER selects the default provider for content operations. Dialogue
+// prefers OpenAI when its key is available; requestOnce routes by model.
 export function activeProvider(): AiProvider {
   return process.env.AI_PROVIDER?.trim().toLowerCase() === "deepseek" ? "deepseek" : "openai";
 }
@@ -23,8 +22,9 @@ export const PROVIDER_API_KEY_ENV: Record<AiProvider, string> = {
 // Single check for "/api/ai-status" and anywhere else that only needs a
 // yes/no — ai-router.ts reads PROVIDER_API_KEY_ENV directly since it also
 // needs the env var's name for its error message.
-export function aiConfigured(): boolean {
-  return Boolean(process.env[PROVIDER_API_KEY_ENV[activeProvider()]]?.trim());
+export function aiConfigured(operation?: AiOperation): boolean {
+  const provider = operation ? providerForModel(OPERATION_CONFIG[operation].model) : activeProvider();
+  return Boolean(process.env[PROVIDER_API_KEY_ENV[provider]]?.trim());
 }
 
 const OPENAI_MODELS = {
@@ -46,16 +46,17 @@ const DEEPSEEK_MODELS = {
   UTILITY: "deepseek-flash",
 } as const;
 
-// Resolved once per process start from AI_PROVIDER. Every OPERATION_CONFIG
-// entry below is written against AI_MODELS.CONTENT/UTILITY, never a literal
-// model id, so switching provider is one env var and a redeploy — not a
-// code change, and the OpenAI path stays intact as a fallback if DeepSeek
-// turns out to have problems.
+// Resolved once per process start from AI_PROVIDER. Dialogue can override the
+// default model below without changing provider selection for other tasks.
 export const AI_MODELS = activeProvider() === "deepseek" ? DEEPSEEK_MODELS : OPENAI_MODELS;
 
 export type AiModelId =
   | (typeof OPENAI_MODELS)[keyof typeof OPENAI_MODELS]
   | (typeof DEEPSEEK_MODELS)[keyof typeof DEEPSEEK_MODELS];
+
+export function providerForModel(model: AiModelId): AiProvider {
+  return model === DEEPSEEK_MODELS.CONTENT ? "deepseek" : "openai";
+}
 
 // If UTILITY is unavailable, a *retryable* short task may run on CONTENT
 // once its own retries are exhausted (recorded as a fallback in ai_usage).
@@ -116,6 +117,7 @@ export function estimateCostUsd(model: AiModelId, usage: {
 // integration report for the full mapping and reasoning.
 export type AiOperation =
   | "dialogue"
+  | "dialogue_plain"
   // Luna — user-facing generation
   | "generate_seo_article"
   | "generate_social_post"
@@ -149,6 +151,9 @@ export type OperationConfig = {
 };
 
 const { CONTENT, UTILITY } = AI_MODELS;
+// Ordinary dialogue can use the working OpenAI connection independently of
+// the provider selected for long-form generation.
+const DIALOGUE_CONTENT = process.env.OPENAI_API_KEY?.trim() ? OPENAI_MODELS.CONTENT : CONTENT;
 
 export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // retryable flipped on 2026-09-20 - the admin usage log showed roughly
@@ -162,7 +167,10 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // already-billed request - no double debit, no duplicate side effects,
   // just one more chance to produce valid JSON before surfacing a hard
   // error to the user.
-  dialogue: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 16_000, structuredOutput: true, retryable: true, useWebSearch: false },
+  dialogue: { model: DIALOGUE_CONTENT, reasoningEffort: "low", maxOutputTokens: 16_000, structuredOutput: true, retryable: true, useWebSearch: false },
+  // Recovery for a normal chat reply when a provider cannot satisfy the
+  // structured dialogue schema. Plain text needs no action/card envelope.
+  dialogue_plain: { model: DIALOGUE_CONTENT, reasoningEffort: "none", maxOutputTokens: 3_000, structuredOutput: false, retryable: false, useWebSearch: false },
   // Full materials are grounded by one bounded Tavily request in the route,
   // not by a model-owned web tool. DeepSeek can otherwise spend minutes in
   // search/tool loops before it starts writing; a single compact digest keeps

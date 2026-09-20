@@ -628,8 +628,9 @@ export function DialogueWorkspace(props: Props) {
       return;
     }
     if (!draft.trim()) return;
+    const intent = composeIntent;
     setComposeIntent("chat");
-    void send();
+    void send(intent === "topics" || intent === "text" ? intent : undefined);
   }
 
   function edit(c: DialogueCard) {
