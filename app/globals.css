@@ -4363,8 +4363,17 @@ footer nav a {
   justify-content: space-between;
   height: 76px;
   /* Site owner: "капсулы растяни немного, у неё по бокам ещё есть
-     запасы" - was 44px total side gap, now 20px. */
-  max-width: min(calc(100% - 20px), 1500px);
+     запасы" - was 44px total side gap, now 20px.
+     vw, not a percentage of the parent - dialogue mode wraps this same
+     header in a "display: flex; flex-direction: column; overflow:
+     hidden" shell (needed for its own chat-height math), professional
+     mode doesn't, and a percentage max-width on a flex item in that
+     specific combination resolved narrower than in plain block flow
+     even though both share this exact rule (site owner: "в режиме
+     профи шапка растянута, а в диалоге сужена... сделай одинаково").
+     vw is never ambiguous that way - same fix as the lightbox/
+     publications modal earlier today. */
+  max-width: min(calc(100vw - 20px), 1500px);
   margin: 12px auto 0;
   padding: 0 30px;
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -15022,7 +15031,10 @@ input[type="radio"] {
 
   .workspace-header {
     height: 62px;
-    max-width: calc(100% - 12px);
+    /* vw, not a percentage - see the base rule's own comment (same fix,
+       same reason: dialogue mode's flex+overflow:hidden shell resolved
+       this narrower than professional mode's plain block flow). */
+    max-width: calc(100vw - 12px);
     margin: 8px auto 0;
     padding: 0 12px;
   }
