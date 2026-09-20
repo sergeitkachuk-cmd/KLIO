@@ -23061,7 +23061,13 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 .image-generator-settings .module-select{flex:1 1 180px;min-width:160px}
 .image-generator-form p,.image-generator-preview p{margin:0;color:#bec9d8;font-size:14px;line-height:1.5}
 .image-generator-preview>img{display:block;width:100%;height:auto;max-height:680px;object-fit:contain;border-radius:12px}
-.image-generator-preview>div:not(.image-generator-empty){display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
+/* Kept to one row, not wrapped (site owner: "некрасиво, когда они на
+   несколько строк распадаются") - three full-size .button.ghost easily
+   overflow this panel's width. Smaller/tighter buttons fit more often;
+   horizontal scroll is the fallback for whatever still doesn't, instead of
+   ever breaking onto a second line. */
+.image-generator-preview>div:not(.image-generator-empty){display:flex;flex-wrap:nowrap;gap:8px;margin-top:16px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.image-generator-preview>div:not(.image-generator-empty)>.button{flex:0 0 auto;min-height:38px;padding:0 14px;font-size:13px;white-space:nowrap}
 .image-generator-preview>p{margin-top:14px}
 .image-generator-empty{display:flex;min-height:360px;align-items:center;justify-content:center;flex-direction:column;gap:16px;text-align:center;color:#bec9d8}
 .image-generator-empty svg{width:44px;height:44px}

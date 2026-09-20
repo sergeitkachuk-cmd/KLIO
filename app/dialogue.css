@@ -722,6 +722,21 @@
   .klio-chat-compose > small {
     font-size: 9px;
   }
+  /* Two ModuleSelects side by side (e.g. "Формат" + "Тон") got cramped at
+     phone width; one per row reads far more comfortably with real
+     Cyrillic labels. */
+  .klio-chat-settings-grid {
+    grid-template-columns: 1fr;
+  }
+  .klio-chat-intent-chip {
+    max-width: 46vw;
+  }
+  .klio-chat-intent-chip > span {
+    overflow: hidden;
+    min-width: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .klio-chat-thinking span {

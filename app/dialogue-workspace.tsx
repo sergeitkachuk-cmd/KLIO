@@ -172,7 +172,12 @@ export function DialogueWorkspace(props: Props) {
       const rect = intentTriggerRef.current.getBoundingClientRect();
       const edgeGap = 12;
       const maxHeight = Math.max(160, Math.min(360, rect.top - edgeGap));
-      setIntentMenuRect({ bottom: window.innerHeight - rect.top + 8, left: rect.left, width: 240, maxHeight });
+      // Clamped to the viewport, not a flat 240 (site owner asked for a
+      // mobile pass on this mode) - a phone narrower than ~264px would
+      // otherwise overflow past the right edge.
+      const width = Math.min(240, window.innerWidth - edgeGap * 2);
+      const left = Math.min(rect.left, window.innerWidth - width - edgeGap);
+      setIntentMenuRect({ bottom: window.innerHeight - rect.top + 8, left, width, maxHeight });
     };
     measure();
     const closeOnOutsideClick = (event: MouseEvent) => {
@@ -1167,7 +1172,7 @@ export function DialogueWorkspace(props: Props) {
               </div>
               {composeIntent !== "chat" && (
                 <span className="klio-chat-intent-chip">
-                  {INTENT_OPTIONS.find((option) => option.value === composeIntent)?.label}
+                  <span>{INTENT_OPTIONS.find((option) => option.value === composeIntent)?.label}</span>
                   <button type="button" aria-label="Вернуться к обычному общению" onClick={() => setComposeIntent("chat")}>×</button>
                 </span>
               )}
