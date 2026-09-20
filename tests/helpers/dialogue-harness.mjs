@@ -97,6 +97,7 @@ export async function createDialogueHarness() {
         .where(orm.eq(schema.accounts.email, owner))
     )[0];
   let calls = 0;
+  let tavily = async () => null;
   let ai = async (input) => {
     const context = JSON.parse(input.input);
     const text = context.messages.at(-1).text;
@@ -203,7 +204,7 @@ export async function createDialogueHarness() {
       },
       "../_lib/rate-limit": { isRateLimited: () => false },
       "../_lib/workspace-account": workspace,
-      "../_lib/tavily": { researchAdaptationFacts: async () => null },
+      "../_lib/tavily": { researchAdaptationFacts: async (...args) => tavily(...args) },
       "../_lib/website-context": {
         readWebsiteContext: async () => ({ status: "loaded", text: "Кофейня" }),
       },
@@ -270,6 +271,9 @@ export async function createDialogueHarness() {
     AiCallError,
     setAi: (value) => {
       ai = value;
+    },
+    setTavily: (value) => {
+      tavily = value;
     },
     setUser: (value) => {
       user = value;

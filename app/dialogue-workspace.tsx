@@ -119,7 +119,6 @@ export function DialogueWorkspace(props: Props) {
   const [threads, setThreads] = useState<Summary[]>([]);
   const [thread, setThread] = useState<DialogueThread | null>(null);
   const [draft, setDraft] = useState("");
-  const [search, setSearch] = useState(false);
   const [profileMode, setProfileMode] = useState(false);
   const [useBrandContext, setUseBrandContext] = useState(false);
   const [selected, setSelected] = useState("");
@@ -575,7 +574,6 @@ export function DialogueWorkspace(props: Props) {
         text,
         mode,
         cardId,
-        search,
         useBrandContext: profileMode || (Boolean(props.brandId) && useBrandContext),
         settings: {
           format: genFormat || undefined,
@@ -1326,14 +1324,6 @@ export function DialogueWorkspace(props: Props) {
                 </span>
               )}
               {props.brandId && <label className="klio-chat-context"><input type="checkbox" checked={useBrandContext} onChange={e => setUseBrandContext(e.target.checked)} disabled={busy}/> Профиль бренда</label>}
-              <label>
-                <input
-                  type="checkbox"
-                  checked={search}
-                  onChange={(e) => setSearch(e.target.checked)}
-                />
-                Поиск в интернете
-              </label>
               <button
                 type="submit"
                 aria-label="Отправить сообщение"

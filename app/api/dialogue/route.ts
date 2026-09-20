@@ -78,6 +78,32 @@ function quotaKindForMode(mode: string): QuotaKind {
   return "dialogue";
 }
 
+// Replaces the old manual "Поиск в интернете" checkbox (site owner: "давай
+// решать автоматически, чтобы не грузить клиента" - people didn't know when
+// to check it, and it didn't cost extra quota either way, so there was
+// nothing for a manual toggle to actually protect). A plain keyword/pattern
+// check, not a model-driven decision - keeps the same single, server-
+// controlled search this file already commits to elsewhere (see tavily.ts's
+// own comment on why the model never gets a search tool it could call
+// itself). Tuned toward requests for verifiable facts/current data, the
+// case researchAdaptationFacts actually helps with; a false positive only
+// costs a few seconds of latency (research is optional context - the model
+// is told it "can" lean on it, never required to), so this errs toward
+// searching when in doubt rather than trying to be precise.
+const FACT_SEARCH_KEYWORDS = [
+  "сколько", "процент", "статистик", "исследовани", "актуальн", "свеж",
+  "сейчас", "на сегодня", "в этом году", "новост", "тренд", "гост",
+  "санпин", "норматив", "стандарт", "требовани", "закон", "сертификат",
+  "лицензи", "правда ли", "действительно ли", "источник", "курс валют",
+  "конкурент",
+];
+function needsWebSearch(text: string): boolean {
+  const lower = text.toLowerCase();
+  return FACT_SEARCH_KEYWORDS.some((word) => lower.includes(word))
+    || /\b20\d{2}\b/.test(text)
+    || /\d{1,3}\s?%/.test(text);
+}
+
 async function verifyBrand(
   db: Pick<Db, "select">,
   id: string | null,
@@ -196,7 +222,6 @@ async function runReply(
   selectedId: string,
   mode: string,
   baseUrl: string,
-  search: boolean,
   settings: {
     format: ContentFormat | null;
     format_contract: { objective: string; steps: readonly string[]; rules: readonly string[] } | null;
@@ -301,6 +326,7 @@ async function runReply(
       });
     } else {
       const url = last.match(/https?:\/\/[^\s<>]+/i)?.[0];
+      const search = needsWebSearch(last);
       const [research, website] = await Promise.all([
         search
           ? researchAdaptationFacts(last.slice(0, 800))
@@ -317,7 +343,7 @@ async function runReply(
         today: new Date().toISOString(),
         research,
         website,
-        searchRequested: search,
+        searchAttempted: search,
         settings,
       });
       let a: DialogueAnswer;
@@ -394,7 +420,7 @@ async function runReply(
           "Если передан settings.format_contract, он обязателен для новых или редактируемых материалов (action=create/edit): следуй его objective, steps и rules — они важнее общей стилистики. Если settings.format не передан (null), выбирай формат по смыслу задачи сам, как обычно.",
           "Если передан settings.tone_contract, следуй ему для интонации текста вместо стиля по умолчанию; факты, ограничения бренда и авторская позиция всё равно соблюдаются. Если settings.tone не передан (null), пиши обычным голосом бренда (voice) без явно навязанного тона.",
           "Если передан settings.target_characters_with_spaces (число), это целевой объём знаков с пробелами для title+body вместе для каждой создаваемой или редактируемой карточки; отклонение до 20% допустимо. Если не передан (null), выбери объём по смыслу задачи, как обычно.",
-          "При отсутствии research не утверждай, что проверила свежие данные или выполнила поиск. Для актуальных сведений предложи включить Поиск. При наличии research укажи источники в reply. Не изображай отсутствующие возможности: файлы/изображения здесь не анализируются; доступен текст, сайт при настройке бизнеса и поиск.",
+          "При отсутствии research не утверждай, что проверила свежие данные или выполнила поиск. При наличии research укажи источники в reply. Не изображай отсутствующие возможности: файлы/изображения здесь не анализируются; доступен текст, сайт при настройке бизнеса и автоматический поиск фактов, когда вопрос явно этого требует.",
           ...FINAL_QA_RULES,
         ].join("\n"),
         input: conversationInput,
@@ -456,7 +482,7 @@ async function runReply(
       }
       if (search && !research)
         message.text +=
-          "\n\nПоиск сейчас недоступен: свежие сведения не проверены.";
+          "\n\nНе удалось проверить это по актуальным источникам — свежие сведения не подтверждены.";
       data.messages.push(message);
     }
     if (JSON.stringify(data).length > 900_000)
@@ -1087,7 +1113,6 @@ export async function POST(request: Request) {
         selectedId,
         mode,
         resolveBaseUrl(request),
-        p.search === true,
         genSettings,
       );
     return Response.json(result, {

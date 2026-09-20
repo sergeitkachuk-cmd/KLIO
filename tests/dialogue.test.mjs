@@ -19,6 +19,30 @@ test("brand context is off by default even when a business is selected", async (
   assert.equal(settled.brandId, "coffee-brand");
 });
 
+test("web search runs automatically for fact-seeking questions and stays off for ordinary chat", async (t) => {
+  const h = await createDialogueHarness();
+  t.after(() => h.close());
+  let thread = await h.create();
+  let sent;
+  let tavilyCalls = 0;
+  h.setAi(async input => { sent = JSON.parse(input.input); return { raw: "Готово" }; });
+  h.setTavily(async topic => { tavilyCalls++; return { query: topic, results: [{ title: "ГОСТ 31805-2012", url: "https://example.invalid/gost", content: "Требования к упаковке." }] }; });
+  const send = async (text) => {
+    await h.post({ action: "send", id: thread.id, revision: thread.revision, requestId: randomUUID(), text, mode: "chat" });
+    thread = await h.settled(thread.id);
+  };
+
+  await send("Помоги придумать пост про уютную атмосферу кофейни");
+  assert.equal(tavilyCalls, 0);
+  assert.equal(sent.searchAttempted, false);
+  assert.equal(sent.research, null);
+
+  await send("Какой ГОСТ регулирует упаковку кофе?");
+  assert.equal(tavilyCalls, 1);
+  assert.equal(sent.searchAttempted, true);
+  assert.equal(sent.research.results[0].title, "ГОСТ 31805-2012");
+});
+
 test("image generation from dialogue saves the result into materials", async (t) => {
   const h = await createDialogueHarness();
   t.after(() => h.close());
