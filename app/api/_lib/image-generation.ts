@@ -74,29 +74,64 @@ export const imageConfigured = () =>
 // The actual provider call, split out of createImage below so
 // createImageWithLogo can reuse it for the background image instead of
 // duplicating the relay/OpenAI request logic - see its own comment.
-async function generateImageBytes(prompt: string, requestId: string, options: ImageGenerationOptions = {}) {
+//
+// An optional logo routes this through OpenAI's image-edit endpoint
+// instead of generations - the only one that accepts a reference image.
+// Deliberately no mask: a mask tells the model to leave everything outside
+// it pixel-for-pixel untouched, which is a different feature (exact
+// preservation) from what was asked for (site owner: "чтобы он создавал
+// максимально приближенный [к логотипу]" - reproduce it closely and weave
+// it into the scene, not paste a fixed region into an otherwise-generated
+// image).
+async function generateImageBytes(
+  prompt: string,
+  requestId: string,
+  options: ImageGenerationOptions = {},
+  logo?: { bytes: Uint8Array<ArrayBuffer>; contentType: string },
+) {
   // Browser requests only KLIO. Provider credentials and calls stay on the server;
   // image bytes are copied to our existing object store, never hotlinked to OpenAI.
   // API contract: https://developers.openai.com/api/docs/guides/image-generation
   const serviceUrl = process.env.KLIO_IMAGE_SERVICE_URL?.trim();
-  const endpoint = serviceUrl ? new URL("/generate", serviceUrl) : new URL("https://api.openai.com/v1/images/generations");
+  const endpoint = serviceUrl
+    ? new URL("/generate", serviceUrl)
+    : new URL(logo ? "https://api.openai.com/v1/images/edits" : "https://api.openai.com/v1/images/generations");
   if (endpoint.protocol !== "https:") throw new Error("Сервер изображений должен использовать HTTPS.");
   const resolved = resolveImageGenerationOptions(options);
-  const imageRequest = serviceUrl ? {
-    prompt: prompt.slice(0, 12000),
-    // aspectRatio deliberately not sent (site owner confirmed: "1:1"
-    // generates fine, every non-square ratio still fails even after
-    // resolved.size above was fixed to a real OpenAI size). The relay
-    // service is a separate deployment this repo doesn't control - if its
-    // own code recomputes a size from aspectRatio instead of trusting the
-    // size already sent, that recomputation can't be fixed here. Not
-    // sending aspectRatio at all removes that option: the relay only ever
-    // sees the already-correct, already-resolved size.
-    ...(options.size || options.aspectRatio ? { size: resolved.size } : {}),
-    ...(options.quality ? { quality: resolved.quality } : {}),
-    ...(options.outputFormat ? { output_format: resolved.outputFormat } : {}),
-    ...(options.background ? { background: resolved.background } : {}),
-  } : {
+  const apiKey = serviceUrl ? process.env.KLIO_IMAGE_SERVICE_TOKEN : process.env.OPENAI_API_KEY;
+  let requestBody: string | FormData;
+  let contentTypeHeader: string | undefined;
+  if (serviceUrl) {
+    const imageRequest = {
+      prompt: prompt.slice(0, 12000),
+      // aspectRatio deliberately not sent (site owner confirmed: "1:1"
+      // generates fine, every non-square ratio still fails even after
+      // resolved.size above was fixed to a real OpenAI size). The relay
+      // service is a separate deployment this repo doesn't control - if its
+      // own code recomputes a size from aspectRatio instead of trusting the
+      // size already sent, that recomputation can't be fixed here. Not
+      // sending aspectRatio at all removes that option: the relay only ever
+      // sees the already-correct, already-resolved size.
+      ...(options.size || options.aspectRatio ? { size: resolved.size } : {}),
+      ...(options.quality ? { quality: resolved.quality } : {}),
+      ...(options.outputFormat ? { output_format: resolved.outputFormat } : {}),
+      ...(options.background ? { background: resolved.background } : {}),
+      ...(logo ? { image_b64: Buffer.from(logo.bytes).toString("base64"), image_type: logo.contentType } : {}),
+    };
+    requestBody = JSON.stringify(imageRequest);
+    contentTypeHeader = "application/json";
+  } else if (logo) {
+    const form = new FormData();
+    form.append("model", process.env.KLIO_IMAGE_MODEL?.trim() || "gpt-image-1");
+    form.append("prompt", prompt.slice(0, 12000));
+    form.append("n", "1");
+    if (options.size || options.aspectRatio) form.append("size", resolved.size);
+    if (options.quality) form.append("quality", resolved.quality);
+    if (options.outputFormat) form.append("output_format", resolved.outputFormat);
+    if (options.background) form.append("background", resolved.background);
+    form.append("image", new File([logo.bytes], "reference", { type: logo.contentType }));
+    requestBody = form;
+  } else {
     // "gpt-image-2.5-flare" was never a real OpenAI model — every request
     // without an explicit KLIO_IMAGE_MODEL override was failing outright
     // (site owner: tried generating an image, got an error three times in
@@ -104,31 +139,29 @@ async function generateImageBytes(prompt: string, requestId: string, options: Im
     // model and the one whose parameters (size/quality/output_format/
     // background) this file's own resolveImageGenerationOptions already
     // matches.
-    model: process.env.KLIO_IMAGE_MODEL?.trim() || "gpt-image-1",
-    prompt: prompt.slice(0, 12000),
-    n: 1,
-    ...(options.size || options.aspectRatio ? { size: resolved.size } : {}),
-    ...(options.quality ? { quality: resolved.quality } : {}),
-    ...(options.outputFormat ? { output_format: resolved.outputFormat } : {}),
-    ...(options.background ? { background: resolved.background } : {}),
-  };
-  // Temporary: site owner reports every aspect ratio produces a square
-  // image regardless of selection, after two prior guesses about how the
-  // relay (a separate deployment this repo doesn't control) handles
-  // size/aspectRatio both turned out wrong. Logging exactly what we send
-  // is something checkable in Timeweb's own application logs (this
-  // request originates from our app, not the relay) - confirms whether
-  // our own payload is correct before guessing a third time. Remove once
-  // the actual cause is confirmed.
-  if (serviceUrl) console.log("Image request to relay", JSON.stringify(imageRequest));
+    requestBody = JSON.stringify({
+      model: process.env.KLIO_IMAGE_MODEL?.trim() || "gpt-image-1",
+      prompt: prompt.slice(0, 12000),
+      n: 1,
+      ...(options.size || options.aspectRatio ? { size: resolved.size } : {}),
+      ...(options.quality ? { quality: resolved.quality } : {}),
+      ...(options.outputFormat ? { output_format: resolved.outputFormat } : {}),
+      ...(options.background ? { background: resolved.background } : {}),
+    });
+    contentTypeHeader = "application/json";
+  }
+  // Temporary: checkable in Timeweb's own application logs (this request
+  // originates from our app, not the relay) whenever the relay's own
+  // behavior needs verifying again. Never logs the logo bytes.
+  if (serviceUrl) console.log("Image request to relay", typeof requestBody === "string" ? requestBody : "[multipart with reference image]");
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${serviceUrl ? process.env.KLIO_IMAGE_SERVICE_TOKEN : process.env.OPENAI_API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
       "Idempotency-Key": requestId,
-      "Content-Type": "application/json",
+      ...(contentTypeHeader ? { "Content-Type": contentTypeHeader } : {}),
     },
-    body: JSON.stringify(imageRequest),
+    body: requestBody,
     signal: AbortSignal.timeout(150_000),
   });
   if (!response.ok) {
@@ -184,25 +217,30 @@ export async function createImage(prompt: string, email: string, baseUrl: string
   );
 }
 
-// Placeholder pending a real design for logo integration: an earlier
-// version called OpenAI's image-edit endpoint without a mask (the model
-// treated the logo as a loose style reference and redrew/ignored it), then
-// a second version pasted the uploaded logo as a fixed bottom-right
-// overlay via sharp - both rejected by the site owner. The overlay wasn't
-// rejected for reliability, it was rejected on the merits: the ask is for
-// the logo to read as part of the generated scene (e.g. printed on an
-// object in it), not a corner watermark on top of it. Until that's
-// designed and agreed, this generates a normal background and does not
-// touch the logo at all, rather than shipping either rejected approach
-// again.
+// Agreed design (after two rejected attempts - a maskless edit that let
+// the model redraw/ignore the logo, then a sharp-composited corner
+// overlay that the site owner didn't want at any fidelity): pass the real
+// logo file to OpenAI's edit endpoint as a reference, with the prompt
+// explicitly asking for a close likeness woven into the scene, not a
+// preserved fixed region and not a watermark. This trades exact-pixel
+// fidelity for a natural-looking result - the model still redraws the
+// logo, just deliberately steered to match it closely instead of treating
+// it as a loose stylistic cue.
 export async function createImageFromLogo(
   prompt: string,
-  _logo: { bytes: Uint8Array<ArrayBuffer>; contentType: string },
+  logo: { bytes: Uint8Array<ArrayBuffer>; contentType: string },
   email: string,
   baseUrl: string,
   requestId: string,
   options: ImageGenerationOptions = {},
 ) {
-  return createImage(prompt, email, baseUrl, requestId, options);
+  const guidedPrompt = `${prompt}\n\nНа изображении должен естественно присутствовать логотип бренда - органично вписанный в композицию (например, на вывеске, упаковке, экране или другом уместном по смыслу объекте сцены), а не наложенный поверх готовой картинки отдельным слоем. Воспроизведи логотип с приложенного референса максимально похоже: те же цвета, форма и текст.`;
+  const { bytes, contentType } = await generateImageBytes(guidedPrompt, requestId, options, logo);
+  const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
+  return uploadPublicationImage(
+    new File([bytes], fileName, { type: contentType }),
+    email,
+    baseUrl,
+  );
 }
 
