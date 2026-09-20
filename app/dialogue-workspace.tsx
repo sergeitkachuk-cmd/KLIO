@@ -617,10 +617,17 @@ export function DialogueWorkspace(props: Props) {
       setNotice("Сохранено в материалах");
       if (schedule && result.generation) {
         const g = result.generation;
+        // title/body hold the image generation PROMPT for an image result,
+        // not real post content - carrying them through unchanged put that
+        // prompt text into the publication (site owner: "в поле публикации
+        // не было никакого текста, но в телеграме он опубликовал вместе с
+        // текстом запроса генерации картинки" - the title field wasn't
+        // empty, it held the prompt, same as the professional generator's
+        // own "В публикацию" already starts blank for a fresh image).
         propsRef.current.onSchedule({
           generationId: g.id,
-          title: g.title,
-          body: g.body,
+          title: g.imageUrl ? "" : g.title,
+          body: g.imageUrl ? "" : g.body,
           imageUrl: g.imageUrl,
         });
       }
