@@ -5469,7 +5469,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         <Link className="wordmark" href="/" aria-label="КЛИО — вернуться на сайт"><Brand/></Link>
         <div className="workspace-header-actions">
           <div className="workspace-mode-switch" role="group" aria-label="Режим работы">
-            {(["dialogue", "professional"] as const).map(mode => <button key={mode} type="button" aria-pressed={workspaceMode === mode} disabled={modeSaving} onClick={() => void changeWorkspaceMode(mode)}>{mode === "dialogue" ? "Диалоговый" : "Профессиональный"}</button>)}
+            {/* Two labels, one CSS-shown per breakpoint (mode-switch-full/
+                mode-switch-short) - "Профессиональный" alone was the single
+                biggest contributor to the mobile header overflowing past
+                the viewport with the account avatar pushed off the right
+                edge (site owner: "кнопка с открытием личного кабинета
+                уехала за край"). No JS/state needed, same pattern as any
+                other responsive-text swap in this file. */}
+            {(["dialogue", "professional"] as const).map(mode => <button key={mode} type="button" aria-pressed={workspaceMode === mode} disabled={modeSaving} onClick={() => void changeWorkspaceMode(mode)}><span className="mode-switch-full">{mode === "dialogue" ? "Диалоговый" : "Профессиональный"}</span><span className="mode-switch-short">{mode === "dialogue" ? "Диалог" : "Профи"}</span></button>)}
           </div>
           <Link href="/">На главную</Link>
           <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"} title={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"}><Icon name={theme === "dark" ? "sun" : "moon"}/></button>

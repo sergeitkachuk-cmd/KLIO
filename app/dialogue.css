@@ -16,6 +16,9 @@
   font-size: 12px;
   cursor: pointer;
 }
+.mode-switch-short {
+  display: none;
+}
 .workspace-mode-switch button[aria-pressed="true"] {
   background: #23352d;
   color: #fff;
@@ -677,8 +680,22 @@
     padding: 6px 8px;
     font-size: 11px;
   }
+  /* "Профессиональный" alone was the single biggest contributor to the
+     mobile header's total width - shortening both labels here matters far
+     more than any further padding/gap trim (site owner: "кнопка с
+     открытием личного кабинета уехала за край" - the account avatar,
+     last in the row, was what ran out of room first). */
+  .mode-switch-full {
+    display: none;
+  }
+  .mode-switch-short {
+    display: inline;
+  }
   .workspace-shell.is-dialogue .workspace-header-actions > a {
     display: none;
+  }
+  .workspace-shell.is-dialogue .workspace-header-actions {
+    gap: 6px;
   }
   /* justify-content: space-between on .workspace-header only guarantees
      the wordmark and .workspace-header-actions stay at the two edges - it
@@ -705,7 +722,15 @@
   }
   .klio-chat {
     grid-template-columns: minmax(0, 1fr);
-    height: calc(100dvh - 120px);
+    /* svh (smallest viewport height - assumes the browser's own chrome is
+       fully expanded), not dvh (dynamic - assumes it can shrink), for this
+       one: dvh can under-account for a browser/OS's own bottom bar until
+       something else triggers a recalculation, leaving the compose bar
+       sitting below the actually-visible area on first load, not just
+       after the keyboard opens (site owner: "поле ввода не влезло внизу").
+       Trades a little unused space back when the chrome auto-hides for
+       reliably fitting when it doesn't. */
+    height: calc(100svh - 120px);
     min-height: 480px;
     position: relative;
   }
