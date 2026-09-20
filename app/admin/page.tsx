@@ -1128,7 +1128,16 @@ function AdminStyles() {
       body[data-admin-theme="light"] .admin-cards article, body[data-admin-theme="light"] .admin-integration, body[data-admin-theme="light"] .admin-account-controls { background: #fff; border-color: #e5e7eb; }
       body[data-admin-theme="light"] .admin-block-heading p, body[data-admin-theme="light"] .admin-integration small { color: #6b7280; }
       body[data-admin-theme="light"] .admin-table th, body[data-admin-theme="light"] .admin-table td { border-color: rgba(148, 163, 184, 0.22); }
-      @media (max-width: 1100px) { .admin-table-users th:nth-child(4), .admin-table-users td:nth-child(4), .admin-table-users th:nth-child(12), .admin-table-users td:nth-child(12) { display: none; } .admin-user-details { grid-template-columns: repeat(2, minmax(180px, 1fr)); } }
+      /* nth-child(12) here used to target this same rule's own "hide a
+         secondary column" slot back when a 12th column existed; the table
+         has had 11 since (Диалог added, nothing else did), which made it
+         silently hide nothing - until the Изображения column below made
+         12 a real column again (Детали, the details-toggle button),
+         which would have made it disappear on any screen ≤1100px instead.
+         Pointed at column 6 (Изображения) explicitly instead of trusting
+         a bare position to still mean the same thing next time the column
+         count changes. */
+      @media (max-width: 1100px) { .admin-table-users th:nth-child(4), .admin-table-users td:nth-child(4), .admin-table-users th:nth-child(6), .admin-table-users td:nth-child(6) { display: none; } .admin-user-details { grid-template-columns: repeat(2, minmax(180px, 1fr)); } }
       @media (max-width: 700px) { .admin-user-details { grid-template-columns: 1fr; } }
     `}</style>
   );
