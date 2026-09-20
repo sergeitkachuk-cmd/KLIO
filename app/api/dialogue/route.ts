@@ -215,7 +215,7 @@ async function runReply(
     const data = dataOf(row);
     const selected = data.cards.find((card) => card.id === selectedId);
     const last = data.messages.at(-1)!.text;
-    const useBrandContext = data.messages.at(-1)!.useBrandContext !== false;
+    const useBrandContext = data.messages.at(-1)!.useBrandContext === true;
     let saveRequested = false;
     if (mode === "image") {
       // Free-standing image generation (site owner: "у нас свободный диалог,
@@ -808,7 +808,7 @@ export async function POST(request: Request) {
           id: requestId,
           role: "user",
           text: clean(p.text, 8000),
-          useBrandContext: p.useBrandContext !== false,
+          useBrandContext: p.useBrandContext === true,
         });
         [row] = await tx
           .update(dialogueThreads)

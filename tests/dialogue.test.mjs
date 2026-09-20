@@ -4,14 +4,14 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { createDialogueHarness, model } from "./helpers/dialogue-harness.mjs";
 
-test("turning off brand context keeps the chat but omits the business profile", async (t) => {
+test("brand context is off by default even when a business is selected", async (t) => {
   const h = await createDialogueHarness();
   t.after(() => h.close());
   await h.db.insert(h.schema.brands).values({ id: "coffee-brand", ownerEmail: h.owner, name: "Кофейня", profileJson: JSON.stringify({ name: "Кофейня", audience: "Гости" }) });
   let sent;
   h.setAi(async input => { sent = JSON.parse(input.input); return { reply: "Готово", action: "reply", cards: [], profile: [] }; });
   const thread = await h.create("coffee-brand");
-  await h.post({ action: "send", id: thread.id, revision: thread.revision, requestId: randomUUID(), text: "Расскажи про космос", useBrandContext: false });
+  await h.post({ action: "send", id: thread.id, revision: thread.revision, requestId: randomUUID(), text: "Расскажи про космос" });
   const settled = await h.settled(thread.id);
   assert.equal(sent.brandContextEnabled, false);
   assert.deepEqual(sent.profile, {});

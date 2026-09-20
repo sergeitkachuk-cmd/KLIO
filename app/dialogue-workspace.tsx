@@ -121,7 +121,7 @@ export function DialogueWorkspace(props: Props) {
   const [draft, setDraft] = useState("");
   const [search, setSearch] = useState(false);
   const [profileMode, setProfileMode] = useState(false);
-  const [useBrandContext, setUseBrandContext] = useState(true);
+  const [useBrandContext, setUseBrandContext] = useState(false);
   const [selected, setSelected] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
   const [editTitle, setEditTitle] = useState("");
