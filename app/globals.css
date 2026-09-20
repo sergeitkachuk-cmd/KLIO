@@ -4559,6 +4559,12 @@ footer nav a {
   text-decoration: none;
   cursor: pointer;
 }
+/* Desktop has its own .theme-toggle in .workspace-header instead (site
+   owner: "верни в шапку как было, только в веб-версии") - this copy is
+   mobile-only, re-enabled in the ≤820px block further down. */
+.account-menu-theme-toggle {
+  display: none;
+}
 /* A bare inline <svg> with no width/height falls back to inconsistent
    browser-default sizing instead of a fixed box - the same root cause
    documented for Icon() elsewhere on the site (see .button svg and its
@@ -14597,6 +14603,17 @@ input[type="radio"] {
      restores the stacking context without reintroducing the sticky pin. */
   .workspace-header {
     position: relative;
+  }
+
+  /* Header room is exactly what's tight on mobile (see this same block's
+     own comment above) - site owner: theme toggle back in the header on
+     web, kept in the account menu for mobile specifically. */
+  .workspace-header .theme-toggle {
+    display: none;
+  }
+
+  .account-menu-theme-toggle {
+    display: flex;
   }
 }
 

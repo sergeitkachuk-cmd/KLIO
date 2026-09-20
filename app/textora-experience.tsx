@@ -5495,6 +5495,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             {(["dialogue", "professional"] as const).map(mode => <button key={mode} type="button" aria-pressed={workspaceMode === mode} disabled={modeSaving} onClick={() => void changeWorkspaceMode(mode)}><span className="mode-switch-full">{mode === "dialogue" ? "Диалоговый" : "Профессиональный"}</span><span className="mode-switch-short">{mode === "dialogue" ? "Диалог" : "Профи"}</span></button>)}
           </div>
           <Link href="/">На главную</Link>
+          {/* Back in the header on web only (site owner: "верни в шапку
+              как было, только в веб-версии") - the account-menu copy
+              below stays for mobile, where header room is tight enough
+              that it was moved out in the first place. */}
+          <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"} title={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"}><Icon name={theme === "dark" ? "sun" : "moon"}/></button>
           <a className="telegram-header-link" href="https://t.me/kliopress" target="_blank" rel="noreferrer" aria-label="Telegram КЛИО"><Icon name="telegram"/><span className="telegram-header-link-text">Telegram КЛИО</span></a>
           <div className={`account-menu ${accountMenuOpen ? "is-open" : ""}`} ref={accountMenuRef}>
             <button type="button" className="workspace-account" onClick={() => setAccountMenuOpen((value) => !value)} aria-haspopup="menu" aria-expanded={accountMenuOpen}>
@@ -5502,11 +5507,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </button>
             {accountMenuOpen && <div className="account-menu-list" role="menu">
               <Link href="/account" role="menuitem">Личный кабинет</Link>
-              {/* Moved out of the main header bar into here (site owner:
-                  "чтобы шапка аккуратно смотрелась может переключение
-                  темы убрать в меню выпадающее профиля?") - one less
-                  icon competing for room in an already-tight row. */}
-              <button type="button" role="menuitem" onClick={() => { toggleTheme(); setAccountMenuOpen(false); }}>
+              {/* Mobile-only now (see the header's own .theme-toggle above,
+                  hidden on mobile via CSS) - this copy is what the header
+                  button was moved into for mobile specifically, where
+                  header room stays tight (site owner originally: "чтобы
+                  шапка аккуратно смотрелась может переключение темы
+                  убрать в меню выпадающее профиля?"; restored to the
+                  header on web later, this one kept for mobile). */}
+              <button type="button" role="menuitem" className="account-menu-theme-toggle" onClick={() => { toggleTheme(); setAccountMenuOpen(false); }}>
                 <Icon name={theme === "dark" ? "sun" : "moon"}/> {theme === "dark" ? "Светлая тема" : "Тёмная тема"}
               </button>
               <button type="button" role="menuitem" onClick={() => {
