@@ -807,7 +807,7 @@ export function DialogueWorkspace(props: Props) {
                 title="Короткий текст для соцсетей, ~600-900 знаков"
                 onClick={() =>
                   void send(
-                    "chat",
+                    "text",
                     `Напиши короткий пост для соцсетей на тему «${c.title}», примерно 600–900 знаков с пробелами, обычными абзацами без подзаголовков. ${c.body}`,
                     c.id,
                   )
@@ -820,7 +820,7 @@ export function DialogueWorkspace(props: Props) {
                 title="Развёрнутый текст с подзаголовками, ~3000-4500 знаков"
                 onClick={() =>
                   void send(
-                    "chat",
+                    "text",
                     `Напиши развёрнутую статью на тему «${c.title}», примерно 3000–4500 знаков с пробелами, с подзаголовками по смыслу. ${c.body}`,
                     c.id,
                   )

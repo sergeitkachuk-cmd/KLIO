@@ -42,6 +42,7 @@ test("image generation from dialogue saves the result into materials", async (t)
     revision: thread.revision,
     requestId: randomUUID(),
     text: "Напиши пост",
+    mode: "text",
   });
   thread = await h.settled(thread.id);
   const card = thread.data.cards[0];
@@ -337,6 +338,7 @@ test("profile confirmation protects manual values and post saving never silently
     revision: thread.revision,
     requestId: randomUUID(),
     text: "Пост",
+    mode: "text",
   });
   thread = await h.settled(thread.id);
   const card = thread.data.cards[0];
@@ -424,16 +426,12 @@ test("each dialogue intent debits the pool matching what it actually produces", 
   assert.equal(after.editorActionsUsed, 0);
 });
 
-test("ordinary chat recovers a reply when structured output is invalid", async (t) => {
+test("ordinary chat requests plain text directly without a card schema", async (t) => {
   const h = await createDialogueHarness();
   t.after(() => h.close());
   h.setAi(async (input) => {
-    if (input.operation === "dialogue") {
-      const error = new Error("Provider omitted the structured envelope");
-      error.invalidOutput = true;
-      throw error;
-    }
     assert.equal(input.operation, "dialogue_plain");
+    assert.equal(input.schema, undefined);
     return { raw: "КЛИО отвечает на обычный вопрос." };
   });
   let thread = await h.create();
@@ -443,5 +441,5 @@ test("ordinary chat recovers a reply when structured output is invalid", async (
   assert.equal(thread.data.messages.at(-1).text, "КЛИО отвечает на обычный вопрос.");
   assert.equal(thread.data.cards.length, 0);
   assert.equal((await h.account()).dialogueActionsUsed, 1);
-  assert.equal(h.calls(), 2);
+  assert.equal(h.calls(), 1);
 });

@@ -181,10 +181,11 @@ export async function createDialogueHarness() {
       "../../content-plans": contentPlans,
       "../_lib/ai-config": { aiConfigured: () => true },
       "../_lib/ai-router": {
+        AiCallError: class AiCallError extends Error {},
         callAiModel: async (input) => {
           calls++;
           const result = await ai(input);
-          if (input.operation === "dialogue_plain") return { result };
+          if (input.operation === "dialogue_plain") return { result: typeof result.raw === "string" ? result : { raw: result.reply } };
           if (!validate(result)) throw new Error("Invalid AI schema");
           return { result };
         },
