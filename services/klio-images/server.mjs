@@ -4,6 +4,32 @@ import { createServer } from "node:http";
 import { timingSafeEqual, createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 
+const RECOMMENDED_SIZES = new Set(["auto", "1024x1024", "1536x1024", "1024x1536"]);
+// gpt-image-2.5-flare/sunburst also accept a custom WIDTHxHEIGHT beyond the
+// three recommended sizes - multiples of 16, aspect ratio between 1:3 and
+// 3:1, neither edge over 3840px, total pixels between 655,360 and 8,294,400
+// (OpenAI's documented constraints). Anything outside that, or malformed,
+// falls back to the square default rather than sending OpenAI a request it
+// would reject outright.
+function resolveSize(value) {
+  if (typeof value !== "string") return "1024x1024";
+  if (RECOMMENDED_SIZES.has(value)) return value;
+  const match = /^(\d+)x(\d+)$/.exec(value);
+  if (!match) return "1024x1024";
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  if (width % 16 !== 0 || height % 16 !== 0) return "1024x1024";
+  if (width > 3840 || height > 3840) return "1024x1024";
+  const ratio = width / height;
+  if (ratio < 1 / 3 || ratio > 3) return "1024x1024";
+  const pixels = width * height;
+  if (pixels < 655_360 || pixels > 8_294_400) return "1024x1024";
+  return value;
+}
+const ALLOWED_QUALITY = new Set(["low", "medium", "high", "auto"]);
+const ALLOWED_FORMAT = new Set(["png", "jpeg", "webp"]);
+const ALLOWED_BACKGROUND = new Set(["auto", "transparent", "opaque"]);
+
 export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", providerFetch = fetch }) {
   const jobs = new Map(); let running = 0;
   const authorized = value => {
@@ -39,9 +65,13 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", pro
       running++;
       job.result = (async () => {
         try {
+          const resolvedSize = resolveSize(body.size);
+          const quality = ALLOWED_QUALITY.has(body.quality) ? body.quality : "medium";
+          const outputFormat = ALLOWED_FORMAT.has(body.output_format) ? body.output_format : "png";
+          const background = ALLOWED_BACKGROUND.has(body.background) ? body.background : undefined;
           const upstream = await providerFetch("https://api.openai.com/v1/images/generations", {
             method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ model, prompt: body.prompt, n: 1, size: "1024x1024", quality: "medium", output_format: "png" }),
+            body: JSON.stringify({ model, prompt: body.prompt, n: 1, size: resolvedSize, quality, output_format: outputFormat, ...(background ? { background } : {}) }),
             signal: AbortSignal.timeout(150_000),
           });
           if (!upstream.ok) return { status: upstream.status === 400 ? 400 : 502, body: { error: "Image provider did not complete the request" } };
