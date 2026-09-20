@@ -151,7 +151,7 @@ async function generateImageBytes(prompt: string, requestId: string, options: Im
   const encoded = payload.data?.[0]?.b64_json;
   if (!encoded || encoded.length > 12_000_000)
     throw new Error("Сервис изображений вернул некорректный файл.");
-  let bytes = new Uint8Array(Buffer.from(encoded, "base64"));
+  const bytes = new Uint8Array(Buffer.from(encoded, "base64"));
   // Detected from the actual bytes, not assumed from resolved.outputFormat
   // (site owner: generation "didn't work at all for jpg, only png worked").
   // The relay is a separate deployment this repo doesn't control - it
@@ -160,33 +160,17 @@ async function generateImageBytes(prompt: string, requestId: string, options: Im
   // ratio, format stays png regardless of output_format - site owner:
   // "какое бы соотношение ни выбрал, всё равно 1:1", "какой бы формат ни
   // выбрал, всё равно png"). Trusting the request for either would mean
-  // this file's declared type/size mismatched what actually came back.
-  let detectedType = imageContentType(bytes) || "image/png";
-  const [targetWidth, targetHeight] = resolved.size.split("x").map(Number);
-  const wantsFormat = options.outputFormat
-    ? (options.outputFormat === "jpeg" ? "image/jpeg" : options.outputFormat === "webp" ? "image/webp" : "image/png")
-    : detectedType;
-  // Center-cropping to the requested dimensions and re-encoding to the
-  // requested format here means the final result matches what was asked
-  // for regardless of what the relay does internally - the real fix
-  // belongs in the relay itself, but this doesn't depend on that ever
-  // happening.
-  try {
-    const sharp = (await import("sharp")).default;
-    const meta = await sharp(bytes).metadata();
-    const sizeMismatch = Boolean(targetWidth && targetHeight && meta.width && meta.height && (meta.width !== targetWidth || meta.height !== targetHeight));
-    const formatMismatch = wantsFormat !== detectedType;
-    if (sizeMismatch || formatMismatch) {
-      console.log(`Correcting image: got ${meta.width}x${meta.height} ${detectedType}, requested ${resolved.size} ${wantsFormat}`);
-      let pipeline = sharp(bytes);
-      if (sizeMismatch) pipeline = pipeline.resize({ width: targetWidth, height: targetHeight, fit: "cover", position: "centre" });
-      pipeline = wantsFormat === "image/jpeg" ? pipeline.jpeg() : wantsFormat === "image/webp" ? pipeline.webp() : pipeline.png();
-      bytes = new Uint8Array(await pipeline.toBuffer());
-      detectedType = wantsFormat;
-    }
-  } catch (error) {
-    console.error("Image size/format correction failed", error instanceof Error ? error.message : error);
-  }
+  // this file's declared type mismatched what actually came back.
+  //
+  // Deliberately NOT cropping or re-encoding to force a match here anymore:
+  // cropping can cut off in-image content (text, a logo, anything near the
+  // edge) that the model placed assuming the full square canvas - site
+  // owner rejected that trade explicitly ("Обрезать ничего не надо! Там же
+  // в картинке может быть текст и он уйдет тогда за края или обрежется!").
+  // The real fix has to be the relay honoring size/output_format, or a
+  // properly-configured direct OpenAI call - see the API research notes
+  // this repo's PR/commit message links, not a client-side workaround.
+  const detectedType = imageContentType(bytes) || "image/png";
   return { bytes, contentType: detectedType, resolved };
 }
 
@@ -200,54 +184,25 @@ export async function createImage(prompt: string, email: string, baseUrl: string
   );
 }
 
-// Composites the brand's real logo file onto the generated background,
-// instead of asking the model to reinterpret it (site owner: passing the
-// logo through OpenAI's image-edit endpoint without a mask let the model
-// treat it as a loose style reference, not a fixed asset - it redrew the
-// logo instead of preserving it, and once even ignored it outright and
-// invented its own). Compositing with sharp guarantees the exact uploaded
-// pixels appear untouched, every time, and reuses generateImageBytes for
-// the background - the same relay/OpenAI call as a normal generation, no
-// separate direct-to-OpenAI path with its own geo-blocking risk (site
-// owner hit OpenAI's "unsupported_country_region_territory" calling
-// straight from Timeweb - a Russian host - when the relay, hosted
-// elsewhere, was bypassed for the size-diagnostic pass).
+// Placeholder pending a real design for logo integration: an earlier
+// version called OpenAI's image-edit endpoint without a mask (the model
+// treated the logo as a loose style reference and redrew/ignored it), then
+// a second version pasted the uploaded logo as a fixed bottom-right
+// overlay via sharp - both rejected by the site owner. The overlay wasn't
+// rejected for reliability, it was rejected on the merits: the ask is for
+// the logo to read as part of the generated scene (e.g. printed on an
+// object in it), not a corner watermark on top of it. Until that's
+// designed and agreed, this generates a normal background and does not
+// touch the logo at all, rather than shipping either rejected approach
+// again.
 export async function createImageFromLogo(
   prompt: string,
-  logo: { bytes: Uint8Array<ArrayBuffer>; contentType: string },
+  _logo: { bytes: Uint8Array<ArrayBuffer>; contentType: string },
   email: string,
   baseUrl: string,
   requestId: string,
   options: ImageGenerationOptions = {},
 ) {
-  const { bytes: backgroundBytes, resolved } = await generateImageBytes(prompt, requestId, options);
-  const sharp = (await import("sharp")).default;
-  const background = sharp(backgroundBytes);
-  const meta = await background.metadata();
-  const bgWidth = meta.width || 1024;
-  const bgHeight = meta.height || 1024;
-  // Bottom-right corner, sized relative to the canvas - a fixed, readable
-  // placement (like a watermark) rather than attempting to blend the logo
-  // into the scene, which is exactly what let the model redraw it.
-  const logoTargetWidth = Math.max(64, Math.round(bgWidth * 0.18));
-  const padding = Math.round(bgWidth * 0.04);
-  const logoBuffer = await sharp(logo.bytes).resize({ width: logoTargetWidth, fit: "inside", withoutEnlargement: true }).toBuffer();
-  const logoMeta = await sharp(logoBuffer).metadata();
-  const logoWidth = logoMeta.width || logoTargetWidth;
-  const logoHeight = logoMeta.height || logoTargetWidth;
-  const left = Math.max(0, Math.min(bgWidth - logoWidth, bgWidth - logoWidth - padding));
-  const top = Math.max(0, Math.min(bgHeight - logoHeight, bgHeight - logoHeight - padding));
-  const composed = sharp(backgroundBytes).composite([{ input: logoBuffer, left, top }]);
-  const outputFormat = resolved.outputFormat;
-  const outBuffer = await (
-    outputFormat === "jpeg" ? composed.jpeg() : outputFormat === "webp" ? composed.webp() : composed.png()
-  ).toBuffer();
-  const contentType = outputFormat === "jpeg" ? "image/jpeg" : outputFormat === "webp" ? "image/webp" : "image/png";
-  const fileName = outputFormat === "jpeg" ? "klio.jpeg" : outputFormat === "webp" ? "klio.webp" : "klio.png";
-  return uploadPublicationImage(
-    new File([new Uint8Array(outBuffer)], fileName, { type: contentType }),
-    email,
-    baseUrl,
-  );
+  return createImage(prompt, email, baseUrl, requestId, options);
 }
 
