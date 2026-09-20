@@ -264,8 +264,23 @@ async function runReply(
       // as the professional mode's own image generator). Grounded in the
       // selected card when there is one, otherwise directly in whatever the
       // person typed.
+      //
+      // The selected-card branch used to carry the same "не добавляй
+      // надписи, если они не запрошены" line as the description-only branch
+      // below - site owner, comparing the identical "баннер для статьи"
+      // request in both modes: professional's own generator (buildArticleImagePrompt
+      // in textora-experience.tsx, feeding /api/images) sends the raw
+      // title+body straight through with no such restriction and reliably
+      // gets a real cover-style banner with the headline rendered on it;
+      // dialogue's blanket suppression was actively telling the model not
+      // to do the one thing that made professional's result better. Dropped
+      // here and replaced with the opposite steer - only for a request
+      // grounded in an actual selected material, where "look like a real
+      // article cover" is the point. The no-selection branch (a plain
+      // "draw X" request with nothing to headline) keeps suppressing
+      // incidental text, since that's a different, non-banner use case.
       const prompt = selected
-        ? `Создай изображение для публикации. Не добавляй надписи, если они не запрошены. Контекст бизнеса: ${useBrandContext ? brand?.profileJson ?? "не указан" : "отключён пользователем"}. Материал: ${selected.title}\n${selected.body}\nПожелания: ${last}`
+        ? `Создай изображение-обложку для этого материала, как баннер к статье: заголовок уместно вынести на изображение крупным текстом, как настоящая обложка. Контекст бизнеса: ${useBrandContext ? brand?.profileJson ?? "не указан" : "отключён пользователем"}. Материал: ${selected.title}\n${selected.body}\nПожелания: ${last}`
         : `Создай изображение по описанию. Не добавляй надписи, если они не запрошены. Контекст бизнеса: ${useBrandContext ? brand?.profileJson ?? "не указан" : "отключён пользователем"}. Описание: ${last}`;
       const imageOptions = {
         ...(settings.imageAspectRatio ? { aspectRatio: settings.imageAspectRatio } : {}),
