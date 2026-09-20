@@ -21,3 +21,43 @@ test("image service authenticates, reuses duplicate work and never exposes provi
   assert.equal((await post("Другой запрос")).status, 409);
   assert.equal(calls, 1);
 });
+
+test("image service forwards a logo to the edit endpoint instead of dropping it", async t => {
+  const token = "test-only-token-with-at-least-32-characters";
+  let seen;
+  const server = imageService({ token, apiKey: "fixture-provider-key", providerFetch: async (url, options) => {
+    seen = { url, form: options.body };
+    assert.equal(url, "https://api.openai.com/v1/images/edits");
+    assert.equal(options.headers.Authorization, "Bearer fixture-provider-key");
+    assert.ok(options.body instanceof FormData);
+    return Response.json({ data: [{ b64_json: "fixture-image" }] });
+  } });
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const url = `http://127.0.0.1:${server.address().port}/generate`;
+  const logoBytes = Buffer.from("fixture-logo-bytes");
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Idempotency-Key": "test-request-with-logo-0001", "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt: "Кофейня", image_b64: logoBytes.toString("base64"), image_type: "image/png", aspectRatio: "4:3" }),
+  });
+  assert.equal(response.status, 200);
+  const image = seen.form.get("image");
+  assert.equal(image.type, "image/png");
+  assert.equal(Buffer.from(await image.arrayBuffer()).toString(), "fixture-logo-bytes");
+  assert.equal(seen.form.get("size"), "1536x1024");
+});
+
+test("image service rejects a malformed logo instead of silently dropping it", async t => {
+  const token = "test-only-token-with-at-least-32-characters";
+  const server = imageService({ token, apiKey: "fixture-provider-key", providerFetch: async () => { throw new Error("should not call the provider"); } });
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const url = `http://127.0.0.1:${server.address().port}/generate`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Idempotency-Key": "test-request-bad-logo-00001", "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt: "Кофейня", image_b64: "abc" }),
+  });
+  assert.equal(response.status, 400);
+});

@@ -19,6 +19,12 @@ const IMAGE_SIZE_BY_RATIO = {
 const IMAGE_QUALITY_VALUES = new Set(["low", "medium", "high"]);
 const IMAGE_FORMAT_VALUES = new Set(["png", "jpeg", "webp"]);
 const IMAGE_BACKGROUND_VALUES = new Set(["auto", "transparent", "opaque"]);
+// A prompt-only body is a few KB; a base64-encoded brand logo (uploads allow
+// up to 8MB raw, ~33% larger once base64-encoded) is the large case. This
+// cap was still sized for prompt-only bodies, so every logo-enabled request
+// was rejected here before it ever reached OpenAI (site owner: image
+// generation errors only when the logo toggle is on).
+const MAX_REQUEST_BYTES = 12_000_000;
 
 function resolveRequestSize(rawSize, aspectRatio) {
   if (typeof rawSize === "string" && /^\d+x\d+$/.test(rawSize)) return rawSize;
@@ -45,16 +51,19 @@ export function imageService({ token, apiKey, model = "gpt-image-1", providerFet
     const timer = setTimeout(() => request.destroy(), 10_000);
     try {
       let size = 0; const chunks = [];
-      for await (const chunk of request) { size += chunk.length; if (size > 64_000) { reply(413, { error: "Request too large" }); return; } chunks.push(chunk); }
+      for await (const chunk of request) { size += chunk.length; if (size > MAX_REQUEST_BYTES) { reply(413, { error: "Request too large" }); return; } chunks.push(chunk); }
       body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
     } catch { return reply(400, { error: "Invalid request" }); }
     finally { clearTimeout(timer); }
     if (!body || typeof body.prompt !== "string" || !body.prompt.trim() || body.prompt.length > 12000) return reply(400, { error: "Invalid prompt" });
-    const size = resolveRequestSize(body.size, body.aspectRatio);
+    if (body.image_b64 !== undefined && (typeof body.image_b64 !== "string" || !body.image_b64 || typeof body.image_type !== "string" || !/^image\/[a-z0-9.+-]+$/i.test(body.image_type)))
+      return reply(400, { error: "Invalid image" });
+    const logo = body.image_b64 ? { bytes: Buffer.from(body.image_b64, "base64"), contentType: body.image_type } : null;
+    const imageSize = resolveRequestSize(body.size, body.aspectRatio);
     const quality = IMAGE_QUALITY_VALUES.has(body.quality) ? body.quality : "medium";
     const outputFormat = IMAGE_FORMAT_VALUES.has(body.output_format) ? body.output_format : "png";
     const background = IMAGE_BACKGROUND_VALUES.has(body.background) ? body.background : "auto";
-    const hash = createHash("sha256").update(body.prompt).digest("hex");
+    const hash = createHash("sha256").update(body.prompt).update(logo ? logo.bytes : "").digest("hex");
     const previous = jobs.get(id);
     if (previous && previous.hash !== hash) return reply(409, { error: "Request key already used" });
     if (!previous && running >= 2) return reply(429, { error: "Image service is busy" });
@@ -65,20 +74,38 @@ export function imageService({ token, apiKey, model = "gpt-image-1", providerFet
       running++;
       job.result = (async () => {
         try {
-          const upstreamPayload = {
-            model,
-            prompt: body.prompt,
-            n: 1,
-            ...(body.size || body.aspectRatio ? { size } : {}),
-            ...(body.quality ? { quality } : {}),
-            ...(body.output_format ? { output_format: outputFormat } : {}),
-            ...(body.background ? { background } : {}),
-          };
-          const upstream = await providerFetch("https://api.openai.com/v1/images/generations", {
-            method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-            body: JSON.stringify(upstreamPayload),
-            signal: AbortSignal.timeout(150_000),
-          });
+          let upstream;
+          if (logo) {
+            const form = new FormData();
+            form.append("model", model);
+            form.append("prompt", body.prompt);
+            form.append("n", "1");
+            if (body.size || body.aspectRatio) form.append("size", imageSize);
+            if (body.quality) form.append("quality", quality);
+            if (body.output_format) form.append("output_format", outputFormat);
+            if (body.background) form.append("background", background);
+            form.append("image", new Blob([logo.bytes], { type: logo.contentType }), "reference");
+            upstream = await providerFetch("https://api.openai.com/v1/images/edits", {
+              method: "POST", headers: { Authorization: `Bearer ${apiKey}` },
+              body: form,
+              signal: AbortSignal.timeout(150_000),
+            });
+          } else {
+            const upstreamPayload = {
+              model,
+              prompt: body.prompt,
+              n: 1,
+              ...(body.size || body.aspectRatio ? { size: imageSize } : {}),
+              ...(body.quality ? { quality } : {}),
+              ...(body.output_format ? { output_format: outputFormat } : {}),
+              ...(body.background ? { background } : {}),
+            };
+            upstream = await providerFetch("https://api.openai.com/v1/images/generations", {
+              method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+              body: JSON.stringify(upstreamPayload),
+              signal: AbortSignal.timeout(150_000),
+            });
+          }
           if (!upstream.ok) return { status: upstream.status === 400 ? 400 : 502, body: { error: "Image provider did not complete the request" } };
           const reader = upstream.body.getReader(); const chunks = []; let size = 0;
           try {
