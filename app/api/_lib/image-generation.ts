@@ -127,10 +127,20 @@ export async function createImage(prompt: string, email: string, baseUrl: string
     body: JSON.stringify(imageRequest),
     signal: AbortSignal.timeout(150_000),
   });
-  if (!response.ok)
+  if (!response.ok) {
+    // Temporary, same reasoning as the request/response-size logging above -
+    // the route above this only ever shows the person a generic "не
+    // удалось создать" regardless of cause (it doesn't special-case a
+    // plain Error), so an instant failure with no server-side visibility
+    // into OpenAI's own rejection reason (auth, quota, unverified org,
+    // bad request) is otherwise a dead end. Body may be JSON or plain
+    // text depending on what actually rejected the request.
+    const bodyText = await response.text().catch(() => "");
+    console.error(`Image provider rejected the request: ${response.status} ${bodyText.slice(0, 2000)}`);
     throw new Error(
       "Сервис изображений не выполнил запрос. Попробуйте другое описание или загрузите свою картинку.",
     );
+  }
   const payload = (await response.json()) as {
     data?: Array<{ b64_json?: string }>;
   };
@@ -216,10 +226,13 @@ export async function createImageFromLogo(
     body: form,
     signal: AbortSignal.timeout(150_000),
   });
-  if (!response.ok)
+  if (!response.ok) {
+    const bodyText = await response.text().catch(() => "");
+    console.error(`Image provider (edit endpoint) rejected the request: ${response.status} ${bodyText.slice(0, 2000)}`);
     throw new Error(
       "Сервис изображений не выполнил запрос с логотипом. Попробуйте другое описание или отключите использование логотипа.",
     );
+  }
   const payload = (await response.json()) as {
     data?: Array<{ b64_json?: string }>;
   };
