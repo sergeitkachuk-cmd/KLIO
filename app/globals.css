@@ -12762,6 +12762,88 @@ input[type="radio"] {
   cursor: default;
 }
 
+/* Popover trigger + portaled thumbnail grid for "Выбрать из материалов"
+   (site owner: "это реализовано ужасно... там всё криво переполняется" -
+   replaces an always-open, entirely unstyled thumbnail strip and a button
+   that silently grabbed the first material image instead of letting
+   anyone choose). Same dark-gradient/acid-hover language as
+   .module-select-list, since this modal stays dark regardless of theme;
+   portaled to document.body for the same reason ModuleSelect's list is -
+   the modal itself scrolls (overflow: auto), so a plain absolutely
+   positioned popover would get clipped or drift from its trigger. */
+.pub-image-picker {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.pub-image-picker-list {
+  z-index: 3100;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+  padding: 10px;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 85% -10%, rgba(124, 58, 237, 0.4), transparent 42%),
+    linear-gradient(155deg, #051a31 0%, #0c3459 55%, #041225 100%);
+  box-shadow: 0 22px 55px rgba(2, 10, 22, 0.5), inset 0 1px rgba(255, 255, 255, 0.1);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(124, 58, 237, 0.45) transparent;
+}
+
+.pub-image-picker-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.pub-image-picker-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pub-image-picker-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.45);
+}
+
+.pub-image-picker-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 58, 237, 0.65);
+}
+
+.pub-image-picker-list > button {
+  display: grid;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.035);
+  cursor: pointer;
+  text-align: left;
+}
+
+.pub-image-picker-list > button img {
+  display: block;
+  width: 100%;
+  height: 72px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.pub-image-picker-list > button span {
+  overflow: hidden;
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pub-image-picker-list > button:hover,
+.pub-image-picker-list > button.active {
+  border-color: rgba(216, 255, 101, 0.24);
+  background: rgba(216, 255, 101, 0.09);
+}
+
 .publications-editor-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -9,6 +9,7 @@ import { ProfileField } from "./profile-field";
 import { createWorkspaceSaveQueue } from "./workspace-save-queue";
 import { HelpTip } from "./help-tip";
 import { ModuleSelect } from "./module-select";
+import { PublicationImagePicker } from "./publication-image-picker";
 import { FOUNDATION_FIELDS, VOICE_FIELDS, mergeProfileFill, missingVoiceFoundation } from "./brand-profile-fill";
 import { russianGeoTree } from "./geo-data";
 import { ADAPTATION_PLANS, FORMAT_PLANS, TONE_PLANS } from "./content-plans";
@@ -2237,6 +2238,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const workspaceSaveQueue = useRef(createWorkspaceSaveQueue());
   const workspaceVersions = useRef(new Map<string, string>());
   const [workspaceHistory, setWorkspaceHistory] = useState<GenerationArchiveItem[]>([]);
+  const pubMaterialImages = useMemo(
+    () => workspaceHistory.filter((item) => item.imageUrl && item.topic === "Изображение" && (!activeBrandId || item.brandId === activeBrandId)),
+    [workspaceHistory, activeBrandId],
+  );
   const [imagePrompt, setImagePrompt] = useState("");
   const [imageAspectRatio, setImageAspectRatio] = useState<"1:1" | "4:3" | "4:5" | "16:9" | "9:16">("4:3");
   const [imageOutputFormat, setImageOutputFormat] = useState<"png" | "jpeg" | "webp">("png");
@@ -5739,24 +5744,21 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <span>Картинка</span>
                 <div className="publications-image-row">
                   <label className={`publications-upload-button ${pubImageUploadBusy ? "is-busy" : ""}`}>
-                    {pubImageUploadBusy ? "Загрузка…" : pubEditor.imageUrl ? "Заменить картинку" : "Загрузить картинку"}
+                    {pubImageUploadBusy ? "Загрузка…" : pubEditor.imageUrl ? "Заменить с телефона" : "Загрузить с телефона"}
                     <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden disabled={pubImageUploadBusy} onChange={(event) => {
                       const file = event.target.files?.[0];
                       event.target.value = "";
                       if (file) void uploadPubImage(file);
                     }}/>
                   </label>
-                  {workspaceHistory.filter((item) => item.imageUrl && item.topic === "Изображение" && (!activeBrandId || item.brandId === activeBrandId)).length > 0 && <button type="button" className="button ghost" onClick={() => setPubEditor((current) => current && { ...current, imageUrl: workspaceHistory.filter((item) => item.imageUrl && item.topic === "Изображение" && (!activeBrandId || item.brandId === activeBrandId))[0].imageUrl })}>Из материалов</button>}
+                  {pubMaterialImages.length > 0 && <PublicationImagePicker
+                    label="Выбрать из материалов"
+                    items={pubMaterialImages}
+                    activeUrl={pubEditor.imageUrl}
+                    onSelect={(item) => setPubEditor((current) => current && { ...current, imageUrl: item.imageUrl, generationId: item.id })}
+                  />}
                   {pubEditor.imageUrl && <button type="button" className="publications-image-remove" onClick={() => setPubEditor((current) => current && { ...current, imageUrl: "" })} disabled={pubImageUploadBusy}>Открепить</button>}
                 </div>
-                {workspaceHistory.filter((item) => item.imageUrl && item.topic === "Изображение" && (!activeBrandId || item.brandId === activeBrandId)).length > 0 && <div className="publications-material-image-list">
-                  {workspaceHistory.filter((item) => item.imageUrl && item.topic === "Изображение" && (!activeBrandId || item.brandId === activeBrandId)).slice(0, 6).map((item) => (
-                    <button type="button" key={item.id} className={pubEditor.imageUrl === item.imageUrl ? "is-active" : ""} onClick={() => setPubEditor((current) => current && { ...current, imageUrl: item.imageUrl, generationId: item.id })}>
-                      <Image unoptimized width={100} height={100} src={item.imageUrl} alt={item.title} />
-                      <span>{item.title || "Изображение"}</span>
-                    </button>
-                  ))}
-                </div>}
               </div>
               {pubImageUploadError && <p role="alert">{pubImageUploadError}</p>}
               {pubEditor.imageUrl && <Image key={pubEditor.imageUrl} unoptimized width={1200} height={800} style={{ height: "auto" }} className="publications-editor-preview" src={pubEditor.imageUrl} alt="Превью картинки" onLoad={() => setPubImageUploadError("")} onError={() => setPubImageUploadError("Картинка по указанному адресу недоступна. Проверьте ссылку или загрузите файл заново.")}/>}
@@ -6223,16 +6225,23 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <label htmlFor="image-prompt">Что изобразить</label>
                 <textarea id="image-prompt" value={imagePrompt} onChange={event => setImagePrompt(event.target.value)} placeholder="Например: чашка кофе на деревянном столе у окна, мягкий утренний свет, без надписей" rows={6} maxLength={1800}/>
                 <div className="image-generator-settings">
+                  {/* gpt-image-1 only renders three real sizes (square/
+                      landscape/portrait, see _lib/image-generation.ts) -
+                      offering 5 distinctly-labelled ratios that collapse
+                      into the same 3 actual outputs was exactly the
+                      confusion site owner caught here ("ты говорил, что
+                      там всего 3 соотношения, а тут пять и они разные").
+                      One representative value per real size; the stored
+                      value is still one of ImageAspectRatio's 5 literals,
+                      just picked to be honest about what comes back. */}
                   <ModuleSelect
                     label="Соотношение"
                     value={imageAspectRatio}
                     onChange={(value) => setImageAspectRatio(value as "1:1" | "4:3" | "4:5" | "16:9" | "9:16")}
                     options={[
-                      { value: "4:3", label: "4:3 (стандартный)" },
-                      { value: "1:1", label: "1:1" },
-                      { value: "4:5", label: "4:5" },
-                      { value: "16:9", label: "16:9" },
-                      { value: "9:16", label: "9:16" },
+                      { value: "1:1", label: "Квадрат" },
+                      { value: "4:3", label: "Альбомная" },
+                      { value: "9:16", label: "Портретная" },
                     ]}
                   />
                   <ModuleSelect

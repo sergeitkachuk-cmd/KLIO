@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import {
   sameCard,
@@ -35,12 +36,17 @@ const LENGTH_OPTIONS = [
   { value: "long", label: "Длинный" },
 ];
 const TOPIC_COUNT_OPTIONS = [3, 5, 8, 10].map((n) => ({ value: String(n), label: String(n) }));
+// gpt-image-1 only renders three real sizes (square/landscape/portrait,
+// see _lib/image-generation.ts) - offering 5 distinctly-labelled ratios
+// that collapse into the same 3 actual outputs was exactly the confusion
+// site owner caught here ("ты говорил, что там всего 3 соотношения, а тут
+// пять и они разные"). One representative value per real size; the stored
+// value is still one of ImageAspectRatio's 5 literals, just picked to be
+// honest about what comes back.
 const IMAGE_ASPECT_OPTIONS = [
-  { value: "4:3", label: "4:3 (стандартный)" },
-  { value: "1:1", label: "1:1" },
-  { value: "4:5", label: "4:5" },
-  { value: "16:9", label: "16:9" },
-  { value: "9:16", label: "9:16" },
+  { value: "1:1", label: "Квадрат" },
+  { value: "4:3", label: "Альбомная" },
+  { value: "9:16", label: "Портретная" },
 ];
 const IMAGE_FORMAT_OPTIONS = [
   { value: "png", label: "PNG" },
@@ -147,6 +153,51 @@ export function DialogueWorkspace(props: Props) {
   // message chooses its own task fresh instead of a sticky mode.
   const [composeIntent, setComposeIntent] = useState<"chat" | "topics" | "text" | "image">("chat");
   const [intentMenuOpen, setIntentMenuOpen] = useState(false);
+  // Portaled + position:fixed, not a plain CSS dropdown (site owner: "меню
+  // выпадает за экран" - the trigger sits in the compose row at the very
+  // bottom of the chat column, so a plain top:100% dropdown almost always
+  // has nowhere below to open into). Always opens upward, unlike
+  // ModuleSelect's up/down measurement - this trigger's position relative
+  // to the viewport bottom barely changes, so there's no real "open
+  // downward" case worth deciding between (site owner: "выпадающее меню
+  // вверх, как у гпт").
+  const [intentMenuRect, setIntentMenuRect] = useState<{ bottom: number; left: number; width: number; maxHeight: number } | null>(null);
+  const intentContainerRef = useRef<HTMLDivElement>(null);
+  const intentTriggerRef = useRef<HTMLButtonElement>(null);
+  const intentMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!intentMenuOpen) return;
+    const measure = () => {
+      if (!intentTriggerRef.current) return;
+      const rect = intentTriggerRef.current.getBoundingClientRect();
+      const edgeGap = 12;
+      const maxHeight = Math.max(160, Math.min(360, rect.top - edgeGap));
+      setIntentMenuRect({ bottom: window.innerHeight - rect.top + 8, left: rect.left, width: 240, maxHeight });
+    };
+    measure();
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (intentContainerRef.current?.contains(target) || intentMenuRef.current?.contains(target)) return;
+      setIntentMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIntentMenuOpen(false);
+    };
+    const reposition = (event: Event) => {
+      if (intentMenuRef.current?.contains(event.target as Node)) return;
+      measure();
+    };
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
+    };
+  }, [intentMenuOpen]);
   const current = useRef<DialogueThread | null>(null);
   const lock = useRef(false);
   const mounted = useRef(true);
@@ -791,6 +842,11 @@ export function DialogueWorkspace(props: Props) {
                 onClick={() => { setTitleDraft(thread?.title || ""); setTitleEditing(true); }}
               >
                 {thread?.title || "Новый диалог"}
+                {/* Nothing signalled the title was clickable at all (site
+                    owner: "непонятно, что есть такая функция") - a pencil
+                    is the standard "this is renameable" cue and only shows
+                    once a real thread exists to rename. */}
+                {thread && <i className="klio-chat-title-edit" aria-hidden="true"/>}
               </button>
             )}
           </div>
@@ -1019,40 +1075,6 @@ export function DialogueWorkspace(props: Props) {
               </button>
             </div>
           )}
-          {/* ChatGPT-style task picker (site owner: "мы реально путаем
-              человека предлагая ему кучу настроек разом") - chat stays plain
-              by default; "+" picks a task and only then shows the 2-3
-              settings that actually apply to it, instead of all 6 at once. */}
-          <div className="klio-chat-intent">
-            <button
-              type="button"
-              className="klio-chat-intent-add"
-              aria-haspopup="menu"
-              aria-expanded={intentMenuOpen}
-              aria-label="Выбрать задачу"
-              onClick={() => setIntentMenuOpen((open) => !open)}
-            >
-              ＋
-            </button>
-            {composeIntent !== "chat" && (
-              <span className="klio-chat-intent-chip">
-                {INTENT_OPTIONS.find((option) => option.value === composeIntent)?.label}
-                <button type="button" aria-label="Вернуться к обычному общению" onClick={() => setComposeIntent("chat")}>×</button>
-              </span>
-            )}
-            {intentMenuOpen && (
-              <div className="klio-chat-intent-menu" role="menu" aria-label="Выберите задачу">
-                <button type="button" role="menuitem" className={composeIntent === "chat" ? "active" : ""} onClick={() => { setComposeIntent("chat"); setIntentMenuOpen(false); }}>
-                  <b>Просто общение</b><small>Обсудить идею, задать вопрос</small>
-                </button>
-                {INTENT_OPTIONS.map((option) => (
-                  <button type="button" role="menuitem" key={option.value} className={composeIntent === option.value ? "active" : ""} onClick={() => { setComposeIntent(option.value); setIntentMenuOpen(false); }}>
-                    <b>{option.label}</b><small>{option.hint}</small>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
           {composeIntent !== "chat" && (
             <div className="klio-chat-settings-grid">
               {composeIntent === "topics" && <>
@@ -1103,6 +1125,52 @@ export function DialogueWorkspace(props: Props) {
               }}
             />
             <div className="klio-chat-compose-tools">
+              {/* ChatGPT-style task picker (site owner: "мы реально путаем
+                  человека предлагая ему кучу настроек разом") - chat stays
+                  plain by default; "+" picks a task and only then shows the
+                  2-3 settings that actually apply to it. Portaled +
+                  position:fixed (site owner: "меню выпадает за экран") -
+                  this trigger sits at the very bottom of the chat column, so
+                  a plain CSS dropdown almost never has room to open below
+                  it; always opens upward instead, like ChatGPT's own. */}
+              <div className="klio-chat-intent" ref={intentContainerRef}>
+                <button
+                  type="button"
+                  ref={intentTriggerRef}
+                  className="klio-chat-intent-add"
+                  aria-haspopup="menu"
+                  aria-expanded={intentMenuOpen}
+                  aria-label="Выбрать задачу"
+                  onClick={() => setIntentMenuOpen((open) => !open)}
+                >
+                  ＋
+                </button>
+                {intentMenuOpen && intentMenuRect && createPortal(
+                  <div
+                    className="klio-chat-intent-menu"
+                    role="menu"
+                    aria-label="Выберите задачу"
+                    ref={intentMenuRef}
+                    style={{ position: "fixed", bottom: intentMenuRect.bottom, left: intentMenuRect.left, width: intentMenuRect.width, maxHeight: intentMenuRect.maxHeight }}
+                  >
+                    <button type="button" role="menuitem" className={composeIntent === "chat" ? "active" : ""} onClick={() => { setComposeIntent("chat"); setIntentMenuOpen(false); }}>
+                      <b>Просто общение</b><small>Обсудить идею, задать вопрос</small>
+                    </button>
+                    {INTENT_OPTIONS.map((option) => (
+                      <button type="button" role="menuitem" key={option.value} className={composeIntent === option.value ? "active" : ""} onClick={() => { setComposeIntent(option.value); setIntentMenuOpen(false); }}>
+                        <b>{option.label}</b><small>{option.hint}</small>
+                      </button>
+                    ))}
+                  </div>,
+                  document.body,
+                )}
+              </div>
+              {composeIntent !== "chat" && (
+                <span className="klio-chat-intent-chip">
+                  {INTENT_OPTIONS.find((option) => option.value === composeIntent)?.label}
+                  <button type="button" aria-label="Вернуться к обычному общению" onClick={() => setComposeIntent("chat")}>×</button>
+                </span>
+              )}
               {props.brandId && <label className="klio-chat-context"><input type="checkbox" checked={useBrandContext} onChange={e => setUseBrandContext(e.target.checked)} disabled={busy}/> Профиль бренда</label>}
               <label>
                 <input
