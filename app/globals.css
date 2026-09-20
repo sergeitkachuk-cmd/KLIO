@@ -4351,6 +4351,18 @@ footer nav a {
   height: 76px;
   padding: 0 30px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  /* Rounded like .site-header (the landing page's own floating pill),
+     bottom corners only - this bar sits flush against the viewport's top
+     edge (position: sticky; top: 0), where rounding the top corners
+     wouldn't be visible against anything anyway, unlike the landing
+     page's header, which floats with a gap on every side (site owner:
+     "сделай шапку везде единую как на главной странице закруглённую").
+     Kept as position: sticky rather than matching that floating/inset
+     treatment exactly - dialogue mode's mobile layout depends on this bar
+     staying in normal document flow for its own height math (see
+     .workspace-shell.is-dialogue's flex-column rules), and fixed/floating
+     would remove it from flow entirely. */
+  border-radius: 0 0 20px 20px;
   color: #fff;
   background:
     radial-gradient(circle at 78% -60%, rgba(124, 58, 237, 0.65), transparent 42%),

@@ -84,17 +84,8 @@
   min-height: 0;
   flex: 1;
 }
-.workspace-shell.is-dialogue .workspace-header {
-  background: #fff;
-  box-shadow: none;
-  border-bottom: 1px solid #e3e7e0;
-}
 .workspace-shell.is-dialogue .workspace-header-actions > a {
   display: none;
-}
-[data-theme="dark"] .workspace-shell.is-dialogue .workspace-header {
-  background: #171c19;
-  border-color: #374138;
 }
 [data-theme="dark"] .klio-chat {
   --chat-bg: #171c19;
@@ -462,7 +453,7 @@
   max-width: 100%;
   max-height: 330px;
   object-fit: contain;
-  border-radius: 10px;
+  border-radius: 16px;
   margin: 14px 0;
 }
 .klio-chat-image-trigger {
@@ -950,14 +941,24 @@ body:has(.workspace-shell.is-dialogue)>.module-select-list>button>em{color:#2750
    from turning labels white on light surfaces. */
 .workspace-shell.is-dialogue .klio-chat{--chat-bg:#fcfdff;--chat-side:#f0f4f8;--chat-text:#17283a;--chat-muted:#526579;--chat-line:#d8e1ea;--chat-accent:#27506e;color:var(--chat-text)}
 :root[data-theme="dark"] .workspace-shell.is-dialogue .klio-chat{--chat-bg:#151d28;--chat-side:#1d2936;--chat-text:#edf3f9;--chat-muted:#afbfce;--chat-line:#354656;--chat-accent:#a8d6ed}
-:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-header{background:#fcfdff!important;color:#17283a!important;border-color:#d8e1ea}
-:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-header :is(button,a,span,b,small){color:#17283a}
-:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch{background:#edf2f7;border-color:#ccd8e4;color:#17283a}
-:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch button{color:#24384a!important}
-:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"]{background:#274861;color:#fff!important}
-:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch{background:#233345;border-color:#44586b;color:#edf3f9}
-:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch button{color:#edf3f9!important}
-:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"]{background:#c4e4f3;color:#17283a!important}
+/* Every property !important and repeated on the inner spans too - the
+   pressed button reportedly still rendered a dark background with dark
+   (unreadable) text in light theme (site owner: "когда нажата кнопка
+   диалог, она сама тёмная и текст в ней тоже"), which a plain color
+   override on `button` should already have prevented; this leaves no
+   partial-override gap regardless of the exact prior conflict. */
+:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch{background:#edf2f7!important;border-color:#ccd8e4!important}
+:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch button,
+:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch button span{color:#24384a!important}
+:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"]{background:#274861!important}
+:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"],
+:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"] span{color:#fff!important}
+:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch{background:#233345!important;border-color:#44586b!important}
+:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch button,
+:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch button span{color:#edf3f9!important}
+:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"]{background:#c4e4f3!important}
+:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"],
+:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"] span{color:#17283a!important}
 .workspace-shell.is-dialogue .klio-chat :is(button,input,textarea){color:var(--chat-text)}
 .workspace-shell.is-dialogue .klio-chat :is(h1,h2,h3,b,strong,p,span,label,small){color:inherit}
 .workspace-shell.is-dialogue .klio-chat :is(.klio-chat-author,.klio-chat-card-meta,.klio-chat-history>span,.klio-chat-business>span,.klio-chat-top span,.klio-chat-compose>small){color:var(--chat-muted)}
@@ -1005,8 +1006,6 @@ body:has(.workspace-shell.is-dialogue)>.module-select-list>button>em{color:#2750
    calendar styles contain literal white text, so inherited color is not enough. */
 .workspace-shell.is-dialogue .workspace-content{background:var(--dialogue-paper);color:var(--dialogue-ink)}
 .workspace-shell.is-dialogue .workspace-layout{background:var(--dialogue-paper)}
-.workspace-shell.is-dialogue .workspace-header :is(.brand,.workspace-account,.theme-toggle){color:var(--dialogue-ink)}
-.workspace-shell.is-dialogue .workspace-header :is(.theme-toggle,.workspace-account i){border-color:var(--dialogue-line)}
 .workspace-shell.is-dialogue .workspace-history-head{background:var(--dialogue-soft);border:1px solid var(--dialogue-line);border-radius:16px;box-shadow:none}
 .workspace-shell.is-dialogue .workspace-history-head :is(h2,span){color:var(--dialogue-ink)}
 .workspace-shell.is-dialogue .workspace-history-head>p{color:var(--dialogue-muted)}
