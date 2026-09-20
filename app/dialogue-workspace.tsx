@@ -15,6 +15,7 @@ import {
   type DialogueThread,
 } from "./dialogue-model";
 import { ModuleSelect } from "./module-select";
+import { ImageLightbox } from "./image-lightbox";
 import { TONE_PLANS, type ContentFormat, type ContentTone } from "./content-plans";
 import "./dialogue.css";
 
@@ -128,6 +129,7 @@ export function DialogueWorkspace(props: Props) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [imageAvailable, setImageAvailable] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [next, setNext] = useState<string | null>(null);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
@@ -154,6 +156,15 @@ export function DialogueWorkspace(props: Props) {
   // to "chat" after every send, same as ChatGPT's own tool picker - each
   // message chooses its own task fresh instead of a sticky mode.
   const [composeIntent, setComposeIntent] = useState<"chat" | "topics" | "text" | "image">("chat");
+  // Whether the settings grid for the current intent is expanded, separate
+  // from composeIntent itself - clicking outside used to reset composeIntent
+  // straight to "chat" to hide the grid, which also silently threw away the
+  // chosen task itself (site owner: "настройки закрылись, но режим генерации
+  // картинки изменился на стандартный диалог" - tapping empty space to
+  // dismiss the panel should not also un-pick "image" and make the next
+  // send land as a plain chat message). Collapsing now only hides the grid;
+  // the chip stays and can be tapped to expand it again.
+  const [settingsExpanded, setSettingsExpanded] = useState(true);
   const [intentMenuOpen, setIntentMenuOpen] = useState(false);
   // Portaled + position:fixed, not a plain CSS dropdown (site owner: "меню
   // выпадает за экран" - the trigger sits in the compose row at the very
@@ -221,16 +232,16 @@ export function DialogueWorkspace(props: Props) {
   // option lists and the intent menu are portaled to document.body, so
   // they're not DOM descendants of either ref - matched by class instead.
   useEffect(() => {
-    if (composeIntent === "chat") return;
+    if (composeIntent === "chat" || !settingsExpanded) return;
     const closeOnOutsideClick = (event: MouseEvent) => {
       const target = event.target as Node;
       if (settingsGridRef.current?.contains(target) || composeFormRef.current?.contains(target)) return;
       if (target instanceof Element && target.closest(".klio-chat-intent-menu, .module-select-list")) return;
-      setComposeIntent("chat");
+      setSettingsExpanded(false);
     };
     document.addEventListener("mousedown", closeOnOutsideClick);
     return () => document.removeEventListener("mousedown", closeOnOutsideClick);
-  }, [composeIntent]);
+  }, [composeIntent, settingsExpanded]);
   // Mobile sidebar drawer - previously closable only through its own "×"
   // (site owner: "нажимаешь боковое меню... закрыть можно только через
   // кнопку закрыть"). No backdrop element exists behind it (see the
@@ -716,14 +727,21 @@ export function DialogueWorkspace(props: Props) {
             an image card - see the title button above. */}
         {!c.imageUrl && <p>{c.body}</p>}
         {c.imageUrl && (
-          <Image
-            unoptimized
-            width={640}
-            height={640}
-            className="klio-chat-image"
-            src={c.imageUrl}
-            alt={`Изображение: ${c.title}`}
-          />
+          <button
+            type="button"
+            className="klio-chat-image-trigger"
+            aria-label="Открыть изображение крупнее"
+            onClick={() => setLightboxUrl(c.imageUrl)}
+          >
+            <Image
+              unoptimized
+              width={640}
+              height={640}
+              className="klio-chat-image"
+              src={c.imageUrl}
+              alt={`Изображение: ${c.title}`}
+            />
+          </button>
         )}
         <div className="klio-chat-card-actions">
           {/* A card whose whole content IS a generated image has no text to
@@ -1158,7 +1176,7 @@ export function DialogueWorkspace(props: Props) {
               </button>
             </div>
           )}
-          {composeIntent !== "chat" && (
+          {composeIntent !== "chat" && settingsExpanded && (
             <div className="klio-chat-settings-grid" ref={settingsGridRef}>
               {composeIntent === "topics" && <>
                 <ModuleSelect variant="dialogue" label="Формат" value={genFormat} options={FORMAT_OPTIONS} onChange={(value) => setGenFormat(value as ContentFormat | "")}/>
@@ -1242,7 +1260,7 @@ export function DialogueWorkspace(props: Props) {
                       <b>Просто общение</b><small>Обсудить идею, задать вопрос</small>
                     </button>
                     {INTENT_OPTIONS.map((option) => (
-                      <button type="button" role="menuitem" key={option.value} className={composeIntent === option.value ? "active" : ""} onClick={() => { setComposeIntent(option.value); setIntentMenuOpen(false); }}>
+                      <button type="button" role="menuitem" key={option.value} className={composeIntent === option.value ? "active" : ""} onClick={() => { setComposeIntent(option.value); setSettingsExpanded(true); setIntentMenuOpen(false); }}>
                         <b>{option.label}</b><small>{option.hint}</small>
                       </button>
                     ))}
@@ -1252,7 +1270,9 @@ export function DialogueWorkspace(props: Props) {
               </div>
               {composeIntent !== "chat" && (
                 <span className="klio-chat-intent-chip">
-                  <span>{INTENT_OPTIONS.find((option) => option.value === composeIntent)?.label}</span>
+                  <button type="button" className="klio-chat-intent-chip-label" onClick={() => setSettingsExpanded((value) => !value)} aria-expanded={settingsExpanded} aria-label="Показать или скрыть настройки">
+                    {INTENT_OPTIONS.find((option) => option.value === composeIntent)?.label}
+                  </button>
                   <button type="button" aria-label="Вернуться к обычному общению" onClick={() => setComposeIntent("chat")}>×</button>
                 </span>
               )}
@@ -1317,14 +1337,21 @@ export function DialogueWorkspace(props: Props) {
               />
             </label>
             {card.imageUrl && (
-              <Image
-                unoptimized
-                width={640}
-                height={640}
-                className="klio-chat-image"
-                src={card.imageUrl}
-                alt={card.title}
-              />
+              <button
+                type="button"
+                className="klio-chat-image-trigger"
+                aria-label="Открыть изображение крупнее"
+                onClick={() => setLightboxUrl(card.imageUrl)}
+              >
+                <Image
+                  unoptimized
+                  width={640}
+                  height={640}
+                  className="klio-chat-image"
+                  src={card.imageUrl}
+                  alt={card.title}
+                />
+              </button>
             )}
             <footer>
               <button disabled={busy || !editTitle.trim() || !editBody.trim()} onClick={() => void perform(async () => {
@@ -1403,6 +1430,7 @@ export function DialogueWorkspace(props: Props) {
           </>
         )}
       </dialog>
+      {lightboxUrl && <ImageLightbox src={lightboxUrl} alt="Изображение" onClose={() => setLightboxUrl(null)} />}
     </div>
   );
 }

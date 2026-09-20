@@ -442,6 +442,18 @@
   border-radius: 10px;
   margin: 14px 0;
 }
+.klio-chat-image-trigger {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+  width: fit-content;
+  max-width: 100%;
+}
+.klio-chat-image-trigger .klio-chat-image {
+  margin: 14px 0;
+}
 .klio-chat-compose {
   padding: 12px max(24px, calc((100% - 800px) / 2)) 18px;
   background: var(--chat-bg);
@@ -737,7 +749,7 @@
   .klio-chat-intent-chip {
     max-width: 46vw;
   }
-  .klio-chat-intent-chip > span {
+  .klio-chat-intent-chip-label {
     overflow: hidden;
     min-width: 0;
     text-overflow: ellipsis;
@@ -1001,8 +1013,9 @@ body:has(.workspace-shell.is-dialogue .publications-editor-modal)>.module-select
 .klio-chat-intent-add:hover{background:var(--chat-side)}
 .klio-chat-intent-add[aria-expanded="true"]{border-color:var(--chat-accent);color:var(--chat-accent)}
 .klio-chat-intent-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 4px 4px 10px;border:1px solid var(--chat-line);border-radius:999px;background:var(--chat-side);color:var(--chat-text);font-size:11px;font-weight:600}
-.klio-chat-intent-chip>button{display:grid;place-items:center;width:16px;height:16px;border:0;border-radius:50%;background:transparent;color:var(--chat-muted);font-size:12px;line-height:1;cursor:pointer}
-.klio-chat-intent-chip>button:hover{background:var(--chat-line);color:var(--chat-text)}
+.klio-chat-intent-chip-label{border:0;background:transparent;color:inherit;font:inherit;padding:0;cursor:pointer}
+.klio-chat-intent-chip>button:not(.klio-chat-intent-chip-label){display:grid;place-items:center;width:16px;height:16px;border:0;border-radius:50%;background:transparent;color:var(--chat-muted);font-size:12px;line-height:1;cursor:pointer}
+.klio-chat-intent-chip>button:not(.klio-chat-intent-chip-label):hover{background:var(--chat-line);color:var(--chat-text)}
 /* Portals to document.body (same reasoning as module-select.tsx's own
    comment - the trigger sits at the very bottom of the chat column, so a
    plain CSS dropdown almost never has room below it; position:fixed +
