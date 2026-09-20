@@ -168,6 +168,8 @@ export function DialogueWorkspace(props: Props) {
   const intentTriggerRef = useRef<HTMLButtonElement>(null);
   const intentMenuRef = useRef<HTMLDivElement>(null);
   const composeFormRef = useRef<HTMLFormElement>(null);
+  const settingsGridRef = useRef<HTMLDivElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
   useEffect(() => {
     if (!intentMenuOpen) return;
     const measure = () => {
@@ -209,6 +211,41 @@ export function DialogueWorkspace(props: Props) {
       window.removeEventListener("resize", reposition);
     };
   }, [intentMenuOpen]);
+  // The settings grid (aspect ratio/format/logo, tone/length, etc.) and its
+  // chip only had an explicit "×" to dismiss - clicking anywhere else left
+  // it sitting open indefinitely (site owner: "нажимаешь указать
+  // характеристики картинки, а она потом не закрывается"). Clicking inside
+  // the compose form itself (typing the message, using the dropdowns)
+  // must not count as "outside" - only closes when the click actually
+  // lands elsewhere (a card, the message list, etc). The dropdowns' own
+  // option lists and the intent menu are portaled to document.body, so
+  // they're not DOM descendants of either ref - matched by class instead.
+  useEffect(() => {
+    if (composeIntent === "chat") return;
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (settingsGridRef.current?.contains(target) || composeFormRef.current?.contains(target)) return;
+      if (target instanceof Element && target.closest(".klio-chat-intent-menu, .module-select-list")) return;
+      setComposeIntent("chat");
+    };
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
+  }, [composeIntent]);
+  // Mobile sidebar drawer - previously closable only through its own "×"
+  // (site owner: "нажимаешь боковое меню... закрыть можно только через
+  // кнопку закрыть"). No backdrop element exists behind it (see the
+  // .menu-open CSS), so this same click-outside pattern closes it instead
+  // of adding one.
+  useEffect(() => {
+    if (!mobileMenu) return;
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (sidebarRef.current?.contains(target)) return;
+      setMobileMenu(false);
+    };
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
+  }, [mobileMenu]);
   const current = useRef<DialogueThread | null>(null);
   const lock = useRef(false);
   const mounted = useRef(true);
@@ -784,7 +821,7 @@ export function DialogueWorkspace(props: Props) {
       className={`klio-chat ${mobileMenu ? "menu-open" : ""}`}
       hidden={!props.visible}
     >
-    <aside className="klio-chat-sidebar" aria-label="Диалоги и материалы">
+    <aside className="klio-chat-sidebar" aria-label="Диалоги и материалы" ref={sidebarRef}>
       <button className="klio-chat-menu" aria-label="Закрыть список диалогов" onClick={() => setMobileMenu(false)}>Закрыть ×</button>
         <div className="klio-chat-business">
           <span>Ваш бизнес</span>
@@ -1122,7 +1159,7 @@ export function DialogueWorkspace(props: Props) {
             </div>
           )}
           {composeIntent !== "chat" && (
-            <div className="klio-chat-settings-grid">
+            <div className="klio-chat-settings-grid" ref={settingsGridRef}>
               {composeIntent === "topics" && <>
                 <ModuleSelect variant="dialogue" label="Формат" value={genFormat} options={FORMAT_OPTIONS} onChange={(value) => setGenFormat(value as ContentFormat | "")}/>
                 <ModuleSelect variant="dialogue" label="Тем при подборе" value={topicCount} options={TOPIC_COUNT_OPTIONS} onChange={setTopicCount}/>
