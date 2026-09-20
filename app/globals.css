@@ -12785,6 +12785,7 @@ input[type="radio"] {
 
 .publications-image-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -12924,6 +12925,13 @@ input[type="radio"] {
 }
 
 .publications-editor-row input {
+  /* Same fix as .publications-editor-field input above, and the same
+     reason: a grid item's (here, the date <label>'s) default minimum
+     width is its content's min-content size, not 0. The date field's
+     native picker text can be wide enough on its own to hit that floor
+     and force this row - and with it the modal - wider than the screen
+     on a phone (site owner: "окно публикаций... шире экрана телефона"). */
+  min-width: 0;
   width: 100%;
   padding: 11px 13px;
   border: 1px solid rgba(255, 255, 255, 0.18);
