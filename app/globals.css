@@ -14581,8 +14581,16 @@ input[type="radio"] {
   cursor: zoom-out;
 }
 .image-lightbox-image {
-  max-width: 100%;
-  max-height: 100%;
+  /* vw/vh, not percentages of the grid parent - percentage max-height in
+     particular doesn't reliably resolve against a "display: grid;
+     place-items: center" ancestor's own auto-sized track, which let a
+     wide/tall image render near its native pixel size and spill past the
+     viewport with no way to scroll or shrink it back (site owner:
+     "местами обрезает картинку и невозможно её уменьшить или
+     прокрутить"). Viewport units are unaffected by the parent's own
+     layout mode, so this holds regardless. */
+  max-width: 92vw;
+  max-height: 92vh;
   width: auto;
   height: auto;
   object-fit: contain;
