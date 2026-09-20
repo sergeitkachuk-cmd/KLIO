@@ -65,6 +65,13 @@ function cleanProfile(value: unknown) {
     // api/brand/book/route.ts, which re-checks brand ownership anyway).
     brandBookFileName: clean(source.brandBookFileName, 200),
     brandBookKey: clean(source.brandBookKey, 400),
+    // Same reasoning, set only by api/brand/logo/route.ts after upload
+    // (site owner: attached a logo, clicked save, it silently didn't
+    // persist - this allowlist rebuilds the profile field-by-field and
+    // simply had no entry for it yet, so it was dropped on every save
+    // regardless of the file itself).
+    logoFileName: clean(source.logoFileName, 200),
+    logoKey: clean(source.logoKey, 400),
   };
 }
 
