@@ -675,9 +675,23 @@ export function DialogueWorkspace(props: Props) {
           />
         )}
         <div className="klio-chat-card-actions">
-          <button disabled={disabled} onClick={() => edit(c)}>
-            Редактировать
-          </button>
+          {/* A card whose whole content IS a generated image has no text to
+              edit - "Редактировать" opened this dialogue's own title/body
+              editor regardless, which then showed the image PROMPT in
+              those fields with no image anywhere (site owner: "он ее
+              видимо оценивает как текст... текст запроса генерации
+              картинки распределяет в заголовок и текст... есть текст
+              запроса, но нет картинки самой"). Offer the one action that
+              actually applies to an image instead. */}
+          {c.imageUrl ? (
+            <a className="klio-chat-card-download" href={c.imageUrl} download>
+              Скачать
+            </a>
+          ) : (
+            <button disabled={disabled} onClick={() => edit(c)}>
+              Редактировать
+            </button>
+          )}
           <button disabled={disabled} onClick={() => void save(c)}>
             {saved
               ? "Сохранено ✓"
@@ -719,7 +733,11 @@ export function DialogueWorkspace(props: Props) {
               <button disabled={disabled} onClick={() => void save(c, true)}>
                 {c.imageUrl ? "В публикацию" : "Запланировать"}
               </button>
-              {/* One button, not two indistinguishable ones (site owner:
+              {/* Not offered when the card already IS a generated image -
+                  "создать картинку" on an image made no sense there (site
+                  owner: same report as above) and duplicates the "+"
+                  picker's own image intent for a fresh one. One button, not
+                  two indistinguishable ones, for the text case (site owner:
                   "чем отличаются эти две кнопки?" - they didn't, in any way
                   a user could predict: one used the draft box as a
                   fallback-only prompt ignoring the article, the other
@@ -727,17 +745,19 @@ export function DialogueWorkspace(props: Props) {
                   grounds the image in the article's own title+body, and
                   folds in whatever's typed in the draft box as optional
                   extra guidance instead of a silent either/or. */}
-              <button
-                disabled={disabled || !imageAvailable}
-                title={
-                  !imageAvailable
-                    ? "Генерация изображений ещё не подключена. Загрузите картинку в редакторе."
-                    : "Одна картинка использует одну генерацию тарифа"
-                }
-                onClick={() => void send("image", buildImagePrompt(c, draft), c.id)}
-              >
-                Создать картинку
-              </button>
+              {!c.imageUrl && (
+                <button
+                  disabled={disabled || !imageAvailable}
+                  title={
+                    !imageAvailable
+                      ? "Генерация изображений ещё не подключена. Загрузите картинку в редакторе."
+                      : "Одна картинка использует одну генерацию тарифа"
+                  }
+                  onClick={() => void send("image", buildImagePrompt(c, draft), c.id)}
+                >
+                  Создать картинку
+                </button>
+              )}
             </>
           )}
         </div>
