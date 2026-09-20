@@ -667,17 +667,23 @@ export function DialogueWorkspace(props: Props) {
       setNotice("Сохранено в материалах");
       if (schedule && result.generation) {
         const g = result.generation;
-        // title/body hold the image generation PROMPT for an image result,
-        // not real post content - carrying them through unchanged put that
-        // prompt text into the publication (site owner: "в поле публикации
-        // не было никакого текста, но в телеграме он опубликовал вместе с
-        // текстом запроса генерации картинки" - the title field wasn't
-        // empty, it held the prompt, same as the professional generator's
-        // own "В публикацию" already starts blank for a fresh image).
+        // A truly standalone image card has title/body holding the
+        // generation PROMPT, not real post content - carrying that through
+        // unchanged put prompt text into the publication (site owner: "в
+        // поле публикации не было никакого текста, но в телеграме он
+        // опубликовал вместе с текстом запроса генерации картинки").
+        // Keying this on imageUrl alone (as an earlier fix here did) blanked
+        // a REAL post's own text too once an image got attached to it,
+        // since that card also has imageUrl set (site owner, catching that
+        // regression directly: "нажимаю в публикацию под картинкой которая
+        // заменила текст и этот текст в публикацию не подтягивается").
+        // Empty body is what's actually unique to the standalone case (see
+        // the server's own comment in dialogue/route.ts).
+        const isPureImage = Boolean(g.imageUrl) && !g.body?.trim();
         propsRef.current.onSchedule({
           generationId: g.id,
-          title: g.imageUrl ? "" : g.title,
-          body: g.imageUrl ? "" : g.body,
+          title: isPureImage ? "" : g.title,
+          body: isPureImage ? "" : g.body,
           imageUrl: g.imageUrl,
         });
       }
@@ -687,6 +693,14 @@ export function DialogueWorkspace(props: Props) {
 
   function renderCard(c: DialogueCard) {
     const saved = c.savedSnapshot && sameCard(c, c.savedSnapshot);
+    // A card can have an image two different ways: generated standalone
+    // (no real text, just the prompt captured for the archive - empty
+    // body, see the server's own comment) or attached to an already-real
+    // post (reviseCard keeps that post's title/body exactly as they were).
+    // Hiding title/body for every c.imageUrl card, standalone or not, made
+    // a real post's own text disappear the moment an image got attached to
+    // it (site owner: "текст поста... заменился картинкой, а сам пропал").
+    const isPureImage = Boolean(c.imageUrl) && !c.body.trim();
     return (
       <article
         id={`klio-chat-card-${c.id}`}
@@ -708,7 +722,7 @@ export function DialogueWorkspace(props: Props) {
                 картинкой"), and selecting an image card as context
                 contributes nothing useful to a follow-up prompt anyway
                 (its title/body carry no real text - see below). */}
-            {c.imageUrl
+            {isPureImage
               ? "Изображение"
               : c.kind === "topic"
                 ? "Тема"
@@ -724,7 +738,7 @@ export function DialogueWorkspace(props: Props) {
                 : "В диалоге"}
           </span>
         </div>
-        {!c.imageUrl && (
+        {!isPureImage && (
           <button
             className="klio-chat-card-title"
             onClick={() => setSelected(c.id)}
@@ -737,9 +751,11 @@ export function DialogueWorkspace(props: Props) {
             rest (site owner: "она обрезается... без возможности прочитать
             целиком... как в гпт или клоде") - a generated article is the
             actual point of this card, not a summary of it. Not shown for
-            an image card - it has no real body text, just the empty
-            string (see runReply's image branch server-side). */}
-        {!c.imageUrl && <p>{c.body}</p>}
+            a pure-image card - it has no real body text, just the empty
+            string (see the server's newCard branch in dialogue/route.ts).
+            A real post that also has an image attached still shows its
+            own text here. */}
+        {!isPureImage && <p>{c.body}</p>}
         {c.imageUrl && (
           <button
             type="button"
@@ -758,15 +774,16 @@ export function DialogueWorkspace(props: Props) {
           </button>
         )}
         <div className="klio-chat-card-actions">
-          {/* A card whose whole content IS a generated image has no text to
-              edit - "Редактировать" opened this dialogue's own title/body
-              editor regardless, which then showed the image PROMPT in
-              those fields with no image anywhere (site owner: "он ее
-              видимо оценивает как текст... текст запроса генерации
-              картинки распределяет в заголовок и текст... есть текст
-              запроса, но нет картинки самой"). Offer the one action that
-              actually applies to an image instead. */}
-          {c.imageUrl ? (
+          {/* A pure-image card has no text to edit - "Редактировать" opened
+              this dialogue's own title/body editor regardless, which then
+              showed the image PROMPT in those fields with no image
+              anywhere (site owner: "он ее видимо оценивает как текст...
+              текст запроса генерации картинки распределяет в заголовок и
+              текст... есть текст запроса, но нет картинки самой"). Offer
+              the one action that actually applies to an image instead. A
+              real post that also has an image attached still gets the
+              normal text actions - it has real text to edit. */}
+          {isPureImage ? (
             <a className="klio-chat-card-download" href={c.imageUrl} download>
               <span aria-hidden="true">⬇</span> Скачать
             </a>
@@ -847,6 +864,17 @@ export function DialogueWorkspace(props: Props) {
       </article>
     );
   }
+
+  // A card that gets an image attached (or is otherwise revised) after its
+  // own introduction is referenced from two different messages - the one
+  // that first created it, and the one whose action just touched it - and
+  // thread.data.cards always holds its current, single copy either way.
+  // Rendering "whatever message references this card ID" without tracking
+  // what's already been shown printed the same up-to-date card a second
+  // time under the later message too (site owner: "получается странно, что
+  // картинка появляется дважды"). Declared once per render, mutated in
+  // order as the message list below is walked top to bottom.
+  const shownCardIds = new Set<string>();
 
   return (
     <div
@@ -1037,6 +1065,7 @@ export function DialogueWorkspace(props: Props) {
                 {m.cardIds
                   ?.map((id) => thread.data.cards.find((c) => c.id === id))
                   .filter((c): c is DialogueCard => Boolean(c))
+                  .filter((c) => !shownCardIds.has(c.id) && shownCardIds.add(c.id))
                   .map(renderCard)}
                 {m.cardIds && m.cardIds.length > 1 && <button className="klio-chat-note" disabled={disabled} onClick={() => void perform(async () => {
                   for (const id of m.cardIds!) await mutate("save", { cardId: id });

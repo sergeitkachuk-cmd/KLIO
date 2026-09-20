@@ -276,7 +276,15 @@ async function runReply(
           id: crypto.randomUUID(),
           kind: "post",
           title,
-          body: last,
+          // Empty, not the prompt text (last) - a truly standalone image
+          // card has no real body, and the client (renderCard, save's
+          // onSchedule) needs a way to tell "this card is just an image"
+          // apart from "this is a real post that also got an image
+          // attached" (reviseCard, above, correctly leaves an existing
+          // card's real body untouched when an image is added to it).
+          // imageUrl alone can't carry that distinction - both cases have
+          // it set - but an empty body only ever happens here.
+          body: "",
           imageUrl,
           savedId: materialId,
           versions: [],
