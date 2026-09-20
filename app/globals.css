@@ -4356,7 +4356,20 @@ footer nav a {
      scrolling would otherwise remove, it doesn't create one from a
      flush starting position. */
   position: sticky;
-  z-index: 80;
+  /* Was 80 - below .workspace-sidebar's own 120 (see the "dark navy
+     pass" rule further down), which predates this pill treatment and
+     was never checked against it. A sticky sidebar (top: 76px) and this
+     sticky header (top: 9px, height 76px, so its own box runs to 85px)
+     share a few px of screen space once both are pinned, and the
+     sidebar's background was winning there - invisible on the header's
+     old edge-to-edge bar, obvious now that the pill is inset and the
+     page background shows around it (site owner: "шапка сайта уходит за
+     фон меню бокового"). 200 clears the sidebar's own resting z-index
+     and its brand-menu-open boost (150) - the header is meant to float
+     above the whole workspace chrome - while staying well under the
+     brand-menu's own dropdown panel (300) and any real modal (900+),
+     which should still be able to cover it. */
+  z-index: 200;
   /* Site owner: "подними её выше как на главной" - was 12px. */
   top: 9px;
   display: flex;
