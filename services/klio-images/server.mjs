@@ -29,6 +29,13 @@ function resolveSize(value) {
 const ALLOWED_QUALITY = new Set(["low", "medium", "high", "auto"]);
 const ALLOWED_FORMAT = new Set(["png", "jpeg", "webp"]);
 const ALLOWED_BACKGROUND = new Set(["auto", "transparent", "opaque"]);
+const ALLOWED_IMAGE_TYPE = new Set(["image/png", "image/jpeg", "image/webp"]);
+// A brand logo can be up to 8MB (see app/api/_lib/storage.ts's
+// MAX_BRAND_LOGO_BYTES) - base64 inflates that by ~4/3, plus JSON
+// overhead. The previous 64,000-byte cap only ever needed to fit a bare
+// text prompt; this one has to fit that same prompt alongside an embedded
+// logo file.
+const MAX_REQUEST_BYTES = 16 * 1024 * 1024;
 
 export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", providerFetch = fetch }) {
   const jobs = new Map(); let running = 0;
@@ -46,15 +53,18 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", pro
     const id = request.headers["idempotency-key"];
     if (typeof id !== "string" || !/^[a-zA-Z0-9-]{16,100}$/.test(id)) return reply(400, { error: "Idempotency key required" });
     let body;
-    const timer = setTimeout(() => request.destroy(), 10_000);
+    const timer = setTimeout(() => request.destroy(), 20_000);
     try {
       let size = 0; const chunks = [];
-      for await (const chunk of request) { size += chunk.length; if (size > 64_000) { reply(413, { error: "Request too large" }); return; } chunks.push(chunk); }
+      for await (const chunk of request) { size += chunk.length; if (size > MAX_REQUEST_BYTES) { reply(413, { error: "Request too large" }); return; } chunks.push(chunk); }
       body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
     } catch { return reply(400, { error: "Invalid request" }); }
     finally { clearTimeout(timer); }
     if (!body || typeof body.prompt !== "string" || !body.prompt.trim() || body.prompt.length > 12000) return reply(400, { error: "Invalid prompt" });
-    const hash = createHash("sha256").update(body.prompt).digest("hex");
+    const hasImage = typeof body.image_b64 === "string" && body.image_b64.length > 0;
+    if (hasImage && (!ALLOWED_IMAGE_TYPE.has(body.image_type) || body.image_b64.length > 12_000_000))
+      return reply(400, { error: "Invalid reference image" });
+    const hash = createHash("sha256").update(body.prompt).update(hasImage ? body.image_b64 : "").digest("hex");
     const previous = jobs.get(id);
     if (previous && previous.hash !== hash) return reply(409, { error: "Request key already used" });
     if (!previous && running >= 2) return reply(429, { error: "Image service is busy" });
@@ -69,11 +79,38 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", pro
           const quality = ALLOWED_QUALITY.has(body.quality) ? body.quality : "medium";
           const outputFormat = ALLOWED_FORMAT.has(body.output_format) ? body.output_format : "png";
           const background = ALLOWED_BACKGROUND.has(body.background) ? body.background : undefined;
-          const upstream = await providerFetch("https://api.openai.com/v1/images/generations", {
-            method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ model, prompt: body.prompt, n: 1, size: resolvedSize, quality, output_format: outputFormat, ...(background ? { background } : {}) }),
-            signal: AbortSignal.timeout(150_000),
-          });
+          // A reference image (the brand's logo) goes through OpenAI's edit
+          // endpoint instead of generations - it's the only one that
+          // accepts an input image at all. Deliberately no mask: a mask
+          // constrains the model to redraw only the masked region and
+          // leave the rest of the source image untouched pixel-for-pixel,
+          // which is a different feature (exact preservation) from what
+          // was asked for here (site owner: "чтобы он создавал максимально
+          // приближенный [к логотипу]" - the model should treat the logo as
+          // a strong likeness to reproduce and weave into the scene, not
+          // an exact fixed region to leave alone).
+          const upstream = hasImage
+            ? await providerFetch("https://api.openai.com/v1/images/edits", {
+                method: "POST", headers: { Authorization: `Bearer ${apiKey}` },
+                body: (() => {
+                  const form = new FormData();
+                  form.append("model", model);
+                  form.append("prompt", body.prompt);
+                  form.append("n", "1");
+                  form.append("size", resolvedSize);
+                  form.append("quality", quality);
+                  form.append("output_format", outputFormat);
+                  if (background) form.append("background", background);
+                  form.append("image", new Blob([Buffer.from(body.image_b64, "base64")], { type: body.image_type }), "reference");
+                  return form;
+                })(),
+                signal: AbortSignal.timeout(150_000),
+              })
+            : await providerFetch("https://api.openai.com/v1/images/generations", {
+                method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ model, prompt: body.prompt, n: 1, size: resolvedSize, quality, output_format: outputFormat, ...(background ? { background } : {}) }),
+                signal: AbortSignal.timeout(150_000),
+              });
           if (!upstream.ok) return { status: upstream.status === 400 ? 400 : 502, body: { error: "Image provider did not complete the request" } };
           const reader = upstream.body.getReader(); const chunks = []; let size = 0;
           try {

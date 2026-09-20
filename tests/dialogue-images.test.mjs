@@ -46,3 +46,35 @@ test("image service forwards the caller's size, quality and format instead of ha
   await post({ prompt: "Кофейня", size: "not-a-size", quality: "invalid", output_format: "invalid" }, "test-invalid-values-000001");
   assert.deepEqual(requests[3], { model: "gpt-image-2.5-flare", prompt: "Кофейня", n: 1, size: "1024x1024", quality: "medium", output_format: "png" });
 });
+
+test("image service routes a reference image through the edit endpoint with no mask", async t => {
+  const calls = [];
+  const token = "test-only-token-with-at-least-32-characters";
+  const server = imageService({ token, apiKey: "fixture-provider-key", providerFetch: async (url, options) => {
+    calls.push({ url, options });
+    return Response.json({ data: [{ b64_json: "fixture-image" }] });
+  } });
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const url = `http://127.0.0.1:${server.address().port}/generate`;
+  const logoBytes = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3, 4]);
+  const post = (body, id) => fetch(url, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Idempotency-Key": id }, body: JSON.stringify(body) });
+
+  const response = await post({ prompt: "Кофейня с логотипом", image_b64: logoBytes.toString("base64"), image_type: "image/png" }, "test-with-logo-request-000001");
+  assert.equal(response.status, 200);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "https://api.openai.com/v1/images/edits");
+  assert.equal(calls[0].options.headers.Authorization, "Bearer fixture-provider-key");
+  assert.equal(calls[0].options.headers["Content-Type"], undefined); // fetch sets the multipart boundary itself from the FormData body
+  const form = calls[0].options.body;
+  assert.ok(form instanceof FormData);
+  assert.equal(form.get("prompt"), "Кофейня с логотипом");
+  assert.equal(form.get("model"), "gpt-image-2.5-flare");
+  const image = form.get("image");
+  assert.ok(image instanceof Blob);
+  assert.equal(image.type, "image/png");
+  assert.equal(Buffer.from(await image.arrayBuffer()).toString("hex"), logoBytes.toString("hex"));
+
+  assert.equal((await post({ prompt: "Кофейня", image_b64: "not base64 but present", image_type: "image/svg+xml" }, "test-bad-image-type-0001")).status, 400);
+  assert.equal(calls.length, 1);
+});
