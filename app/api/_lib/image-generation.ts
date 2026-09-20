@@ -88,6 +88,7 @@ async function generateImageBytes(
   requestId: string,
   options: ImageGenerationOptions = {},
   logo?: { bytes: Uint8Array<ArrayBuffer>; contentType: string },
+  model?: string,
 ) {
   // Browser requests only KLIO. Provider credentials and calls stay on the server;
   // image bytes are copied to our existing object store, never hotlinked to OpenAI.
@@ -99,10 +100,27 @@ async function generateImageBytes(
   if (endpoint.protocol !== "https:") throw new Error("Сервер изображений должен использовать HTTPS.");
   const resolved = resolveImageGenerationOptions(options);
   const apiKey = serviceUrl ? process.env.KLIO_IMAGE_SERVICE_TOKEN : process.env.OPENAI_API_KEY;
+  // "gpt-image-2.5-flare" briefly wasn't a real OpenAI model at all - every
+  // request without an explicit KLIO_IMAGE_MODEL override failed outright
+  // back when that was the fallback here (site owner: three failures in a
+  // row). OpenAI shipped it for real on 2026-09-08; a manual side-by-side
+  // test against gpt-image-1 in this same session (see
+  // test-image-models.mjs in the scratchpad) confirmed it renders Russian
+  // headline text into a generated image far more reliably, so it's now
+  // the default instead. Pinned to the dated snapshot rather than the bare
+  // rolling alias - OpenAI offers both, and the bare alias can silently
+  // start pointing at a different snapshot later; pinning keeps this
+  // matching the exact version whose output was actually verified, and a
+  // future upgrade becomes a deliberate one-line bump instead of a quiet
+  // behavior change. `model` (param) still lets one call ask for a
+  // different model than this fallback, without changing every other
+  // image call in the app.
+  const resolvedModel = model?.trim() || process.env.KLIO_IMAGE_MODEL?.trim() || "gpt-image-2.5-flare-2026-09-08";
   let requestBody: string | FormData;
   let contentTypeHeader: string | undefined;
   if (serviceUrl) {
     const imageRequest = {
+      model: resolvedModel,
       prompt: prompt.slice(0, 12000),
       // aspectRatio deliberately not sent (site owner confirmed: "1:1"
       // generates fine, every non-square ratio still fails even after
@@ -122,7 +140,7 @@ async function generateImageBytes(
     contentTypeHeader = "application/json";
   } else if (logo) {
     const form = new FormData();
-    form.append("model", process.env.KLIO_IMAGE_MODEL?.trim() || "gpt-image-1");
+    form.append("model", resolvedModel);
     form.append("prompt", prompt.slice(0, 12000));
     form.append("n", "1");
     if (options.size || options.aspectRatio) form.append("size", resolved.size);
@@ -132,15 +150,8 @@ async function generateImageBytes(
     form.append("image", new File([logo.bytes], "reference", { type: logo.contentType }));
     requestBody = form;
   } else {
-    // "gpt-image-2.5-flare" was never a real OpenAI model — every request
-    // without an explicit KLIO_IMAGE_MODEL override was failing outright
-    // (site owner: tried generating an image, got an error three times in
-    // a row). gpt-image-1 is OpenAI's actual current image-generation
-    // model and the one whose parameters (size/quality/output_format/
-    // background) this file's own resolveImageGenerationOptions already
-    // matches.
     requestBody = JSON.stringify({
-      model: process.env.KLIO_IMAGE_MODEL?.trim() || "gpt-image-1",
+      model: resolvedModel,
       prompt: prompt.slice(0, 12000),
       n: 1,
       ...(options.size || options.aspectRatio ? { size: resolved.size } : {}),
@@ -203,8 +214,8 @@ async function generateImageBytes(
   return { bytes, contentType: detectedType, resolved };
 }
 
-export async function createImage(prompt: string, email: string, baseUrl: string, requestId: string, options: ImageGenerationOptions = {}) {
-  const { bytes, contentType } = await generateImageBytes(prompt, requestId, options);
+export async function createImage(prompt: string, email: string, baseUrl: string, requestId: string, options: ImageGenerationOptions = {}, model?: string) {
+  const { bytes, contentType } = await generateImageBytes(prompt, requestId, options, undefined, model);
   const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
   return uploadPublicationImage(
     new File([bytes], fileName, { type: contentType }),
@@ -229,9 +240,10 @@ export async function createImageFromLogo(
   baseUrl: string,
   requestId: string,
   options: ImageGenerationOptions = {},
+  model?: string,
 ) {
   const guidedPrompt = `${prompt}\n\nНа изображении должен естественно присутствовать логотип бренда - органично вписанный в композицию (например, на вывеске, упаковке, экране или другом уместном по смыслу объекте сцены), а не наложенный поверх готовой картинки отдельным слоем. Воспроизведи логотип с приложенного референса максимально похоже: те же цвета, форма и текст.`;
-  const { bytes, contentType } = await generateImageBytes(guidedPrompt, requestId, options, logo);
+  const { bytes, contentType } = await generateImageBytes(guidedPrompt, requestId, options, logo, model);
   const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
   return uploadPublicationImage(
     new File([bytes], fileName, { type: contentType }),

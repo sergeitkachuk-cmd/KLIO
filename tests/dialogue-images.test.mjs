@@ -22,6 +22,28 @@ test("image service authenticates, reuses duplicate work and never exposes provi
   assert.equal(calls, 1);
 });
 
+test("image service lets a request override the model, falling back on an invalid one", async t => {
+  const token = "test-only-token-with-at-least-32-characters";
+  let seenModel;
+  const server = imageService({ token, apiKey: "fixture-provider-key", model: "gpt-image-1", providerFetch: async (url, options) => {
+    seenModel = JSON.parse(options.body).model;
+    return Response.json({ data: [{ b64_json: "fixture-image" }] });
+  } });
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const url = `http://127.0.0.1:${server.address().port}/generate`;
+  const post = (body, id) => fetch(url, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Idempotency-Key": id }, body: JSON.stringify(body) });
+
+  await post({ prompt: "Кофейня", model: "gpt-image-2.5-flare" }, "test-request-model-override1");
+  assert.equal(seenModel, "gpt-image-2.5-flare");
+
+  await post({ prompt: "Кофейня", model: "; rm -rf /" }, "test-request-model-override2");
+  assert.equal(seenModel, "gpt-image-1");
+
+  await post({ prompt: "Кофейня" }, "test-request-model-override3");
+  assert.equal(seenModel, "gpt-image-1");
+});
+
 test("image service forwards a logo to the edit endpoint instead of dropping it", async t => {
   const token = "test-only-token-with-at-least-32-characters";
   let seen;

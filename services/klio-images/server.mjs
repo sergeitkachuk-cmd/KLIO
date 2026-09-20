@@ -32,7 +32,18 @@ function resolveRequestSize(rawSize, aspectRatio) {
   return "1024x1024";
 }
 
-export function imageService({ token, apiKey, model = "gpt-image-1", providerFetch = fetch }) {
+// gpt-image-2.5-flare default (was gpt-image-1) - a manual side-by-side
+// test against gpt-image-1 (test-image-models.mjs in this session's
+// scratchpad) confirmed it renders Russian headline text into a generated
+// image far more reliably. Same accepted size literals as gpt-image-1
+// (confirmed against the OpenAI API guide before switching this default -
+// resolveRequestSize below still only ever sends one of those three), so
+// this is a same-shape swap, not a request-format change. Pinned to the
+// dated snapshot, not the bare rolling alias OpenAI also offers - the
+// alias can start pointing at a different snapshot later without any
+// change here, silently changing output; the dated pin matches exactly
+// what was tested, and an upgrade later is a deliberate one-line bump.
+export function imageService({ token, apiKey, model = "gpt-image-2.5-flare-2026-09-08", providerFetch = fetch }) {
   const jobs = new Map(); let running = 0;
   const authorized = value => {
     if (!token || token.length < 32) return false;
@@ -59,6 +70,13 @@ export function imageService({ token, apiKey, model = "gpt-image-1", providerFet
     if (body.image_b64 !== undefined && (typeof body.image_b64 !== "string" || !body.image_b64 || typeof body.image_type !== "string" || !/^image\/[a-z0-9.+-]+$/i.test(body.image_type)))
       return reply(400, { error: "Invalid image" });
     const logo = body.image_b64 ? { bytes: Buffer.from(body.image_b64, "base64"), contentType: body.image_type } : null;
+    // Lets one caller ask for a different model than this service's own
+    // startup default, without redeploying the relay for every app that
+    // uses it. Falls back silently rather than rejecting, same as quality/
+    // output_format/background below - an invalid value here just means
+    // OpenAI itself rejects the request downstream, same as a garbage
+    // value ever did before this field existed.
+    const requestedModel = typeof body.model === "string" && /^[a-zA-Z0-9_.-]{1,64}$/.test(body.model) ? body.model : model;
     const imageSize = resolveRequestSize(body.size, body.aspectRatio);
     const quality = IMAGE_QUALITY_VALUES.has(body.quality) ? body.quality : "medium";
     const outputFormat = IMAGE_FORMAT_VALUES.has(body.output_format) ? body.output_format : "png";
@@ -77,7 +95,7 @@ export function imageService({ token, apiKey, model = "gpt-image-1", providerFet
           let upstream;
           if (logo) {
             const form = new FormData();
-            form.append("model", model);
+            form.append("model", requestedModel);
             form.append("prompt", body.prompt);
             form.append("n", "1");
             if (body.size || body.aspectRatio) form.append("size", imageSize);
@@ -92,7 +110,7 @@ export function imageService({ token, apiKey, model = "gpt-image-1", providerFet
             });
           } else {
             const upstreamPayload = {
-              model,
+              model: requestedModel,
               prompt: body.prompt,
               n: 1,
               ...(body.size || body.aspectRatio ? { size: imageSize } : {}),

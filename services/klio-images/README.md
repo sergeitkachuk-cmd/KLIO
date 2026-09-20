@@ -22,7 +22,8 @@ environment variables directly in the Render dashboard:
 - `NODE_VERSION`: `22.13.0`
 - `OPENAI_API_KEY`: your eligible provider key
 - `KLIO_IMAGE_SERVICE_TOKEN`: a random secret of at least 32 characters
-- `KLIO_IMAGE_MODEL`: `gpt-image-1`
+- `KLIO_IMAGE_MODEL`: `gpt-image-2.5-flare-2026-09-08` (the dated snapshot,
+  not the bare rolling alias - see server.mjs's own comment on why)
 
 For example, generate a service token locally using
 `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`.
