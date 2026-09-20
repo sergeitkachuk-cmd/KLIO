@@ -4357,24 +4357,36 @@ footer nav a {
      flush starting position. */
   position: sticky;
   z-index: 80;
-  top: 12px;
+  /* Site owner: "подними её выше как на главной" - was 12px. */
+  top: 9px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 76px;
   /* Site owner: "капсулы растяни немного, у неё по бокам ещё есть
-     запасы" - was 44px total side gap, now 20px.
-     vw, not a percentage of the parent - dialogue mode wraps this same
-     header in a "display: flex; flex-direction: column; overflow:
-     hidden" shell (needed for its own chat-height math), professional
-     mode doesn't, and a percentage max-width on a flex item in that
-     specific combination resolved narrower than in plain block flow
-     even though both share this exact rule (site owner: "в режиме
-     профи шапка растянута, а в диалоге сужена... сделай одинаково").
-     vw is never ambiguous that way - same fix as the lightbox/
-     publications modal earlier today. */
+     запасы" - was 44px total side gap, now 20px. vw rather than a
+     percentage so it can't resolve against some ancestor's own
+     narrower box, though that turned out not to be this rule's real
+     bug (see width below). */
   max-width: min(calc(100vw - 20px), 1500px);
-  margin: 12px auto 0;
+  /* The actual reason this rendered narrower in dialogue mode than
+     professional mode despite sharing this exact rule (site owner:
+     "в режиме профи шапка растянута, а в диалоге сужена... сделай
+     одинаково", confirmed by injecting this same markup into a live
+     page in each mode and comparing getBoundingClientRect): dialogue
+     mode wraps the header in a "display: flex; flex-direction: column"
+     shell (needed for its own chat-height math) - professional mode's
+     shell is plain block flow. A flex item with auto cross-axis
+     margins (margin: ...auto... below, for centering) has its stretch
+     sizing disabled by spec - it shrinks to fit-content instead of
+     filling the available width, then max-width/centering apply on
+     top of that already-too-small size. In plain block flow, width:
+     auto already fills the available width regardless of margin:auto,
+     so professional mode never hit this. An explicit width fills the
+     available space first, in both contexts alike, before max-width
+     caps it and the auto margins center what's left over. */
+  width: 100%;
+  margin: 9px auto 0;
   padding: 0 30px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 999px;
@@ -15031,11 +15043,12 @@ input[type="radio"] {
 
   .workspace-header {
     height: 62px;
-    /* vw, not a percentage - see the base rule's own comment (same fix,
-       same reason: dialogue mode's flex+overflow:hidden shell resolved
-       this narrower than professional mode's plain block flow). */
     max-width: calc(100vw - 12px);
-    margin: 8px auto 0;
+    /* width:100% - see the base rule's own comment for why (flex-item
+       auto-margin-disables-stretch, dialogue mode only). */
+    width: 100%;
+    /* Site owner: "подними её выше как на главной" - was 8px. */
+    margin: 6px auto 0;
     padding: 0 12px;
   }
 
