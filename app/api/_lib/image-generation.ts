@@ -150,10 +150,6 @@ async function generateImageBytes(
     });
     contentTypeHeader = "application/json";
   }
-  // Temporary: checkable in Timeweb's own application logs (this request
-  // originates from our app, not the relay) whenever the relay's own
-  // behavior needs verifying again. Never logs the logo bytes.
-  if (serviceUrl) console.log("Image request to relay", typeof requestBody === "string" ? requestBody : "[multipart with reference image]");
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
