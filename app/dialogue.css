@@ -385,14 +385,23 @@
   padding: 0;
 }
 .klio-chat-card {
-  border: 1px solid var(--chat-line);
+  /* No border - a boxed-in look every card, every time reads as heavier
+     chrome than ChatGPT's own plain-text replies (site owner: "уберём
+     обводки вокруг ответов... избавиться от ненужных рамок"). --chat-side
+     (not --chat-bg, which is the page's own background and would leave
+     the card with no visible distinction at all) keeps each card
+     scannable as its own block with just a soft tint, no hard edge. */
+  border: 0;
   border-radius: 14px;
-  padding: 20px;
+  padding: 16px 18px;
   margin: 18px 0;
-  background: var(--chat-bg);
+  background: var(--chat-side);
 }
 .klio-chat-card.is-selected {
-  border-color: var(--chat-accent);
+  /* A thin accent bar reads as "selected" without bringing back a full
+     border box for every other (unselected) card. */
+  border-inline-start: 3px solid var(--chat-accent);
+  padding-inline-start: 15px;
 }
 .klio-chat-card-meta {
   display: flex;
@@ -426,11 +435,22 @@
 .klio-chat-profile button,
 .klio-chat-editor footer button,
 .klio-chat-upload {
-  background: var(--chat-side);
-  border: 1px solid var(--chat-line);
+  /* Borderless, background only on hover - matching a plainer, more
+     ChatGPT-like action row instead of a row of bordered pill buttons
+     (site owner: "кнопки уменьшить, сделать аккуратнее"). */
+  background: transparent;
+  border: 0;
   border-radius: 8px;
-  padding: 8px 11px;
-  font-size: 12px !important;
+  padding: 6px 10px;
+  font-size: 11px !important;
+  color: var(--chat-text);
+}
+.klio-chat-card-actions button:hover:not(:disabled),
+.klio-chat-card-actions a:hover,
+.klio-chat-profile button:hover:not(:disabled),
+.klio-chat-editor footer button:hover:not(:disabled),
+.klio-chat-upload:hover {
+  background: var(--chat-line);
 }
 .klio-chat-card-actions a {
   color: inherit;

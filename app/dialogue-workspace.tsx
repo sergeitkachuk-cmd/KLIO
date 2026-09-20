@@ -756,7 +756,7 @@ export function DialogueWorkspace(props: Props) {
               actually applies to an image instead. */}
           {c.imageUrl ? (
             <a className="klio-chat-card-download" href={c.imageUrl} download>
-              Скачать
+              <span aria-hidden="true">⬇</span> Скачать
             </a>
           ) : (
             <button disabled={disabled} onClick={() => edit(c)}>
@@ -802,7 +802,7 @@ export function DialogueWorkspace(props: Props) {
           ) : (
             <>
               <button disabled={disabled} onClick={() => void save(c, true)}>
-                {c.imageUrl ? "В публикацию" : "Запланировать"}
+                {c.imageUrl ? <><span aria-hidden="true">→</span> В публикацию</> : "Запланировать"}
               </button>
               {/* Not offered when the card already IS a generated image -
                   "создать картинку" on an image made no sense there (site

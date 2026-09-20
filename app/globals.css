@@ -12510,7 +12510,17 @@ input[type="radio"] {
 
 .publications-editor-modal,
 .publications-channel-modal {
-  width: min(620px, 100%);
+  /* vw, not a plain percentage - this modal sits in .archive-editor-overlay,
+     a "display: grid; place-items: center" container, and a percentage
+     width on a grid item can resolve against the track's own auto/
+     max-content sizing rather than the actual viewport in exactly that
+     setup (the same root cause already fixed for the image lightbox
+     earlier). The min-width:0/width:100% fix already applied to the
+     fields inside stopped THEM from independently forcing extra width,
+     but the modal's own width formula could still expand past the
+     viewport regardless (site owner: confirmed still "разъезжается за
+     экран" after that first fix). vw is never ambiguous this way. */
+  width: min(620px, 92vw);
   max-height: calc(100svh - 44px);
   padding: 25px;
   overflow: auto; -webkit-overflow-scrolling: touch;
