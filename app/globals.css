@@ -14144,6 +14144,18 @@ input[type="radio"] {
   min-height: 440px;
 }
 
+/* An "Изображение" material's body is the short generation prompt, not
+   an article draft (see the comment on the image preview above) - the
+   440px floor above is sized for real body text, so a one-line prompt
+   still opened as a mostly-empty box (site owner screenshot: "Чашка
+   кофе на столе." sitting alone in a huge field). AutoTextarea already
+   sizes to actual content past whatever floor CSS gives it - this just
+   lowers that floor for this one case instead of removing it outright,
+   so the field still reads as a text field before anything is typed. */
+.archive-editor-modal .archive-editor-body-compact {
+  min-height: 100px;
+}
+
 /* This row belongs directly under the body field in normal document flow.
    Keeping it static prevents the controls from covering text while either
    the desktop modal or the mobile page scrolls. */
@@ -15547,6 +15559,10 @@ input[type="radio"] {
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
     resize: vertical;
+  }
+
+  .archive-editor-modal .archive-editor-body-compact {
+    min-height: 100px;
   }
 
   .archive-editor-modal .archive-editor-actions {
