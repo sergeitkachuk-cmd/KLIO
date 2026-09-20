@@ -151,7 +151,18 @@ export type OperationConfig = {
 const { CONTENT, UTILITY } = AI_MODELS;
 
 export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
-  dialogue: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 16_000, structuredOutput: true, retryable: false, useWebSearch: false },
+  // retryable flipped on 2026-09-20 - the admin usage log showed roughly
+  // half of all "Диалог с КЛИО" calls failing with "AI-редакция вернула
+  // неполный структурированный ответ" at this same low effort (site
+  // owner: pulled the admin table, asked about it directly). Same root
+  // cause and same fix already proven on research_semantics below (see
+  // its own comment: "retryable flipped on... every attempt failing").
+  // ai-router's own retry-on-invalid-output path only ever fires when
+  // this flag is on, and it's a free second attempt at the exact same
+  // already-billed request - no double debit, no duplicate side effects,
+  // just one more chance to produce valid JSON before surfacing a hard
+  // error to the user.
+  dialogue: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 16_000, structuredOutput: true, retryable: true, useWebSearch: false },
   // Full materials are grounded by one bounded Tavily request in the route,
   // not by a model-owned web tool. DeepSeek can otherwise spend minutes in
   // search/tool loops before it starts writing; a single compact digest keeps
