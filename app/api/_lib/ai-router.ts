@@ -251,6 +251,7 @@ function postJsonPinnedIPv4(url: string, headers: Record<string, string>, body: 
 // Single call to the OpenAI Responses API for one attempt — no retry/
 // fallback logic here, that lives in callAiModel below.
 async function requestOnce(params: {
+  operation: AiOperation;
   model: AiModelId;
   reasoningEffort: ReasoningEffort;
   maxOutputTokens: number;
@@ -265,7 +266,13 @@ async function requestOnce(params: {
   includeSources?: boolean;
 }) {
   const provider = providerForModel(params.model);
-  const apiKey = process.env[PROVIDER_API_KEY_ENV[provider]]?.trim();
+  const relayUrl = params.operation.startsWith("dialogue") && provider === "openai"
+    ? process.env.KLIO_IMAGE_SERVICE_URL?.trim() : undefined;
+  const relayToken = relayUrl ? process.env.KLIO_IMAGE_SERVICE_TOKEN?.trim() : undefined;
+  const useRelay = Boolean(relayUrl && relayToken);
+  const endpoint = useRelay ? new URL("/responses", relayUrl) : new URL(PROVIDER_ENDPOINTS[provider]);
+  if (endpoint.protocol !== "https:") throw new AiCallError("AI relay must use HTTPS.", 503);
+  const apiKey = useRelay ? relayToken : process.env[PROVIDER_API_KEY_ENV[provider]]?.trim();
   if (!apiKey) {
     const error = new AiCallError(`ИИ пока не подключён. Добавьте ${PROVIDER_API_KEY_ENV[provider]} на сервере.`, 503);
     (error as { configError?: boolean }).configError = true;
@@ -279,7 +286,7 @@ async function requestOnce(params: {
     // Body consumption happens inside postJsonPinnedIPv4 itself, same
     // deadline/error boundary as before: providers may send headers then
     // stall, and the shared signal still covers that.
-    const result = await postJsonPinnedIPv4(PROVIDER_ENDPOINTS[provider], {
+    const result = await postJsonPinnedIPv4(endpoint.toString(), {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     }, JSON.stringify({
@@ -473,6 +480,7 @@ export async function callAiModel<T = Record<string, unknown>>(
     try {
       if (Date.now() >= deadline) throw timeoutError();
       const outcome = await requestOnce({
+        operation: params.operation,
         model: attemptModel,
         reasoningEffort,
         maxOutputTokens,

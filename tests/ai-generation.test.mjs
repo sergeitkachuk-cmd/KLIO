@@ -41,7 +41,7 @@ function fakeHttpsModule(fetchImpl, calls) {
       req.end = (chunk) => {
         const url = `${options.protocol}//${options.hostname}${options.path}`;
         const init = { method: options.method, headers: options.headers, body: chunk, signal: options.signal };
-        calls.push({ url, body: JSON.parse(init.body), signal: init.signal });
+        calls.push({ url, body: JSON.parse(init.body), headers: init.headers, signal: init.signal });
         Promise.resolve()
           .then(() => fetchImpl(url, init))
           .then((response) => {
@@ -118,6 +118,20 @@ test("dialogue uses OpenAI when configured while content keeps DeepSeek", async 
   const result = await h.callAiModel({ operation: "dialogue_plain", instructions: "Answer", input: "Hello" });
   assert.equal(result.result.raw, "A helpful reply");
   assert.equal(h.calls[0].url, "https://api.openai.com/v1/responses");
+  assert.equal(h.calls[0].body.model, "gpt-5.6-luna");
+});
+
+test("dialogue routes GPT through the existing authenticated Render relay", async () => {
+  const h = harness(() => json({ output: [message("Relay answer")], usage: { input_tokens: 10, output_tokens: 4 } }), Date, {
+    KLIO_IMAGE_SERVICE_URL: "https://klio-telegram-relay.onrender.com",
+    KLIO_IMAGE_SERVICE_TOKEN: "test-relay-token",
+  });
+  assert.equal(h.config.aiConfigured("dialogue_plain"), true);
+  assert.equal(h.config.OPERATION_CONFIG.dialogue_plain.model, "gpt-5.6-luna");
+  const result = await h.callAiModel({ operation: "dialogue_plain", instructions: "Answer", input: "Hello" });
+  assert.equal(result.result.raw, "Relay answer");
+  assert.equal(h.calls[0].url, "https://klio-telegram-relay.onrender.com/responses");
+  assert.equal(h.calls[0].headers.Authorization, "Bearer test-relay-token");
   assert.equal(h.calls[0].body.model, "gpt-5.6-luna");
 });
 

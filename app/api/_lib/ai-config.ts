@@ -24,6 +24,8 @@ export const PROVIDER_API_KEY_ENV: Record<AiProvider, string> = {
 // needs the env var's name for its error message.
 export function aiConfigured(operation?: AiOperation): boolean {
   const provider = operation ? providerForModel(OPERATION_CONFIG[operation].model) : activeProvider();
+  if (operation?.startsWith("dialogue") && provider === "openai"
+    && process.env.KLIO_IMAGE_SERVICE_URL?.trim() && process.env.KLIO_IMAGE_SERVICE_TOKEN?.trim()) return true;
   return Boolean(process.env[PROVIDER_API_KEY_ENV[provider]]?.trim());
 }
 
@@ -118,6 +120,7 @@ export function estimateCostUsd(model: AiModelId, usage: {
 export type AiOperation =
   | "dialogue"
   | "dialogue_plain"
+  | "dialogue_deepseek_plain"
   // Luna — user-facing generation
   | "generate_seo_article"
   | "generate_social_post"
@@ -153,7 +156,9 @@ export type OperationConfig = {
 const { CONTENT, UTILITY } = AI_MODELS;
 // Ordinary dialogue can use the working OpenAI connection independently of
 // the provider selected for long-form generation.
-const DIALOGUE_CONTENT = process.env.OPENAI_API_KEY?.trim() ? OPENAI_MODELS.CONTENT : CONTENT;
+const DIALOGUE_CONTENT = process.env.OPENAI_API_KEY?.trim()
+  || (process.env.KLIO_IMAGE_SERVICE_URL?.trim() && process.env.KLIO_IMAGE_SERVICE_TOKEN?.trim())
+  ? OPENAI_MODELS.CONTENT : CONTENT;
 
 export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // retryable flipped on 2026-09-20 - the admin usage log showed roughly
@@ -171,6 +176,7 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // Recovery for a normal chat reply when a provider cannot satisfy the
   // structured dialogue schema. Plain text needs no action/card envelope.
   dialogue_plain: { model: DIALOGUE_CONTENT, reasoningEffort: "none", maxOutputTokens: 3_000, structuredOutput: false, retryable: false, useWebSearch: false },
+  dialogue_deepseek_plain: { model: DEEPSEEK_MODELS.CONTENT, reasoningEffort: "none", maxOutputTokens: 3_000, structuredOutput: false, retryable: false, useWebSearch: false },
   // Full materials are grounded by one bounded Tavily request in the route,
   // not by a model-owned web tool. DeepSeek can otherwise spend minutes in
   // search/tool loops before it starts writing; a single compact digest keeps

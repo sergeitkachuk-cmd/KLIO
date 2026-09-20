@@ -443,3 +443,21 @@ test("ordinary chat requests plain text directly without a card schema", async (
   assert.equal((await h.account()).dialogueActionsUsed, 1);
   assert.equal(h.calls(), 1);
 });
+
+test("chat stays available when GPT returns a regional 403", async (t) => {
+  const h = await createDialogueHarness();
+  t.after(() => h.close());
+  const operations = [];
+  h.setAi(async (input) => {
+    operations.push(input.operation);
+    if (input.operation === "dialogue_plain") throw new h.AiCallError("OpenAI returned 403", 403);
+    return { raw: "Ответ через резервный текстовый маршрут." };
+  });
+  let thread = await h.create();
+  await h.post({ action: "send", id: thread.id, revision: thread.revision, requestId: randomUUID(), text: "Привет", mode: "chat" });
+  thread = await h.settled(thread.id);
+  assert.equal(thread.status, "idle");
+  assert.equal(thread.data.messages.at(-1).text, "Ответ через резервный текстовый маршрут.");
+  assert.deepEqual(operations, ["dialogue_plain", "dialogue_deepseek_plain"]);
+  assert.equal((await h.account()).dialogueActionsUsed, 1);
+});

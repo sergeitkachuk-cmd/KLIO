@@ -171,6 +171,9 @@ export async function createDialogueHarness() {
     workspaceErrorResponse: (error) =>
       Response.json({ error: error.message }, { status: error.status || 500 }),
   };
+  class AiCallError extends Error {
+    constructor(message, status) { super(message); this.status = status; }
+  }
   const route = load(
     "app/api/dialogue/route.ts",
     {
@@ -179,13 +182,16 @@ export async function createDialogueHarness() {
       "../../dialogue-model": model,
       "../../plans": plans,
       "../../content-plans": contentPlans,
-      "../_lib/ai-config": { aiConfigured: () => true },
+      "../_lib/ai-config": {
+        aiConfigured: () => true,
+        OPERATION_CONFIG: { dialogue_plain: { model: "gpt-5.6-luna" }, dialogue_deepseek_plain: { model: "deepseek-flash" } },
+      },
       "../_lib/ai-router": {
-        AiCallError: class AiCallError extends Error {},
+        AiCallError,
         callAiModel: async (input) => {
           calls++;
           const result = await ai(input);
-          if (input.operation === "dialogue_plain") return { result: typeof result.raw === "string" ? result : { raw: result.reply } };
+          if (input.operation === "dialogue_plain" || input.operation === "dialogue_deepseek_plain") return { result: typeof result.raw === "string" ? result : { raw: result.reply } };
           if (!validate(result)) throw new Error("Invalid AI schema");
           return { result };
         },
@@ -261,6 +267,7 @@ export async function createDialogueHarness() {
     account,
     owner,
     calls: () => calls,
+    AiCallError,
     setAi: (value) => {
       ai = value;
     },
