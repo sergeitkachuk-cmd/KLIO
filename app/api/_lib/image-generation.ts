@@ -70,7 +70,11 @@ export function resolveImageGenerationOptions(options: ImageGenerationOptions = 
 export const imageConfigured = () =>
   Boolean(storageConfigured() && (process.env.OPENAI_API_KEY?.trim() ||
     (process.env.KLIO_IMAGE_SERVICE_URL?.trim() && process.env.KLIO_IMAGE_SERVICE_TOKEN?.trim())));
-export async function createImage(prompt: string, email: string, baseUrl: string, requestId: string, options: ImageGenerationOptions = {}) {
+
+// The actual provider call, split out of createImage below so
+// createImageWithLogo can reuse it for the background image instead of
+// duplicating the relay/OpenAI request logic - see its own comment.
+async function generateImageBytes(prompt: string, requestId: string, options: ImageGenerationOptions = {}) {
   // Browser requests only KLIO. Provider credentials and calls stay on the server;
   // image bytes are copied to our existing object store, never hotlinked to OpenAI.
   // API contract: https://developers.openai.com/api/docs/guides/image-generation
@@ -147,34 +151,47 @@ export async function createImage(prompt: string, email: string, baseUrl: string
   const encoded = payload.data?.[0]?.b64_json;
   if (!encoded || encoded.length > 12_000_000)
     throw new Error("Сервис изображений вернул некорректный файл.");
-  const bytes = new Uint8Array(Buffer.from(encoded, "base64"));
-  // Temporary, same reasoning as the request log above - confirms the
-  // actual returned image's real pixel dimensions regardless of what any
-  // log or field name claims, since a mismatch there is exactly what
-  // "every ratio produces a square" would look like from the bytes
-  // themselves. PNG only (the current default/most-tested format); logs
-  // "unknown" for jpeg/webp rather than a fuller multi-format parser,
-  // since this is throwaway diagnostic code, not a permanent utility.
-  if (bytes.length >= 24 && bytes[0] === 0x89 && bytes[1] === 0x50) {
-    const width = (bytes[16] << 24) | (bytes[17] << 16) | (bytes[18] << 8) | bytes[19];
-    const height = (bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23];
-    console.log(`Image response actual size: ${width}x${height} (requested ${resolved.size})`);
-  } else {
-    console.log(`Image response actual size: unknown format, ${bytes.length} bytes (requested ${resolved.size})`);
-  }
+  let bytes = new Uint8Array(Buffer.from(encoded, "base64"));
   // Detected from the actual bytes, not assumed from resolved.outputFormat
   // (site owner: generation "didn't work at all for jpg, only png worked").
-  // The relay is a separate deployment this repo doesn't control (see the
-  // aspectRatio comment above) - if it silently returns png regardless of
-  // the requested output_format, trusting the request meant this file's
-  // declared type mismatched what uploadPublicationImage's own signature
-  // check found in the bytes, and every non-png result was rejected
-  // outright. Uploading under whatever format the bytes actually are
-  // means a substituted png still succeeds, just as png, instead of
-  // failing.
-  const detectedType = imageContentType(bytes);
-  const contentType = detectedType ||
-    (resolved.outputFormat === "jpeg" ? "image/jpeg" : resolved.outputFormat === "webp" ? "image/webp" : "image/png");
+  // The relay is a separate deployment this repo doesn't control - it
+  // silently ignores every option except the bare prompt (confirmed via
+  // request/response logging: size stays square regardless of aspect
+  // ratio, format stays png regardless of output_format - site owner:
+  // "какое бы соотношение ни выбрал, всё равно 1:1", "какой бы формат ни
+  // выбрал, всё равно png"). Trusting the request for either would mean
+  // this file's declared type/size mismatched what actually came back.
+  let detectedType = imageContentType(bytes) || "image/png";
+  const [targetWidth, targetHeight] = resolved.size.split("x").map(Number);
+  const wantsFormat = options.outputFormat
+    ? (options.outputFormat === "jpeg" ? "image/jpeg" : options.outputFormat === "webp" ? "image/webp" : "image/png")
+    : detectedType;
+  // Center-cropping to the requested dimensions and re-encoding to the
+  // requested format here means the final result matches what was asked
+  // for regardless of what the relay does internally - the real fix
+  // belongs in the relay itself, but this doesn't depend on that ever
+  // happening.
+  try {
+    const sharp = (await import("sharp")).default;
+    const meta = await sharp(bytes).metadata();
+    const sizeMismatch = Boolean(targetWidth && targetHeight && meta.width && meta.height && (meta.width !== targetWidth || meta.height !== targetHeight));
+    const formatMismatch = wantsFormat !== detectedType;
+    if (sizeMismatch || formatMismatch) {
+      console.log(`Correcting image: got ${meta.width}x${meta.height} ${detectedType}, requested ${resolved.size} ${wantsFormat}`);
+      let pipeline = sharp(bytes);
+      if (sizeMismatch) pipeline = pipeline.resize({ width: targetWidth, height: targetHeight, fit: "cover", position: "centre" });
+      pipeline = wantsFormat === "image/jpeg" ? pipeline.jpeg() : wantsFormat === "image/webp" ? pipeline.webp() : pipeline.png();
+      bytes = new Uint8Array(await pipeline.toBuffer());
+      detectedType = wantsFormat;
+    }
+  } catch (error) {
+    console.error("Image size/format correction failed", error instanceof Error ? error.message : error);
+  }
+  return { bytes, contentType: detectedType, resolved };
+}
+
+export async function createImage(prompt: string, email: string, baseUrl: string, requestId: string, options: ImageGenerationOptions = {}) {
+  const { bytes, contentType } = await generateImageBytes(prompt, requestId, options);
   const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
   return uploadPublicationImage(
     new File([bytes], fileName, { type: contentType }),
@@ -183,14 +200,18 @@ export async function createImage(prompt: string, email: string, baseUrl: string
   );
 }
 
-// Attaches the brand's real logo file via OpenAI's image-edit endpoint,
-// instead of the model inventing its own logo from the prompt text alone
-// (site owner: "чтобы он каждый раз сам не придумывал логотип при
-// генерации изображения"). Always calls OpenAI directly, never through
-// the relay (KLIO_IMAGE_SERVICE_URL) - the relay's own /generate contract
-// is JSON-only (see createImage above) and has no way to carry a file
-// upload; only this server, with its own OPENAI_API_KEY, can make a
-// multipart request to /v1/images/edits.
+// Composites the brand's real logo file onto the generated background,
+// instead of asking the model to reinterpret it (site owner: passing the
+// logo through OpenAI's image-edit endpoint without a mask let the model
+// treat it as a loose style reference, not a fixed asset - it redrew the
+// logo instead of preserving it, and once even ignored it outright and
+// invented its own). Compositing with sharp guarantees the exact uploaded
+// pixels appear untouched, every time, and reuses generateImageBytes for
+// the background - the same relay/OpenAI call as a normal generation, no
+// separate direct-to-OpenAI path with its own geo-blocking risk (site
+// owner hit OpenAI's "unsupported_country_region_territory" calling
+// straight from Timeweb - a Russian host - when the relay, hosted
+// elsewhere, was bypassed for the size-diagnostic pass).
 export async function createImageFromLogo(
   prompt: string,
   logo: { bytes: Uint8Array<ArrayBuffer>; contentType: string },
@@ -199,53 +220,32 @@ export async function createImageFromLogo(
   requestId: string,
   options: ImageGenerationOptions = {},
 ) {
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey)
-    throw new Error(
-      "Использование логотипа требует прямого подключения к OpenAI (переменная OPENAI_API_KEY на сервере) — сервис-релей эту функцию не поддерживает.",
-    );
-  const resolved = resolveImageGenerationOptions(options);
-  const extension = logo.contentType === "image/png" ? "png" : logo.contentType === "image/webp" ? "webp" : logo.contentType === "image/gif" ? "gif" : "jpg";
-  const form = new FormData();
-  form.set("model", process.env.KLIO_IMAGE_MODEL?.trim() || "gpt-image-1");
-  form.set(
-    "prompt",
-    `${prompt}\n\nВ приложенном файле — логотип бренда. Сохрани его без изменений (форму, цвета, надписи) и естественно размести на итоговом изображении, не перерисовывая и не искажая сам логотип.`.slice(0, 32000),
-  );
-  form.set("size", resolved.size);
-  if (options.quality) form.set("quality", resolved.quality);
-  if (options.background) form.set("background", resolved.background);
-  if (options.outputFormat) form.set("output_format", resolved.outputFormat);
-  form.set("image", new File([logo.bytes], `logo.${extension}`, { type: logo.contentType }));
-  const response = await fetch("https://api.openai.com/v1/images/edits", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Idempotency-Key": requestId,
-    },
-    body: form,
-    signal: AbortSignal.timeout(150_000),
-  });
-  if (!response.ok) {
-    const bodyText = await response.text().catch(() => "");
-    console.error(`Image provider (edit endpoint) rejected the request: ${response.status} ${bodyText.slice(0, 2000)}`);
-    throw new Error(
-      "Сервис изображений не выполнил запрос с логотипом. Попробуйте другое описание или отключите использование логотипа.",
-    );
-  }
-  const payload = (await response.json()) as {
-    data?: Array<{ b64_json?: string }>;
-  };
-  const encoded = payload.data?.[0]?.b64_json;
-  if (!encoded || encoded.length > 12_000_000)
-    throw new Error("Сервис изображений вернул некорректный файл.");
-  const bytes = new Uint8Array(Buffer.from(encoded, "base64"));
-  const detectedType = imageContentType(bytes);
-  const contentType = detectedType ||
-    (resolved.outputFormat === "jpeg" ? "image/jpeg" : resolved.outputFormat === "webp" ? "image/webp" : "image/png");
-  const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
+  const { bytes: backgroundBytes, resolved } = await generateImageBytes(prompt, requestId, options);
+  const sharp = (await import("sharp")).default;
+  const background = sharp(backgroundBytes);
+  const meta = await background.metadata();
+  const bgWidth = meta.width || 1024;
+  const bgHeight = meta.height || 1024;
+  // Bottom-right corner, sized relative to the canvas - a fixed, readable
+  // placement (like a watermark) rather than attempting to blend the logo
+  // into the scene, which is exactly what let the model redraw it.
+  const logoTargetWidth = Math.max(64, Math.round(bgWidth * 0.18));
+  const padding = Math.round(bgWidth * 0.04);
+  const logoBuffer = await sharp(logo.bytes).resize({ width: logoTargetWidth, fit: "inside", withoutEnlargement: true }).toBuffer();
+  const logoMeta = await sharp(logoBuffer).metadata();
+  const logoWidth = logoMeta.width || logoTargetWidth;
+  const logoHeight = logoMeta.height || logoTargetWidth;
+  const left = Math.max(0, Math.min(bgWidth - logoWidth, bgWidth - logoWidth - padding));
+  const top = Math.max(0, Math.min(bgHeight - logoHeight, bgHeight - logoHeight - padding));
+  const composed = sharp(backgroundBytes).composite([{ input: logoBuffer, left, top }]);
+  const outputFormat = resolved.outputFormat;
+  const outBuffer = await (
+    outputFormat === "jpeg" ? composed.jpeg() : outputFormat === "webp" ? composed.webp() : composed.png()
+  ).toBuffer();
+  const contentType = outputFormat === "jpeg" ? "image/jpeg" : outputFormat === "webp" ? "image/webp" : "image/png";
+  const fileName = outputFormat === "jpeg" ? "klio.jpeg" : outputFormat === "webp" ? "klio.webp" : "klio.png";
   return uploadPublicationImage(
-    new File([bytes], fileName, { type: contentType }),
+    new File([new Uint8Array(outBuffer)], fileName, { type: contentType }),
     email,
     baseUrl,
   );
