@@ -1,16 +1,21 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
+import { getDatabaseSchemaName } from "./namespace";
 
 let client: ReturnType<typeof postgres> | undefined;
 
 function createPostgresClient(connectionString: string, max: number) {
+  const schemaName = getDatabaseSchemaName();
+  // No fallback to public: a missing preview table must fail, not use client data.
+  const connection = schemaName === "public" ? undefined : { search_path: schemaName };
   try {
     // Keep the normal path for valid PostgreSQL URLs.
     new URL(connectionString);
     return postgres(connectionString, {
       max,
       ssl: process.env.NODE_ENV === "production" ? "require" : undefined,
+      connection,
     });
   } catch {
     // Some managed-DB panels place raw special characters in the password.
@@ -34,6 +39,7 @@ function createPostgresClient(connectionString: string, max: number) {
       password,
       max,
       ssl: process.env.NODE_ENV === "production" ? "require" : undefined,
+      connection,
     });
   }
 }

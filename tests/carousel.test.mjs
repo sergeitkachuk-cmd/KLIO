@@ -34,10 +34,11 @@ function load(path, dependencies = {}, globals = {}) {
 
 async function createCarouselHarness() {
   const client = new PGlite();
-  const schema = load("db/schema.ts", { "drizzle-orm": orm, "drizzle-orm/pg-core": pg });
+  const schema = load("db/schema.ts", { "drizzle-orm": orm, "drizzle-orm/pg-core": pg, "./namespace": load("db/namespace.ts") });
   const dialect = new pg.PgDialect();
   const literal = value => typeof value === "string" ? `'${value.replaceAll("'", "''")}'` : String(value);
   for (const table of Object.values(schema)) {
+    if (!orm.is(table, pg.PgTable)) continue;
     const config = pg.getTableConfig(table);
     const columns = config.columns.map(c => {
       let def = "";

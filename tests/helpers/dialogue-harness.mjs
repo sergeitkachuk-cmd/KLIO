@@ -48,6 +48,7 @@ export async function createDialogueHarness() {
   const schema = load("db/schema.ts", {
     "drizzle-orm": orm,
     "drizzle-orm/pg-core": pg,
+    "./namespace": load("db/namespace.ts"),
   });
   const dialect = new pg.PgDialect();
   const literal = (value) =>
@@ -55,6 +56,7 @@ export async function createDialogueHarness() {
       ? `'${value.replaceAll("'", "''")}'`
       : String(value);
   for (const table of Object.values(schema)) {
+    if (!orm.is(table, pg.PgTable)) continue;
     const config = pg.getTableConfig(table);
     const columns = config.columns.map((c) => {
       let def = "";

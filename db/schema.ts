@@ -1,5 +1,13 @@
 import { sql } from "drizzle-orm";
-import { boolean, index, integer, pgTable, real, text } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgSchema, pgTable as publicTable, real, text, type PgTableFn } from "drizzle-orm/pg-core";
+import { getDatabaseSchemaName } from "./namespace";
+
+const databaseSchemaName = getDatabaseSchemaName();
+// Export the namespace as well as its tables so Drizzle creates it on first push.
+export const previewNamespace = databaseSchemaName === "public"
+  ? undefined
+  : pgSchema(databaseSchemaName);
+const pgTable: PgTableFn<string | undefined> = previewNamespace ? previewNamespace.table : publicTable;
 
 export const accounts = pgTable("accounts", {
   email: text("email").primaryKey(),
