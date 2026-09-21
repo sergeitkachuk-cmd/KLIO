@@ -2295,6 +2295,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     [workspaceHistory, activeBrandId],
   );
   const [imagePrompt, setImagePrompt] = useState("");
+  const [imageSourceTitle, setImageSourceTitle] = useState("");
   const [imageAspectRatio, setImageAspectRatio] = useState<"1:1" | "4:3" | "4:5" | "16:9" | "9:16">("4:3");
   const [imageOutputFormat, setImageOutputFormat] = useState<"png" | "jpeg" | "webp">("png");
   const [useLogoInImage, setUseLogoInImage] = useState(false);
@@ -2305,6 +2306,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [carouselBusy, setCarouselBusy] = useState(false);
   const [carouselError, setCarouselError] = useState("");
   const [carouselResult, setCarouselResult] = useState<{ slides: CarouselSlide[]; archive: GenerationArchiveItem } | null>(null);
+  const [pendingCarouselSource, setPendingCarouselSource] = useState<{ generationId: string } | { text: string } | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [workspaceMaterials, setWorkspaceMaterials] = useState<SavedWorkspaceMaterial[]>([]);
   const [workspaceUserName, setWorkspaceUserName] = useState("Сергей");
@@ -5201,21 +5203,44 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     return [title, subtitle, body].filter(Boolean).map((part) => part.trim()).filter(Boolean).join("\n\n").slice(0, 1800);
   }
 
-  async function generateProfessionalImage(promptOverride?: string, sourceTitle?: string) {
-    const prompt = (promptOverride ?? imagePrompt).trim();
+  // Every "Создать картинку"/"Создать карусель" button outside this module
+  // itself used to call generateProfessionalImage/generateCarousel directly,
+  // firing a real (paid) generation before the person had seen the aspect
+  // ratio/format/logo/slide-count controls at all (site owner: "не дал
+  // выбрать настройки, а сразу начал генерировать"). Both now only land
+  // here and prefill the module instead - the actual "Создать изображение"/
+  // "Создать карусель" buttons inside it are what starts a generation, same
+  // as typing a prompt by hand and clicking one of them yourself.
+  // carouselSource is preferred over the built prompt text when generating
+  // a carousel (an existing generationId lets the server re-read the
+  // article fresh instead of relying on this already-concatenated string),
+  // but a manual edit of the textarea below invalidates it - see its
+  // onChange.
+  function prepareImageGeneration(carouselSource: { generationId: string } | { text: string }, promptText: string, sourceTitle: string) {
+    setImagePrompt(promptText);
+    setImageSourceTitle(sourceTitle);
+    setPendingCarouselSource(carouselSource);
+    setImageError("");
+    setCarouselError("");
+    setImageResult(null);
+    setCarouselResult(null);
+    openModule("images");
+  }
+
+  async function generateProfessionalImage() {
+    const prompt = imagePrompt.trim();
     if (prompt.length < 8 || imageBusy) return;
     setImageBusy(true);
     setImageError("");
     setImageResult(null);
     setCarouselResult(null);
-    if (promptOverride) setImagePrompt(prompt);
     try {
       const response = await fetch("/api/images", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt,
-          sourceTitle,
+          sourceTitle: imageSourceTitle,
           brandId: useBrand ? activeBrandId || undefined : undefined,
           requestId: crypto.randomUUID(),
           aspectRatio: imageAspectRatio,
@@ -5294,6 +5319,34 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setCarouselResult({ slides, archive: item });
     setCarouselError("");
     openModule("images");
+  }
+
+  // A carousel's saved generation row keeps the SOURCE article in its own
+  // body (carousel.ts needs that for its one AI call) - the slides are the
+  // actual publishable content, so the publication draft needs to build its
+  // own title/body from them instead of reusing the row's fields (site
+  // owner: publishing a carousel sent the source article as the text, only
+  // the first slide as the picture - only one image can attach either way,
+  // an actual multi-photo post isn't something this publication flow does
+  // yet, but the text going out should at least be the slides, not the
+  // unrelated source material).
+  function carouselPublicationDraft(slides: CarouselSlide[], archive: GenerationArchiveItem) {
+    return {
+      title: slides[0]?.headline || archive.title,
+      body: slides.map((slide) => `${slide.headline}\n${slide.subtext}`).join("\n\n"),
+      generationId: archive.id,
+      imageUrl: archive.imageUrl,
+    };
+  }
+
+  function openPublicationDraftForMaterial(item: GenerationArchiveItem) {
+    if (item.topic === "Карусель") {
+      let slides: CarouselSlide[] = [];
+      try { slides = JSON.parse(item.slidesJson || "[]"); } catch { slides = []; }
+      void openPublicationDraft(carouselPublicationDraft(slides, item));
+      return;
+    }
+    void openPublicationDraft({ title: item.imageUrl ? "" : item.title, body: item.imageUrl ? "" : item.body, generationId: item.id, imageUrl: item.imageUrl });
   }
 
   async function openPublicationDraft(source: { title: string; body: string; generationId?: string | null; imageUrl?: string }) {
@@ -5769,7 +5822,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             {visibleMaterials.length ? <div className={`workspace-history-list ${materialsFilter === "content_plan" ? "is-content-plan-filter" : ""}`}>{visibleMaterials.map(({ kind, item }) => {
               if (kind === "article") {
                 const formatLabel = materialFormatLabel(item);
-                return <article className={`material-card material-article ${item.origin === "editor" ? "is-editor" : ""} ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><div className="material-card-badges"><span className="material-format-badge">{formatLabel}</span>{item.origin === "editor" && <span className="material-origin-badge">РЕД</span>}</div><small>{archiveDate(item.createdAt)}</small></div><h3>{item.title}</h3><p>{item.topic}</p>{item.imageUrl && <button type="button" className="image-generator-result-trigger" aria-label="Открыть изображение крупнее" onClick={() => setLightboxUrl(item.imageUrl)}><Image className="material-card-image" src={item.imageUrl} alt={item.title} width={720} height={720} unoptimized/></button>}<footer><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал" title="Удалить материал"><Icon name="trash"/></button><button type="button" className="material-archive" onClick={() => void archiveArchiveItem(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" className="material-publish" onClick={() => void openPublicationDraft({ title: item.imageUrl ? "" : item.title, body: item.imageUrl ? "" : item.body, generationId: item.id, imageUrl: item.imageUrl })}>Публикация</button>{item.imageUrl && <a className="material-export" href={item.imageUrl} download>Скачать {imageFormatLabel(item.imageUrl)}</a>}{item.topic !== "Изображение" && item.topic !== "Карусель" && <><button type="button" onClick={() => { openModule("images"); void generateProfessionalImage(buildArticleImagePrompt(item.title, item.subtitle, item.body), item.title); }}>Создать картинку</button><button type="button" onClick={() => { openModule("images"); void generateCarousel({ generationId: item.id }); }}>Создать карусель</button></>}<button type="button" onClick={() => void openMaterialInDialogue(item.id)}>В диалог</button><button type="button" onClick={() => item.topic === "Карусель" ? openCarouselResult(item) : openArchiveItem(item)}>Редактор <Icon name="arrow"/></button></div></footer></article>;
+                return <article className={`material-card material-article ${item.origin === "editor" ? "is-editor" : ""} ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><div className="material-card-badges"><span className="material-format-badge">{formatLabel}</span>{item.origin === "editor" && <span className="material-origin-badge">РЕД</span>}</div><small>{archiveDate(item.createdAt)}</small></div><h3>{item.title}</h3><p>{item.topic}</p>{item.imageUrl && <button type="button" className="image-generator-result-trigger" aria-label="Открыть изображение крупнее" onClick={() => setLightboxUrl(item.imageUrl)}><Image className="material-card-image" src={item.imageUrl} alt={item.title} width={720} height={720} unoptimized/></button>}<footer><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал" title="Удалить материал"><Icon name="trash"/></button><button type="button" className="material-archive" onClick={() => void archiveArchiveItem(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" className="material-publish" onClick={() => openPublicationDraftForMaterial(item)}>Публикация</button>{item.imageUrl && <a className="material-export" href={item.imageUrl} download>Скачать {imageFormatLabel(item.imageUrl)}</a>}{item.topic !== "Изображение" && item.topic !== "Карусель" && <><button type="button" onClick={() => prepareImageGeneration({ generationId: item.id }, buildArticleImagePrompt(item.title, item.subtitle, item.body), item.title)}>Создать картинку</button><button type="button" onClick={() => prepareImageGeneration({ generationId: item.id }, buildArticleImagePrompt(item.title, item.subtitle, item.body), item.title)}>Создать карусель</button></>}<button type="button" onClick={() => void openMaterialInDialogue(item.id)}>В диалог</button><button type="button" onClick={() => item.topic === "Карусель" ? openCarouselResult(item) : openArchiveItem(item)}>Редактор <Icon name="arrow"/></button></div></footer></article>;
               }
               const typeLabel = item.type === "content_plan" ? "Контент‑план" : item.type === "semantics" ? "Семантика" : "Анализ конкурентов";
               // Full items (not just title strings) so each topic can be sent
@@ -5822,8 +5875,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     <button className="button ghost" type="button" onClick={copyArchiveItem}><Icon name="copy"/> Копировать</button>
                     {archiveEditorItem.imageUrl && <a className="button ghost" href={archiveEditorItem.imageUrl} download>Скачать {imageFormatLabel(archiveEditorItem.imageUrl)}</a>}
                     <button className="button ghost" type="button" onClick={() => void openPublicationDraft({ title: archiveEditorItem.imageUrl ? "" : archiveEditorItem.title, body: archiveEditorItem.imageUrl ? "" : archiveEditorItem.body, generationId: archiveEditorItem.id, imageUrl: archiveEditorItem.imageUrl })}>В публикацию</button>
-                    <button className="button ghost" type="button" onClick={() => { openModule("images"); void generateProfessionalImage(buildArticleImagePrompt(archiveEditorItem.title, archiveEditorItem.subtitle, archiveEditorItem.body), archiveEditorItem.title); }}>Создать картинку</button>
-                    <button className="button ghost" type="button" onClick={() => { openModule("images"); void generateCarousel({ generationId: archiveEditorItem.id }); }}>Создать карусель</button>
+                    <button className="button ghost" type="button" onClick={() => prepareImageGeneration({ generationId: archiveEditorItem.id }, buildArticleImagePrompt(archiveEditorItem.title, archiveEditorItem.subtitle, archiveEditorItem.body), archiveEditorItem.title)}>Создать картинку</button>
+                    <button className="button ghost" type="button" onClick={() => prepareImageGeneration({ generationId: archiveEditorItem.id }, buildArticleImagePrompt(archiveEditorItem.title, archiveEditorItem.subtitle, archiveEditorItem.body), archiveEditorItem.title)}>Создать карусель</button>
                     <button className="button ghost" type="button" onClick={restoreArchiveOriginal} disabled={!archiveEditorDirty || archiveEditorSaving || archiveEditorBusy}>Вернуть</button>
                     <button className="button ghost" type="button" onClick={() => void saveArchiveItem("copy")} disabled={archiveEditorSaving || archiveEditorBusy}>{archiveEditorSaving ? "Сохраняем…" : "Сохранить копию"}</button>
                     <button className="button primary" type="button" onClick={() => void saveArchiveItem("update")} disabled={archiveEditorSaving || archiveEditorBusy || !archiveEditorDirty}>{archiveEditorSaving ? "Сохраняем…" : "Сохранить"}</button>
@@ -6431,7 +6484,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <div className="image-generator-layout">
               <div className="image-generator-form">
                 <label htmlFor="image-prompt">Что изобразить</label>
-                <textarea id="image-prompt" value={imagePrompt} onChange={event => setImagePrompt(event.target.value)} placeholder="Например: чашка кофе на деревянном столе у окна, мягкий утренний свет, без надписей" rows={6} maxLength={1800}/>
+                <textarea id="image-prompt" value={imagePrompt} onChange={event => { setImagePrompt(event.target.value); setImageSourceTitle(""); setPendingCarouselSource(null); }} placeholder="Например: чашка кофе на деревянном столе у окна, мягкий утренний свет, без надписей" rows={6} maxLength={1800}/>
                 <div className="image-generator-settings">
                   {/* gpt-image-1 only renders three real sizes (square/
                       landscape/portrait, see _lib/image-generation.ts) -
@@ -6479,7 +6532,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     options={["3", "4", "5", "6", "7", "8"].map(value => ({ value, label: value }))}
                   />
                   {carouselError && <p className="generation-error" role="alert">{carouselError}</p>}
-                  <button className="button ghost large" type="button" onClick={() => void generateCarousel({ text: imagePrompt })} disabled={imageBusy || carouselBusy || !workspaceReady || imagePrompt.trim().length < 20 || workspaceAccount.generationsRemaining < Number(carouselSlideCount)}><Icon name="image"/>{carouselBusy ? "Создаём карусель…" : workspaceAccount.generationsRemaining < Number(carouselSlideCount) ? "Не хватает генераций" : `Создать карусель (${carouselSlideCount})`}</button>
+                  <button className="button ghost large" type="button" onClick={() => void generateCarousel(pendingCarouselSource ?? { text: imagePrompt })} disabled={imageBusy || carouselBusy || !workspaceReady || imagePrompt.trim().length < 20 || workspaceAccount.generationsRemaining < Number(carouselSlideCount)}><Icon name="image"/>{carouselBusy ? "Создаём карусель…" : workspaceAccount.generationsRemaining < Number(carouselSlideCount) ? "Не хватает генераций" : `Создать карусель (${carouselSlideCount})`}</button>
                 </div>
               </div>
               <div className="image-generator-preview" aria-live="polite">
@@ -6491,7 +6544,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     </div>)}
                   </div>
                   <p>Карусель из {carouselResult.slides.length} слайдов сохранена в «Материалы».</p>
-                  <div><button className="button ghost" type="button" onClick={() => { setMaterialsFilter("all"); openModule("history"); }}>Открыть материалы</button><button className="button ghost" type="button" onClick={() => void openPublicationDraft({ title: "", body: "", generationId: carouselResult.archive.id, imageUrl: carouselResult.archive.imageUrl })}>В публикацию</button></div>
+                  <div><button className="button ghost" type="button" onClick={() => { setMaterialsFilter("all"); openModule("history"); }}>Открыть материалы</button><button className="button ghost" type="button" onClick={() => void openPublicationDraft(carouselPublicationDraft(carouselResult.slides, carouselResult.archive))}>В публикацию</button></div>
                 </> : imageResult?.imageUrl ? <><button type="button" className="image-generator-result-trigger" aria-label="Открыть изображение крупнее" onClick={() => setLightboxUrl(imageResult.imageUrl)}><Image src={imageResult.imageUrl} alt={imageResult.title} width={1024} height={1024} unoptimized/></button><p>Изображение сохранено в «Материалы».</p><div><a className="button ghost" href={imageResult.imageUrl} download>Скачать {imageFormatLabel(imageResult.imageUrl)}</a><button className="button ghost" type="button" onClick={() => { setMaterialsFilter("image"); openModule("history"); }}>Открыть материалы</button><button className="button ghost" type="button" onClick={() => void openPublicationDraft({ title: "", body: "", generationId: imageResult.id, imageUrl: imageResult.imageUrl })}>В публикацию</button></div></> : <div className="image-generator-empty"><Icon name="image"/><span>{imageBusy ? "КЛИО рисует. Обычно это занимает до минуты." : carouselBusy ? "КЛИО собирает карусель. Это может занять пару минут." : "Готовое изображение появится здесь"}</span></div>}
               </div>
             </div>
@@ -6590,7 +6643,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     past the editor note and SEO passport - site owner asked
                     for exactly this once already; the SEO passport fields
                     added afterward pushed these back down below them. */}
-                <div className="result-footer"><span>Материал уже сохранён в «Материалы» — вернуться к нему и продолжить редактирование можно в любой момент</span><div className="result-footer-actions"><button type="button" className="button ghost" onClick={clearGeneratedResult} disabled={!title && !body}><Icon name="erase"/> Очистить</button><button type="button" className="button ghost" onClick={copyResult} disabled={!title && !body}><Icon name="copy"/> Копировать</button><button type="button" className="button ghost" onClick={() => void openPublicationDraft({ title, body: [subtitle, body].filter(Boolean).join("\n\n"), generationId: generatedArchiveId })} disabled={!title && !body}>В публикацию</button><button type="button" className="button ghost" onClick={() => { openModule("images"); void generateProfessionalImage(buildArticleImagePrompt(title, subtitle, body), title); }} disabled={!title && !body}>Создать картинку</button><button type="button" className="button ghost" onClick={() => { openModule("images"); void generateCarousel(generatedArchiveId ? { generationId: generatedArchiveId } : { text: buildArticleImagePrompt(title, subtitle, body) }); }} disabled={!title && !body}>Создать карусель</button><button type="button" className="button primary" onClick={sendResultToAdaptation} disabled={!title && !body}>Адаптировать под площадку <Icon name="arrow"/></button></div></div>
+                <div className="result-footer"><span>Материал уже сохранён в «Материалы» — вернуться к нему и продолжить редактирование можно в любой момент</span><div className="result-footer-actions"><button type="button" className="button ghost" onClick={clearGeneratedResult} disabled={!title && !body}><Icon name="erase"/> Очистить</button><button type="button" className="button ghost" onClick={copyResult} disabled={!title && !body}><Icon name="copy"/> Копировать</button><button type="button" className="button ghost" onClick={() => void openPublicationDraft({ title, body: [subtitle, body].filter(Boolean).join("\n\n"), generationId: generatedArchiveId })} disabled={!title && !body}>В публикацию</button><button type="button" className="button ghost" onClick={() => prepareImageGeneration(generatedArchiveId ? { generationId: generatedArchiveId } : { text: buildArticleImagePrompt(title, subtitle, body) }, buildArticleImagePrompt(title, subtitle, body), title)} disabled={!title && !body}>Создать картинку</button><button type="button" className="button ghost" onClick={() => prepareImageGeneration(generatedArchiveId ? { generationId: generatedArchiveId } : { text: buildArticleImagePrompt(title, subtitle, body) }, buildArticleImagePrompt(title, subtitle, body), title)} disabled={!title && !body}>Создать карусель</button><button type="button" className="button primary" onClick={sendResultToAdaptation} disabled={!title && !body}>Адаптировать под площадку <Icon name="arrow"/></button></div></div>
                 <aside className="editor-note"><span>Комментарий к материалу</span><p>{editorNote || "Служебный комментарий появится после генерации и не попадёт в скопированный текст."}</p><small>Не входит в текст и не копируется</small></aside>
                 <div className="seo-passport">
                   <div className="seo-passport-head"><span>SEO‑паспорт</span><small>Служебные поля для публикации</small></div>
@@ -6748,7 +6801,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <AutoTextarea className="adaptation-result-body" value={adaptationResult.body} onChange={(event) => setAdaptationResult((current) => current ? { ...current, body: event.target.value } : current)} aria-label="Адаптированный текст"/>
                   <div className="adaptation-seo-fields"><label><span className="seo-field-label"><b>SEO‑заголовок</b></span><AutoTextarea rows={1} value={adaptationResult.metaTitle} onChange={(event) => setAdaptationResult((current) => current ? { ...current, metaTitle: event.target.value } : current)}/><button type="button" className="seo-field-copy" onClick={() => copyPlainText(adaptationResult.metaTitle, "SEO‑заголовок")}><Icon name="copy"/> Копировать</button></label><label><span className="seo-field-label"><b>Метаописание</b></span><AutoTextarea rows={2} value={adaptationResult.metaDescription} onChange={(event) => setAdaptationResult((current) => current ? { ...current, metaDescription: event.target.value } : current)}/><button type="button" className="seo-field-copy" onClick={() => copyPlainText(adaptationResult.metaDescription, "Метаописание")}><Icon name="copy"/> Копировать</button></label></div>
                   <aside className="adaptation-changes"><span>Что изменено</span><div>{adaptationResult.changes.map((item) => <p key={item}><i>✓</i>{item}</p>)}</div></aside>
-                  <div className="adaptation-result-footer"><span>Новая версия автоматически сохранена в «Материалы»</span><div><button type="button" className="button ghost" onClick={copyAdaptation}><Icon name="copy"/> Копировать</button><button type="button" className="button ghost" onClick={() => void openPublicationDraft({ title: adaptationResult.title, body: [adaptationResult.subtitle, adaptationResult.body].filter(Boolean).join("\n\n"), generationId: generatedArchiveId })}>В публикацию</button><button type="button" className="button ghost" onClick={() => { openModule("images"); void generateProfessionalImage(buildArticleImagePrompt(adaptationResult.title, adaptationResult.subtitle, adaptationResult.body), adaptationResult.title); }}>Создать картинку</button><button type="button" className="button ghost" onClick={() => { openModule("images"); void generateCarousel(generatedArchiveId ? { generationId: generatedArchiveId } : { text: buildArticleImagePrompt(adaptationResult.title, adaptationResult.subtitle, adaptationResult.body) }); }}>Создать карусель</button></div></div>
+                  <div className="adaptation-result-footer"><span>Новая версия автоматически сохранена в «Материалы»</span><div><button type="button" className="button ghost" onClick={copyAdaptation}><Icon name="copy"/> Копировать</button><button type="button" className="button ghost" onClick={() => void openPublicationDraft({ title: adaptationResult.title, body: [adaptationResult.subtitle, adaptationResult.body].filter(Boolean).join("\n\n"), generationId: generatedArchiveId })}>В публикацию</button><button type="button" className="button ghost" onClick={() => prepareImageGeneration(generatedArchiveId ? { generationId: generatedArchiveId } : { text: buildArticleImagePrompt(adaptationResult.title, adaptationResult.subtitle, adaptationResult.body) }, buildArticleImagePrompt(adaptationResult.title, adaptationResult.subtitle, adaptationResult.body), adaptationResult.title)}>Создать картинку</button><button type="button" className="button ghost" onClick={() => prepareImageGeneration(generatedArchiveId ? { generationId: generatedArchiveId } : { text: buildArticleImagePrompt(adaptationResult.title, adaptationResult.subtitle, adaptationResult.body) }, buildArticleImagePrompt(adaptationResult.title, adaptationResult.subtitle, adaptationResult.body), adaptationResult.title)}>Создать карусель</button></div></div>
                 </> : <div className="adaptation-empty-state"><i>Аа</i><h3>Вторая версия без потери фактов</h3><p>Выберите задачу и запустите редактуру. КЛИО не будет придумывать сведения, которых нет в исходном тексте или профиле бренда.</p><div><span>Исходник</span><b>→</b><span>Нужный формат</span></div></div>}
               </article>
             </div>
