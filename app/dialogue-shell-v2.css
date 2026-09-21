@@ -263,14 +263,17 @@
 .klio-chat-v2 .klio-chat-top {
   min-height: 54px;
   padding: 8px 18px;
-  border-bottom: 1px solid color-mix(in srgb, var(--chat-line) 72%, transparent);
-  background: color-mix(in srgb, var(--chat-bg) 93%, transparent);
-  backdrop-filter: blur(14px);
+  border: 0;
+  background: transparent;
+}
+
+.klio-chat-v2 .klio-chat-top.is-empty {
+  display: none;
 }
 
 .klio-chat-v2 .klio-chat-title {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .klio-chat-v2 .klio-chat-title-button {
@@ -871,6 +874,15 @@ body > .klio-chat-intent-menu > button:is(:hover, .active) {
   .klio-chat-v2 .klio-chat-top {
     min-height: 50px;
     padding: 6px 10px;
+  }
+
+  /* Keep access to the mobile sidebar even before a conversation exists. */
+  .klio-chat-v2 .klio-chat-top.is-empty {
+    display: flex;
+  }
+
+  .klio-chat-v2 .klio-chat-top.is-empty .klio-chat-title {
+    display: none;
   }
 
   .klio-chat-v2 {

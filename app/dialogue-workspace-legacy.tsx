@@ -997,7 +997,7 @@ export function LegacyDialogueWorkspace(props: DialogueWorkspaceProps) {
         </div>
       </aside>
       <section className="klio-chat-main" aria-label="Общение с КЛИО">
-        <header className="klio-chat-top">
+        <header className={`klio-chat-top${thread ? "" : " is-empty"}`}>
           <button
             className="klio-chat-menu"
             aria-label="Открыть список диалогов"
