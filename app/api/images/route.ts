@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     const user = await workspaceIdentity();
     const input = await readBoundedJson(request, 8192);
     const prompt = typeof input.prompt === "string" ? input.prompt.trim().slice(0, 1800) : "";
+    const sourceTitle = typeof input.sourceTitle === "string" ? input.sourceTitle.trim().slice(0, 200) : "";
     const brandId = typeof input.brandId === "string" ? input.brandId.trim() : "";
     const requestId = typeof input.requestId === "string" ? input.requestId.trim() : "";
     const imageOptions = parseImageGenerationOptions(input);
@@ -52,13 +53,21 @@ export async function POST(request: Request) {
     const imageUrl = useLogo && logoKey
       ? await createImageFromLogo(`${prompt}${brandContext}`, await downloadBrandLogo(logoKey), user.email, baseUrl, requestId, imageOptions)
       : await createImage(`${prompt}${brandContext}`, user.email, baseUrl, requestId, imageOptions);
+    // When this call is a cover image for an existing article/material
+    // (textora-experience.tsx's buildArticleImagePrompt), prompt is that
+    // whole title+subtitle+body concatenated - fine as an image prompt,
+    // but saving it verbatim as this new material's own title/body made
+    // the title show a truncated two-line run-on and the body a mangled
+    // duplicate of the source article (site owner screenshot: garbled
+    // title, body cut off mid-word). sourceTitle carries the real title
+    // separately so this material can be labeled sensibly instead.
     const usage = await recordGeneration({
       id: requestId,
       brandId: brandId || undefined,
       format: "external",
       topic: "Изображение",
-      title: prompt.slice(0, 100),
-      body: prompt,
+      title: (sourceTitle ? `Обложка: ${sourceTitle}` : prompt).slice(0, 100),
+      body: sourceTitle ? "" : prompt,
       subtitle: "",
       metaTitle: "",
       metaDescription: "",
