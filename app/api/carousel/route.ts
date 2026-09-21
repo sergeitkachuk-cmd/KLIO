@@ -24,6 +24,7 @@ type CarouselPayload = {
   text?: unknown;
   slideCount?: unknown;
   brandId?: unknown;
+  useLogo?: unknown;
 };
 
 export async function POST(request: Request) {
@@ -38,6 +39,7 @@ export async function POST(request: Request) {
       return Response.json({ error: `Число слайдов — от ${CAROUSEL_MIN_SLIDES} до ${CAROUSEL_MAX_SLIDES}.` }, { status: 400 });
     }
     const brandId = typeof raw.brandId === "string" && raw.brandId.trim() ? raw.brandId.trim() : undefined;
+    const useLogo = raw.useLogo === true;
 
     let text = "";
     const generationId = typeof raw.generationId === "string" ? raw.generationId.trim() : "";
@@ -70,7 +72,7 @@ export async function POST(request: Request) {
       return Response.json({ error: `Недостаточно квоты: нужно ${slideCount}, доступно ${Math.max(0, rule.generationLimit - account.generationsUsed)} из ${rule.generationLimit} материалов ${rule.periodLabel}.` }, { status: 429 });
     }
 
-    const input = { text, slideCount, brandId, baseUrl: resolveBaseUrl(request) };
+    const input = { text, slideCount, brandId, useLogo, baseUrl: resolveBaseUrl(request) };
     const job = await claimAsyncJob("carousel_generation", identity.email, input, CAROUSEL_TIMEOUT_MS + 10_000);
     if (job.reused) return Response.json({ jobId: job.id, reused: true });
 

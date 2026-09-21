@@ -260,26 +260,33 @@ export async function createImageFromLogo(
   );
 }
 
-// Sibling to createImageFromLogo above, for a carousel's own slide-to-slide
-// consistency instead of a brand logo: slide 1 generates plain, slides
-// 2..N pass slide 1's own bytes as a style/composition reference through
-// the same edit-endpoint mechanism, steered to look like part of the same
-// set rather than matching a fixed logo. This is the reference-image
-// chaining OpenAI's own docs describe for gpt-image-2.5 multi-image
-// consistency (confirmed via the API guide - up to 16 reference images,
-// no dedicated "generate a consistent set" endpoint exists).
+// Sibling to createImageFromLogo above, for a carousel's per-slide
+// reference image, which serves one of two different purposes depending
+// on `reference.kind` - the wording has to match which one it actually is:
+// - "logo": slide 1 when the brand logo is requested - same "weave it in
+//   naturally, reproduce it closely" framing as createImageFromLogo.
+// - "previous-slide": every slide after that references the one before it
+//   for style/composition consistency (the reference-image chaining
+//   OpenAI's own docs describe for gpt-image-2.5 multi-image consistency -
+//   confirmed via the API guide, up to 16 reference images, no dedicated
+//   "generate a consistent set" endpoint exists), not to match a fixed
+//   logo. Slide 1's own bytes already carry the logo forward into that
+//   chain when one was used, but the wording below also reinforces it via
+//   text for slides 2+ (see carousel.ts's own prompt for that reminder).
 export async function createCarouselSlideImage(
   prompt: string,
-  reference: { bytes: Uint8Array<ArrayBuffer>; contentType: string } | undefined,
+  reference: { bytes: Uint8Array<ArrayBuffer>; contentType: string; kind: "logo" | "previous-slide" } | undefined,
   email: string,
   baseUrl: string,
   requestId: string,
   options: ImageGenerationOptions,
   model: string,
 ) {
-  const guidedPrompt = reference
-    ? `${prompt}\n\nЭто один слайд карусели из серии. Сохрани ту же визуальную стилистику, палитру, шрифт и композицию, что и на приложенном референсном изображении - слайды должны выглядеть частью одного набора, но с текстом именно этого слайда, не референсного.`
-    : prompt;
+  const guidedPrompt = !reference
+    ? prompt
+    : reference.kind === "logo"
+      ? `${prompt}\n\nНа изображении должен естественно присутствовать логотип бренда - органично вписанный в композицию (например, на вывеске, упаковке, экране или другом уместном по смыслу объекте сцены), а не наложенный поверх готовой картинки отдельным слоем. Воспроизведи логотип с приложенного референса максимально похоже: те же цвета, форма и текст.`
+      : `${prompt}\n\nЭто один слайд карусели из серии. Сохрани ту же визуальную стилистику, палитру, шрифт и композицию, что и на приложенном референсном изображении - слайды должны выглядеть частью одного набора, но с текстом именно этого слайда, не референсного.`;
   const { bytes, contentType } = await generateImageBytes(guidedPrompt, requestId, options, reference, model);
   const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
   const url = await uploadPublicationImage(

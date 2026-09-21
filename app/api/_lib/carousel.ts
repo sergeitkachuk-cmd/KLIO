@@ -1,6 +1,9 @@
+import { and, eq } from "drizzle-orm";
+import { brands } from "../../../db/schema";
 import { callAiModel } from "./ai-router";
 import { createCarouselSlideImage } from "./image-generation";
-import { recordGeneration, WorkspaceAccessError } from "./workspace-account";
+import { downloadBrandLogo } from "./storage";
+import { getWorkspaceDb, recordGeneration, WorkspaceAccessError } from "./workspace-account";
 import { failAsyncJob, markAsyncJobProcessing } from "./async-jobs";
 
 export const CAROUSEL_MIN_SLIDES = 3;
@@ -48,6 +51,7 @@ export type CarouselInput = {
   text: string;
   slideCount: number;
   brandId?: string;
+  useLogo?: boolean;
   baseUrl: string;
 };
 
@@ -75,15 +79,35 @@ export async function runCarouselGeneration(jobId: string, input: CarouselInput,
     const slideText = answer.result.slides;
     if (slideText.length !== count) throw new Error("ИИ вернул неверное количество слайдов карусели.");
 
-    // Slide 1 generates plain; each following slide passes the PREVIOUS
-    // slide's own bytes as a style/composition reference (not always
-    // slide 1's) so drift accumulates less across a longer carousel than
-    // anchoring every slide to a single fixed reference would.
+    // Same lookup api/images/route.ts and api/dialogue/route.ts already do
+    // for their own useLogo option - brandId alone doesn't imply a logo
+    // exists or was asked for.
+    let logo: { bytes: Uint8Array<ArrayBuffer>; contentType: string } | undefined;
+    if (input.useLogo && input.brandId) {
+      const db = await getWorkspaceDb();
+      const [brand] = await db.select({ profileJson: brands.profileJson }).from(brands)
+        .where(and(eq(brands.id, input.brandId), eq(brands.ownerEmail, ownerEmail))).limit(1);
+      const profile = brand ? JSON.parse(brand.profileJson) as { logoKey?: unknown } : null;
+      if (typeof profile?.logoKey === "string" && profile.logoKey) logo = await downloadBrandLogo(profile.logoKey);
+    }
+
+    // Slide 1 references the logo (if requested) - the same "weave it in
+    // naturally" treatment createImageFromLogo already gives a single
+    // image. Every slide after that references the PREVIOUS slide's own
+    // bytes for style/composition consistency instead of re-anchoring to
+    // slide 1 every time, so drift accumulates less across a longer
+    // carousel - see createCarouselSlideImage's own comment for why the
+    // wording differs between these two reference purposes. A text
+    // reminder is added for slides 2+ too when a logo was used, since the
+    // image reference alone doesn't guarantee the logo itself survives
+    // the "match this style" instruction as reliably as it does on the
+    // slide that referenced it directly.
     const slides: CarouselSlide[] = [];
-    let reference: { bytes: Uint8Array<ArrayBuffer>; contentType: string } | undefined;
+    let reference: { bytes: Uint8Array<ArrayBuffer>; contentType: string; kind: "logo" | "previous-slide" } | undefined = logo && { ...logo, kind: "logo" };
     for (let index = 0; index < slideText.length; index++) {
       const slide = slideText[index];
-      const prompt = `Слайд ${index + 1} из ${count} карусели для соцсетей, как обложка к статье: крупный заголовок и короткая поддерживающая строка, единой композицией с фоном.\nЗаголовок: «${slide.headline}»\nПодзаголовок: «${slide.subtext}»`;
+      const logoReminder = logo && index > 0 ? " Сохраняй тот же логотип бренда и фирменный стиль, что и на предыдущих слайдах." : "";
+      const prompt = `Слайд ${index + 1} из ${count} карусели для соцсетей, как обложка к статье: крупный заголовок и короткая поддерживающая строка, единой композицией с фоном.${logoReminder}\nЗаголовок: «${slide.headline}»\nПодзаголовок: «${slide.subtext}»`;
       let generated;
       try {
         generated = await createCarouselSlideImage(prompt, reference, ownerEmail, input.baseUrl, `${jobId}-${index}`, {}, CAROUSEL_IMAGE_MODEL);
@@ -91,7 +115,7 @@ export async function runCarouselGeneration(jobId: string, input: CarouselInput,
         throw new Error(`Не удалось создать слайд ${index + 1} из ${count} — генерация карусели остановлена. ${error instanceof Error ? error.message : ""}`.trim());
       }
       slides.push({ headline: slide.headline, subtext: slide.subtext, imageUrl: generated.url });
-      reference = { bytes: generated.bytes, contentType: generated.contentType };
+      reference = { bytes: generated.bytes, contentType: generated.contentType, kind: "previous-slide" };
     }
 
     const title = slides[0]?.headline.slice(0, 100) || "Карусель";

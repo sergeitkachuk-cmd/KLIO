@@ -76,10 +76,14 @@ async function createCarouselHarness() {
   let ai = async () => ({ slides: [] });
   let generateImage = async (prompt, reference, email, baseUrl, requestId) =>
     ({ url: `https://cdn.example.invalid/${requestId}.png`, bytes: new Uint8Array([1, 2, 3]), contentType: "image/png" });
+  let downloadLogo = async () => { throw new Error("no logo mock configured for this test"); };
 
   const carousel = load("app/api/_lib/carousel.ts", {
+    "drizzle-orm": orm,
+    "../../../db/schema": schema,
     "./ai-router": { callAiModel: async input => ({ result: await ai(input) }) },
     "./image-generation": { createCarouselSlideImage: (...args) => generateImage(...args) },
+    "./storage": { downloadBrandLogo: (...args) => downloadLogo(...args) },
     "./workspace-account": workspaceAccount,
     "./async-jobs": asyncJobs,
   });
@@ -90,13 +94,23 @@ async function createCarouselHarness() {
     });
   }
 
+  async function seedBrand(overrides = {}) {
+    const id = randomUUID();
+    await db.insert(schema.brands).values({
+      id, ownerEmail: owner, name: "Test Brand", profileJson: JSON.stringify({ logoKey: "logo-key-1" }), ...overrides,
+    });
+    return id;
+  }
+
   return {
     db, schema, owner, plans,
     account: async () => (await db.select().from(schema.accounts).where(orm.eq(schema.accounts.email, owner)))[0],
     generations: async () => db.select().from(schema.generations).where(orm.eq(schema.generations.ownerEmail, owner)),
     seedAccount,
+    seedBrand,
     setAi: fn => { ai = fn; },
     setGenerateImage: fn => { generateImage = fn; },
+    setDownloadLogo: fn => { downloadLogo = fn; },
     claimJob: input => asyncJobs.claimAsyncJob("carousel_generation", owner, input, 300_000),
     getJob: id => asyncJobs.getAsyncJob(id, owner),
     runCarouselGeneration: carousel.runCarouselGeneration,
@@ -155,6 +169,50 @@ test("each slide after the first receives the previous slide's own bytes as its 
   assert.equal(seenReferences[0], undefined);
   assert.deepEqual(Array.from(seenReferences[1].bytes), [0]);
   assert.deepEqual(Array.from(seenReferences[2].bytes), [1]);
+});
+
+test("slide 1 references the brand logo when useLogo is set, later slides fall back to the previous slide", async t => {
+  const h = await createCarouselHarness();
+  t.after(() => h.close());
+  await h.seedAccount();
+  const brandId = await h.seedBrand();
+  h.setAi(async () => ({ slides: slides(3) }));
+  h.setDownloadLogo(async () => ({ bytes: new Uint8Array([9, 9]), contentType: "image/png" }));
+  const seenReferences = [];
+  let callIndex = 0;
+  h.setGenerateImage(async (prompt, reference) => {
+    const index = callIndex++;
+    seenReferences.push({ prompt, reference });
+    return { url: `https://cdn.example.invalid/${index}.png`, bytes: new Uint8Array([index]), contentType: "image/png" };
+  });
+
+  const input = { text: "Статья про кофе.", slideCount: 3, brandId, useLogo: true, baseUrl: "http://127.0.0.1:3027" };
+  const job = await h.claimJob(input);
+  await h.runCarouselGeneration(job.id, input, h.owner);
+
+  assert.equal(seenReferences[0].reference.kind, "logo");
+  assert.deepEqual(Array.from(seenReferences[0].reference.bytes), [9, 9]);
+  assert.equal(seenReferences[1].reference.kind, "previous-slide");
+  assert.deepEqual(Array.from(seenReferences[1].reference.bytes), [0]);
+  assert.equal(seenReferences[2].reference.kind, "previous-slide");
+  assert.match(seenReferences[1].prompt, /логотип бренда/);
+  assert.doesNotMatch(seenReferences[0].prompt, /Сохраняй тот же логотип/);
+});
+
+test("carousel without useLogo never touches brand logo storage even when a brandId is given", async t => {
+  const h = await createCarouselHarness();
+  t.after(() => h.close());
+  await h.seedAccount();
+  const brandId = await h.seedBrand();
+  h.setAi(async () => ({ slides: slides(2) }));
+  h.setDownloadLogo(async () => { throw new Error("should not be called"); });
+
+  const input = { text: "Статья про кофе.", slideCount: 2, brandId, baseUrl: "http://127.0.0.1:3027" };
+  const job = await h.claimJob(input);
+  await h.runCarouselGeneration(job.id, input, h.owner);
+
+  const settled = await h.getJob(job.id);
+  assert.equal(settled.status, "done");
 });
 
 test("a failure partway through fails the job without debiting quota or saving a partial carousel", async t => {
