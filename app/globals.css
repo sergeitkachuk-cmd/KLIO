@@ -361,7 +361,11 @@ select:focus-visible {
      outer tracks until the logo and right-hand controls visually collided. */
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  width: min(calc(100% - 44px), 1500px);
+  /* Widened (site owner: "расширь шапку-капсулу тоже по ширине
+     страницы") - was capped noticeably narrower than the page sections
+     beneath it, so the floating pill read as small against the rest of
+     the layout. */
+  width: min(calc(100% - 32px), 1760px);
   height: 64px;
   padding: 0 18px;
   border: 1px solid rgba(255, 255, 255, 0.34);
@@ -697,7 +701,7 @@ select:focus-visible {
   padding: 34px 36px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.34);
-  border-radius: 5px 48px 5px 5px;
+  border-radius: 48px;
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.21), rgba(255, 255, 255, 0.055));
   box-shadow: 0 42px 96px rgba(0, 0, 0, 0.27), inset 0 1px rgba(255, 255, 255, 0.42);
   backdrop-filter: blur(12px) saturate(155%);
@@ -801,7 +805,7 @@ select:focus-visible {
 .leaf-one {
   left: -8px;
   top: 82px;
-  border-radius: 3px 26px 3px 3px;
+  border-radius: 26px;
   transform: rotate(-6deg);
   animation: leafFloat 6s ease-in-out infinite;
 }
@@ -983,7 +987,7 @@ select:focus-visible {
   padding: 30px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.82);
-  border-radius: 4px 34px 4px 4px;
+  border-radius: 34px;
   background:
     radial-gradient(circle at 100% 0%, rgba(109, 125, 148, 0.11), transparent 38%),
     linear-gradient(145deg, rgba(255, 255, 255, 0.76), rgba(247, 248, 249, 0.48));
@@ -1071,7 +1075,7 @@ select:focus-visible {
   grid-template-columns: minmax(340px, 0.78fr) minmax(0, 1.35fr);
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.86);
-  border-radius: 5px 48px 5px 5px;
+  border-radius: 48px;
   background: rgba(255, 255, 255, 0.52);
   box-shadow: 0 42px 110px rgba(32, 38, 47, 0.14), inset 0 1px rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(14px) saturate(145%);
@@ -1150,7 +1154,7 @@ select:focus-visible {
   margin: 28px 0 26px;
   padding: 20px;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px 22px 4px 4px;
+  border-radius: 22px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.06));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.16);
   backdrop-filter: blur(9px);
@@ -1292,7 +1296,7 @@ select:focus-visible {
   padding: 30px 32px 27px;
   overflow: hidden;
   border: 1px solid rgba(53, 63, 76, 0.12);
-  border-radius: 3px 25px 3px 3px;
+  border-radius: 25px;
   background: rgba(255, 255, 255, 0.68);
   box-shadow: 0 20px 52px rgba(41, 49, 59, 0.07), inset 0 1px rgba(255, 255, 255, 0.92);
 }
@@ -1764,10 +1768,9 @@ select:focus-visible {
 
 .brand-score,
 .brand-checklist {
-  border: 1px solid rgba(62, 74, 90, 0.12);
+  border: 1px solid transparent;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.5);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.92);
+  background: transparent;
 }
 
 .brand-score {
@@ -1896,10 +1899,9 @@ select:focus-visible {
 .brand-tab-shell {
   margin: 0 0 20px;
   padding: 12px;
-  border: 1px solid rgba(62, 74, 90, 0.12);
-  border-radius: 20px 20px 5px 20px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.64), rgba(237, 239, 242, 0.62));
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.92);
+  border: 1px solid transparent;
+  border-radius: 20px;
+  background: transparent;
 }
 
 .brand-tab-navigation {
@@ -2172,7 +2174,7 @@ select:focus-visible {
   min-width: 0;
   padding: 17px;
   border: 1px solid rgba(62, 74, 90, 0.12);
-  border-radius: 16px 16px 5px 16px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.54);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.92);
 }
@@ -2248,7 +2250,7 @@ select:focus-visible {
      divider between two functional halves is a different job than an
      outer contour. */
   border: 1px solid transparent;
-  border-radius: 5px 46px 5px 5px;
+  border-radius: 46px;
   /* No fill/blur at all now - same "the backing itself, not just the
      border/shadow" fix as .workspace-history (site owner). Sits
      directly on .workspace-shell's own page background. */
@@ -2905,9 +2907,10 @@ select:focus-visible {
   min-width: 0;
   padding: 42px 48px 30px;
   color: #fff;
-  background:
-    radial-gradient(circle at 88% 0%, rgba(91, 107, 130, 0.18), transparent 32%),
-    linear-gradient(150deg, #051a31 0%, #082b4c 55%, #041225 100%);
+  /* Same fix as .brief-panel (its sibling pane) - this panel's own
+     opaque gradient covered the whole right column, so .studio's own
+     background removal never showed. */
+  background: transparent;
 }
 
 .result-head {
@@ -3301,7 +3304,7 @@ textarea[data-autosize="true"] {
   padding: 28px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.76);
-  border-radius: 4px 38px 4px 4px;
+  border-radius: 38px;
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.78), rgba(247, 247, 252, 0.5));
   box-shadow: 0 25px 70px rgba(30, 35, 42, 0.08), inset 0 1px rgba(255, 255, 255, 0.92);
   /* No backdrop-filter (was blur(10px)) - repeated card, see the note
@@ -3499,7 +3502,7 @@ textarea[data-autosize="true"] {
 .plan-table {
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px 40px 4px 4px;
+  border-radius: 40px;
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.045));
   box-shadow: 0 38px 80px rgba(0, 0, 0, 0.25), inset 0 1px rgba(255, 255, 255, 0.13);
   backdrop-filter: blur(12px) saturate(145%);
@@ -3620,7 +3623,7 @@ textarea[data-autosize="true"] {
   padding: 30px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: 4px 38px 4px 4px;
+  border-radius: 38px;
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.79), rgba(247, 247, 252, 0.48));
   box-shadow: 0 27px 75px rgba(31, 37, 45, 0.09), inset 0 1px rgba(255, 255, 255, 0.94);
   /* No backdrop-filter (was blur(11px) saturate(135%)) - repeated card
@@ -4157,7 +4160,7 @@ textarea[data-autosize="true"] {
   height: 225px;
   margin: 30px 0 24px;
   overflow: hidden;
-  border-radius: 2px 24px 2px 2px;
+  border-radius: 24px;
   background:
     radial-gradient(circle at 70% 32%, rgba(210, 216, 224, 0.92), transparent 21%),
     linear-gradient(135deg, #13171c, #343e4b 54%, #6d7d94);
@@ -4844,7 +4847,7 @@ footer nav a {
      modules) - border-color, not border: 0, so nothing reflows. Matches
      .studio/.semantic-shell/.adaptation-shell/etc. */
   border: 1px solid transparent;
-  border-radius: 4px 24px 4px 4px;
+  border-radius: 24px;
   /* No fill at all now - dropping the box-shadow alone still left a
      visibly distinct navy panel sitting on .workspace-shell's own page
      background underneath it (site owner: "убрал вроде обводку, а саму
@@ -4882,7 +4885,7 @@ footer nav a {
   padding: 13px;
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 3px 16px 3px 3px;
+  border-radius: 16px;
   background: linear-gradient(135deg, #0c2848, #082849 60%, #061c34);
 }
 
@@ -5502,7 +5505,7 @@ footer nav a {
   margin-top: auto;
   padding: 18px;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 18px 18px 4px 18px;
+  border-radius: 18px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.045));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.12);
   backdrop-filter: blur(10px);
@@ -5558,10 +5561,13 @@ footer nav a {
 .workspace-content {
   display: flex;
   flex-direction: column;
-  width: min(100%, 1520px);
+  /* Widened (site owner: "расширим немного рабочее поле") now that
+     modules no longer sit inside their own bordered/backed card - there
+     was no longer a reason to keep as much side margin reserved. */
+  width: min(100%, 1680px);
   min-width: 0;
   margin: 0 auto;
-  padding: 52px clamp(28px, 4vw, 66px) 100px;
+  padding: 52px clamp(24px, 3vw, 48px) 100px;
   /* Overflow guard against whatever inside still runs too wide, applied
      here rather than on .workspace-shell/html/body: this element has no
      explicit height of its own (unlike .workspace-shell's min-height:
@@ -5806,7 +5812,7 @@ footer nav a {
   margin-bottom: 24px;
   padding: 22px 26px;
   border: 1px solid rgba(169, 180, 196, 0.32);
-  border-radius: 4px 28px 4px 4px;
+  border-radius: 28px;
   background: radial-gradient(circle at 6% 10%, rgba(167, 178, 194, 0.16), transparent 40%), radial-gradient(circle at 94% 100%, rgba(91, 107, 130, 0.32), transparent 38%), linear-gradient(135deg, #06182e, #08233f 60%, #041426 100%);
   box-shadow: 0 14px 36px rgba(21, 25, 31, 0.22), inset 0 1px rgba(255, 255, 255, 0.09);
 }
@@ -5888,7 +5894,7 @@ footer nav a {
   color: #fff;
   overflow: hidden;
   border: 1px solid transparent;
-  border-radius: 4px 38px 4px 4px;
+  border-radius: 38px;
   /* No fill at all now - box-shadow alone wasn't the whole "big frame"
      (site owner: "убрал вроде обводку, а саму подложку нет"); this
      rule's own background used to be overridden anyway by the shared
@@ -5990,7 +5996,7 @@ footer nav a {
   gap: 16px;
   padding: 18px;
   border: 1px solid rgba(91, 107, 130, 0.4);
-  border-radius: 20px 20px 5px 20px;
+  border-radius: 20px;
   background:
     radial-gradient(circle at 5% 0%, rgba(91, 107, 130, 0.22), transparent 36%),
     rgba(255, 255, 255, 0.05);
@@ -7416,7 +7422,7 @@ footer nav a {
 .competitor-setup-card {
   overflow: hidden;
   color: #fff;
-  border-radius: 4px 38px 4px 4px;
+  border-radius: 38px;
   /* No fill at all now - same "the backing itself, not just the border/
      shadow" fix as .semantic-shell (site owner). The smaller cards this
      selector's own border/box-shadow removal was shared with
@@ -8242,7 +8248,7 @@ footer nav a {
   padding: 18px 20px;
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 4px 18px 4px 4px;
+  border-radius: 18px;
   background: linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
   box-shadow: 0 14px 36px rgba(3, 12, 26, 0.24), inset 0 1px rgba(255, 255, 255, 0.08);
 }
@@ -8289,7 +8295,7 @@ footer nav a {
 .competitor-matrix-card {
   overflow: hidden;
   color: #fff;
-  border-radius: 4px 32px 4px 4px;
+  border-radius: 32px;
   background: linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
 }
 
@@ -8641,7 +8647,7 @@ footer nav a {
   min-width: 0;
   padding: 22px;
   color: #fff;
-  border-radius: 4px 24px 4px 4px;
+  border-radius: 24px;
   background: linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
 }
 
@@ -8735,7 +8741,7 @@ footer nav a {
   gap: 22px;
   margin-top: 14px;
   padding: 21px 24px;
-  border-radius: 4px 24px 4px 4px;
+  border-radius: 24px;
   color: #fff;
   background: linear-gradient(120deg, #15191e, #2f3743 64%, #465264);
 }
@@ -8922,7 +8928,7 @@ footer nav a {
      now, same "the backing itself, not just the border/shadow" fix as
      the rest (site owner). */
   border: 1px solid transparent;
-  border-radius: 4px 34px 4px 4px;
+  border-radius: 34px;
   background: transparent;
 }
 
@@ -9153,7 +9159,7 @@ footer nav a {
   min-width: 0;
   padding: 14px 16px;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 4px 16px 4px 4px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.05);
   text-align: left;
   cursor: pointer;
@@ -9351,7 +9357,7 @@ footer nav a {
   min-width: 0;
   padding: 20px 22px;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 4px 18px 4px 4px;
+  border-radius: 18px;
   color: #fff;
   background: linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
   box-shadow: 0 14px 36px rgba(3, 12, 26, 0.24), inset 0 1px rgba(255, 255, 255, 0.08);
@@ -9396,7 +9402,7 @@ footer nav a {
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.86);
   border-left: 3px solid rgba(150, 145, 165, 0.35);
-  border-radius: 4px 20px 4px 4px;
+  border-radius: 20px;
   background: rgba(255, 255, 255, 0.68);
   box-shadow: 0 12px 35px rgba(36, 43, 53, 0.06), inset 0 1px rgba(255, 255, 255, 0.94);
   transition: border-color 180ms ease, box-shadow 180ms ease;
@@ -9580,7 +9586,7 @@ footer nav a {
   gap: 1px;
   overflow: hidden;
   border: 1px solid rgba(67, 80, 97, 0.11);
-  border-radius: 4px 15px 4px 4px;
+  border-radius: 15px;
   background: rgba(67, 80, 97, 0.08);
 }
 
@@ -9615,7 +9621,7 @@ footer nav a {
   min-width: 0;
   padding: 16px 17px;
   border: 1px solid rgba(67, 80, 97, 0.14);
-  border-radius: 4px 14px 4px 4px;
+  border-radius: 14px;
   background: #fff;
   box-shadow: 0 1px 0 rgba(67, 80, 97, 0.04);
 }
@@ -9698,7 +9704,7 @@ footer nav a {
   gap: 12px;
   padding: 16px 18px;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 4px 15px 4px 4px;
+  border-radius: 15px;
   background: linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
 }
 
@@ -9722,7 +9728,7 @@ footer nav a {
   gap: 12px;
   padding: 14px 16px;
   border: 1px solid rgba(109, 125, 148, 0.35);
-  border-radius: 4px 15px 4px 4px;
+  border-radius: 15px;
   background: linear-gradient(135deg, rgba(91, 107, 130, 0.18), rgba(91, 107, 130, 0.06));
 }
 .advice-tip-badge {
@@ -9781,7 +9787,7 @@ footer nav a {
   padding: 32px;
   color: #fff;
   border: 1px dashed rgba(255, 255, 255, 0.24);
-  border-radius: 4px 27px 4px 4px;
+  border-radius: 27px;
   background: linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
 }
 
@@ -9841,7 +9847,7 @@ footer nav a {
   overflow: hidden;
   color: #fff;
   border: 1px solid transparent;
-  border-radius: 4px 38px 4px 4px;
+  border-radius: 38px;
   /* No fill at all now - same "the backing itself, not just the border/
      shadow" fix as .semantic-shell (site owner). */
   background: transparent;
@@ -10321,7 +10327,7 @@ footer nav a {
   margin-top: 18px;
   padding: 17px;
   border: 1px solid rgba(91, 107, 130, 0.3);
-  border-radius: 16px 16px 4px 16px;
+  border-radius: 16px;
   background: rgba(91, 107, 130, 0.14);
 }
 
@@ -11602,7 +11608,7 @@ input[type="radio"] {
   }
 
   .showcase-studio {
-    border-radius: 4px 28px 4px 4px;
+    border-radius: 28px;
   }
 
   .showcase-brief,
@@ -11645,7 +11651,7 @@ input[type="radio"] {
   }
 
   .studio {
-    border-radius: 4px 28px 4px 4px;
+    border-radius: 28px;
   }
 
   .brand-profile-head,
@@ -12132,7 +12138,7 @@ input[type="radio"] {
   margin: 0 0 16px;
   padding: 18px 21px;
   border: 1px solid rgba(79, 94, 114, 0.16);
-  border-radius: 4px 22px 4px 4px;
+  border-radius: 22px;
   background: linear-gradient(125deg, rgba(255, 255, 255, 0.78), rgba(240, 242, 244, 0.72));
   box-shadow: 0 14px 42px rgba(38, 45, 54, 0.07);
 }
@@ -12614,7 +12620,7 @@ input[type="radio"] {
   overflow: auto; -webkit-overflow-scrolling: touch;
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 5px 28px 5px 5px;
+  border-radius: 28px;
   background:
     radial-gradient(circle at 96% 0%, rgba(120, 138, 162, 0.16), transparent 30%),
     linear-gradient(145deg, #0a2340 0%, #082b4c 55%, #061c34 100%);
@@ -12652,7 +12658,7 @@ input[type="radio"] {
   overflow: auto; -webkit-overflow-scrolling: touch;
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 5px 28px 5px 5px;
+  border-radius: 28px;
   background:
     radial-gradient(circle at 96% 0%, rgba(91, 107, 130, 0.2), transparent 30%),
     linear-gradient(145deg, #0a2340 0%, #082b4c 55%, #061c34 100%);
@@ -12678,7 +12684,7 @@ input[type="radio"] {
   gap: 6px;
   padding: 12px 14px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px 14px 4px 4px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.04);
 }
 .feedback-modal-entry p { margin: 0; font-size: 13px; line-height: 1.5; }
@@ -12697,7 +12703,7 @@ input[type="radio"] {
   gap: 10px;
   padding: 12px 14px;
   border: 1px solid rgba(109, 125, 148, 0.35);
-  border-radius: 4px 14px 4px 4px;
+  border-radius: 14px;
   background: linear-gradient(135deg, rgba(91, 107, 130, 0.18), rgba(91, 107, 130, 0.06));
 }
 .feedback-modal-announcement-badge {
@@ -13245,7 +13251,7 @@ input[type="radio"] {
   padding: 28px 32px 30px;
   overflow: hidden;
   border: 1px solid transparent;
-  border-radius: 4px 38px 4px 4px;
+  border-radius: 38px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.83), rgba(245, 246, 248, 0.72));
   /* box-shadow removed - same "big frame" reasoning as .semantic-shell.
      backdrop-filter removed too - this rule's background is overridden
@@ -13300,7 +13306,7 @@ input[type="radio"] {
 .content-plan-strategy section {
   padding: 15px 17px;
   border: 1px solid rgba(67, 80, 97, 0.1);
-  border-radius: 4px 14px 4px 4px;
+  border-radius: 14px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(236, 242, 247, 0.58));
 }
 
@@ -13324,7 +13330,7 @@ input[type="radio"] {
   margin: 0 0 18px;
   padding: 26px;
   border: 1px solid rgba(80, 95, 116, 0.17);
-  border-radius: 4px 28px 4px 4px;
+  border-radius: 28px;
   background:
     radial-gradient(circle at 94% 0%, rgba(91, 107, 130, 0.13), transparent 30%),
     rgba(255, 255, 255, 0.78);
@@ -13381,7 +13387,7 @@ input[type="radio"] {
   margin: 15px 0;
   overflow: hidden;
   border: 1px solid rgba(67, 80, 97, 0.09);
-  border-radius: 4px 14px 4px 4px;
+  border-radius: 14px;
   background: rgba(67, 80, 97, 0.07);
 }
 
@@ -13396,7 +13402,7 @@ input[type="radio"] {
   min-width: 0;
   padding: 21px;
   border: 1px solid rgba(67, 80, 97, 0.1);
-  border-radius: 4px 20px 4px 4px;
+  border-radius: 20px;
   background: rgba(249, 250, 251, 0.72);
 }
 
@@ -14098,7 +14104,7 @@ input[type="radio"] {
   overflow: auto; -webkit-overflow-scrolling: touch;
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 5px 28px 5px 5px;
+  border-radius: 28px;
   background:
     radial-gradient(circle at 96% 0%, rgba(91, 107, 130, 0.24), transparent 30%),
     linear-gradient(145deg, #0a2340 0%, #082b4c 55%, #061c34 100%);
@@ -14688,13 +14694,17 @@ input[type="radio"] {
   position: relative;
   padding: 34px;
   overflow: hidden;
+  /* Divider between the two halves of .studio kept (site owner already
+     confirmed this one - a divider between functional panes is a
+     different job than an outer contour), but the opaque fill behind
+     it is gone: this panel's own solid navy gradient was covering the
+     whole left column, so removing .studio's own background further up
+     never actually showed - the site owner caught this directly
+     ("в генераторе материалов обводку убрал, а фон нет"). */
   border-right: 1px solid rgba(255, 255, 255, 0.18);
   color: #fff;
   isolation: isolate;
-  background:
-    radial-gradient(circle at 15% 5%, rgba(91, 107, 130, 0.34), transparent 34%),
-    radial-gradient(circle at 100% 82%, rgba(53, 95, 158, 0.27), transparent 36%),
-    linear-gradient(145deg, #031225 0%, #082b4c 58%, #051a32 100%);
+  background: transparent;
 }
 
 /* Same removal as .workspace-module-heading above, same reasoning - this
@@ -15036,7 +15046,7 @@ input[type="radio"] {
   margin: 0 0 18px;
   padding: 18px 20px;
   border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 4px 18px 4px 4px;
+  border-radius: 18px;
   background: rgba(255, 255, 255, 0.04);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
 }
@@ -15091,7 +15101,7 @@ input[type="radio"] {
   gap: 6px;
   padding: 14px 16px;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 4px 13px 4px 4px;
+  border-radius: 13px;
   color: #fff;
   background: rgba(255, 255, 255, 0.05);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
@@ -15177,7 +15187,7 @@ input[type="radio"] {
     margin: 0 14px 11px;
     padding: 8px 9px 8px 11px;
     border: 1px solid rgba(151, 190, 234, 0.2);
-    border-radius: 4px 15px 4px 4px;
+    border-radius: 15px;
     background:
       radial-gradient(circle at 100% 0%, rgba(91, 107, 130, 0.22), transparent 48%),
       linear-gradient(135deg, rgba(8, 34, 61, 0.94), rgba(5, 24, 47, 0.96));
@@ -15405,7 +15415,7 @@ input[type="radio"] {
     min-height: 88px;
     padding: 12px 13px;
     border: 1px solid rgba(55, 82, 116, 0.12);
-    border-radius: 4px 15px 4px 4px;
+    border-radius: 15px;
     box-shadow: inset 0 1px rgba(255, 255, 255, 0.76), 0 8px 20px rgba(21, 49, 78, 0.045);
   }
 
@@ -15449,7 +15459,7 @@ input[type="radio"] {
     gap: 12px;
     margin-bottom: 12px;
     padding: 17px 15px;
-    border-radius: 4px 18px 4px 4px;
+    border-radius: 18px;
   }
 
   .workspace-module-heading > div,
@@ -15496,7 +15506,7 @@ input[type="radio"] {
   .workspace-history {
     margin-bottom: 12px;
     padding: 12px;
-    border-radius: 4px 18px 4px 4px;
+    border-radius: 18px;
   }
 
   .workspace-history-head {
@@ -15666,7 +15676,7 @@ input[type="radio"] {
   overflow: hidden;
   margin: 0 0 18px;
   border: 1px solid rgba(64, 76, 93, 0.1);
-  border-radius: 4px 20px 4px 4px;
+  border-radius: 20px;
   background: rgba(68, 80, 97, 0.08);
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
@@ -15836,7 +15846,7 @@ input[type="radio"] {
   grid-column: 1 / -1;
   padding: 13px 14px;
   border: 1px solid rgba(255, 255, 255, 0.17);
-  border-radius: 4px 14px 4px 4px;
+  border-radius: 14px;
   background: linear-gradient(135deg, rgba(8, 35, 64, 0.94), rgba(14, 53, 86, 0.9));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.1);
 }
@@ -15925,7 +15935,7 @@ input[type="radio"] {
   gap: 16px;
   padding: 18px 20px;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 4px 20px 4px 4px;
+  border-radius: 20px;
   color: #fff;
   background: linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
   box-shadow: 0 18px 46px rgba(3, 12, 26, 0.26), inset 0 1px rgba(255, 255, 255, 0.1);
@@ -15990,7 +16000,7 @@ input[type="radio"] {
   margin: 14px 0;
   padding: 20px;
   border: 1px solid rgba(77, 112, 148, 0.14);
-  border-radius: 4px 22px 4px 4px;
+  border-radius: 22px;
   background: linear-gradient(145deg, rgba(232, 240, 247, 0.92), rgba(246, 246, 250, 0.92));
   box-shadow: 0 18px 46px rgba(30, 61, 92, 0.08), inset 0 1px rgba(255, 255, 255, 0.86);
 }
@@ -16138,7 +16148,7 @@ input[type="radio"] {
   min-width: 0;
   padding: 14px;
   border: 1px solid rgba(53, 84, 115, 0.12);
-  border-radius: 4px 14px 4px 4px;
+  border-radius: 14px;
   text-align: left;
   color: #253e58;
   background: rgba(255, 255, 255, 0.68);
@@ -16725,7 +16735,7 @@ input[type="radio"] {
   gap: 32px;
   padding: 34px 36px;
   border: 1px solid rgba(151, 190, 234, 0.17);
-  border-radius: 4px 32px 4px 4px;
+  border-radius: 32px;
   color: #fff;
   background:
     radial-gradient(circle at 88% 0%, rgba(91, 107, 130, 0.29), transparent 35%),
@@ -16851,7 +16861,7 @@ input[type="radio"] {
   align-items: stretch;
   padding: 24px 26px;
   border: 1px solid rgba(151, 190, 234, 0.16);
-  border-radius: 4px 24px 4px 4px;
+  border-radius: 24px;
   color: #fff;
   background:
     radial-gradient(circle at 0% 100%, rgba(167, 178, 194, 0.1), transparent 32%),
@@ -16907,7 +16917,7 @@ input[type="radio"] {
   min-height: 174px;
   padding: 18px;
   border: 1px solid rgba(255, 255, 255, 0.13);
-  border-radius: 3px 14px 3px 3px;
+  border-radius: 14px;
   color: inherit;
   text-align: left;
   background: rgba(3, 17, 34, 0.32);
@@ -17057,7 +17067,7 @@ input[type="radio"] {
   padding: 22px 22px 20px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-left: 4px solid var(--module-accent, #71839c);
-  border-radius: 4px 20px 4px 4px;
+  border-radius: 20px;
   color: inherit;
   text-align: left;
   /* Opaque, matching the hero right above it — this card used to rely on
@@ -17509,10 +17519,11 @@ input[type="radio"] {
      boxes on one screen ("итак выделяется другим цветом" - the gradient
      fill already separates it from the page without a drawn line too).
      border-color, not border: 0, so the 1px still reserves its own space
-     and nothing shifts. */
+     and nothing shifts. The gradient fill itself turned out to be the
+     same problem one level up - still read as its own card (site owner:
+     "в профиле бренда не убрал рамку") - gone now too. */
   border-color: transparent;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(91, 107, 130, 0.12));
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
+  background: transparent;
 }
 
 .brand-tabs {
@@ -17552,10 +17563,13 @@ input[type="radio"] {
 
 .brand-score,
 .brand-checklist {
-  /* Same reasoning as .brand-tab-shell above - border-color, not border: 0. */
+  /* Same reasoning as .brand-tab-shell above - border-color, not border: 0.
+     Background was only a faint 5.5% white wash, but combined with the
+     rounded corners it still read as a distinct card (site owner: "в
+     профиле бренда не убрал рамку") - gone now, same as every other
+     sub-card in this module. */
   border-color: transparent;
-  background: rgba(255, 255, 255, 0.055);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
+  background: transparent;
 }
 
 .brand-score > div {
@@ -18752,8 +18766,7 @@ input[type="radio"] {
 
 [data-theme="light"] .brand-tab-shell {
   border-color: transparent;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.75), rgba(53, 104, 212, 0.1));
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.6);
+  background: transparent;
 }
 
 [data-theme="light"] .brand-tabs {
@@ -18794,8 +18807,7 @@ input[type="radio"] {
 [data-theme="light"] .brand-score,
 [data-theme="light"] .brand-checklist {
   border-color: transparent;
-  background: rgba(255, 255, 255, 0.55);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.6);
+  background: transparent;
 }
 
 [data-theme="light"] .brand-score > div {
@@ -19173,10 +19185,7 @@ input[type="radio"] {
 [data-theme="light"] .brief-panel {
   border-right-color: rgba(15, 23, 42, 0.14);
   color: #0d1b31;
-  background:
-    radial-gradient(circle at 15% 5%, rgba(53, 104, 212, 0.16), transparent 34%),
-    radial-gradient(circle at 100% 82%, rgba(53, 104, 212, 0.1), transparent 36%),
-    linear-gradient(145deg, #eef2f8 0%, #f4f7fb 58%, #ffffff 100%);
+  background: transparent;
 }
 
 [data-theme="light"] .brief-step {
@@ -19425,9 +19434,7 @@ input[type="radio"] {
   --muted: rgba(13, 27, 49, 0.62);
   --line: rgba(15, 23, 42, 0.14);
   color: #0d1b31;
-  background:
-    radial-gradient(circle at 88% 0%, rgba(53, 104, 212, 0.12), transparent 32%),
-    linear-gradient(150deg, #ffffff 0%, #f4f7fb 55%, #eef2f8 100%);
+  background: transparent;
 }
 
 /* .status/.status-ai/.status-demo/.status-example inside .result-head:
@@ -22508,7 +22515,7 @@ input[type="radio"] {
   margin-bottom: 120px;
   padding: clamp(26px, 5vw, 64px);
   border: 1px solid rgba(151, 190, 234, 0.2);
-  border-radius: 4px 32px 4px 4px;
+  border-radius: 32px;
   background:
     radial-gradient(circle at 90% 8%, rgba(91, 107, 130, 0.26), transparent 29%),
     linear-gradient(135deg, #071f39, #0a2a4a 62%, #102846);
@@ -22693,7 +22700,7 @@ input[type="radio"] {
     margin-top: 52px;
     margin-bottom: 52px;
     padding: 24px 17px;
-    border-radius: 4px 22px 4px 4px;
+    border-radius: 22px;
   }
 
   .publishing-landing-copy h2 { font-size: clamp(36px, 11vw, 51px); }
