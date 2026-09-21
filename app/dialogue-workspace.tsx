@@ -57,6 +57,7 @@ function ChatKitWorkspace(
 ) {
   const { onUnavailable } = props;
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [chatReady, setChatReady] = useState(false);
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
   const [useBrandContext, setUseBrandContext] = useState(false);
   const [railOpen, setRailOpen] = useState(false);
@@ -222,6 +223,7 @@ function ChatKitWorkspace(
     },
     onReady: () => {
       readyRef.current = true;
+      setChatReady(true);
     },
     onError: ({ error: chatError }) => {
       console.error("ChatKit UI error", chatError);
@@ -471,7 +473,17 @@ function ChatKitWorkspace(
             {error || notice}
           </div>
         )}
-        <ChatKit control={chatkit.control} className="klio-chatkit-frame" />
+        <ChatKit
+          control={chatkit.control}
+          className={`klio-chatkit-frame ${chatReady ? "is-ready" : ""}`}
+          aria-hidden={!chatReady}
+        />
+        {!chatReady && (
+          <div className="klio-chatkit-loading" role="status" aria-live="polite">
+            <span aria-hidden="true" />
+            <p>Открываем диалог…</p>
+          </div>
+        )}
         <span className="klio-chatkit-thread-state" aria-live="polite">
           {actionBusy
             ? "Выполняем…"
