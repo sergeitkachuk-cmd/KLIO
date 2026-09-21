@@ -7,6 +7,7 @@ import * as pg from "drizzle-orm/pg-core";
 import { defineConfig } from "drizzle-kit";
 import { pushSchema } from "drizzle-kit/api";
 import { load } from "./helpers/dialogue-harness.mjs";
+import * as connection from "../db/connection.mjs";
 
 const name = "klio_preview_chatkit";
 
@@ -21,6 +22,7 @@ function configuration(env = {}) {
   const config = load("drizzle.config.ts", {
     "drizzle-kit": { defineConfig },
     "./db/namespace": namespace,
+    "./db/connection.mjs": connection,
   }, globals).default;
   return { namespace, schema, config, globals };
 }
@@ -46,6 +48,7 @@ test("both PostgreSQL URL paths keep preview search_path free of public fallback
       postgres: { default: postgres },
       "./schema": setup.schema,
       "./namespace": setup.namespace,
+      "./connection.mjs": connection,
     }, { process: { env: { ...env, DATABASE_URL: connectionString } } });
     getDb();
     assert.equal(options.connection.search_path, name);

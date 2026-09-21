@@ -13,7 +13,7 @@
     "test:unit": "node --test tests/*.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
-    "db:push": "drizzle-kit push --force"
+    "db:push": "node scripts/prepare-database.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1125.0",

@@ -1,10 +1,12 @@
 import { defineConfig } from "drizzle-kit";
 import { getDatabaseSchemaName } from "./db/namespace";
+import { parseDatabaseConnection } from "./db/connection.mjs";
 
 // Render's managed Postgres (and most hosted providers) require SSL.
 // Only skip it for the local-dev fallback URL below.
 const databaseUrl = process.env.DATABASE_URL || "postgresql://localhost/klio";
 const databaseSchemaName = getDatabaseSchemaName();
+const { username, ...credentials } = parseDatabaseConnection(databaseUrl);
 
 export default defineConfig({
   out: databaseSchemaName === "public" ? "./drizzle-postgres" : `./drizzle-postgres/${databaseSchemaName}`,
@@ -13,7 +15,8 @@ export default defineConfig({
   schemaFilter: [databaseSchemaName],
   dialect: "postgresql",
   dbCredentials: {
-    url: databaseUrl,
+    ...credentials,
+    user: username || undefined,
     ssl: process.env.DATABASE_URL ? "require" : false,
   },
 });

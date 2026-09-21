@@ -2,6 +2,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 import { getDatabaseSchemaName } from "./namespace";
+import { parseDatabaseConnection } from "./connection.mjs";
 
 let client: ReturnType<typeof postgres> | undefined;
 
@@ -9,38 +10,17 @@ function createPostgresClient(connectionString: string, max: number) {
   const schemaName = getDatabaseSchemaName();
   // No fallback to public: a missing preview table must fail, not use client data.
   const connection = schemaName === "public" ? undefined : { search_path: schemaName };
+  const options = {
+    max,
+    ssl: process.env.NODE_ENV === "production" ? "require" as const : undefined,
+    connection,
+  };
   try {
-    // Keep the normal path for valid PostgreSQL URLs.
+    // Preserve driver-supported URI options on valid URLs (including local SSL).
     new URL(connectionString);
-    return postgres(connectionString, {
-      max,
-      ssl: process.env.NODE_ENV === "production" ? "require" : undefined,
-      connection,
-    });
+    return postgres(connectionString, options);
   } catch {
-    // Some managed-DB panels place raw special characters in the password.
-    // Node's URL parser rejects those URLs, so parse the known PostgreSQL
-    // shape and pass credentials as separate driver options instead.
-    const match = /^postgres(?:ql):\/\/([^:/?#]+):(.+)@([^:/?#]+):(\d+)\/([^?]+)(?:\?.*)?$/.exec(connectionString);
-    if (!match) throw new Error("DATABASE_URL is not a valid PostgreSQL connection string.");
-
-    let password = match[2];
-    try {
-      password = decodeURIComponent(password);
-    } catch {
-      // Keep raw passwords containing literal percent characters unchanged.
-    }
-
-    return postgres({
-      host: match[3],
-      port: Number(match[4]),
-      database: match[5],
-      username: decodeURIComponent(match[1]),
-      password,
-      max,
-      ssl: process.env.NODE_ENV === "production" ? "require" : undefined,
-      connection,
-    });
+    return postgres({ ...parseDatabaseConnection(connectionString), ...options });
   }
 }
 
