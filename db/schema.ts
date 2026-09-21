@@ -229,6 +229,13 @@ export const generations = pgTable("generations", {
   // publishing-config.ts for why publishToChannel() needs a fetchable URL
   // rather than a local path.
   imageUrl: text("image_url").notNull().default(""),
+  // Non-empty only for a topic:"Карусель" row (see api/_lib/carousel.ts) -
+  // a JSON array of { headline, subtext, imageUrl }, one per slide.
+  // imageUrl above holds the first slide's own URL so every existing
+  // thumbnail/lightbox/download path already works without changes; this
+  // column is the full ordered set. Same "empty string means absent"
+  // convention imageUrl itself already uses on this table.
+  slidesJson: text("slides_json").notNull().default(""),
   // Set when the person moves this out of the default Материалы list
   // (used it, published it, or otherwise doesn't need it front and
   // center any more) — null means not archived. Never deleted this way;

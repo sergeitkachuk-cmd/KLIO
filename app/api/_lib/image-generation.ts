@@ -260,3 +260,36 @@ export async function createImageFromLogo(
   );
 }
 
+// Sibling to createImageFromLogo above, for a carousel's own slide-to-slide
+// consistency instead of a brand logo: slide 1 generates plain, slides
+// 2..N pass slide 1's own bytes as a style/composition reference through
+// the same edit-endpoint mechanism, steered to look like part of the same
+// set rather than matching a fixed logo. This is the reference-image
+// chaining OpenAI's own docs describe for gpt-image-2.5 multi-image
+// consistency (confirmed via the API guide - up to 16 reference images,
+// no dedicated "generate a consistent set" endpoint exists).
+export async function createCarouselSlideImage(
+  prompt: string,
+  reference: { bytes: Uint8Array<ArrayBuffer>; contentType: string } | undefined,
+  email: string,
+  baseUrl: string,
+  requestId: string,
+  options: ImageGenerationOptions,
+  model: string,
+) {
+  const guidedPrompt = reference
+    ? `${prompt}\n\nЭто один слайд карусели из серии. Сохрани ту же визуальную стилистику, палитру, шрифт и композицию, что и на приложенном референсном изображении - слайды должны выглядеть частью одного набора, но с текстом именно этого слайда, не референсного.`
+    : prompt;
+  const { bytes, contentType } = await generateImageBytes(guidedPrompt, requestId, options, reference, model);
+  const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
+  const url = await uploadPublicationImage(
+    new File([bytes], fileName, { type: contentType }),
+    email,
+    baseUrl,
+  );
+  // Bytes returned alongside the URL (unlike createImage/createImageFromLogo)
+  // so the caller can pass THIS slide's own bytes as the reference for the
+  // next one, without an extra round-trip fetch of the just-uploaded file.
+  return { url, bytes, contentType };
+}
+

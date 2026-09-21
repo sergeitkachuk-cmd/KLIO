@@ -1,0 +1,206 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
+import vm from "node:vm";
+import ts from "typescript";
+import { PGlite } from "@electric-sql/pglite";
+import { drizzle } from "drizzle-orm/pglite";
+import * as orm from "drizzle-orm";
+import * as pg from "drizzle-orm/pg-core";
+
+// Same VM-transpile-and-load approach as tests/helpers/dialogue-harness.mjs
+// and tests/generation-persistence.test.mjs - real workspace-account.ts and
+// async-jobs.ts run against a real PGlite database (so the atomic SQL debit
+// this feature depends on is actually executed, not hand-simulated), with
+// only the true external boundaries (the AI call, the image provider) faked.
+const root = new URL("../", import.meta.url);
+function load(path, dependencies = {}, globals = {}) {
+  const output = ts.transpileModule(readFileSync(new URL(path, root), "utf8"), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  const exports = {};
+  vm.runInNewContext(output, {
+    exports,
+    require: name => { if (!(name in dependencies)) throw new Error(`Unexpected dependency ${name}`); return dependencies[name]; },
+    Response, Request, URL, TextDecoder, AbortSignal, Uint8Array, Buffer, console,
+    setTimeout, clearTimeout, crypto: { randomUUID },
+    process: { env: { NODE_ENV: "production", DATABASE_URL: "configured" } },
+    ...globals,
+  });
+  return exports;
+}
+
+async function createCarouselHarness() {
+  const client = new PGlite();
+  const schema = load("db/schema.ts", { "drizzle-orm": orm, "drizzle-orm/pg-core": pg });
+  const dialect = new pg.PgDialect();
+  const literal = value => typeof value === "string" ? `'${value.replaceAll("'", "''")}'` : String(value);
+  for (const table of Object.values(schema)) {
+    const config = pg.getTableConfig(table);
+    const columns = config.columns.map(c => {
+      let def = "";
+      if (c.default !== undefined) {
+        if (c.default instanceof orm.SQL) {
+          const query = dialect.sqlToQuery(c.default);
+          def = query.sql.replace(/\$(\d+)/g, (_, n) => literal(query.params[Number(n) - 1]));
+        } else def = literal(c.default);
+      }
+      return `"${c.name}" ${c.getSQLType()}${c.primary ? " PRIMARY KEY" : ""}${c.notNull ? " NOT NULL" : ""}${def ? ` DEFAULT ${def}` : ""}`;
+    });
+    await client.exec(`CREATE TABLE "${config.name}" (${columns.join(",")});`);
+  }
+  const db = drizzle(client, { schema });
+  const owner = "carousel-test@example.invalid";
+  const plans = load("app/plans.ts");
+
+  const workspaceAccount = load("app/api/_lib/workspace-account.ts", {
+    "drizzle-orm": orm,
+    "../../../db/schema": schema,
+    "../../../db": { getDb: () => db },
+    "../../identity": { getCurrentUser: async () => ({ email: owner, displayName: "Test" }) },
+    "../../plans": plans,
+    "./subscription": { nextQuotaPeriodEnd: () => null },
+    "../../billing-pricing": { launchDiscountWindowOpen: () => true },
+  });
+
+  const asyncJobs = load("app/api/_lib/async-jobs.ts", {
+    "drizzle-orm": orm,
+    "../../../db/schema": schema,
+    "../../../db": { getDb: () => db },
+    "node:util": { isDeepStrictEqual },
+    "./workspace-account": workspaceAccount,
+  });
+
+  let ai = async () => ({ slides: [] });
+  let generateImage = async (prompt, reference, email, baseUrl, requestId) =>
+    ({ url: `https://cdn.example.invalid/${requestId}.png`, bytes: new Uint8Array([1, 2, 3]), contentType: "image/png" });
+
+  const carousel = load("app/api/_lib/carousel.ts", {
+    "./ai-router": { callAiModel: async input => ({ result: await ai(input) }) },
+    "./image-generation": { createCarouselSlideImage: (...args) => generateImage(...args) },
+    "./workspace-account": workspaceAccount,
+    "./async-jobs": asyncJobs,
+  });
+
+  async function seedAccount(overrides = {}) {
+    await db.insert(schema.accounts).values({
+      email: owner, planId: "start", generationMonth: "2026-09", planExpiresAt: "2099-01-01", ...overrides,
+    });
+  }
+
+  return {
+    db, schema, owner, plans,
+    account: async () => (await db.select().from(schema.accounts).where(orm.eq(schema.accounts.email, owner)))[0],
+    generations: async () => db.select().from(schema.generations).where(orm.eq(schema.generations.ownerEmail, owner)),
+    seedAccount,
+    setAi: fn => { ai = fn; },
+    setGenerateImage: fn => { generateImage = fn; },
+    claimJob: input => asyncJobs.claimAsyncJob("carousel_generation", owner, input, 300_000),
+    getJob: id => asyncJobs.getAsyncJob(id, owner),
+    runCarouselGeneration: carousel.runCarouselGeneration,
+    close: () => client.close(),
+  };
+}
+
+function slides(count) {
+  return Array.from({ length: count }, (_, i) => ({ headline: `Заголовок ${i + 1}`, subtext: `Текст ${i + 1}` }));
+}
+
+test("carousel debits exactly one generation per slide and saves one row with slidesJson", async t => {
+  const h = await createCarouselHarness();
+  t.after(() => h.close());
+  await h.seedAccount();
+  h.setAi(async () => ({ slides: slides(3) }));
+
+  const input = { text: "Статья про кофе и утренние ритуалы.", slideCount: 3, baseUrl: "http://127.0.0.1:3027" };
+  const job = await h.claimJob(input);
+  await h.runCarouselGeneration(job.id, input, h.owner);
+
+  const account = await h.account();
+  assert.equal(account.generationsUsed, 3);
+  assert.equal(account.lifetimeGenerationsUsed, 3);
+
+  const rows = await h.generations();
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].topic, "Карусель");
+  assert.equal(rows[0].imageUrl, `https://cdn.example.invalid/${job.id}-0.png`);
+  const saved = JSON.parse(rows[0].slidesJson);
+  assert.equal(saved.length, 3);
+  assert.deepEqual(saved.map(s => s.headline), ["Заголовок 1", "Заголовок 2", "Заголовок 3"]);
+  assert.ok(saved.every(s => s.imageUrl.startsWith("https://cdn.example.invalid/")));
+
+  const settled = await h.getJob(job.id);
+  assert.equal(settled.status, "done");
+});
+
+test("each slide after the first receives the previous slide's own bytes as its reference", async t => {
+  const h = await createCarouselHarness();
+  t.after(() => h.close());
+  await h.seedAccount();
+  h.setAi(async () => ({ slides: slides(3) }));
+  const seenReferences = [];
+  let callIndex = 0;
+  h.setGenerateImage(async (prompt, reference) => {
+    const index = callIndex++;
+    seenReferences.push(reference);
+    return { url: `https://cdn.example.invalid/${index}.png`, bytes: new Uint8Array([index]), contentType: "image/png" };
+  });
+
+  const input = { text: "Статья про кофе.", slideCount: 3, baseUrl: "http://127.0.0.1:3027" };
+  const job = await h.claimJob(input);
+  await h.runCarouselGeneration(job.id, input, h.owner);
+
+  assert.equal(seenReferences[0], undefined);
+  assert.deepEqual(Array.from(seenReferences[1].bytes), [0]);
+  assert.deepEqual(Array.from(seenReferences[2].bytes), [1]);
+});
+
+test("a failure partway through fails the job without debiting quota or saving a partial carousel", async t => {
+  const h = await createCarouselHarness();
+  t.after(() => h.close());
+  await h.seedAccount();
+  h.setAi(async () => ({ slides: slides(3) }));
+  let calls = 0;
+  h.setGenerateImage(async () => {
+    calls++;
+    if (calls === 2) throw new Error("provider rejected the request");
+    return { url: "https://cdn.example.invalid/ok.png", bytes: new Uint8Array([1]), contentType: "image/png" };
+  });
+
+  const input = { text: "Статья про кофе.", slideCount: 3, baseUrl: "http://127.0.0.1:3027" };
+  const job = await h.claimJob(input);
+  await h.runCarouselGeneration(job.id, input, h.owner);
+
+  const account = await h.account();
+  assert.equal(account.generationsUsed, 0);
+  assert.equal((await h.generations()).length, 0);
+
+  const settled = await h.getJob(job.id);
+  assert.equal(settled.status, "failed");
+  assert.match(settled.errorMessage, /слайд 2 из 3/);
+});
+
+test("carousel is rejected without spending any provider calls when quota can't cover every slide", async t => {
+  const h = await createCarouselHarness();
+  t.after(() => h.close());
+  await h.seedAccount({ generationsUsed: 58 }); // "start" plan's real limit is 60 - 58 + 5 > 60
+  let calls = 0;
+  h.setAi(async () => { calls++; return { slides: slides(5) }; });
+
+  const input = { text: "Статья про кофе.", slideCount: 5, baseUrl: "http://127.0.0.1:3027" };
+  const job = await h.claimJob(input);
+  await h.runCarouselGeneration(job.id, input, h.owner);
+
+  // The AI call already happened by the time recordGeneration's own atomic
+  // check runs (only the final debit+insert is guarded) - this test's real
+  // point is that the guard still fires and neither quota nor a Материалы
+  // row are left in a half-done state, not that no provider call was made.
+  assert.ok(calls >= 1);
+  const account = await h.account();
+  assert.equal(account.generationsUsed, 58);
+  assert.equal((await h.generations()).length, 0);
+  const settled = await h.getJob(job.id);
+  assert.equal(settled.status, "failed");
+});

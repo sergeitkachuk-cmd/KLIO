@@ -130,6 +130,7 @@ export type AiOperation =
   | "adapt_text"
   | "generate_content_plan"
   | "revise_content_plan"
+  | "generate_carousel_slides"
   | "research_semantics"
   | "discover_competitors"
   | "analyze_competitors"
@@ -293,6 +294,15 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // a purely mechanical word-count cut (see trimOverflowBody in
   // generate/route.ts) is kept only as the fallback if this call fails.
   condense_overflow: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 8_000, structuredOutput: true, retryable: false, useWebSearch: false },
+  // Splitting an already-written article/text into a real carousel arc
+  // (hook -> point -> point -> payoff, not just chopping paragraphs at
+  // fixed intervals) is the same kind of editorial-structuring judgment
+  // generate_content_plan already does for topics, not mechanical
+  // extraction - kept on the same tier/reasoning/retry settings. Output
+  // is small (headline + one supporting line per slide) even at the
+  // upper end of the slide-count range, so the token ceiling is generous
+  // headroom, not a tuned budget.
+  generate_carousel_slides: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 4_000, structuredOutput: true, retryable: false, useWebSearch: false },
 };
 
 // adapt_text's 15 KLIO editor goals (see app/content-plans.ts

@@ -117,6 +117,7 @@ const OPERATION_LABELS: Record<AiOperation, string> = {
   adapt_text: "Редактор адаптации",
   generate_content_plan: "Контент-план",
   revise_content_plan: "Контент-план: замена тем",
+  generate_carousel_slides: "Карусель: разбивка на слайды",
   research_semantics: "Семантика",
   discover_competitors: "Поиск конкурентов",
   analyze_competitors: "Матрица конкурентов",

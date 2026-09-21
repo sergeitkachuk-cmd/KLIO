@@ -357,9 +357,16 @@ export type ArchiveMaterial = {
   tone: string;
   targetLength: number;
   imageUrl?: string;
+  // Non-empty only for a carousel (topic:"Карусель") - see api/_lib/carousel.ts.
+  slidesJson?: string;
 };
 
-export async function recordGeneration(material: ArchiveMaterial, job?: { id: string; result: Record<string, unknown> }) {
+// `count` (default 1) debits more than one generation for the one row
+// being saved - the carousel feature's own case, where N real image-
+// generation calls happen but only one Материалы row is worth keeping
+// (see api/_lib/carousel.ts). Every existing caller is unaffected, still
+// debiting exactly 1 per call.
+export async function recordGeneration(material: ArchiveMaterial, job?: { id: string; result: Record<string, unknown> }, count = 1) {
   if (!await workspaceDatabaseAvailable()) return null;
   const user = await workspaceIdentity();
   const db = await getWorkspaceDb();
@@ -376,12 +383,12 @@ export async function recordGeneration(material: ArchiveMaterial, job?: { id: st
     if (!active) throw new WorkspaceAccessError("Задание уже завершено или закрыто. Повторное сохранение не выполнено.", 409);
   }
   const [updated] = await tx.update(accounts).set({
-    generationsUsed: sql`${accounts.generationsUsed} + 1`,
-    lifetimeGenerationsUsed: sql`${accounts.lifetimeGenerationsUsed} + 1`,
+    generationsUsed: sql`${accounts.generationsUsed} + ${count}`,
+    lifetimeGenerationsUsed: sql`${accounts.lifetimeGenerationsUsed} + ${count}`,
     updatedAt: sql`CURRENT_TIMESTAMP`,
   }).where(and(
     eq(accounts.email, user.email),
-    lt(accounts.generationsUsed, rule.generationLimit),
+    sql`${accounts.generationsUsed} + ${count} <= ${rule.generationLimit}`,
   )).returning();
 
   if (!updated) {
@@ -415,6 +422,7 @@ export async function recordGeneration(material: ArchiveMaterial, job?: { id: st
     tone: material.tone,
     targetLength: material.targetLength,
     imageUrl: material.imageUrl ?? "",
+    slidesJson: material.slidesJson ?? "",
   }).returning();
 
   const [{ count: brandCount = 0 } = { count: 0 }] = await tx.select({ count: sql<number>`count(*)` }).from(brands).where(eq(brands.ownerEmail, user.email));
