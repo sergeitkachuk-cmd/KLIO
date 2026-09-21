@@ -1080,10 +1080,16 @@ select:focus-visible {
   overflow: hidden;
   border-right: 1px solid rgba(255, 255, 255, 0.18);
   color: #fff;
+  /* Was near-black/charcoal (#0a0a12/#181d23/#0c0e11 - almost no blue in
+     any of the three), not the deep-navy family the rest of the site
+     now uses - site owner: "пример прям чёрный... убери везде мрачный
+     чёрный и серый". Landing page, separate component tree from the
+     workspace shells fixed earlier, so it never got swept up in that
+     pass. */
   background:
-    radial-gradient(circle at 12% 2%, rgba(91, 107, 130, 0.62), transparent 33%),
-    radial-gradient(circle at 100% 84%, rgba(109, 125, 148, 0.34), transparent 38%),
-    linear-gradient(145deg, #0a0a12 0%, #181d23 60%, #0c0e11 100%);
+    radial-gradient(circle at 12% 2%, rgba(91, 107, 130, 0.5), transparent 33%),
+    radial-gradient(circle at 100% 84%, rgba(109, 125, 148, 0.3), transparent 38%),
+    linear-gradient(145deg, #06182e 0%, #08233f 60%, #041426 100%);
   isolation: isolate;
 }
 
@@ -3302,7 +3308,12 @@ textarea[data-autosize="true"] {
 .module-grid article:nth-child(3n) {
   border-color: rgba(255, 255, 255, 0.14);
   color: #fff;
-  background: linear-gradient(145deg, #12111b, #222932);
+  /* Was near-black/charcoal (#12111b/#222932, almost no blue in either) -
+     renders the same in both themes (this rule isn't touched by the
+     dark-theme override further down, which only targets the OTHER
+     cards via :not(:nth-child(3n))) - site owner: "и в тёмной и светлой
+     чёрный везде убери, очень мрачно". */
+  background: linear-gradient(145deg, #06182e, #08233f);
   box-shadow: 0 28px 75px rgba(34, 40, 48, 0.2), inset 0 1px rgba(255, 255, 255, 0.11);
 }
 
@@ -5688,7 +5699,7 @@ footer nav a {
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 999px;
   color: #fff;
-  background: radial-gradient(circle at 12% 0%, rgba(91, 107, 130, 0.34), transparent 40%), linear-gradient(135deg, #1b2028, #242b34 60%, #181d23 100%);
+  background: radial-gradient(circle at 12% 0%, rgba(91, 107, 130, 0.34), transparent 40%), linear-gradient(135deg, #06182e, #08233f 60%, #041426 100%);
   box-shadow: 0 14px 36px rgba(21, 25, 31, 0.22), inset 0 1px rgba(255, 255, 255, 0.09);
   /* No backdrop-filter (was blur(10px)) - opaque hex gradient. */
 }
@@ -5783,7 +5794,7 @@ footer nav a {
   padding: 22px 26px;
   border: 1px solid rgba(169, 180, 196, 0.32);
   border-radius: 4px 28px 4px 4px;
-  background: radial-gradient(circle at 6% 10%, rgba(167, 178, 194, 0.16), transparent 40%), radial-gradient(circle at 94% 100%, rgba(91, 107, 130, 0.32), transparent 38%), linear-gradient(135deg, #1b2028, #242b34 60%, #181d23 100%);
+  background: radial-gradient(circle at 6% 10%, rgba(167, 178, 194, 0.16), transparent 40%), radial-gradient(circle at 94% 100%, rgba(91, 107, 130, 0.32), transparent 38%), linear-gradient(135deg, #06182e, #08233f 60%, #041426 100%);
   box-shadow: 0 14px 36px rgba(21, 25, 31, 0.22), inset 0 1px rgba(255, 255, 255, 0.09);
 }
 .workspace-launch-banner-copy { min-width: 0; }
@@ -9538,7 +9549,7 @@ footer nav a {
 
 .content-plan-item-actions button:last-child {
   border-color: transparent;
-  background: #18151f;
+  background: #08233f;
   color: #fff;
 }
 
