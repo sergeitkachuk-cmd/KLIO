@@ -6519,7 +6519,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>
 
           <section className="workspace-module image-generator-module" id="images" style={{ display: activeModule === "images" ? undefined : "none" }}>
-            <div className="workspace-module-heading tool-heading"><div><span>Визуальные материалы</span><h2>Генерация изображений<span className="klio-mark-dot">.</span></h2><p>Опишите, что должно быть на картинке. КЛИО создаст её и сохранит в «Материалы».</p></div></div>
+            <div className="workspace-module-heading tool-heading"><div><span>Визуальные материалы</span><h2>Генерация изображений<span className="klio-mark-dot">.</span></h2></div><p>Опишите, что должно быть на картинке. КЛИО создаст её и сохранит в «Материалы».</p></div>
             <div className="image-generator-layout">
               <div className="image-generator-form">
                 <label htmlFor="image-prompt">Что изобразить</label>

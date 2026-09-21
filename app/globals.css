@@ -13221,10 +13221,17 @@ input[type="radio"] {
    of its own bordered/gradient card. */
 .brand-profile-head {
   display: flex;
-  align-items: center;
+  /* align-items/gap/margin now match .workspace-module > .workspace-
+     module-heading and .workspace-history-head exactly (site owner:
+     heading position and size read as "different everywhere" between
+     modules). center/42px were vestigial from an older layout with a
+     second flex item (a switch) that no longer sits in this head - this
+     head now wraps a single child, so the mismatch had no visual reason
+     left, just never got reconciled. */
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 42px;
-  margin-bottom: 20px;
+  gap: 34px;
+  margin: 0 0 20px;
   padding: 18px 0 22px;
   color: #fff;
   background:
@@ -13242,7 +13249,7 @@ input[type="radio"] {
 }
 
 .brand-profile-head p {
-  max-width: 670px;
+  max-width: 490px;
   margin: 0;
   line-height: 1.55;
   color: rgba(255, 255, 255, 0.67);
@@ -15043,19 +15050,14 @@ input[type="radio"] {
      instead of its top. */
   align-items: flex-end;
   justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 20px;
-  margin: 0 0 18px;
-  padding: 18px 20px;
-  border: 1px solid transparent;
-  border-radius: 18px;
-  /* Was left on the older boxed card+border+shadow treatment when every
-     other module heading (.workspace-module-heading, .brand-profile-head)
-     got switched to a borderless gradient wash - with the surrounding
-     .workspace-history now transparent too, this one leftover border
-     stood out as a stray box (site owner screenshot: a hard line right
-     above the brand name, "почему это теперь выскакивает"). Same wash
-     as the others now. */
+  /* gap/margin/padding now match .workspace-module > .workspace-module-
+     heading exactly (site owner: heading position and size read as
+     "different everywhere" between modules - this one had drifted on
+     all three, left over from when it still had a real bordered card
+     with its own inset padding). */
+  gap: 34px;
+  margin: 0 0 20px;
+  padding: 18px 0 22px;
   background:
     radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--module-accent, #71839c) 22%, transparent), transparent 48%),
     linear-gradient(120deg, rgba(255, 255, 255, 0.05), transparent 65%);
@@ -15479,26 +15481,47 @@ input[type="radio"] {
     padding-top: 0;
   }
 
-  .workspace-module > .workspace-module-heading {
+  /* border-radius removed here - was the one place a rounded card crept
+     back in on narrower screens while every other width, and every
+     other module heading, stays borderless (site owner: "то в блоках
+     закруглённых остались, то в прямой линии, то без... всё
+     по-разному"). gap/margin/padding are now shared by all three module
+     headings below instead of each drifting to its own values -
+     .workspace-history-head used to keep its old boxed-card padding
+     (14px all round) and .brand-profile-head its own gap (15px), left
+     over from before those two got the same treatment as
+     .workspace-module-heading everywhere else. */
+  .workspace-module > .workspace-module-heading,
+  .brand-profile-head,
+  .workspace-history-head {
     gap: 12px;
     margin-bottom: 12px;
     padding: 17px 15px;
-    border-radius: 18px;
   }
 
   .workspace-module-heading > div,
-  .workspace-module-heading > p {
+  .workspace-module-heading > p,
+  .brand-profile-head > div,
+  .workspace-history-head > p {
     min-width: 0;
     max-width: none;
   }
 
-  .workspace-module-heading h2 {
+  /* Same clamp for all three - .brand-profile-head h3 was a fixed 28px
+     and .workspace-history-head h2 was its own clamp(23-30px) here,
+     neither matching .workspace-module-heading h2's clamp(27-36px). */
+  .workspace-module-heading h2,
+  .brand-profile-head h3,
+  .workspace-history-head h2 {
     margin-top: 5px;
     font-size: clamp(27px, 8vw, 36px);
     overflow-wrap: anywhere;
   }
 
-  .workspace-module-heading > p {
+  .workspace-module-heading > p,
+  .brand-profile-head p,
+  .workspace-history-head > p {
+    margin-top: 0;
     font-size: 12px;
     line-height: 1.45;
   }
@@ -15507,52 +15530,15 @@ input[type="radio"] {
     margin-top: 22px;
   }
 
-  .brand-profile-head,
   .brand-profile-body,
   .brief-panel,
   .result-panel {
     padding: 17px 15px;
   }
 
-  .brand-profile-head {
-    gap: 15px;
-  }
-
-  .brand-profile-head h3 {
-    font-size: 28px;
-  }
-
-  .brand-profile-head p {
-    font-size: 12px;
-    line-height: 1.45;
-  }
-
   .workspace-history {
     margin-bottom: 12px;
     padding: 12px;
-    border-radius: 18px;
-  }
-
-  .workspace-history-head {
-    /* No display/flex-direction override here anymore - the ≤820px block
-       above already set flex-direction: column; align-items: flex-start,
-       same as .workspace-module-heading does at its own breakpoint further
-       up, so this narrower one only needs to retune padding/spacing. */
-    margin-bottom: 12px;
-    padding: 14px;
-  }
-
-  .workspace-history-head h2 {
-    margin-top: 5px;
-    font-size: clamp(23px, 7vw, 30px);
-    line-height: 1.05;
-  }
-
-  .workspace-history-head > p {
-    max-width: none;
-    margin-top: 6px;
-    font-size: 11px;
-    line-height: 1.4;
   }
 
   .workspace-history-filters {
@@ -16636,10 +16622,19 @@ input[type="radio"] {
    здесь" overview tab.)
    --------------------------------------------------------------------- */
 .brand-profile-head h3 {
-  font-weight: 540;
-  letter-spacing: -0.045em;
-  margin: 0;
-  font-size: 22px;
+  /* Was a bespoke 22px/540/-0.045em from an older, unrelated dashboard
+     cleanup (predates this pass) - much smaller than every other module
+     heading's clamp(32-50px), which is the one place that size lives
+     now that this file has one shared heading language. Site owner
+     flagged the mismatch directly ("размер заголовка... везде
+     по-разному"), so this heading now matches
+     .workspace-module-heading h2 / .workspace-history-head h2 exactly
+     instead of keeping its own one-off size. */
+  margin: 7px 0 0;
+  font-weight: 520;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  font-size: clamp(32px, 3.6vw, 50px);
 }
 
 /* The "Профиль отключён/активен" switch had no dark-theme track color at
@@ -21570,6 +21565,16 @@ input[type="radio"] {
 [data-theme="light"] .workspace-history {
   color: #0d1b31;
   background: transparent;
+}
+
+/* .workspace-history-head itself had no light-theme background/color
+   override at all - it fell back to the dark rule's module-accent wash
+   (an off color, muddier than the other two headings' clean blue) since
+   nothing here contested it. Same treatment as .brand-profile-head /
+   .workspace-module-heading now get in light theme. */
+[data-theme="light"] .workspace-history-head {
+  color: #0d1b31;
+  background: radial-gradient(circle at 10% 0%, rgba(53, 104, 212, 0.12), transparent 48%);
 }
 
 [data-theme="light"] .workspace-history-head span {
