@@ -5755,6 +5755,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       </section>}
       {workspaceReady && workspaceUserKey && <DialogueWorkspace
         key={`${workspaceUserKey}:${activeBrandId}`} userKey={workspaceUserKey}
+        theme={theme}
         visible={workspaceMode === "dialogue" && activeModule === "start"}
         brandId={activeBrandId} brandName={activeWorkspaceBrand?.name || ""} brands={workspaceBrands}
         hasLogo={Boolean(brand.logoKey)}
