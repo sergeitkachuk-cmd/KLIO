@@ -12918,6 +12918,37 @@ input[type="radio"] {
   background: rgba(216, 255, 101, 0.09);
 }
 
+/* Same grid/dark-card look as the picker above, but static (plain divs,
+   not buttons) - this is a read-only "here's what's about to be sent"
+   preview for a carousel-backed publication draft, not something to pick
+   from. Not portaled - it renders inline in the (already scrolling)
+   modal, so max-height/overflow-y here caps it instead of the inline
+   JS-measured height the real popover gets. */
+.pub-carousel-preview {
+  max-height: 190px;
+}
+
+.pub-carousel-preview > div {
+  padding: 6px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.pub-carousel-preview > div img {
+  display: block;
+  width: 100%;
+  height: 72px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.pub-carousel-preview-note {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .publications-editor-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

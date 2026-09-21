@@ -2294,6 +2294,26 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     () => workspaceHistory.filter((item) => item.imageUrl && item.topic === "Изображение" && (!activeBrandId || item.brandId === activeBrandId)),
     [workspaceHistory, activeBrandId],
   );
+  // Read-only preview only - resolveImageUrls (api/_lib/publish-attempt.ts)
+  // is the actual source of truth for what gets sent, re-derived
+  // independently at send time from the same generation row by the exact
+  // same "still equals slide 1" rule below. This just keeps the composer
+  // from silently showing one picture while N are about to go out. Keyed
+  // off generationId/imageUrl specifically (not the whole pubEditor
+  // object) so it doesn't re-derive on every title/body keystroke, and it
+  // covers every place pubEditor gets built (new draft, reopening a
+  // scheduled entry from the calendar, the pending-draft promotion) since
+  // it reads the already-open editor state instead of the source event.
+  const pubCarouselSlideUrls = useMemo(() => {
+    const generationId = pubEditor?.generationId;
+    const imageUrl = pubEditor?.imageUrl;
+    if (!generationId) return [];
+    const source = workspaceHistory.find((item) => item.id === generationId);
+    if (source?.topic !== "Карусель") return [];
+    let slides: CarouselSlide[] = [];
+    try { slides = JSON.parse(source.slidesJson || "[]"); } catch { slides = []; }
+    return slides[0]?.imageUrl === imageUrl ? slides.map((slide) => slide.imageUrl).filter(Boolean) : [];
+  }, [pubEditor?.generationId, pubEditor?.imageUrl, workspaceHistory]);
   const [imagePrompt, setImagePrompt] = useState("");
   const [imageSourceTitle, setImageSourceTitle] = useState("");
   const [imageAspectRatio, setImageAspectRatio] = useState<"1:1" | "4:3" | "4:5" | "16:9" | "9:16">("4:3");
@@ -5328,10 +5348,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // actual publishable content, so the publication draft needs to build its
   // own title/body from them instead of reusing the row's fields (site
   // owner: publishing a carousel sent the source article as the text, only
-  // the first slide as the picture - only one image can attach either way,
-  // an actual multi-photo post isn't something this publication flow does
-  // yet, but the text going out should at least be the slides, not the
-  // unrelated source material).
+  // the first slide as the picture). imageUrl here is still just slide 1 -
+  // as long as it stays untouched, resolveImageUrls (api/_lib/publish-
+  // attempt.ts) independently expands it back to every slide as a real
+  // VK album / Telegram media group at send time; pubCarouselSlideUrls
+  // above mirrors that same check purely so the composer can preview it.
   function carouselPublicationDraft(slides: CarouselSlide[], archive: GenerationArchiveItem) {
     return {
       title: slides[0]?.headline || archive.title,
@@ -5988,6 +6009,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               {pubEditor.status === "scheduled" && pubEditor.retryCount > 0 && <p className="publications-retry-note">Отправка временно не удалась. Публикация остаётся в очереди: следующая попытка будет автоматически выполнена в течение минуты.</p>}
               <label className="publications-editor-field"><span>Заголовок <small>необязательно</small></span><AutoTextarea rows={1} value={pubEditor.title} onChange={(event) => setPubEditor((current) => current && { ...current, title: event.target.value })}/></label>
               <label className="publications-editor-field"><span>Текст публикации</span><AutoTextarea rows={8} value={pubEditor.body} onChange={(event) => setPubEditor((current) => current && { ...current, body: event.target.value })} placeholder="Текст, который уйдёт в канал"/></label>
+              {pubCarouselSlideUrls.length > 1 && <div className="publications-editor-field">
+                <span>Карусель — {pubCarouselSlideUrls.length} картинок</span>
+                <div className="pub-image-picker-list pub-carousel-preview">
+                  {pubCarouselSlideUrls.map((url, index) => <div key={`${url}-${index}`}><Image unoptimized width={72} height={72} src={url} alt=""/></div>)}
+                </div>
+                <small className="pub-carousel-preview-note">Уйдёт каруселью — все {pubCarouselSlideUrls.length} картинок в одном посте (VK: альбом, Telegram: медиагруппа). Чтобы отправить только одну картинку, замените её ниже.</small>
+              </div>}
               <div className="publications-editor-field">
                 <span>Картинка</span>
                 <div className="publications-image-row">
