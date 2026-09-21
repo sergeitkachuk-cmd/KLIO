@@ -165,34 +165,6 @@ async function describeVkChannel(vk: VkCredentials): Promise<{ label: string; av
   if (typeof group.id !== "number" || !Number.isInteger(group.id) || group.id <= 0) {
     throw new ChannelValidationError("VK не вернул числовой id сообщества — попробуйте другой способ его указать.");
   }
-  const photoAccessToken = vk.photoAccessToken?.trim();
-  if (photoAccessToken) {
-    let photoResponse: Response;
-    try {
-      photoResponse = await fetch("https://api.vk.com/method/photos.getWallUploadServer", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          group_id: String(group.id),
-          access_token: photoAccessToken,
-          v: VK_API_VERSION,
-        }),
-        signal: AbortSignal.timeout(25_000),
-      });
-    } catch {
-      throw new ChannelValidationError("Не удалось проверить пользовательский токен для фото. Попробуйте подключить канал ещё раз.");
-    }
-    const photoPayload = await photoResponse.json().catch(() => null) as
-      | { response?: { upload_url?: unknown }; error?: { error_msg?: string } }
-      | null;
-    if (!photoPayload?.response || typeof photoPayload.response.upload_url !== "string") {
-      throw new ChannelValidationError(
-        photoPayload?.error?.error_msg
-          ? `Пользовательский токен для фото отклонён VK: ${photoPayload.error.error_msg}`
-          : "VK не подтвердил пользовательский токен для фото. Проверьте права «Стена» и «Фотографии».",
-      );
-    }
-  }
   return { label: group.name, avatarUrl: typeof group.photo_200 === "string" ? group.photo_200 : "", resolvedGroupId: String(group.id) };
 }
 

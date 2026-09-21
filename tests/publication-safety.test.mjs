@@ -55,14 +55,14 @@ function harness(replies, connecting) {
   };
 }
 
-// One VK image upload is always the same 3-call shape (getWallUploadServer,
-// the raw byte upload, saveWallPhoto) regardless of how many images end up
+// One VK image upload is always the same 3-call shape (getMessagesUploadServer,
+// the raw byte upload, saveMessagesPhoto) regardless of how many images end up
 // in the post - see uploadPhotoForWall's own comment in social-publish.ts.
-function vkImageUploadReplies(photoId, ownerId) {
+function vkImageUploadReplies(photoId, ownerId, accessKey) {
   return [
     { body: { response: { upload_url: "https://upload.vk.example/put" } } },
     { body: { server: 1, photo: "blob-token", hash: "hash-token" } },
-    { body: { response: [{ id: photoId, owner_id: ownerId }] } },
+    { body: { response: [{ id: photoId, owner_id: ownerId, ...(accessKey ? { access_key: accessKey } : {}) }] } },
   ];
 }
 
@@ -99,7 +99,7 @@ function vkHarness(fetchReplies) {
     calls,
     send: imageUrls => loaded.publishToChannel({
       platform: "vk",
-      credentialsJson: JSON.stringify({ platform: "vk", vk: { groupId: "55", accessToken: "wall-token", photoAccessToken: "photo-token" } }),
+      credentialsJson: JSON.stringify({ platform: "vk", vk: { groupId: "55", accessToken: "community-token" } }),
       text: "hello",
       imageUrls,
     }),
@@ -184,9 +184,14 @@ test("partial delivery after a media group is never automatically replayed", asy
 });
 
 test("VK publishes a single image exactly as before multi-image support", async () => {
-  const h = vkHarness([...vkImageUploadReplies(10, -55), { body: { response: { post_id: 900 } } }]);
+  const h = vkHarness([...vkImageUploadReplies(10, -55, "share-key"), { body: { response: { post_id: 900 } } }]);
   const result = await h.send(["https://cdn.example.invalid/a.png"]);
   assert.equal(h.calls.length, 4);
+  assert.equal(h.calls[0].url, "https://api.vk.com/method/photos.getMessagesUploadServer");
+  assert.equal(h.calls[0].body.get("access_token"), "community-token");
+  assert.equal(h.calls[2].url, "https://api.vk.com/method/photos.saveMessagesPhoto");
+  assert.equal(h.calls[2].body.get("access_token"), "community-token");
+  assert.equal(h.calls[3].body.get("attachments"), "photo-55_10_share-key");
   assert.equal(result.providerPostId, "900");
 });
 
@@ -373,12 +378,9 @@ test("Telegram channel validation separates transport failures from invalid cred
   }
 });
 
-test("VK validates a supplied photo token before saving the channel", async () => {
+test("VK connects with one community token and resolves the numeric group id", async () => {
   const calls = [];
-  const replies = [
-    { response: [{ id: 55, name: "Test community", photo_200: "https://vk.example/avatar.jpg" }] },
-    { response: { upload_url: "https://upload.vk.example/put" } },
-  ];
+  const replies = [{ response: [{ id: 55, name: "Test community", photo_200: "https://vk.example/avatar.jpg" }] }];
   const loaded = load("app/api/_lib/social-channels.ts", {
     "./publishing-config": load("app/api/_lib/publishing-config.ts"),
     "../../../db/schema": {},
@@ -395,13 +397,13 @@ test("VK validates a supplied photo token before saving the channel", async () =
 
   const result = await loaded.describeChannel({
     platform: "vk",
-    vk: { groupId: "pretty-name", accessToken: "community-token", photoAccessToken: "user-photo-token" },
+    vk: { groupId: "pretty-name", accessToken: "community-token" },
   });
   assert.equal(result.resolvedGroupId, "55");
-  assert.equal(calls.length, 2);
-  assert.match(calls[1].url, /photos\.getWallUploadServer/);
-  assert.equal(calls[1].body.get("group_id"), "55");
-  assert.equal(calls[1].body.get("access_token"), "user-photo-token");
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].url, /groups\.getById/);
+  assert.equal(calls[0].body.get("group_id"), "pretty-name");
+  assert.equal(calls[0].body.get("access_token"), "community-token");
 });
 
 test("saving a failed publication cannot silently requeue it", () => {

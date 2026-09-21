@@ -309,22 +309,15 @@ function vkGroupIdNumber(groupId: string): number {
   return value;
 }
 
-// VK won't attach an arbitrary external URL to a wall post — the image has
-// to be uploaded into VK's own storage first, in three calls: get this
-// community's upload endpoint, POST the actual bytes there, then register
-// the result as a real wall photo. Only after that does wall.post's
-// `attachments` param accept it. Four VK calls total per image post
-// (this dance plus wall.post itself) versus Telegram's one — more moving
-// parts, not more risk: every step here is a stable, long-documented VK
-// method.
+// A community token cannot call photos.getWallUploadServer (VK error 27),
+// but VK does allow the same token to upload a photo through the community
+// messages storage. Once saved, the resulting photo attachment can be
+// passed to wall.post just like any other VK photo. This keeps connection
+// setup to one community key instead of requiring a separate user token.
 async function uploadPhotoForWall(creds: VkCredentials, imageUrl: string): Promise<string> {
-  const photoAccessToken = creds.photoAccessToken?.trim();
-  if (!photoAccessToken) {
-    throw new PublishError("Для публикации VK с картинкой добавьте пользовательский токен для фото с правами «Стена» и «Фотографии».", false);
-  }
-  const uploadServer = await vkCall("photos.getWallUploadServer", {
-    group_id: String(vkGroupIdNumber(creds.groupId)),
-    access_token: photoAccessToken,
+  const accessToken = creds.accessToken.trim();
+  const uploadServer = await vkCall("photos.getMessagesUploadServer", {
+    access_token: accessToken,
   });
   const uploadUrl = uploadServer.upload_url;
   if (typeof uploadUrl !== "string") throw new PublishError("VK не выдал адрес для загрузки картинки.", true);
@@ -345,25 +338,27 @@ async function uploadPhotoForWall(creds: VkCredentials, imageUrl: string): Promi
     | null;
   if (!uploadResult?.photo || !uploadResult.hash) throw new PublishError("VK не принял загруженную картинку.", true);
 
-  const saved = await vkCall("photos.saveWallPhoto", {
-    group_id: String(vkGroupIdNumber(creds.groupId)),
+  const saved = await vkCall("photos.saveMessagesPhoto", {
     photo: uploadResult.photo,
     server: String(uploadResult.server ?? ""),
     hash: uploadResult.hash,
-    access_token: photoAccessToken,
+    access_token: accessToken,
   });
   const savedPhoto = Array.isArray(saved) ? saved[0] as Record<string, unknown> : undefined;
   if (!savedPhoto || typeof savedPhoto.id !== "number" || typeof savedPhoto.owner_id !== "number") {
     throw new PublishError("VK не подтвердил сохранение картинки.", true);
   }
-  return `photo${savedPhoto.owner_id}_${savedPhoto.id}`;
+  const accessKey = typeof savedPhoto.access_key === "string" && savedPhoto.access_key.trim()
+    ? `_${savedPhoto.access_key.trim()}`
+    : "";
+  return `photo${savedPhoto.owner_id}_${savedPhoto.id}${accessKey}`;
 }
 
 async function publishToVk(creds: VkCredentials, text: string, imageUrls: string[]): Promise<{ providerPostId: string }> {
   const photos = imageUrls.slice(0, 10);
   const hasImage = photos.length > 0;
   // Sequential, not Promise.all - each image is its own
-  // getWallUploadServer + upload + saveWallPhoto (uploadPhotoForWall's own
+  // getMessagesUploadServer + upload + saveMessagesPhoto (uploadPhotoForWall's own
   // comment has the full 4-call breakdown), and VK's per-second rate limit
   // for a community token is tight enough that bursting up to 8 of these
   // at once risked tripping it. wall.post itself still runs exactly once,
@@ -374,7 +369,7 @@ async function publishToVk(creds: VkCredentials, text: string, imageUrls: string
 
   const result = await vkCall("wall.post", {
     // wall.post addresses a community by its *negative* owner_id — every
-    // other piece of this codebase (UI, storage, groups.getWallUploadServer
+    // other piece of this codebase (UI, storage, photo upload preparation
     // above) works with the plain positive community id VK's own admin
     // panel shows, so the negation happens right here at the one call site
     // that actually needs it.
