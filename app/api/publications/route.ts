@@ -15,7 +15,7 @@
 import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { brands, generations, publications, socialChannels } from "../../../db/schema";
 import { planRule } from "../../plans";
-import { isSocialPlatform, type ChannelCredentials } from "../_lib/publishing-config";
+import { isSocialPlatform, publicationTextFields, type ChannelCredentials } from "../_lib/publishing-config";
 import { describeChannel, socialChannelSummary, telegramPublicationUrl, ChannelValidationError } from "../_lib/social-channels";
 import { attemptPublish } from "../_lib/publish-attempt";
 import { resolveBaseUrl } from "../_lib/base-url";
@@ -74,6 +74,7 @@ function credentialsFromPayload(platform: string, payload: PublicationsPayload):
 }
 
 async function publicationResponse(row: typeof publications.$inferSelect, generation: typeof generations.$inferSelect | undefined, channel: typeof socialChannels.$inferSelect | undefined) {
+  const content = publicationTextFields(generation);
   return {
     id: row.id,
     brandId: row.brandId,
@@ -87,8 +88,8 @@ async function publicationResponse(row: typeof publications.$inferSelect, genera
     errorMessage: row.errorMessage,
     retryCount: row.retryCount,
     publishedAt: row.publishedAt,
-    title: generation?.title ?? "",
-    body: generation?.body ?? "",
+    title: content.title,
+    body: content.body,
     imageUrl: generation?.imageUrl ?? "",
     channel: channel ? socialChannelSummary(channel) : null,
   };
@@ -99,6 +100,7 @@ async function publicationResponse(row: typeof publications.$inferSelect, genera
 // link in the action response, but the calendar deliberately skips that
 // network round-trip for every saved post.
 function fastPublicationResponse(row: typeof publications.$inferSelect, generation: typeof generations.$inferSelect | undefined, channel: typeof socialChannels.$inferSelect | undefined) {
+  const content = publicationTextFields(generation);
   let providerPostUrl: string | null = null;
   if (channel?.platform === "telegram" && row.providerPostId && /^\d+$/.test(row.providerPostId)) {
     try {
@@ -113,8 +115,8 @@ function fastPublicationResponse(row: typeof publications.$inferSelect, generati
     id: row.id, brandId: row.brandId, generationId: row.generationId, channelId: row.channelId,
     scheduledAt: row.scheduledAt, telegramDeliveryMode: row.telegramDeliveryMode, status: row.status,
     providerPostId: row.providerPostId, providerPostUrl, errorMessage: row.errorMessage,
-    retryCount: row.retryCount, publishedAt: row.publishedAt, title: generation?.title ?? "",
-    body: generation?.body ?? "", imageUrl: generation?.imageUrl ?? "",
+    retryCount: row.retryCount, publishedAt: row.publishedAt, title: content.title,
+    body: content.body, imageUrl: generation?.imageUrl ?? "",
     channel: channel ? socialChannelSummary(channel) : null,
   };
 }
@@ -289,7 +291,8 @@ export async function POST(request: Request) {
         // no AI call happened here).
         const title = clean(payload.title, 500);
         const body = clean(payload.body, 20_000);
-        if (!title && !body) return Response.json({ error: "Добавьте текст публикации." }, { status: 400 });
+        const imageUrl = clean(payload.imageUrl, 2000);
+        if (!title && !body && !imageUrl) return Response.json({ error: "Добавьте текст или картинку публикации." }, { status: 400 });
         const [created] = await db.insert(generations).values({
           id: crypto.randomUUID(),
           ownerEmail: user.email,
@@ -297,9 +300,12 @@ export async function POST(request: Request) {
           format: "external",
           origin: "manual",
           topic: "",
-          title: title || "Без названия",
+          // An image-only post is valid on both supported platforms. Keep
+          // its text truly empty instead of publishing the internal label
+          // "Без названия" as a visible caption.
+          title,
           body,
-          imageUrl: clean(payload.imageUrl, 2000),
+          imageUrl,
         }).returning();
         generationId = created.id;
       }
@@ -335,9 +341,10 @@ export async function POST(request: Request) {
       }
 
       const [currentGeneration] = await db.select().from(generations).where(and(eq(generations.id, publication.generationId), eq(generations.ownerEmail, user.email))).limit(1);
-      const nextTitle = payload.title !== undefined ? clean(payload.title, 500) || "Без названия" : currentGeneration?.title;
+      const nextTitle = payload.title !== undefined ? clean(payload.title, 500) : currentGeneration?.title;
       const nextBody = payload.body !== undefined ? clean(payload.body, 20_000) : currentGeneration?.body;
       const nextImageUrl = payload.imageUrl !== undefined ? clean(payload.imageUrl, 2000) : currentGeneration?.imageUrl;
+      if (!nextTitle && !nextBody && !nextImageUrl) return Response.json({ error: "Добавьте текст или картинку публикации." }, { status: 400 });
 
       // Published entries are history. Rescheduling or editing one creates a
       // new scheduled copy, so the original remains on its real past date.
@@ -402,7 +409,7 @@ export async function POST(request: Request) {
       if (payload.title !== undefined || payload.body !== undefined || payload.imageUrl !== undefined) {
         if (currentGeneration) {
           await db.update(generations).set({
-            ...(payload.title !== undefined ? { title: clean(payload.title, 500) || "Без названия" } : {}),
+            ...(payload.title !== undefined ? { title: clean(payload.title, 500) } : {}),
             ...(payload.body !== undefined ? { body: clean(payload.body, 20_000) } : {}),
             ...(payload.imageUrl !== undefined ? { imageUrl: clean(payload.imageUrl, 2000) } : {}),
           }).where(eq(generations.id, currentGeneration.id));

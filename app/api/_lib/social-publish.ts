@@ -317,6 +317,10 @@ function vkGroupIdNumber(groupId: string): number {
 async function uploadPhotoForWall(creds: VkCredentials, imageUrl: string): Promise<string> {
   const accessToken = creds.accessToken.trim();
   const uploadServer = await vkCall("photos.getMessagesUploadServer", {
+    // Bind the messages-storage upload to this community. VK documents the
+    // community destination as its negative owner id; without it the API
+    // can return an upload URL that later accepts no photo payload.
+    peer_id: String(-vkGroupIdNumber(creds.groupId)),
     access_token: accessToken,
   });
   const uploadUrl = uploadServer.upload_url;
@@ -325,7 +329,8 @@ async function uploadPhotoForWall(creds: VkCredentials, imageUrl: string): Promi
   const image = await fetchImageBytes(imageUrl);
   const imageBlob = new Blob([new Uint8Array(image.bytes)], { type: image.contentType });
   const form = new FormData();
-  form.append("photo", imageBlob, "post-image.jpg");
+  const extension = image.contentType === "image/png" ? "png" : image.contentType === "image/webp" ? "webp" : image.contentType === "image/gif" ? "gif" : "jpg";
+  form.append("photo", imageBlob, `post-image.${extension}`);
 
   let uploadResponse: Response;
   try {
@@ -334,9 +339,26 @@ async function uploadPhotoForWall(creds: VkCredentials, imageUrl: string): Promi
     throw new PublishError("Не удалось загрузить картинку на сервер VK.", true);
   }
   const uploadResult = await uploadResponse.json().catch(() => null) as
-    | { server?: number; photo?: string; hash?: string }
+    | { server?: number; photo?: string; hash?: string; error?: string | { error_msg?: string } }
     | null;
-  if (!uploadResult?.photo || !uploadResult.hash) throw new PublishError("VK не принял загруженную картинку.", true);
+  if (!uploadResponse.ok || !uploadResult?.photo || !uploadResult.hash) {
+    const providerMessage = typeof uploadResult?.error === "string"
+      ? uploadResult.error.trim().slice(0, 300)
+      : typeof uploadResult?.error?.error_msg === "string"
+        ? uploadResult.error.error_msg.trim().slice(0, 300)
+        : uploadResult?.photo === "[]" ? "сервер VK вернул пустой результат" : "";
+    console.error("VK image upload rejected", {
+      status: uploadResponse.status,
+      contentType: image.contentType,
+      byteLength: image.bytes.length,
+      hasServer: typeof uploadResult?.server === "number",
+      hasPhoto: Boolean(uploadResult?.photo && uploadResult.photo !== "[]"),
+      hasHash: Boolean(uploadResult?.hash),
+      providerMessage,
+    });
+    const retryable = uploadResponse.status === 429 || uploadResponse.status >= 500;
+    throw new PublishError(`VK не принял загруженную картинку${providerMessage ? `: ${providerMessage}` : ""}.`, retryable);
+  }
 
   const saved = await vkCall("photos.saveMessagesPhoto", {
     photo: uploadResult.photo,

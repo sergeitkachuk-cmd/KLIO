@@ -80,3 +80,15 @@ export function truncateForPlatform(platform: SocialPlatform, text: string, hasI
 // "failed" for good and the owner is emailed (see sendPublicationFailedEmail
 // in _lib/email.ts) instead of retrying forever.
 export const MAX_PUBLISH_RETRIES = 3;
+
+// Before image-only publication drafts were detached from their source
+// material, scheduling one blanked its body but retained the image prompt
+// in title. Those already-saved rows must also become safe immediately:
+// hide that legacy prompt both in the calendar response and at send time.
+// New image-only drafts use a separate manual generation with topic "",
+// so a caption intentionally entered there is preserved normally.
+export function publicationTextFields(source: { topic: string; title: string; body: string } | undefined) {
+  if (!source) return { title: "", body: "" };
+  if (source.topic === "Изображение" && !source.body.trim()) return { title: "", body: "" };
+  return { title: source.title, body: source.body };
+}

@@ -10,7 +10,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { generations, publications, socialChannels } from "../../../db/schema";
 import { publishToChannel, PublishError } from "./social-publish";
-import { MAX_PUBLISH_RETRIES } from "./publishing-config";
+import { MAX_PUBLISH_RETRIES, publicationTextFields } from "./publishing-config";
 import { emailDeliveryAvailable, sendPublicationFailedEmail } from "./email";
 
 export type PublishAttemptResult =
@@ -77,10 +77,11 @@ export async function attemptPublish(publicationId: string, ownerEmail: string, 
     errorMessage: null, updatedAt: sql`CURRENT_TIMESTAMP`,
   }).where(and(eq(publications.id, publicationId), eq(publications.ownerEmail, ownerEmail), eq(publications.status, "publishing")));
   try {
+    const publicationText = publicationTextFields(generation);
     const result = await publishToChannel({
       platform: channel.platform,
       credentialsJson: channel.credentialsJson,
-      text: `${generation.title}\n\n${generation.body}`.trim(),
+      text: `${publicationText.title}\n\n${publicationText.body}`.trim(),
       imageUrls: resolveImageUrls(generation, publication.telegramDeliveryMode),
     });
     confirmedPostId = result.providerPostId;

@@ -5369,7 +5369,16 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       void openPublicationDraft(carouselPublicationDraft(slides, item));
       return;
     }
-    void openPublicationDraft({ title: item.imageUrl ? "" : item.title, body: item.imageUrl ? "" : item.body, generationId: item.id, imageUrl: item.imageUrl });
+    const standaloneImage = item.topic === "Изображение";
+    void openPublicationDraft({
+      title: standaloneImage ? "" : item.title,
+      body: standaloneImage ? "" : item.body,
+      // A pure image material stores its generation prompt in title/body.
+      // The publication only needs the resulting file; detaching it from
+      // that source row prevents the prompt from reappearing after reopen.
+      generationId: standaloneImage ? null : item.id,
+      imageUrl: item.imageUrl,
+    });
   }
 
   async function openPublicationDraft(source: { title: string; body: string; generationId?: string | null; imageUrl?: string }) {
@@ -5897,7 +5906,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <div className="archive-editor-actions">
                     <button className="button ghost" type="button" onClick={copyArchiveItem}><Icon name="copy"/> Копировать</button>
                     {archiveEditorItem.imageUrl && <a className="button ghost" href={archiveEditorItem.imageUrl} download>Скачать {imageFormatLabel(archiveEditorItem.imageUrl)}</a>}
-                    <button className="button ghost" type="button" onClick={() => void openPublicationDraft({ title: archiveEditorItem.imageUrl ? "" : archiveEditorItem.title, body: archiveEditorItem.imageUrl ? "" : archiveEditorItem.body, generationId: archiveEditorItem.id, imageUrl: archiveEditorItem.imageUrl })}>В публикацию</button>
+                    <button className="button ghost" type="button" onClick={() => void openPublicationDraft({ title: archiveEditorItem.topic === "Изображение" ? "" : archiveEditorItem.title, body: archiveEditorItem.topic === "Изображение" ? "" : archiveEditorItem.body, generationId: archiveEditorItem.topic === "Изображение" ? null : archiveEditorItem.id, imageUrl: archiveEditorItem.imageUrl })}>В публикацию</button>
                     <button className="button ghost" type="button" onClick={() => prepareImageGeneration({ generationId: archiveEditorItem.id }, buildArticleImagePrompt(archiveEditorItem.title, archiveEditorItem.subtitle, archiveEditorItem.body), archiveEditorItem.title)}>Создать картинку</button>
                     <button className="button ghost" type="button" onClick={() => prepareImageGeneration({ generationId: archiveEditorItem.id }, buildArticleImagePrompt(archiveEditorItem.title, archiveEditorItem.subtitle, archiveEditorItem.body), archiveEditorItem.title)}>Создать карусель</button>
                     <button className="button ghost" type="button" onClick={restoreArchiveOriginal} disabled={!archiveEditorDirty || archiveEditorSaving || archiveEditorBusy}>Вернуть</button>
@@ -6031,7 +6040,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     label="Выбрать из материалов"
                     items={pubMaterialImages}
                     activeUrl={pubEditor.imageUrl}
-                    onSelect={(item) => setPubEditor((current) => current && { ...current, imageUrl: item.imageUrl, generationId: item.id })}
+                    onSelect={(item) => setPubEditor((current) => current && { ...current, imageUrl: item.imageUrl })}
                   />}
                   {pubEditor.imageUrl && <button type="button" className="publications-image-remove" onClick={() => setPubEditor((current) => current && { ...current, imageUrl: "" })} disabled={pubImageUploadBusy}>Открепить</button>}
                 </div>
@@ -6574,7 +6583,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   </div>
                   <p>Карусель из {carouselResult.slides.length} слайдов сохранена в «Материалы».</p>
                   <div><button className="button ghost" type="button" onClick={() => { setMaterialsFilter("all"); openModule("history"); }}>Открыть материалы</button><button className="button ghost" type="button" onClick={() => void openPublicationDraft(carouselPublicationDraft(carouselResult.slides, carouselResult.archive))}>В публикацию</button></div>
-                </> : imageResult?.imageUrl ? <><button type="button" className="image-generator-result-trigger" aria-label="Открыть изображение крупнее" onClick={() => setLightboxUrl(imageResult.imageUrl)}><Image src={imageResult.imageUrl} alt={imageResult.title} width={1024} height={1024} unoptimized/></button><p>Изображение сохранено в «Материалы».</p><div><a className="button ghost" href={imageResult.imageUrl} download>Скачать {imageFormatLabel(imageResult.imageUrl)}</a><button className="button ghost" type="button" onClick={() => { setMaterialsFilter("image"); openModule("history"); }}>Открыть материалы</button><button className="button ghost" type="button" onClick={() => void openPublicationDraft({ title: "", body: "", generationId: imageResult.id, imageUrl: imageResult.imageUrl })}>В публикацию</button></div></> : <div className="image-generator-empty"><Icon name="image"/><span>{imageBusy ? "КЛИО рисует. Обычно это занимает до минуты." : carouselBusy ? "КЛИО собирает карусель. Это может занять пару минут." : "Готовое изображение появится здесь"}</span></div>}
+                </> : imageResult?.imageUrl ? <><button type="button" className="image-generator-result-trigger" aria-label="Открыть изображение крупнее" onClick={() => setLightboxUrl(imageResult.imageUrl)}><Image src={imageResult.imageUrl} alt={imageResult.title} width={1024} height={1024} unoptimized/></button><p>Изображение сохранено в «Материалы».</p><div><a className="button ghost" href={imageResult.imageUrl} download>Скачать {imageFormatLabel(imageResult.imageUrl)}</a><button className="button ghost" type="button" onClick={() => { setMaterialsFilter("image"); openModule("history"); }}>Открыть материалы</button><button className="button ghost" type="button" onClick={() => void openPublicationDraft({ title: "", body: "", generationId: null, imageUrl: imageResult.imageUrl })}>В публикацию</button></div></> : <div className="image-generator-empty"><Icon name="image"/><span>{imageBusy ? "КЛИО рисует. Обычно это занимает до минуты." : carouselBusy ? "КЛИО собирает карусель. Это может занять пару минут." : "Готовое изображение появится здесь"}</span></div>}
               </div>
             </div>
           </section>

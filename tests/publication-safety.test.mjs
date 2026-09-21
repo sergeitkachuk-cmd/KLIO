@@ -73,7 +73,7 @@ function vkImageUploadReplies(photoId, ownerId, accessKey) {
 // magic-byte sniffing adds nothing here - only that a Blob gets built at
 // all, matching this file's existing minimal-mock style for the Telegram
 // harness above.
-function vkHarness(fetchReplies) {
+function vkHarness(fetchReplies, imageType = "image/jpeg") {
   const calls = [];
   const fetchMock = async (url, options) => {
     const reply = fetchReplies[calls.length];
@@ -85,7 +85,7 @@ function vkHarness(fetchReplies) {
     "node:https": {},
     "node:http": {},
     "./public-fetch": { fetchPublicResource: async () => ({ ok: true, bytes: new Uint8Array([1, 2, 3]) }) },
-    "./image-type": { imageContentType: () => "image/jpeg" },
+    "./image-type": { imageContentType: () => imageType },
     "./publishing-config": load("app/api/_lib/publishing-config.ts"),
     "./telegram-proxy": load("app/api/_lib/telegram-proxy.ts", {}, { process: { env: {} } }),
     // fetchImageBytes/uploadPhotoForWall build a real Blob and post it
@@ -184,11 +184,13 @@ test("partial delivery after a media group is never automatically replayed", asy
 });
 
 test("VK publishes a single image exactly as before multi-image support", async () => {
-  const h = vkHarness([...vkImageUploadReplies(10, -55, "share-key"), { body: { response: { post_id: 900 } } }]);
+  const h = vkHarness([...vkImageUploadReplies(10, -55, "share-key"), { body: { response: { post_id: 900 } } }], "image/png");
   const result = await h.send(["https://cdn.example.invalid/a.png"]);
   assert.equal(h.calls.length, 4);
   assert.equal(h.calls[0].url, "https://api.vk.com/method/photos.getMessagesUploadServer");
   assert.equal(h.calls[0].body.get("access_token"), "community-token");
+  assert.equal(h.calls[0].body.get("peer_id"), "-55");
+  assert.equal(h.calls[1].body.get("photo").name, "post-image.png");
   assert.equal(h.calls[2].url, "https://api.vk.com/method/photos.saveMessagesPhoto");
   assert.equal(h.calls[2].body.get("access_token"), "community-token");
   assert.equal(h.calls[3].body.get("attachments"), "photo-55_10_share-key");
@@ -229,7 +231,7 @@ function loadPublishAttempt() {
     "../../../db": { getDb: () => ({}) },
     "../../../db/schema": {},
     "./social-publish": { PublishError: class extends Error {}, publishToChannel: async () => ({ providerPostId: "unused" }) },
-    "./publishing-config": { MAX_PUBLISH_RETRIES: 3 },
+    "./publishing-config": load("app/api/_lib/publishing-config.ts"),
     "./email": { emailDeliveryAvailable: () => false, sendPublicationFailedEmail: async () => {} },
   });
   // resolveImageUrls runs inside the vm sandbox, so any array it builds
@@ -312,7 +314,7 @@ for (const scenario of ["receipt", "connect", "exhausted", "unknown", "partial"]
       }
       return { providerPostId: "confirmed" };
     } },
-    "./publishing-config": { MAX_PUBLISH_RETRIES: 3 },
+    "./publishing-config": load("app/api/_lib/publishing-config.ts"),
     "./email": { emailDeliveryAvailable: () => false },
   });
   assert.equal(await loaded.attemptPublish("post", "another-owner", "https://example.com"), null);
@@ -429,4 +431,20 @@ test("saving a failed publication cannot silently requeue it", () => {
   const source = readFileSync(new URL("../app/api/publications/route.ts", import.meta.url), "utf8");
   const update = source.split('if (action === "update")')[1].split('if (action === "delete")')[0];
   assert.doesNotMatch(update, /reQueue|retryCount:\s*0/);
+});
+
+test("image-only publications keep an empty caption instead of an internal placeholder", () => {
+  const { publicationTextFields } = load("app/api/_lib/publishing-config.ts");
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(publicationTextFields({ topic: "Изображение", title: "Внутренний запрос генерации", body: "" }))),
+    { title: "", body: "" },
+  );
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(publicationTextFields({ topic: "", title: "Подпись пользователя", body: "" }))),
+    { title: "Подпись пользователя", body: "" },
+  );
+  const source = readFileSync(new URL("../app/api/publications/route.ts", import.meta.url), "utf8");
+  const schedule = source.split('if (action === "schedule")')[1].split('if (action === "update")')[0];
+  assert.match(schedule, /!title && !body && !imageUrl/);
+  assert.doesNotMatch(schedule, /title:\s*title\s*\|\|\s*"Без названия"/);
 });
