@@ -84,9 +84,16 @@ export function resolveImageGenerationOptions(options: ImageGenerationOptions = 
 // whatever headline/scene the rest of the prompt actually asked for
 // (site owner: with the logo on, back to the same repeated desk mockup,
 // and the article's own headline stopped rendering; off, both worked).
-// Now explicit that this is additive, not a replacement task, and drops
-// "screen" from the suggested placements entirely.
-const LOGO_REFERENCE_INSTRUCTION = "Дополнительно вплети в сцену логотип бренда с приложенного референса — максимально похоже по цвету, форме и тексту. Это дополнение к заданию выше, а не замена ему: сохрани весь заголовок, текст и сюжет из задания, ничего не убирай и не упрощай ради логотипа. Расположи его на подходящем по смыслу предмете сцены (вывеска, упаковка и т.п.) — не добавляй ноутбук, телефон или экран специально ради логотипа, если их не просили. Не накладывай логотип поверх готовой картинки отдельным слоем.";
+// That version's fix ("this is additive, don't remove or simplify
+// anything for the logo") overcorrected the other way - telling the
+// model not to simplify anything FOR the logo apparently read as
+// license to not bother matching it closely either, and it started
+// drawing its own generic mark instead of the real reference (site
+// owner: "он сам его сочиняет, а не подтягивает"). Leading with an
+// explicit, unambiguous "reproduce this exact logo, don't invent one"
+// instruction first, before the additive framing, is meant to keep both
+// requirements mandatory instead of trading one off against the other.
+const LOGO_REFERENCE_INSTRUCTION = "Дополнительно на изображении должен точно повторяться логотип бренда с приложенного референса: те же цвета, форма и текст, максимально близко к оригиналу - не сочиняй новый логотип и не изменяй его. Впиши его в сцену органично, как её часть (например, на вывеске или упаковке), а не отдельным слоем поверх готовой картинки. Это дополнение к сцене, заголовку и тексту из задания выше, а не замена им - сохрани их полностью и не вводи ради логотипа то, чего не просили (ноутбук, телефон, экран устройства).";
 
 export const imageConfigured = () =>
   Boolean(storageConfigured() && (process.env.OPENAI_API_KEY?.trim() ||
