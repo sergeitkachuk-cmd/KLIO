@@ -55,14 +55,14 @@ function harness(replies, connecting) {
   };
 }
 
-// One VK image upload is always the same 3-call shape (getMessagesUploadServer,
-// the raw byte upload, saveMessagesPhoto) regardless of how many images end up
-// in the post - see uploadPhotoForWall's own comment in social-publish.ts.
-function vkImageUploadReplies(photoId, ownerId, accessKey) {
+// One VK image upload is always the same 3-call shape (getWallUploadServer,
+// the raw byte upload, docs.save) regardless of how many images end up
+// in the post - see uploadImageDocumentForWall's comment in social-publish.ts.
+function vkImageUploadReplies(documentId, ownerId, accessKey) {
   return [
     { body: { response: { upload_url: "https://upload.vk.example/put" } } },
-    { body: { server: 1, photo: "blob-token", hash: "hash-token" } },
-    { body: { response: [{ id: photoId, owner_id: ownerId, ...(accessKey ? { access_key: accessKey } : {}) }] } },
+    { body: { file: "document-token" } },
+    { body: { response: { type: "doc", doc: { id: documentId, owner_id: ownerId, ...(accessKey ? { access_key: accessKey } : {}) } } } },
   ];
 }
 
@@ -183,17 +183,18 @@ test("partial delivery after a media group is never automatically replayed", asy
   assert.equal(h.sent.length, 2);
 });
 
-test("VK publishes a single image exactly as before multi-image support", async () => {
+test("VK publishes a single image through the community document wall-upload flow", async () => {
   const h = vkHarness([...vkImageUploadReplies(10, -55, "share-key"), { body: { response: { post_id: 900 } } }], "image/png");
   const result = await h.send(["https://cdn.example.invalid/a.png"]);
   assert.equal(h.calls.length, 4);
-  assert.equal(h.calls[0].url, "https://api.vk.com/method/photos.getMessagesUploadServer");
+  assert.equal(h.calls[0].url, "https://api.vk.com/method/docs.getWallUploadServer");
   assert.equal(h.calls[0].body.get("access_token"), "community-token");
-  assert.equal(h.calls[0].body.get("peer_id"), "-55");
-  assert.equal(h.calls[1].body.get("photo").name, "post-image.png");
-  assert.equal(h.calls[2].url, "https://api.vk.com/method/photos.saveMessagesPhoto");
+  assert.equal(h.calls[0].body.get("group_id"), "55");
+  assert.equal(h.calls[1].body.get("file").name, "post-image.png");
+  assert.equal(h.calls[2].url, "https://api.vk.com/method/docs.save");
   assert.equal(h.calls[2].body.get("access_token"), "community-token");
-  assert.equal(h.calls[3].body.get("attachments"), "photo-55_10_share-key");
+  assert.equal(h.calls[2].body.get("file"), "document-token");
+  assert.equal(h.calls[3].body.get("attachments"), "doc-55_10_share-key");
   assert.equal(result.providerPostId, "900");
 });
 
@@ -208,7 +209,7 @@ test("VK uploads every image then joins them into one wall.post with comma-separ
   assert.equal(h.calls.length, 10);
   const wallPostCall = h.calls[9];
   assert.equal(wallPostCall.url, "https://api.vk.com/method/wall.post");
-  assert.equal(wallPostCall.body.get("attachments"), "photo-55_1,photo-55_2,photo-55_3");
+  assert.equal(wallPostCall.body.get("attachments"), "doc-55_1,doc-55_2,doc-55_3");
   assert.equal(result.providerPostId, "901");
 });
 
