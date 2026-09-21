@@ -6555,7 +6555,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     ]}
                   />
                 </div>
-                {useBrand && activeBrandId && brand.logoKey && <label className="image-generator-logo-toggle"><input type="checkbox" checked={useLogoInImage} onChange={(event) => setUseLogoInImage(event.target.checked)}/> Использовать логотип бренда на картинке</label>}
+                {useBrand && activeBrandId && (brand.logoKey ? (
+                  <label className="image-generator-logo-toggle"><input type="checkbox" checked={useLogoInImage} onChange={(event) => setUseLogoInImage(event.target.checked)}/> Использовать логотип бренда на картинке</label>
+                ) : (
+                  <button type="button" className="image-generator-logo-suggest" onClick={() => openModule("brand")}>Загрузить логотип бренда →</button>
+                ))}
                 <p>Профиль бренда {useBrand && activeBrandId ? "учитывается" : "не используется"}. Один запуск расходует одну генерацию.</p>
                 {imageError && <p className="generation-error" role="alert">{imageError}</p>}
                 <button className="button primary large" type="button" onClick={() => void generateProfessionalImage()} disabled={imageBusy || carouselBusy || !workspaceReady || imagePrompt.trim().length < 8 || workspaceAccount.generationsRemaining <= 0}><Icon name="image"/>{imageBusy ? "Создаём изображение…" : workspaceAccount.generationsRemaining <= 0 ? "Лимит генераций исчерпан" : "Создать изображение"}</button>

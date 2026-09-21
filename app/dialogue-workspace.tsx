@@ -1225,7 +1225,11 @@ export function DialogueWorkspace(props: Props) {
               {composeIntent === "image" && <>
                 <ModuleSelect variant="dialogue" label="Соотношение картинки" value={imageAspectRatio} options={IMAGE_ASPECT_OPTIONS} onChange={setImageAspectRatio}/>
                 <ModuleSelect variant="dialogue" label="Формат картинки" value={imageOutputFormat} options={IMAGE_FORMAT_OPTIONS} onChange={setImageOutputFormat}/>
-                {props.hasLogo && <label className="klio-chat-logo-toggle"><input type="checkbox" checked={useLogoInImage} onChange={(event) => setUseLogoInImage(event.target.checked)}/> Использовать логотип бренда</label>}
+                {props.hasLogo ? (
+                  <label className="klio-chat-logo-toggle"><input type="checkbox" checked={useLogoInImage} onChange={(event) => setUseLogoInImage(event.target.checked)}/> Использовать логотип бренда</label>
+                ) : (
+                  <button type="button" className="klio-chat-logo-suggest" onClick={() => props.onNavigate("brand")}>Загрузить логотип бренда →</button>
+                )}
               </>}
             </div>
           )}

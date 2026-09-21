@@ -1148,6 +1148,7 @@ body:has(.workspace-shell.is-dialogue .publications-editor-modal)>.module-select
 .klio-chat-settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 12px;margin-bottom:8px;padding:12px;border:1px solid var(--chat-line);border-radius:16px;background:var(--chat-side)}
 .klio-chat-settings-grid .field{margin:0;color:var(--chat-muted);font-size:12px;font-weight:600}
 .klio-chat-logo-toggle{display:flex;align-items:center;gap:8px;color:var(--chat-text);font-size:12px;font-weight:600}
+.klio-chat-logo-suggest{display:inline-flex;align-items:center;gap:6px;padding:0;border:0;background:none;color:var(--chat-accent);font:inherit;font-size:12px;font-weight:600;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
 
 /* Themed scrollbars for every scrollable area in dialogue mode (site
    owner: "эти страшные ползунки" - the bare OS scrollbar on the cards
