@@ -6,6 +6,7 @@ import {
   useEffectEvent,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
@@ -18,6 +19,7 @@ import { ModuleSelect } from "./module-select";
 import { ImageLightbox } from "./image-lightbox";
 import { TONE_PLANS, type ContentFormat, type ContentTone } from "./content-plans";
 import "./dialogue.css";
+import "./dialogue-shell-v2.css";
 
 const FORMAT_OPTIONS: { value: ContentFormat | ""; label: string }[] = [
   { value: "", label: "Авто" },
@@ -59,6 +61,44 @@ const INTENT_OPTIONS: { value: "topics" | "text" | "image"; label: string; hint:
   { value: "text", label: "Написать текст", hint: "Пост, статья или другой формат" },
   { value: "image", label: "Изображение", hint: "К выбранной теме или с нуля по описанию" },
 ];
+
+type ChatIconName =
+  | "account"
+  | "arrow"
+  | "building"
+  | "calendar"
+  | "cards"
+  | "chat"
+  | "chevron"
+  | "folder"
+  | "image"
+  | "menu"
+  | "plus"
+  | "settings"
+  | "spark"
+  | "text"
+  | "topics";
+
+function ChatIcon({ name, size = 18 }: { name: ChatIconName; size?: number }) {
+  const paths: Record<ChatIconName, ReactNode> = {
+    account: <><circle cx="12" cy="8" r="3.25"/><path d="M5.5 19c.7-3.1 3.1-4.8 6.5-4.8s5.8 1.7 6.5 4.8"/></>,
+    arrow: <><path d="M12 19V5"/><path d="m6.5 10.5 5.5-5.5 5.5 5.5"/></>,
+    building: <><path d="M5 21V5.5L12 3l7 2.5V21"/><path d="M3 21h18M9 8h.01M15 8h.01M9 12h.01M15 12h.01M9 16h.01M15 16h.01"/></>,
+    calendar: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M7 14h2M11 14h2M15 14h2M7 18h2M11 18h2"/></>,
+    cards: <><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></>,
+    chat: <><path d="M20 15a4 4 0 0 1-4 4H8l-4 2v-5a5 5 0 0 1-1-3V8a4 4 0 0 1 4-4h9a4 4 0 0 1 4 4Z"/><path d="M8 10h8M8 14h5"/></>,
+    chevron: <path d="m7 10 5 5 5-5"/>,
+    folder: <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v8A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5Z"/>,
+    image: <><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="m5.5 18 4.5-4.5 3 3 2-2 3.5 3.5"/></>,
+    menu: <path d="M4 7h16M4 12h16M4 17h16"/>,
+    plus: <path d="M12 5v14M5 12h14"/>,
+    settings: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6 1.7 1.7 0 0 0 10 3v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></>,
+    spark: <><path d="m12 3 1.2 4.2L17 9l-3.8 1.8L12 15l-1.2-4.2L7 9l3.8-1.8Z"/><path d="m18 14 .7 2.3L21 17l-2.3.7L18 20l-.7-2.3L15 17l2.3-.7Z"/></>,
+    text: <><path d="M5 5h14M9 5v14M6 19h6"/></>,
+    topics: <><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></>,
+  };
+  return <svg className="klio-chat-icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
+}
 
 type Summary = Pick<DialogueThread, "id" | "title" | "updatedAt" | "status">;
 type SharedGeneration = {
@@ -877,39 +917,43 @@ export function DialogueWorkspace(props: Props) {
 
   return (
     <div
-      className={`klio-chat ${mobileMenu ? "menu-open" : ""}`}
+      className={`klio-chat klio-chat-v2 ${mobileMenu ? "menu-open" : ""}`}
       hidden={!props.visible}
     >
-    <aside className="klio-chat-sidebar" aria-label="Диалоги и материалы" ref={sidebarRef}>
+      <aside className="klio-chat-sidebar" aria-label="Диалоги и материалы" ref={sidebarRef}>
         <div className="klio-chat-business">
-          <span>Ваш бизнес</span>
+          <span className="klio-chat-section-label">Рабочее пространство</span>
           {props.brands.length ? (
             <div className="klio-chat-brand-picker">
-              <button type="button" className="klio-chat-business-trigger" aria-label={`Активный бизнес: ${props.brandName || "Личное пространство"}`} title={props.brandName || "Личное пространство"} aria-expanded={brandMenuOpen} onClick={() => setBrandMenuOpen(open => !open)} disabled={busy}><span className="klio-chat-business-name">{props.brandName || "Личное пространство"}</span><span className="klio-chat-business-chevron" aria-hidden="true">⌄</span></button>
+              <button type="button" className="klio-chat-business-trigger" aria-label={`Активный бизнес: ${props.brandName || "Личное пространство"}`} title={props.brandName || "Личное пространство"} aria-expanded={brandMenuOpen} onClick={() => setBrandMenuOpen(open => !open)} disabled={busy}>
+                <span className="klio-chat-business-avatar" aria-hidden="true">{(props.brandName || "Л").trim().charAt(0).toUpperCase()}</span>
+                <span className="klio-chat-business-copy"><b className="klio-chat-business-name">{props.brandName || "Личное пространство"}</b><small>{props.brandId ? "Активный профиль" : "Без профиля бренда"}</small></span>
+                <ChatIcon name="chevron" size={16}/>
+              </button>
               {brandMenuOpen && <div className="klio-chat-brand-options" role="group" aria-label="Выберите бизнес">
                 {props.brands.map(b => <button type="button" key={b.id} className={props.brandId === b.id ? "active" : ""} title={b.name} onClick={() => { setBrandMenuOpen(false); props.onBrandChange(b.id); }}><span>{b.name}</span></button>)}
               </div>}
             </div>
           ) : (
-            <b>Личное пространство</b>
+            <div className="klio-chat-personal-space"><span className="klio-chat-business-avatar" aria-hidden="true">Л</span><span><b>Личное пространство</b><small>Можно работать без профиля</small></span></div>
           )}
         </div>
         <button className="klio-chat-new" onClick={newChat} disabled={busy}>
-          ＋ Новый диалог
+          <ChatIcon name="plus"/> <span>Новый диалог</span>
         </button>
-        <nav>
+        <nav aria-label="Разделы КЛИО">
           <button onClick={() => props.onNavigate("brand")}>
-            ◇ Мой бизнес
+            <ChatIcon name="building"/> <span>Мой бизнес</span>
           </button>
           <button onClick={() => props.onNavigate("history")}>
-            ▤ Материалы
+            <ChatIcon name="folder"/> <span>Материалы</span>
           </button>
           <button onClick={() => props.onNavigate("publications")}>
-            ▦ Календарь
+            <ChatIcon name="calendar"/> <span>Публикации</span>
           </button>
         </nav>
         <div className="klio-chat-history">
-          <span>Диалоги</span>
+          <span className="klio-chat-section-label">Недавние диалоги</span>
           {threads.map((t) => (
             <button
               className={thread?.id === t.id ? "active" : ""}
@@ -923,8 +967,9 @@ export function DialogueWorkspace(props: Props) {
               }
               title={t.title}
             >
-              {t.status === "processing" ? "◌ " : ""}
-              {t.title}
+              <ChatIcon name="chat" size={16}/>
+              <span>{t.title}</span>
+              {t.status === "processing" && <i className="klio-chat-thread-progress" aria-label="КЛИО готовит ответ"/>}
             </button>
           ))}
           {next && (
@@ -945,9 +990,9 @@ export function DialogueWorkspace(props: Props) {
               setMobileMenu(false);
             }}
           >
-            Настроить бизнес с КЛИО
+            <ChatIcon name="settings"/> <span>Настроить бизнес с КЛИО</span>
           </button>
-          <a href="/account">Тариф и аккаунт</a>
+          <a href="/account"><ChatIcon name="account"/> <span>Тариф и аккаунт</span></a>
         </div>
       </aside>
       <section className="klio-chat-main" aria-label="Общение с КЛИО">
@@ -958,7 +1003,7 @@ export function DialogueWorkspace(props: Props) {
             aria-expanded={mobileMenu}
             onClick={() => setMobileMenu(!mobileMenu)}
           >
-            ☰
+            <ChatIcon name="menu"/>
           </button>
           <div className="klio-chat-title">
             {titleEditing ? (
@@ -999,7 +1044,9 @@ export function DialogueWorkspace(props: Props) {
                 aria-label="Все карточки этого диалога"
                 onClick={() => setCardMenuOpen((open) => !open)}
               >
-                Карточки ({thread!.data.cards.length})
+                <ChatIcon name="cards" size={16}/>
+                <span>Результаты</span>
+                <b>{thread!.data.cards.length}</b>
               </button>
               {cardMenuOpen && (
                 <div className="klio-chat-cards-options" role="group" aria-label="Карточки диалога">
@@ -1019,25 +1066,27 @@ export function DialogueWorkspace(props: Props) {
             <p className="klio-chat-loading">Открываем диалоги…</p>
           ) : !thread?.data.messages.length ? (
             <div className="klio-chat-welcome">
-              <div className="klio-chat-mark">к.</div>
-              <h1>Что сделаем сегодня?</h1>
-              <p>Обсудим идею, найдём темы или подготовим публикацию.</p>
+              <div className="klio-chat-mark"><ChatIcon name="spark" size={26}/></div>
+              <h1>Чем помочь сегодня?</h1>
+              <p>Спросите КЛИО о чём угодно или выберите готовое действие.</p>
               <div className="klio-chat-suggestions">
                 {[
-                  "Предложи темы для моего бизнеса",
-                  "Помоги написать пост",
-                  "Подготовим публикации на неделю",
-                  "Хочу обсудить идею",
-                ].map((text) => (
+                  { text: "Предложи темы для контента", hint: "Найти идеи", icon: "topics" as const, intent: "topics" as const },
+                  { text: "Помоги написать публикацию", hint: "Подготовить текст", icon: "text" as const, intent: "text" as const },
+                  { text: "Создай изображение", hint: "Описать картинку", icon: "image" as const, intent: "image" as const },
+                  { text: "Хочу обсудить идею", hint: "Обычный диалог", icon: "chat" as const, intent: "chat" as const },
+                ].map((suggestion) => (
                   <button
-                    key={text}
+                    key={suggestion.text}
                     onClick={() => {
-                      setDraft(text);
+                      setComposeIntent(suggestion.intent);
+                      setSettingsExpanded(suggestion.intent !== "chat");
+                      setDraft(suggestion.intent === "image" ? "Создай изображение: " : suggestion.text);
                       input.current?.focus();
                     }}
                   >
-                    {text}
-                    <span>↗</span>
+                    <i><ChatIcon name={suggestion.icon}/></i>
+                    <span><b>{suggestion.text}</b><small>{suggestion.hint}</small></span>
                   </button>
                 ))}
               </div>
@@ -1057,20 +1106,20 @@ export function DialogueWorkspace(props: Props) {
           ) : (
             thread.data.messages.map((m) => (
               <div key={m.id} className={`klio-chat-message ${m.role}`}>
-                <span className="klio-chat-author">
-                  {m.role === "assistant" ? "КЛИО" : "Вы"}
-                </span>
-                <div className="klio-chat-message-text">{m.text}</div>
-                {m.cardIds
-                  ?.map((id) => thread.data.cards.find((c) => c.id === id))
-                  .filter((c): c is DialogueCard => Boolean(c))
-                  .filter((c) => !shownCardIds.has(c.id) && shownCardIds.add(c.id))
-                  .map(renderCard)}
-                {m.cardIds && m.cardIds.length > 1 && <button className="klio-chat-note" disabled={disabled} onClick={() => void perform(async () => {
-                  for (const id of m.cardIds!) await mutate("save", { cardId: id });
-                  setNotice("Подборка сохранена: каждая тема доступна в материалах отдельно");
-                })}>Сохранить всю подборку в материалы</button>}
-                {m.profile && (
+                <span className="klio-chat-avatar" aria-hidden="true">{m.role === "assistant" ? <ChatIcon name="spark" size={17}/> : "Вы"}</span>
+                <div className="klio-chat-message-content">
+                  <span className="klio-chat-author">{m.role === "assistant" ? "КЛИО" : "Вы"}</span>
+                  <div className="klio-chat-message-text">{m.text}</div>
+                  {m.cardIds
+                    ?.map((id) => thread.data.cards.find((c) => c.id === id))
+                    .filter((c): c is DialogueCard => Boolean(c))
+                    .filter((c) => !shownCardIds.has(c.id) && shownCardIds.add(c.id))
+                    .map(renderCard)}
+                  {m.cardIds && m.cardIds.length > 1 && <button className="klio-chat-note" disabled={disabled} onClick={() => void perform(async () => {
+                    for (const id of m.cardIds!) await mutate("save", { cardId: id });
+                    setNotice("Подборка сохранена: каждая тема доступна в материалах отдельно");
+                  })}>Сохранить всю подборку в материалы</button>}
+                  {m.profile && (
                   <div className="klio-chat-profile">
                     <b>Предлагаемый профиль бизнеса</b>
                     <dl>
@@ -1131,21 +1180,22 @@ export function DialogueWorkspace(props: Props) {
                       </>
                     )}
                   </div>
-                )}
-                {m.role === "assistant" && !m.cardIds?.length && !m.profile && (
-                  <button
-                    className="klio-chat-note"
-                    disabled={disabled}
-                    onClick={() =>
-                      void perform(async () => {
-                        await mutate("note", { messageId: m.id });
-                        setNotice("Ответ сохранён в материалах как заметка");
-                      })
-                    }
-                  >
-                    Сохранить как заметку
-                  </button>
-                )}
+                  )}
+                  {m.role === "assistant" && !m.cardIds?.length && !m.profile && (
+                    <button
+                      className="klio-chat-note"
+                      disabled={disabled}
+                      onClick={() =>
+                        void perform(async () => {
+                          await mutate("note", { messageId: m.id });
+                          setNotice("Ответ сохранён в материалах как заметка");
+                        })
+                      }
+                    >
+                      <ChatIcon name="folder" size={15}/> Сохранить в материалы
+                    </button>
+                  )}
+                </div>
               </div>
             ))
           )}
@@ -1251,9 +1301,13 @@ export function DialogueWorkspace(props: Props) {
                     : "Спросите КЛИО или опишите задачу…"
               }
               maxLength={8000}
-              rows={2}
+              rows={1}
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                e.currentTarget.style.height = "auto";
+                e.currentTarget.style.height = `${Math.min(e.currentTarget.scrollHeight, 180)}px`;
+              }}
               onFocus={(e) => {
                 // On some mobile browsers, 100dvh doesn't settle to its new
                 // (keyboard-shrunk) value until after the keyboard's own
@@ -1297,7 +1351,7 @@ export function DialogueWorkspace(props: Props) {
                   aria-label="Выбрать задачу"
                   onClick={() => setIntentMenuOpen((open) => !open)}
                 >
-                  ＋
+                  <ChatIcon name="plus" size={19}/>
                 </button>
                 {intentMenuOpen && intentMenuRect && createPortal(
                   <div
@@ -1308,11 +1362,11 @@ export function DialogueWorkspace(props: Props) {
                     style={{ position: "fixed", bottom: intentMenuRect.bottom, left: intentMenuRect.left, width: intentMenuRect.width, maxHeight: intentMenuRect.maxHeight }}
                   >
                     <button type="button" role="menuitem" className={composeIntent === "chat" ? "active" : ""} onClick={() => { setComposeIntent("chat"); setIntentMenuOpen(false); }}>
-                      <b>Просто общение</b><small>Обсудить идею, задать вопрос</small>
+                      <i><ChatIcon name="chat" size={18}/></i><span><b>Просто общение</b><small>Обсудить идею, задать вопрос</small></span>
                     </button>
                     {INTENT_OPTIONS.map((option) => (
                       <button type="button" role="menuitem" key={option.value} className={composeIntent === option.value ? "active" : ""} onClick={() => { setComposeIntent(option.value); setSettingsExpanded(true); setIntentMenuOpen(false); }}>
-                        <b>{option.label}</b><small>{option.hint}</small>
+                        <i><ChatIcon name={option.value} size={18}/></i><span><b>{option.label}</b><small>{option.hint}</small></span>
                       </button>
                     ))}
                   </div>,
@@ -1327,13 +1381,14 @@ export function DialogueWorkspace(props: Props) {
                   <button type="button" aria-label="Вернуться к обычному общению" onClick={() => setComposeIntent("chat")}>×</button>
                 </span>
               )}
-              {props.brandId && <label className="klio-chat-context"><input type="checkbox" checked={useBrandContext} onChange={e => setUseBrandContext(e.target.checked)} disabled={busy}/> Профиль бренда</label>}
+              {props.brandId && <label className="klio-chat-context" title="Добавить данные выбранного бизнеса к запросу"><input type="checkbox" checked={useBrandContext} onChange={e => setUseBrandContext(e.target.checked)} disabled={busy}/><ChatIcon name="building" size={15}/><span>Профиль бренда</span></label>}
               <button
+                className="klio-chat-send"
                 type="submit"
                 aria-label="Отправить сообщение"
                 disabled={disabled || !draft.trim()}
               >
-                ↑
+                <ChatIcon name="arrow" size={19}/>
               </button>
             </div>
           </form>
