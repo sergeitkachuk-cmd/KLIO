@@ -23241,9 +23241,20 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 .image-generator-result-trigger{display:block;padding:0;border:0;background:none;cursor:zoom-in;width:100%}
 .image-generator-empty{display:flex;min-height:360px;align-items:center;justify-content:center;flex-direction:column;gap:16px;text-align:center;color:#bec9d8}
 .image-generator-empty svg{width:44px;height:44px}
+.image-generator-carousel{display:flex;flex-direction:column;gap:10px;width:100%;margin-top:4px;padding-top:16px;border-top:1px solid #34425a}
+.image-generator-carousel>div>span{color:var(--violet);font-size:11px;font-weight:720;letter-spacing:.08em;text-transform:uppercase}
+.image-generator-carousel>div>h3{margin:2px 0 0;font-size:15px}
+.image-generator-carousel .module-select{width:160px}
+.image-generator-carousel-slides{display:flex;flex-wrap:nowrap;gap:12px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.image-generator-carousel-slide{flex:0 0 180px;display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid #34425a;border-radius:12px;background:#101f37}
+.image-generator-carousel-slide img{display:block;width:100%;height:180px;object-fit:cover;border-radius:8px}
+.image-generator-carousel-slide b{font-size:13px;font-weight:700;line-height:1.35;color:#eef2fa}
 .material-card-image{display:block;width:100%;max-height:280px;height:auto;object-fit:contain;margin:14px 0;border-radius:10px;background:rgba(0,0,0,.06)}
 [data-theme="light"] .image-generator-layout{color:#14253f}
 [data-theme="light"] .image-generator-form,[data-theme="light"] .image-generator-preview{border-color:#d5deea;background:#fff}
 [data-theme="light"] .image-generator-form textarea{border-color:#aebdd0;background:#fff;color:#14253f}
 [data-theme="light"] .image-generator-form textarea::placeholder,[data-theme="light"] .image-generator-form p,[data-theme="light"] .image-generator-preview p,[data-theme="light"] .image-generator-empty{color:#4e6078}
+[data-theme="light"] .image-generator-carousel{border-color:#d5deea}
+[data-theme="light"] .image-generator-carousel-slide{border-color:#d5deea;background:#fff}
+[data-theme="light"] .image-generator-carousel-slide b{color:#14253f}
 @media(max-width:750px){.image-generator-layout{grid-template-columns:1fr;padding:16px}.image-generator-form,.image-generator-preview{padding:18px}.image-generator-empty{min-height:220px}}
