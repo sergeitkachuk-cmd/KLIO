@@ -20,7 +20,7 @@
   display: none;
 }
 .workspace-mode-switch button[aria-pressed="true"] {
-  background: #23352d;
+  background: #254263;
   color: #fff;
 }
 [data-theme="dark"] .workspace-mode-switch {
@@ -29,7 +29,7 @@
   border-color: #374138;
 }
 [data-theme="dark"] .workspace-mode-switch button[aria-pressed="true"] {
-  background: #c2d9b9;
+  background: #cbdbec;
   color: #172018;
 }
 .klio-chat {
@@ -38,7 +38,7 @@
   --chat-text: #202720;
   --chat-muted: #687268;
   --chat-line: #e3e7e0;
-  --chat-accent: #294b3b;
+  --chat-accent: #28496d;
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
   height: calc(100dvh - 84px);
@@ -64,7 +64,7 @@
   --chat-text: #edf1eb;
   --chat-muted: #a5afa3;
   --chat-line: #374138;
-  --chat-accent: #c2d9b9;
+  --chat-accent: #cbdbec;
   color: var(--chat-text);
 }
 .klio-chat[hidden] {
@@ -93,7 +93,7 @@
   --chat-text: #edf1eb;
   --chat-muted: #a5afa3;
   --chat-line: #374138;
-  --chat-accent: #c2d9b9;
+  --chat-accent: #cbdbec;
 }
 .klio-chat button,
 .klio-chat select,
@@ -514,7 +514,7 @@
   border: 0;
   border-radius: 50%;
   font-size: 24px;
-  background: #294b3b;
+  background: #28496d;
   color: #fff;
 }
 .klio-chat-compose > small {
@@ -848,8 +848,8 @@
 }
 
 /* Shared library/calendar keep their data and behavior, with the dialogue skin. */
-.workspace-shell.is-dialogue{--dialogue-paper:#fcfdff;--dialogue-soft:#f0f4f8;--dialogue-ink:#17283a;--dialogue-line:#d8e1ea;--dialogue-muted:#526579;--dialogue-accent:#27506e}
-[data-theme=dark] .workspace-shell.is-dialogue{--dialogue-paper:#151d28;--dialogue-soft:#1d2936;--dialogue-ink:#edf3f9;--dialogue-line:#354656;--dialogue-muted:#afbfce;--dialogue-accent:#a8d6ed}
+.workspace-shell.is-dialogue{--dialogue-paper:#fcfdff;--dialogue-soft:#f0f4f8;--dialogue-ink:#17283a;--dialogue-line:#d8e1ea;--dialogue-muted:#526579;--dialogue-accent:#28496d}
+[data-theme=dark] .workspace-shell.is-dialogue{--dialogue-paper:#151d28;--dialogue-soft:#1d2936;--dialogue-ink:#edf3f9;--dialogue-line:#354656;--dialogue-muted:#afbfce;--dialogue-accent:#b2c9e3}
 
 /* Every module (Профиль бренда, Генератор, Контент-план, Редакторы КЛИО,
    Семантика, Конкуренты, Генерация изображений) is the same professional-
@@ -898,12 +898,12 @@ body:has(.workspace-shell.is-dialogue)>.module-select-list{color:#17283a;backgro
 body:has(.workspace-shell.is-dialogue)>.module-select-list>button{color:#17283a}
 body:has(.workspace-shell.is-dialogue)>.module-select-list>button:hover,
 body:has(.workspace-shell.is-dialogue)>.module-select-list>button.active{background:#f0f4f8;border-color:#d8e1ea}
-body:has(.workspace-shell.is-dialogue)>.module-select-list>button>em{color:#27506e}
+body:has(.workspace-shell.is-dialogue)>.module-select-list>button>em{color:#28496d}
 :root[data-theme="dark"] body:has(.workspace-shell.is-dialogue)>.module-select-list{color:#edf3f9;background:#151d28;border-color:#354656;box-shadow:0 22px 55px #0a0f16b3}
 :root[data-theme="dark"] body:has(.workspace-shell.is-dialogue)>.module-select-list>button{color:#edf3f9}
 :root[data-theme="dark"] body:has(.workspace-shell.is-dialogue)>.module-select-list>button:hover,
 :root[data-theme="dark"] body:has(.workspace-shell.is-dialogue)>.module-select-list>button.active{background:#1d2936;border-color:#354656}
-:root[data-theme="dark"] body:has(.workspace-shell.is-dialogue)>.module-select-list>button>em{color:#a8d6ed}
+:root[data-theme="dark"] body:has(.workspace-shell.is-dialogue)>.module-select-list>button>em{color:#b2c9e3}
 
 /* CTA buttons reused across every module. White text needs a dark fill in
    light mode but a light fill in dark mode (var(--dialogue-accent) itself
@@ -912,8 +912,8 @@ body:has(.workspace-shell.is-dialogue)>.module-select-list>button>em{color:#2750
    directly. */
 .workspace-shell.is-dialogue .workspace-content .button.ghost,
 .workspace-shell.is-dialogue .workspace-content .button.outline{border-color:var(--dialogue-line)!important;background:var(--dialogue-paper)!important;color:var(--dialogue-ink)!important}
-:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-content .button.primary{background:#274861!important;color:#fff!important;box-shadow:none!important}
-:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-content .button.primary{background:#c4e4f3!important;color:#17283a!important;box-shadow:none!important}
+:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-content .button.primary{background:#254263!important;color:#fff!important;box-shadow:none!important}
+:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-content .button.primary{background:#cbdbec!important;color:#17283a!important;box-shadow:none!important}
 
 /* Профиль бренда: named in the report as still reading "professional" -
    its tab bar, score/checklist cards and inputs hardcode a purple/lavender
@@ -925,8 +925,8 @@ body:has(.workspace-shell.is-dialogue)>.module-select-list>button>em{color:#2750
 .workspace-shell.is-dialogue .brand-tabs button i{border-color:var(--dialogue-line)!important;color:var(--dialogue-muted)!important}
 .workspace-shell.is-dialogue .brand-tabs button>span{border-color:var(--dialogue-line)!important;color:var(--dialogue-muted)!important}
 .workspace-shell.is-dialogue .brand-tabs button.active{border-color:transparent!important;box-shadow:none!important}
-:root[data-theme="light"] .workspace-shell.is-dialogue .brand-tabs button.active{background:#274861!important;color:#fff!important}
-:root[data-theme="dark"] .workspace-shell.is-dialogue .brand-tabs button.active{background:#c4e4f3!important;color:#17283a!important}
+:root[data-theme="light"] .workspace-shell.is-dialogue .brand-tabs button.active{background:#254263!important;color:#fff!important}
+:root[data-theme="dark"] .workspace-shell.is-dialogue .brand-tabs button.active{background:#cbdbec!important;color:#17283a!important}
 .workspace-shell.is-dialogue .brand-tabs button.active :is(i,span){border-color:currentColor!important;color:inherit!important;background:transparent!important}
 .workspace-shell.is-dialogue :is(.brand-score,.brand-checklist){background:var(--dialogue-soft)!important;border-color:var(--dialogue-line)!important;box-shadow:none!important}
 .workspace-shell.is-dialogue .brand-score>div::after{background:var(--dialogue-paper)!important;border-color:var(--dialogue-line)!important}
@@ -961,8 +961,8 @@ body:has(.workspace-shell.is-dialogue)>.module-select-list>button>em{color:#2750
 
 /* Calm, cool chat palette; explicit foregrounds prevent workspace theme rules
    from turning labels white on light surfaces. */
-.workspace-shell.is-dialogue .klio-chat{--chat-bg:#fcfdff;--chat-side:#f0f4f8;--chat-text:#17283a;--chat-muted:#526579;--chat-line:#d8e1ea;--chat-accent:#27506e;color:var(--chat-text)}
-:root[data-theme="dark"] .workspace-shell.is-dialogue .klio-chat{--chat-bg:#151d28;--chat-side:#1d2936;--chat-text:#edf3f9;--chat-muted:#afbfce;--chat-line:#354656;--chat-accent:#a8d6ed}
+.workspace-shell.is-dialogue .klio-chat{--chat-bg:#fcfdff;--chat-side:#f0f4f8;--chat-text:#17283a;--chat-muted:#526579;--chat-line:#d8e1ea;--chat-accent:#28496d;color:var(--chat-text)}
+:root[data-theme="dark"] .workspace-shell.is-dialogue .klio-chat{--chat-bg:#151d28;--chat-side:#1d2936;--chat-text:#edf3f9;--chat-muted:#afbfce;--chat-line:#354656;--chat-accent:#b2c9e3}
 /* Every property !important and repeated on the inner spans too - the
    pressed button reportedly still rendered a dark background with dark
    (unreadable) text in light theme (site owner: "когда нажата кнопка
@@ -971,14 +971,14 @@ body:has(.workspace-shell.is-dialogue)>.module-select-list>button>em{color:#2750
    partial-override gap regardless of the exact prior conflict. */
 :root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch{background:#edf2f7!important;border-color:#ccd8e4!important}
 :root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch button,
-:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch button span{color:#24384a!important}
-:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"]{background:#274861!important}
+:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch button span{color:#1e3650!important}
+:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"]{background:#254263!important}
 :root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"],
 :root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"] span{color:#fff!important}
 :root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch{background:#233345!important;border-color:#44586b!important}
 :root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch button,
 :root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch button span{color:#edf3f9!important}
-:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"]{background:#c4e4f3!important}
+:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"]{background:#cbdbec!important}
 :root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"],
 :root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"] span{color:#17283a!important}
 .workspace-shell.is-dialogue .klio-chat :is(button,input,textarea){color:var(--chat-text)}
@@ -987,10 +987,10 @@ body:has(.workspace-shell.is-dialogue)>.module-select-list>button>em{color:#2750
 .workspace-shell.is-dialogue .klio-chat-compose form{border:1px solid var(--chat-line);border-radius:20px;box-shadow:0 4px 20px #182b4410}
 .workspace-shell.is-dialogue .klio-chat-compose textarea{color:var(--chat-text)!important;outline:0!important;border:0!important;box-shadow:none!important;background:transparent!important}
 .workspace-shell.is-dialogue .klio-chat-compose textarea::placeholder{color:var(--chat-muted);opacity:1}
-.workspace-shell.is-dialogue .klio-chat-compose form:focus-within{border-color:#7ca7c5;box-shadow:0 0 0 2px #7ca7c533}
+.workspace-shell.is-dialogue .klio-chat-compose form:focus-within{border-color:#759ecc;box-shadow:0 0 0 2px #759ecc33}
 .workspace-shell.is-dialogue .klio-chat-compose textarea:focus-visible{outline:0!important}
 .workspace-shell.is-dialogue .klio-chat-editor :is(input,textarea){color:var(--chat-text)!important;border:1px solid var(--chat-line)!important;border-radius:12px;outline:0!important;box-shadow:none!important}
-.workspace-shell.is-dialogue .klio-chat-editor :is(input,textarea):focus{border-color:#7ca7c5!important;box-shadow:0 0 0 2px #7ca7c533!important}
+.workspace-shell.is-dialogue .klio-chat-editor :is(input,textarea):focus{border-color:#759ecc!important;box-shadow:0 0 0 2px #759ecc33!important}
 .klio-chat-brand-picker{position:relative;min-width:0}
 .workspace-shell.is-dialogue .klio-chat-business-trigger{width:100%;min-height:40px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 11px;border:1px solid var(--chat-line);border-radius:12px;background:var(--chat-bg);color:var(--chat-text);font-size:13px;font-weight:600;line-height:1.3;text-align:left}
 /* Shrinks and wraps instead of clipping to one ellipsized line (site
@@ -1062,11 +1062,11 @@ body:has(.workspace-shell.is-dialogue)>.module-select-list>button>em{color:#2750
 .workspace-shell.is-dialogue .publications-module .publications-chip b{color:var(--dialogue-muted)}
 .workspace-shell.is-dialogue .publications-module .publications-nav>button,
 .workspace-shell.is-dialogue .publications-module .publications-day-head>button{color:var(--dialogue-ink)}
-.workspace-shell.is-dialogue .publications-module .publications-view-switch button.active{background:#dceaf4;color:#17384e}
-.workspace-shell.is-dialogue .publications-module .publications-day.is-today{background:color-mix(in srgb,var(--dialogue-soft) 75%,#a8d6ed);border-color:#7ca7c5}
+.workspace-shell.is-dialogue .publications-module .publications-view-switch button.active{background:#dde7f3;color:#1b314a}
+.workspace-shell.is-dialogue .publications-module .publications-day.is-today{background:color-mix(in srgb,var(--dialogue-soft) 75%,#b2c9e3);border-color:#759ecc}
 .workspace-shell.is-dialogue .publications-module .publications-day.is-selected{background:color-mix(in srgb,var(--dialogue-soft) 78%,#b5b2ed);border-color:#8a89b5}
 .workspace-shell.is-dialogue .publications-module .publications-day.is-today .publications-day-head>span{color:var(--dialogue-ink)}
-.workspace-shell.is-dialogue .publications-module .publications-chip{color:var(--dialogue-ink);background:color-mix(in srgb,var(--chip-accent,#376fa8) 12%,var(--dialogue-paper))}
+.workspace-shell.is-dialogue .publications-module .publications-chip{color:var(--dialogue-ink);background:color-mix(in srgb,var(--chip-accent,#3c6da3) 12%,var(--dialogue-paper))}
 .workspace-shell.is-dialogue .publications-module .publications-empty-note{border-color:var(--dialogue-line);color:var(--dialogue-muted)}
 .workspace-shell.is-dialogue .publications-module .publications-vk-note{color:var(--dialogue-ink);border-color:var(--dialogue-line);background:var(--dialogue-soft)}
 .workspace-shell.is-dialogue .publications-module .publications-vk-note b{color:var(--dialogue-ink)}
@@ -1085,7 +1085,7 @@ body:has(.workspace-shell.is-dialogue)>.module-select-list>button>em{color:#2750
 .workspace-shell.is-dialogue :is(.publications-editor-modal,.publications-channel-modal) .publications-editor-field>span>small{color:#afbfce}
 .workspace-shell.is-dialogue :is(.publications-editor-modal,.publications-channel-modal) :is(input,textarea,.module-select-trigger){color:#edf3f9;background:#233345;border-color:#44586b;box-shadow:none;border-radius:10px}
 .workspace-shell.is-dialogue :is(.publications-editor-modal,.publications-channel-modal) :is(input,textarea)::placeholder{color:#afbfce}
-.workspace-shell.is-dialogue :is(.publications-editor-modal,.publications-channel-modal) :is(input,textarea):focus{outline:0;border-color:#7ca7c5;box-shadow:0 0 0 2px #7ca7c544}
+.workspace-shell.is-dialogue :is(.publications-editor-modal,.publications-channel-modal) :is(input,textarea):focus{outline:0;border-color:#759ecc;box-shadow:0 0 0 2px #759ecc44}
 .workspace-shell.is-dialogue :is(.publications-editor-modal,.publications-channel-modal) .publications-editor-row label>span,
 .workspace-shell.is-dialogue :is(.publications-editor-modal,.publications-channel-modal) .module-select>span{color:#edf3f9}
 .workspace-shell.is-dialogue :is(.publications-editor-modal,.publications-channel-modal) .module-select-trigger :is(b,em,i){color:#edf3f9}
@@ -1130,10 +1130,10 @@ body:has(.workspace-shell.is-dialogue .publications-editor-modal)>.module-select
 .klio-chat-intent-menu::-webkit-scrollbar{width:6px}
 .klio-chat-intent-menu::-webkit-scrollbar-track{background:transparent}
 .klio-chat-intent-menu::-webkit-scrollbar-thumb{border-radius:999px}
-:root[data-theme="light"] .klio-chat-intent-menu{scrollbar-color:#27506e transparent}
-:root[data-theme="light"] .klio-chat-intent-menu::-webkit-scrollbar-thumb{background:#27506e99}
-:root[data-theme="dark"] .klio-chat-intent-menu{scrollbar-color:#a8d6ed transparent}
-:root[data-theme="dark"] .klio-chat-intent-menu::-webkit-scrollbar-thumb{background:#a8d6ed99}
+:root[data-theme="light"] .klio-chat-intent-menu{scrollbar-color:#28496d transparent}
+:root[data-theme="light"] .klio-chat-intent-menu::-webkit-scrollbar-thumb{background:#28496d99}
+:root[data-theme="dark"] .klio-chat-intent-menu{scrollbar-color:#b2c9e3 transparent}
+:root[data-theme="dark"] .klio-chat-intent-menu::-webkit-scrollbar-thumb{background:#b2c9e399}
 .klio-chat-intent-menu>button{display:flex;align-items:baseline;gap:6px;min-width:0;padding:7px 10px;border:0;border-radius:9px;text-align:left;background:transparent;font-size:12px}
 .klio-chat-intent-menu>button b{flex:0 0 auto;font-size:12px;font-weight:650}
 .klio-chat-intent-menu>button small{overflow:hidden;min-width:0;font-size:11px;text-overflow:ellipsis;white-space:nowrap}
@@ -1194,9 +1194,9 @@ body>.module-select-list.module-select-dialogue{color:#17283a;background:#fcfdff
 body>.module-select-list.module-select-dialogue>button{color:#17283a}
 body>.module-select-list.module-select-dialogue>button:hover,
 body>.module-select-list.module-select-dialogue>button.active{background:#f0f4f8;border-color:#d8e1ea}
-body>.module-select-list.module-select-dialogue>button>em{color:#27506e}
+body>.module-select-list.module-select-dialogue>button>em{color:#28496d}
 :root[data-theme="dark"] body>.module-select-list.module-select-dialogue{color:#edf3f9;background:#151d28;border-color:#354656;box-shadow:0 22px 55px #0a0f16b3}
 :root[data-theme="dark"] body>.module-select-list.module-select-dialogue>button{color:#edf3f9}
 :root[data-theme="dark"] body>.module-select-list.module-select-dialogue>button:hover,
 :root[data-theme="dark"] body>.module-select-list.module-select-dialogue>button.active{background:#1d2936;border-color:#354656}
-:root[data-theme="dark"] body>.module-select-list.module-select-dialogue>button>em{color:#a8d6ed}
+:root[data-theme="dark"] body>.module-select-list.module-select-dialogue>button>em{color:#b2c9e3}
