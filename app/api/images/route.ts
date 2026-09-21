@@ -34,7 +34,15 @@ export async function POST(request: Request) {
     if (brandId) {
       const [brand] = await db.select({ profileJson: brands.profileJson }).from(brands).where(and(eq(brands.id, brandId), eq(brands.ownerEmail, user.email))).limit(1);
       if (!brand) throw new WorkspaceAccessError("Бренд не найден.", 404);
-      brandContext = `\nКонтекст бренда: ${brand.profileJson.slice(0, 4000)}`;
+      // The brand-context JSON is the same for every image request for
+      // this brand, while the actual per-article prompt is often shorter -
+      // with no steering, that made the model settle on one "safe" generic
+      // scene for the brand (site owner: 7 completely different articles
+      // for two different brands each rendered as the same laptop-mug-
+      // plant desk mockup / phone-with-chat scene, every time). The profile
+      // is genuinely still needed for style/palette/tone consistency - the
+      // fix is telling the model what NOT to keep repeating, not removing it.
+      brandContext = `\n\nКонтекст бренда (используй для стиля, палитры и общего тона — не для повторения одной и той же сцены): ${brand.profileJson.slice(0, 4000)}\n\nВажно: сюжет и композиция изображения должны отражать именно тему конкретного запроса выше. Не изображай один и тот же шаблон (например, «рабочий стол с ноутбуком и фирменной кружкой») для каждого запроса этого бренда — придумывай разную визуальную идею под разную тему.`;
       if (useLogo) {
         const profile = JSON.parse(brand.profileJson) as { logoKey?: unknown };
         if (typeof profile.logoKey === "string") logoKey = profile.logoKey;

@@ -279,9 +279,19 @@ async function runReply(
       // article cover" is the point. The no-selection branch (a plain
       // "draw X" request with nothing to headline) keeps suppressing
       // incidental text, since that's a different, non-banner use case.
+      // Same fix as api/images/route.ts's own brandContext, same reported
+      // symptom (site owner: repeated articles for the same brand kept
+      // rendering as the identical desk/mockup scene) - the brand profile
+      // JSON is identical on every call for a brand, so with no steering
+      // it dominated over whatever this specific message actually asked
+      // for. Still needed for style/palette/tone consistency, just told
+      // what not to keep repeating.
+      const businessContext = useBrandContext
+        ? `${brand?.profileJson ?? "не указан"} (используй для стиля, палитры и тона — не повторяй одну и ту же сцену на каждой картинке; сюжет должен отражать именно тему этого запроса)`
+        : "отключён пользователем";
       const prompt = selected
-        ? `Создай изображение-обложку для этого материала, как баннер к статье: заголовок уместно вынести на изображение крупным текстом, как настоящая обложка. Контекст бизнеса: ${useBrandContext ? brand?.profileJson ?? "не указан" : "отключён пользователем"}. Материал: ${selected.title}\n${selected.body}\nПожелания: ${last}`
-        : `Создай изображение по описанию. Не добавляй надписи, если они не запрошены. Контекст бизнеса: ${useBrandContext ? brand?.profileJson ?? "не указан" : "отключён пользователем"}. Описание: ${last}`;
+        ? `Создай изображение-обложку для этого материала, как баннер к статье: заголовок уместно вынести на изображение крупным текстом, как настоящая обложка. Контекст бизнеса: ${businessContext}. Материал: ${selected.title}\n${selected.body}\nПожелания: ${last}`
+        : `Создай изображение по описанию. Не добавляй надписи, если они не запрошены. Контекст бизнеса: ${businessContext}. Описание: ${last}`;
       const imageOptions = {
         ...(settings.imageAspectRatio ? { aspectRatio: settings.imageAspectRatio } : {}),
         ...(settings.imageOutputFormat ? { outputFormat: settings.imageOutputFormat } : {}),
