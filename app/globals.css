@@ -362,10 +362,12 @@ select:focus-visible {
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   /* Widened (site owner: "расширь шапку-капсулу тоже по ширине
-     страницы") - was capped noticeably narrower than the page sections
-     beneath it, so the floating pill read as small against the rest of
-     the layout. */
-  width: min(calc(100% - 32px), 1760px);
+     страницы"). No upper cap at all now - a 1760px cap still left it
+     visibly narrower than the page on anything wider than ~1790px, and
+     did nothing below that (calc(100% - 32px) was already smaller than
+     any cap on ordinary laptop/desktop widths, so the first attempt at
+     this was invisible on a typical screen). */
+  width: calc(100% - 32px);
   height: 64px;
   padding: 0 18px;
   border: 1px solid rgba(255, 255, 255, 0.34);
