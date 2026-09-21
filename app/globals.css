@@ -2238,7 +2238,6 @@ select:focus-visible {
   border: 1px solid transparent;
   border-radius: 5px 46px 5px 5px;
   background: rgba(4, 18, 37, 0.4);
-  box-shadow: 0 44px 110px rgba(3, 12, 26, 0.35), inset 0 1px rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(14px) saturate(130%);
 }
 
@@ -4818,10 +4817,18 @@ footer nav a {
      .studio/.semantic-shell/.adaptation-shell/etc. */
   border: 1px solid transparent;
   border-radius: 4px 24px 4px 4px;
+  /* Was a slightly different navy (#0a2340/#082b4c/#061c34) than every
+     other module shell's own consolidated tone (#06182e/#08233f/#041426,
+     see the shared dark-theme rule further down covering .semantic-shell/
+     .adaptation-shell/.competitor-setup-card/.content-plan-setup/
+     .brand-profile-body) - close enough to read as the same colour in
+     isolation, different enough to read as the page "jumping" shade
+     switching between Материалы and any other module (site owner). Also
+     dropped the box-shadow - same "big frame" the site owner flagged on
+     every module's own shell, not just the heading strip fixed earlier. */
   background:
-    radial-gradient(circle at 92% 0%, rgba(91, 107, 130, 0.24), transparent 30%),
-    linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
-  box-shadow: 0 18px 48px rgba(3, 12, 26, 0.28);
+    radial-gradient(circle at 92% 2%, rgba(91, 107, 130, 0.16), transparent 34%),
+    linear-gradient(135deg, #06182e 0%, #08233f 55%, #041426 100%);
 }
 
 .workspace-history-head span {
@@ -5861,7 +5868,10 @@ footer nav a {
   background:
     radial-gradient(circle at 92% 3%, rgba(91, 107, 130, 0.26), transparent 32%),
     linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
-  box-shadow: 0 28px 82px rgba(3, 12, 26, 0.3), inset 0 1px rgba(255, 255, 255, 0.1);
+  /* box-shadow removed - same "big frame" the site owner flagged on
+     every module's own shell (not just the heading strip fixed earlier);
+     this rule's own background is overridden anyway by the shared
+     dark-theme rule further down the file. */
   /* No backdrop-filter (was blur(14px) saturate(145%)) - the base
      linear-gradient is solid hex color with no alpha anywhere, so this
      was 100% invisible while still costing a full-panel recomposite.
@@ -7372,7 +7382,7 @@ footer nav a {
 .competitor-insights-grid article,
 .competitor-actionbar {
   border: 1px solid transparent;
-  box-shadow: 0 24px 70px rgba(3, 12, 26, 0.28), inset 0 1px rgba(255, 255, 255, 0.1);
+  /* box-shadow removed - same "big frame" reasoning as .semantic-shell. */
   /* No backdrop-filter (was blur(13px) saturate(145%)) - all four of
      these selectors' own backgrounds (defined separately per selector
      below/elsewhere) turn out to be opaque hex gradients too, same as
@@ -8881,7 +8891,11 @@ footer nav a {
   background:
     radial-gradient(circle at 93% 4%, rgba(91, 107, 130, 0.17), transparent 27%),
     linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(244, 246, 248, 0.72));
-  box-shadow: 0 26px 80px rgba(39, 46, 55, 0.1), inset 0 1px rgba(255, 255, 255, 0.96);
+  /* box-shadow removed - same "big frame" reasoning as .semantic-shell.
+     Background/border left alone - unlike the other module shells,
+     this one is deliberately paper-white even in dark theme (a physical
+     "planning sheet" look), not a stray light-theme leak, so it's out of
+     scope for this pass. */
 }
 
 .content-plan-setup-head {
@@ -9803,7 +9817,7 @@ footer nav a {
   background:
     radial-gradient(circle at 96% 0%, rgba(91, 107, 130, 0.26), transparent 32%),
     linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
-  box-shadow: 0 28px 82px rgba(3, 12, 26, 0.3), inset 0 1px rgba(255, 255, 255, 0.1);
+  /* box-shadow removed - same "big frame" reasoning as .semantic-shell. */
   /* No backdrop-filter (was blur(14px) saturate(145%)) - the base
      linear-gradient is solid hex with no alpha at any point, so it was
      100% invisible - and this is very likely the main source of the
@@ -13102,11 +13116,13 @@ input[type="radio"] {
   }
 }
 
-/* No frame at all now - site owner: "самая большая рамка и её фон вообще
-   не нужен во всех рабочих полях". This heading sits directly on
-   .workspace-shell's own shared page background instead of its own
-   bordered/gradient/blurred card; hierarchy comes from the type scale
-   below, not a panel. */
+/* No border/shadow/blur card anymore - site owner: "самая большая рамка
+   и её фон вообще не нужен во всех рабочих полях". But a flat plain
+   background read as "серо и угнетающе" once it shipped - site owner
+   asked for the same soft gradient wash .workspace-sidebar already has
+   instead of either extreme (no boxed panel, but not flat solid colour
+   either). No border/box-shadow/backdrop-filter, just a colour wash
+   behind the type. */
 .workspace-module > .workspace-module-heading {
   /* Was position: sticky; top: 88px — floated over the module's own
      content while scrolling. Static now, per request: the heading just
@@ -13116,7 +13132,11 @@ input[type="radio"] {
   position: relative;
   z-index: 18;
   margin: 0 0 20px;
+  padding: 18px 0 22px;
   color: #fff;
+  background:
+    radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--module-accent) 22%, transparent), transparent 48%),
+    linear-gradient(120deg, rgba(255, 255, 255, 0.05), transparent 65%);
 }
 
 .workspace-module-heading span {
@@ -13170,7 +13190,11 @@ input[type="radio"] {
   justify-content: space-between;
   gap: 42px;
   margin-bottom: 20px;
+  padding: 18px 0 22px;
   color: #fff;
+  background:
+    radial-gradient(circle at 10% 0%, color-mix(in srgb, var(--module-accent, #71839c) 22%, transparent), transparent 48%),
+    linear-gradient(120deg, rgba(255, 255, 255, 0.05), transparent 65%);
 }
 
 .brand-profile-head span {
@@ -13196,8 +13220,12 @@ input[type="radio"] {
   border: 1px solid transparent;
   border-radius: 4px 38px 4px 4px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.83), rgba(245, 246, 248, 0.72));
-  box-shadow: 0 24px 64px rgba(3, 17, 34, 0.22), inset 0 1px rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(14px) saturate(145%);
+  /* box-shadow removed - same "big frame" reasoning as .semantic-shell.
+     backdrop-filter removed too - this rule's background is overridden
+     in dark theme by the shared solid-hex gradient rule further down
+     (same file), which has no alpha anywhere, so the blur was as
+     invisible-but-costly there as it was on .semantic-shell/
+     .adaptation-shell before that got fixed. */
 }
 
 .content-plan-item-actions {
@@ -18615,11 +18643,11 @@ input[type="radio"] {
    the dark-theme default. */
 [data-theme="light"] .brand-profile-body {
   border-color: transparent;
-  box-shadow: 0 28px 82px rgba(20, 40, 80, 0.1), inset 0 1px rgba(255, 255, 255, 0.85);
 }
 
 [data-theme="light"] .brand-profile-head {
   color: #0d1b31;
+  background: radial-gradient(circle at 10% 0%, rgba(53, 104, 212, 0.12), transparent 48%);
 }
 
 [data-theme="light"] .brand-profile-head span {
@@ -19529,6 +19557,7 @@ input[type="radio"] {
    above, not the near-black it was. */
 [data-theme="light"] .workspace-module > .workspace-module-heading {
   color: #0d1b31;
+  background: radial-gradient(circle at 10% 0%, rgba(53, 104, 212, 0.12), transparent 48%);
 }
 
 [data-theme="light"] .workspace-module-heading span {
@@ -21468,7 +21497,6 @@ input[type="radio"] {
   background:
     radial-gradient(circle at 92% 0%, rgba(53, 104, 212, 0.18), transparent 32%),
     linear-gradient(135deg, #e3eaf6, #f0f4fa 57%, #fff);
-  box-shadow: 0 18px 48px rgba(20, 40, 80, 0.12), inset 0 1px #fff;
 }
 
 [data-theme="light"] .workspace-history-head span {
