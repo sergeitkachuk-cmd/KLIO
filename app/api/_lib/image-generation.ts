@@ -75,6 +75,19 @@ export function resolveImageGenerationOptions(options: ImageGenerationOptions = 
   };
 }
 
+// Shared by createImageFromLogo and createCarouselSlideImage's "logo"
+// branch below - was two separately-written copies of the same wording
+// until the version that suggested placing the logo "on a sign, package,
+// or screen" turned out to steer the model toward a generic laptop/phone
+// desk scene (that example list itself, "экране" especially), and to
+// treat matching the reference image as the dominant task, dropping
+// whatever headline/scene the rest of the prompt actually asked for
+// (site owner: with the logo on, back to the same repeated desk mockup,
+// and the article's own headline stopped rendering; off, both worked).
+// Now explicit that this is additive, not a replacement task, and drops
+// "screen" from the suggested placements entirely.
+const LOGO_REFERENCE_INSTRUCTION = "Дополнительно вплети в сцену логотип бренда с приложенного референса — максимально похоже по цвету, форме и тексту. Это дополнение к заданию выше, а не замена ему: сохрани весь заголовок, текст и сюжет из задания, ничего не убирай и не упрощай ради логотипа. Расположи его на подходящем по смыслу предмете сцены (вывеска, упаковка и т.п.) — не добавляй ноутбук, телефон или экран специально ради логотипа, если их не просили. Не накладывай логотип поверх готовой картинки отдельным слоем.";
+
 export const imageConfigured = () =>
   Boolean(storageConfigured() && (process.env.OPENAI_API_KEY?.trim() ||
     (process.env.KLIO_IMAGE_SERVICE_URL?.trim() && process.env.KLIO_IMAGE_SERVICE_TOKEN?.trim())));
@@ -250,7 +263,7 @@ export async function createImageFromLogo(
   options: ImageGenerationOptions = {},
   model?: string,
 ) {
-  const guidedPrompt = `${prompt}\n\nНа изображении должен естественно присутствовать логотип бренда - органично вписанный в композицию (например, на вывеске, упаковке, экране или другом уместном по смыслу объекте сцены), а не наложенный поверх готовой картинки отдельным слоем. Воспроизведи логотип с приложенного референса максимально похоже: те же цвета, форма и текст.`;
+  const guidedPrompt = `${prompt}\n\n${LOGO_REFERENCE_INSTRUCTION}`;
   const { bytes, contentType } = await generateImageBytes(guidedPrompt, requestId, options, logo, model);
   const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
   return uploadPublicationImage(
@@ -285,7 +298,7 @@ export async function createCarouselSlideImage(
   const guidedPrompt = !reference
     ? prompt
     : reference.kind === "logo"
-      ? `${prompt}\n\nНа изображении должен естественно присутствовать логотип бренда - органично вписанный в композицию (например, на вывеске, упаковке, экране или другом уместном по смыслу объекте сцены), а не наложенный поверх готовой картинки отдельным слоем. Воспроизведи логотип с приложенного референса максимально похоже: те же цвета, форма и текст.`
+      ? `${prompt}\n\n${LOGO_REFERENCE_INSTRUCTION}`
       : `${prompt}\n\nЭто один слайд карусели из серии. Сохрани ту же визуальную стилистику, палитру, шрифт и композицию, что и на приложенном референсном изображении - слайды должны выглядеть частью одного набора, но с текстом именно этого слайда, не референсного.`;
   const { bytes, contentType } = await generateImageBytes(guidedPrompt, requestId, options, reference, model);
   const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
