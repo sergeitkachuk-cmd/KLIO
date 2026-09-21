@@ -226,6 +226,17 @@ test("a failed upload partway through a VK carousel aborts before wall.post is e
   assert.equal(h.calls.length, 5);
 });
 
+test("VK document permission failure gives setup instructions and is never retried", async () => {
+  const h = vkHarness([{ body: { error: { error_code: 7, error_msg: "Access denied: User can't upload docs to this group" } } }]);
+  await assert.rejects(h.send(["https://cdn.example.invalid/a.png"]), error => {
+    assert.equal(error.retryable, false);
+    assert.match(error.message, /включите раздел «Документы»/);
+    assert.match(error.message, /«Стена» и «Документы\/файлы»/);
+    return true;
+  });
+  assert.equal(h.calls.length, 1);
+});
+
 function loadPublishAttempt() {
   const { resolveImageUrls } = load("app/api/_lib/publish-attempt.ts", {
     "drizzle-orm": { eq: () => () => true, inArray: () => () => true, and: () => () => true, sql: () => "now" },

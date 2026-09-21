@@ -279,12 +279,18 @@ async function vkCall(method: string, params: Record<string, string>): Promise<R
     | null;
   if (!payload || payload.error) {
     const code = payload?.error?.error_code;
+    const providerMessage = payload?.error?.error_msg ?? "";
     // 5 = auth failed (revoked/invalid token), 15 = access denied (bot/user
     // lost admin rights on the community) — both need the owner to
     // reconnect the channel, not three more identical attempts.
-    const permanent = code === 5 || code === 15 || code === 27 || code === 901;
+    // The docs restriction is also permanent until the owner enables the
+    // community's Documents section and grants that right to the key.
+    const documentsDisabled = /can't upload docs to this group/i.test(providerMessage);
+    const permanent = code === 5 || code === 15 || code === 27 || code === 901 || documentsDisabled;
     throw new PublishError(
-      payload?.error ? `VK отклонил запрос: ${payload.error.error_msg}` : "VK вернул пустой ответ.",
+      documentsDisabled
+        ? "VK запретил загрузку изображения. В сообществе включите раздел «Документы», затем создайте ключ с правами «Стена» и «Документы/файлы» и переподключите канал."
+        : payload?.error ? `VK отклонил запрос: ${payload.error.error_msg}` : "VK вернул пустой ответ.",
       !permanent && (Boolean(payload?.error) || method !== "wall.post"),
     );
   }

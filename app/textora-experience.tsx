@@ -6113,10 +6113,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <label className="publications-editor-field"><span>Токен бота</span><input type="text" value={pubChannelTelegram.botToken} onChange={(event) => setPubChannelTelegram((current) => ({ ...current, botToken: event.target.value }))} placeholder="123456789:AA…"/></label>
                 <label className="publications-editor-field"><span>Id канала</span><input type="text" value={pubChannelTelegram.chatId} onChange={(event) => setPubChannelTelegram((current) => ({ ...current, chatId: event.target.value }))} placeholder="@your_channel или -100…"/></label>
               </> : <>
-                <p className="publications-vk-note"><b>Для текста и изображений нужен один ключ сообщества.</b> КЛИО загрузит фотографии в VK и прикрепит их к записи автоматически.</p>
+                <p className="publications-vk-note"><b>Для текста и изображений нужен один ключ сообщества.</b> Изображения загружаются как графические документы и прикрепляются к записи.</p>
                 <ol className="publications-channel-steps">
+                  <li>В сообществе откройте «Управление» → «Разделы» и включите раздел <b>«Документы»</b>.</li>
                   <li>В своём сообществе VK: «Управление» → «Дополнительно» → «Работа с API» → «Ключи доступа» → «Создать ключ».</li>
-                  <li>Для ключа сообщества отметьте права <b>«Стена»</b>, <b>«Сообщения»</b> и <b>«Фотографии»</b>.</li>
+                  <li>Для ключа сообщества отметьте права <b>«Стена»</b> и <b>«Документы/файлы»</b>.</li>
                   <li>Id сообщества — можно вписать и красивое имя из адреса (<code>vk.com/kliopress</code> → <code>kliopress</code>), и числовой id из «Работа с API»: КЛИО сам определит нужное число.</li>
                 </ol>
                 <label className="publications-editor-field"><span>Сообщество VK</span><input type="text" value={pubChannelVk.groupId} onChange={(event) => setPubChannelVk((current) => ({ ...current, groupId: event.target.value }))} placeholder="vk.com/kliopress, kliopress или 123456789"/></label>
@@ -6852,7 +6853,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </div>
 
             {!activeBrandId ? <p className="publications-empty-note">Сначала выберите или создайте бренд слева — каналы и календарь публикаций привязаны к нему.</p> : <>
-              <p className="publications-vk-note"><b>Пока в тестовом режиме:</b> Telegram публикует текст и изображения; VK — только текстовые посты.</p>
+              <p className="publications-vk-note"><b>Telegram:</b> текст и изображения. <b>VK:</b> текст и изображения при включённом разделе «Документы» и соответствующем праве ключа.</p>
               {pubChannels.length === 0 && workspaceAccount.lifetimeGenerationsUsed > 0 && renderAdviceTip("publications-connect-channel", <>У вас уже есть готовые материалы, а канал ещё не подключён — нажмите «+ Подключить канал» ниже, и я смогу ставить публикации в календарь прямо в VK или Telegram.</>)}
               <div className="publications-channels-bar">
                 <div className="publications-channels-list">
