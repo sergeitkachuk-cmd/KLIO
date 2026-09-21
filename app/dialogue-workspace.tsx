@@ -69,6 +69,16 @@ function ChatKitWorkspace(
   const [editTitle, setEditTitle] = useState("");
   const [editBody, setEditBody] = useState("");
   const storageKey = `klio-chatkit:${props.userKey}:${props.brandId || "personal"}`;
+  // Let the element restore its own thread after loading. Its imperative
+  // methods do not exist while the external script is still downloading.
+  const [initialThread] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(storageKey) || null;
+    } catch {
+      // SSR and browsers with unavailable storage start with a blank thread.
+      return null;
+    }
+  });
   const activeThreadRef = useRef<string | null>(null);
   const readyRef = useRef(false);
 
@@ -115,6 +125,7 @@ function ChatKitWorkspace(
   }, [props.brandId, useBrandContext]);
 
   const chatkit = useChatKit({
+    initialThread,
     api: {
       url: apiUrl,
       domainKey: props.domainKey,
@@ -318,15 +329,19 @@ function ChatKitWorkspace(
     return () => window.clearTimeout(timeout);
   }, [onUnavailable]);
 
-  useEffect(() => {
-    let saved = "";
+  async function startNewThread() {
+    if (!readyRef.current) return;
     try {
-      saved = localStorage.getItem(storageKey) || "";
+      await chatkit.setThreadId(null);
+      activeThreadRef.current = null;
+      setActiveThreadId(null);
+      setError("");
+      setNotice("");
+      setRailOpen(false);
     } catch {
-      // A blank new thread is a safe fallback.
+      setError("Не удалось открыть новый диалог. Попробуйте ещё раз.");
     }
-    void chatkit.setThreadId(saved || null);
-  }, [chatkit, storageKey]);
+  }
 
   async function saveEdit() {
     if (!editCard || !editThreadId) return;
@@ -377,12 +392,8 @@ function ChatKitWorkspace(
         <button
           type="button"
           className="klio-chatkit-new"
-          onClick={() => {
-            activeThreadRef.current = null;
-            setActiveThreadId(null);
-            void chatkit.setThreadId(null);
-            setRailOpen(false);
-          }}
+          disabled={!chatReady}
+          onClick={() => void startNewThread()}
         >
           <span aria-hidden="true">＋</span> Новый диалог
         </button>
@@ -571,6 +582,7 @@ export function DialogueWorkspace(props: DialogueWorkspaceProps) {
         onError={useLegacyFallback}
       />
       <ChatKitWorkspace
+        key={`${props.userKey}:${props.brandId || "personal"}`}
         {...props}
         domainKey={domainKey}
         onUnavailable={useLegacyFallback}

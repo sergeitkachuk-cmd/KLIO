@@ -82,7 +82,7 @@ html[data-theme="light"] .klio-chatkit-shell {
   cursor: pointer;
 }
 
-.klio-chatkit-new:hover,
+.klio-chatkit-new:hover:not(:disabled),
 .klio-chatkit-rail nav button:hover,
 .klio-chatkit-account:hover,
 .klio-chatkit-brand-select > button:hover {
@@ -92,6 +92,11 @@ html[data-theme="light"] .klio-chatkit-shell {
 .klio-chatkit-new {
   margin-bottom: 8px;
   font-weight: 650;
+}
+
+.klio-chatkit-new:disabled {
+  opacity: 0.5;
+  cursor: wait;
 }
 
 .klio-chatkit-new > span {
