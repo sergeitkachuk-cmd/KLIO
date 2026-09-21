@@ -54,7 +54,15 @@ export function parseImageGenerationOptions(input: Record<string, unknown>): Ima
 export function resolveImageGenerationOptions(options: ImageGenerationOptions = {}) {
   const ratio = options.aspectRatio && IMAGE_SIZE_BY_RATIO[options.aspectRatio] ? options.aspectRatio : "4:3";
   const size = options.size && /^\d+x\d+$/.test(options.size) ? options.size : IMAGE_SIZE_BY_RATIO[ratio];
-  const quality = options.quality && ["low", "medium", "high"].includes(options.quality) ? options.quality : "medium";
+  // Was "medium", and only ever sent to the provider when a caller
+  // explicitly set options.quality - which nothing in this app actually
+  // does (no quality picker anywhere in the UI), so every real request
+  // omitted "quality" entirely. For gpt-image-1 that leaves the provider's
+  // own default; for gpt-image-2.5 the API guide confirms omitting it
+  // defaults to "auto" specifically, not "high" (site owner: "качество
+  // как будто низкое"). Defaulting to "high" and always sending it
+  // (below) removes that ambiguity instead of hoping "auto" picks well.
+  const quality = options.quality && ["low", "medium", "high"].includes(options.quality) ? options.quality : "high";
   const outputFormat = options.outputFormat && ["png", "jpeg", "webp"].includes(options.outputFormat) ? options.outputFormat : "png";
   const background = options.background && ["auto", "transparent", "opaque"].includes(options.background) ? options.background : "auto";
 
@@ -131,7 +139,7 @@ async function generateImageBytes(
       // sending aspectRatio at all removes that option: the relay only ever
       // sees the already-correct, already-resolved size.
       ...(options.size || options.aspectRatio ? { size: resolved.size } : {}),
-      ...(options.quality ? { quality: resolved.quality } : {}),
+      quality: resolved.quality,
       ...(options.outputFormat ? { output_format: resolved.outputFormat } : {}),
       ...(options.background ? { background: resolved.background } : {}),
       ...(logo ? { image_b64: Buffer.from(logo.bytes).toString("base64"), image_type: logo.contentType } : {}),
@@ -144,7 +152,7 @@ async function generateImageBytes(
     form.append("prompt", prompt.slice(0, 12000));
     form.append("n", "1");
     if (options.size || options.aspectRatio) form.append("size", resolved.size);
-    if (options.quality) form.append("quality", resolved.quality);
+    form.append("quality", resolved.quality);
     if (options.outputFormat) form.append("output_format", resolved.outputFormat);
     if (options.background) form.append("background", resolved.background);
     form.append("image", new File([logo.bytes], "reference", { type: logo.contentType }));
@@ -155,7 +163,7 @@ async function generateImageBytes(
       prompt: prompt.slice(0, 12000),
       n: 1,
       ...(options.size || options.aspectRatio ? { size: resolved.size } : {}),
-      ...(options.quality ? { quality: resolved.quality } : {}),
+      quality: resolved.quality,
       ...(options.outputFormat ? { output_format: resolved.outputFormat } : {}),
       ...(options.background ? { background: resolved.background } : {}),
     });

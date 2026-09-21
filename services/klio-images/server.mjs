@@ -78,7 +78,13 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare-2026-
     // value ever did before this field existed.
     const requestedModel = typeof body.model === "string" && /^[a-zA-Z0-9_.-]{1,64}$/.test(body.model) ? body.model : model;
     const imageSize = resolveRequestSize(body.size, body.aspectRatio);
-    const quality = IMAGE_QUALITY_VALUES.has(body.quality) ? body.quality : "medium";
+    // Was "medium", only ever sent when the caller explicitly passed
+    // quality - nothing upstream of this relay ever did, so every request
+    // omitted it and got OpenAI's own default, which for gpt-image-2.5 is
+    // "auto" specifically, not "high" (site owner: "качество как будто
+    // низкое"). Defaulting to "high" and always sending it (below) removes
+    // that ambiguity.
+    const quality = IMAGE_QUALITY_VALUES.has(body.quality) ? body.quality : "high";
     const outputFormat = IMAGE_FORMAT_VALUES.has(body.output_format) ? body.output_format : "png";
     const background = IMAGE_BACKGROUND_VALUES.has(body.background) ? body.background : "auto";
     const hash = createHash("sha256").update(body.prompt).update(logo ? logo.bytes : "").digest("hex");
@@ -99,7 +105,7 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare-2026-
             form.append("prompt", body.prompt);
             form.append("n", "1");
             if (body.size || body.aspectRatio) form.append("size", imageSize);
-            if (body.quality) form.append("quality", quality);
+            form.append("quality", quality);
             if (body.output_format) form.append("output_format", outputFormat);
             if (body.background) form.append("background", background);
             form.append("image", new Blob([logo.bytes], { type: logo.contentType }), "reference");
@@ -114,7 +120,7 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare-2026-
               prompt: body.prompt,
               n: 1,
               ...(body.size || body.aspectRatio ? { size: imageSize } : {}),
-              ...(body.quality ? { quality } : {}),
+              quality,
               ...(body.output_format ? { output_format: outputFormat } : {}),
               ...(body.background ? { background } : {}),
             };
