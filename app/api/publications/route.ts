@@ -261,8 +261,25 @@ export async function POST(request: Request) {
         // schedule, so persist that field here as well (the old path only
         // did this for manually created posts).  Otherwise the preview was
         // visible until closing the editor and then silently came back empty.
-        if (payload.imageUrl !== undefined) {
-          await db.update(generations).set({ imageUrl: clean(payload.imageUrl, 2000) }).where(eq(generations.id, existing.id));
+        // Title/body had the identical gap - editing either before the
+        // first schedule looked fine in the editor but was silently
+        // dropped, and the publication (which reads content straight off
+        // this row, not off the request) went out with whatever the row
+        // already had (site owner: a carousel's own stored body is its
+        // source article, not the slide text - the composer showed the
+        // right thing, Telegram got the article instead). A blank title
+        // is left alone rather than forced to "Без названия" so an
+        // unedited Изображение/Карусель draft (composer starts blank on
+        // purpose - see openPublicationDraft) never clobbers the material's
+        // real title.
+        const cleanTitle = payload.title !== undefined ? clean(payload.title, 500) : "";
+        const rowUpdates = {
+          ...(cleanTitle ? { title: cleanTitle } : {}),
+          ...(payload.body !== undefined ? { body: clean(payload.body, 20_000) } : {}),
+          ...(payload.imageUrl !== undefined ? { imageUrl: clean(payload.imageUrl, 2000) } : {}),
+        };
+        if (Object.keys(rowUpdates).length) {
+          await db.update(generations).set(rowUpdates).where(eq(generations.id, existing.id));
         }
       } else {
         // Добавлено вручную прямо из календаря — created outside the
