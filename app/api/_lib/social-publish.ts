@@ -67,9 +67,9 @@ class TelegramTransportError extends Error {
   }
 }
 
-function postToTelegramApi(url: string, body: object, signal: AbortSignal): Promise<TelegramApiResponse> {
+function postToTelegramApi(url: string, body: object | Buffer, signal: AbortSignal, contentType = "application/json"): Promise<TelegramApiResponse> {
   const endpoint = new URL(url);
-  const payload = JSON.stringify(body);
+  const payload = Buffer.isBuffer(body) ? body : Buffer.from(JSON.stringify(body));
   // Plain HTTP when talking to a self-hosted Bot API server (see
   // telegramApiBase) instead of the real, always-HTTPS api.telegram.org.
   const requestFn = endpoint.protocol === "http:" ? httpRequest : httpsRequest;
@@ -86,8 +86,8 @@ function postToTelegramApi(url: string, body: object, signal: AbortSignal): Prom
       family: 4,
       signal,
       headers: {
-        "Content-Type": "application/json",
-        "Content-Length": Buffer.byteLength(payload),
+        "Content-Type": contentType,
+        "Content-Length": payload.length,
       },
     }, (response) => {
       const chunks: Buffer[] = [];
@@ -113,17 +113,37 @@ function postToTelegramApi(url: string, body: object, signal: AbortSignal): Prom
   });
 }
 
-async function fetchImageBytes(imageUrl: string): Promise<Blob> {
+type DownloadedImage = { bytes: Buffer; contentType: string };
+
+async function fetchImageBytes(imageUrl: string): Promise<DownloadedImage> {
   try {
     const response = await fetchPublicResource(imageUrl, { maxBytes: 10 * 1024 * 1024, timeoutMs: 15_000, accept: "image/*" });
     if (!response.ok) throw new PublishError(`Не удалось загрузить картинку по ссылке (HTTP ${response.status}).`, true);
     const type = imageContentType(response.bytes);
     if (!type) throw new PublishError("Ссылка должна вести на изображение JPEG, PNG, WebP или GIF.", false);
-    return new Blob([new Uint8Array(response.bytes)], { type });
+    return { bytes: Buffer.from(response.bytes), contentType: type };
   } catch (error) {
     if (error instanceof PublishError) throw error;
     throw new PublishError("Не удалось загрузить картинку по ссылке перед публикацией.", true);
   }
+}
+
+type TelegramMultipartFile = DownloadedImage & { fieldName: string; filename: string };
+
+function telegramMultipart(fields: Record<string, string>, files: TelegramMultipartFile[]): { body: Buffer; contentType: string } {
+  const boundary = `----klio-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const chunks: Buffer[] = [];
+  const add = (value: string | Buffer) => chunks.push(Buffer.isBuffer(value) ? value : Buffer.from(value));
+  for (const [name, value] of Object.entries(fields)) {
+    add(`--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`);
+  }
+  for (const file of files) {
+    add(`--${boundary}\r\nContent-Disposition: form-data; name="${file.fieldName}"; filename="${file.filename}"\r\nContent-Type: ${file.contentType}\r\n\r\n`);
+    add(file.bytes);
+    add("\r\n");
+  }
+  add(`--${boundary}--\r\n`);
+  return { body: Buffer.concat(chunks), contentType: `multipart/form-data; boundary=${boundary}` };
 }
 
 // sendMediaGroup's result is an array (one Message per media item, in
@@ -157,10 +177,18 @@ function splitTelegramText(text: string, limit: number): string[] {
 async function publishToTelegram(creds: TelegramCredentials, text: string, imageUrls: string[]): Promise<{ providerPostId: string }> {
   const base = `${telegramApiBase()}/bot${creds.botToken}`;
   const signal = AbortSignal.timeout(120_000);
-  async function send(method: "sendPhoto" | "sendMessage" | "sendMediaGroup", body: object): Promise<TelegramMessagePayload> {
+  async function send(method: "sendPhoto" | "sendMessage" | "sendMediaGroup", body: Record<string, unknown>, files: TelegramMultipartFile[] = []): Promise<TelegramMessagePayload> {
     let response: TelegramApiResponse;
     try {
-      response = await postToTelegramApi(`${base}/${method}`, body, signal);
+      if (files.length) {
+        const multipart = telegramMultipart(
+          Object.fromEntries(Object.entries(body).map(([key, value]) => [key, typeof value === "string" ? value : JSON.stringify(value)])),
+          files,
+        );
+        response = await postToTelegramApi(`${base}/${method}`, multipart.body, signal, multipart.contentType);
+      } else {
+        response = await postToTelegramApi(`${base}/${method}`, body, signal);
+      }
     } catch (error) {
       const cause = error instanceof Error ? error.cause : undefined;
       console.error("Telegram publish request failed", {
@@ -202,13 +230,23 @@ async function publishToTelegram(creds: TelegramCredentials, text: string, image
   const photos = imageUrls.slice(0, 10);
   const hasImage = photos.length > 0;
   const captionParts = hasImage ? splitTelegramText(text, PLATFORM_TEXT_LIMITS.telegram.withImage) : [];
+  // Telegram fetching our public URLs itself is unreliable and produced
+  // WEBPAGE_CURL_FAILED midway through real carousel publications. Download
+  // each selected image on our server first and attach the bytes to one
+  // multipart request, so Telegram never needs to reach KLIO's storage URL.
+  const uploads: TelegramMultipartFile[] = [];
+  for (let index = 0; index < photos.length; index++) {
+    const image = await fetchImageBytes(photos[index]);
+    const extension = image.contentType === "image/png" ? "png" : image.contentType === "image/webp" ? "webp" : image.contentType === "image/gif" ? "gif" : "jpg";
+    uploads.push({ ...image, fieldName: `photo${index}`, filename: `carousel-${index + 1}.${extension}` });
+  }
   // sendMediaGroup requires 2-10 items - exactly one photo still goes
   // through sendPhoto unchanged, so this only branches differently once
   // there's actually more than one image to send as a real album/group.
   const first = photos.length > 1
-    ? await send("sendMediaGroup", { chat_id: creds.chatId, media: photos.map((url, index) => ({ type: "photo", media: url, ...(index === 0 ? { caption: captionParts[0] ?? "" } : {}) })) })
+    ? await send("sendMediaGroup", { chat_id: creds.chatId, media: uploads.map((file, index) => ({ type: "photo", media: `attach://${file.fieldName}`, ...(index === 0 ? { caption: captionParts[0] ?? "" } : {}) })) }, uploads)
     : hasImage
-      ? await send("sendPhoto", { chat_id: creds.chatId, photo: photos[0], caption: captionParts[0] ?? "" })
+      ? await send("sendPhoto", { chat_id: creds.chatId, photo: `attach://${uploads[0].fieldName}`, caption: captionParts[0] ?? "" }, uploads)
       : await send("sendMessage", { chat_id: creds.chatId, text: splitTelegramText(text, PLATFORM_TEXT_LIMITS.telegram.textOnly)[0] ?? "" });
   const remaining = hasImage
     ? captionParts.slice(1).flatMap((part) => splitTelegramText(part, PLATFORM_TEXT_LIMITS.telegram.textOnly))
@@ -291,7 +329,8 @@ async function uploadPhotoForWall(creds: VkCredentials, imageUrl: string): Promi
   const uploadUrl = uploadServer.upload_url;
   if (typeof uploadUrl !== "string") throw new PublishError("VK не выдал адрес для загрузки картинки.", true);
 
-  const imageBlob = await fetchImageBytes(imageUrl);
+  const image = await fetchImageBytes(imageUrl);
+  const imageBlob = new Blob([new Uint8Array(image.bytes)], { type: image.contentType });
   const form = new FormData();
   form.append("photo", imageBlob, "post-image.jpg");
 

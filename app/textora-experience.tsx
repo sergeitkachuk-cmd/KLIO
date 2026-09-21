@@ -6104,15 +6104,16 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <label className="publications-editor-field"><span>Токен бота</span><input type="text" value={pubChannelTelegram.botToken} onChange={(event) => setPubChannelTelegram((current) => ({ ...current, botToken: event.target.value }))} placeholder="123456789:AA…"/></label>
                 <label className="publications-editor-field"><span>Id канала</span><input type="text" value={pubChannelTelegram.chatId} onChange={(event) => setPubChannelTelegram((current) => ({ ...current, chatId: event.target.value }))} placeholder="@your_channel или -100…"/></label>
               </> : <>
-                <p className="publications-vk-note"><b>Временно:</b> в VK из КЛИО публикуются только текстовые посты. Для Telegram доступны текст и изображения.</p>
+                <p className="publications-vk-note"><b>Для публикаций с изображениями нужны два токена:</b> токен сообщества отправляет пост, пользовательский токен загружает фотографии в альбом стены.</p>
                 <ol className="publications-channel-steps">
                   <li>В своём сообществе VK: «Управление» → «Дополнительно» → «Работа с API» → «Ключи доступа» → «Создать ключ».</li>
                   <li>Для ключа сообщества отметьте права <b>«Стена»</b> и <b>«Сообщения»</b>.</li>
                   <li>Id сообщества — можно вписать и красивое имя из адреса (<code>vk.com/kliopress</code> → <code>kliopress</code>), и числовой id из «Работа с API»: КЛИО сам определит нужное число.</li>
-                  <li><b>Изображения для VK временно не поддерживаются</b>: ключ сообщества публикует текстовые посты.</li>
+                  <li>Чтобы прикреплять изображения и карусели, добавьте пользовательский токен VK с правами <b>«Стена»</b> и <b>«Фотографии»</b>. Без него останется доступна публикация текста.</li>
                 </ol>
                 <label className="publications-editor-field"><span>Id сообщества</span><input type="text" value={pubChannelVk.groupId} onChange={(event) => setPubChannelVk((current) => ({ ...current, groupId: event.target.value }))} placeholder="kliopress или 123456789"/></label>
                 <label className="publications-editor-field"><span>Токен сообщества — для текста</span><input type="text" value={pubChannelVk.accessToken} onChange={(event) => setPubChannelVk((current) => ({ ...current, accessToken: event.target.value }))} placeholder="vk1.a…"/></label>
+                <label className="publications-editor-field"><span>Пользовательский токен — для фото <small>необязательно для текстовых постов</small></span><input type="text" value={pubChannelVk.photoAccessToken} onChange={(event) => setPubChannelVk((current) => ({ ...current, photoAccessToken: event.target.value }))} placeholder="Токен с правами wall и photos"/></label>
               </>}
               {pubChannelError && <p className="generation-error" role="alert">{pubChannelError}</p>}
               <div className="publications-editor-actions">

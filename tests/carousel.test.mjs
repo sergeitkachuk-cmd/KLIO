@@ -149,6 +149,42 @@ test("carousel debits exactly one generation per slide and saves one row with sl
   assert.equal(settled.status, "done");
 });
 
+test("carousel makes slide one a cover and the following slides content cards", async t => {
+  const h = await createCarouselHarness();
+  t.after(() => h.close());
+  await h.seedAccount();
+  let aiRequest;
+  h.setAi(async request => {
+    aiRequest = request;
+    return {
+      slides: [
+        { headline: "Почему привычный подход больше не работает", subtext: "Разбираем главную причину и решение" },
+        { headline: "Где возникает проблема", subtext: "Обычный процесс теряет важные данные на первом этапе. Из-за этого команда принимает решение по неполной картине и исправляет последствия вместо причины." },
+        { headline: "Что изменить сейчас", subtext: "Сначала соберите исходные данные, затем проверьте ключевую гипотезу и только после этого масштабируйте решение." },
+      ],
+    };
+  });
+  const prompts = [];
+  h.setGenerateImage(async prompt => {
+    prompts.push(prompt);
+    return { url: `https://cdn.example.invalid/${prompts.length}.png`, bytes: new Uint8Array([prompts.length]), contentType: "image/png" };
+  });
+
+  const input = { text: "Подробная статья о проблеме, её причине и последовательности решения.", slideCount: 3, baseUrl: "http://127.0.0.1:3027" };
+  const job = await h.claimJob(input);
+  await h.runCarouselGeneration(job.id, input, h.owner);
+
+  assert.match(aiRequest.instructions, /Первый слайд — обложка/);
+  assert.match(aiRequest.instructions, /25–45 слов/);
+  assert.match(aiRequest.instructions, /не подзаголовок и не рекламный слоган/i);
+  assert.match(prompts[0], /дизайнерская обложка/);
+  assert.match(prompts[0], /Фотография или иллюстрация не обязательна/);
+  assert.match(prompts[0], /выразительную типографику/);
+  assert.match(prompts[1], /Это продолжение обложки, а не ещё одна обложка/);
+  assert.match(prompts[1], /Основной текст/);
+  assert.doesNotMatch(prompts[1], /Крупный заголовок/);
+});
+
 test("each slide after the first receives the previous slide's own bytes as its reference", async t => {
   const h = await createCarouselHarness();
   t.after(() => h.close());

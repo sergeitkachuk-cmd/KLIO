@@ -21,7 +21,12 @@ function harness(replies, connecting) {
     const req = new EventEmitter(); req.setTimeout = () => {};
     req.end = body => {
       paths.push(options.path);
-      const reply = replies[sent.length]; sent.push(JSON.parse(body));
+      const contentType = options.headers["Content-Type"];
+      const raw = Buffer.isBuffer(body) ? body : Buffer.from(body);
+      const captured = contentType === "application/json"
+        ? JSON.parse(raw.toString("utf8"))
+        : { multipart: raw.toString("latin1"), contentType };
+      const reply = replies[sent.length]; sent.push(captured);
       queueMicrotask(() => {
         if (connecting !== undefined) {
           const socket = new EventEmitter(); socket.connecting = connecting;
@@ -39,8 +44,8 @@ function harness(replies, connecting) {
   const loaded = load("app/api/_lib/social-publish.ts", {
     "node:https": { request },
     "node:http": { request },
-    "./public-fetch": { fetchPublicResource: () => { throw new Error("Unexpected image download"); } },
-    "./image-type": {},
+    "./public-fetch": { fetchPublicResource: async url => ({ ok: true, status: 200, bytes: Buffer.from(`bytes:${url}`) }) },
+    "./image-type": { imageContentType: () => "image/png" },
     "./publishing-config": load("app/api/_lib/publishing-config.ts"),
     "./telegram-proxy": load("app/api/_lib/telegram-proxy.ts", {}, { process: { env: {} } }),
   });
@@ -136,26 +141,30 @@ test("successful split Telegram delivery retains every part", async () => {
   assert.equal(h.sent.map(part => part.text).join(" "), original);
 });
 
-test("Telegram sends exactly one image via sendPhoto, unchanged from before multi-image support", async () => {
+test("Telegram uploads one image as multipart bytes instead of asking Telegram to fetch its URL", async () => {
   const h = harness([{ body: { ok: true, result: { message_id: 55 } } }]);
   const result = await h.send("caption text", ["https://cdn.example.invalid/a.png"]);
   assert.equal(h.sent.length, 1);
   assert.ok(h.paths[0].endsWith("/sendPhoto"));
-  assert.equal(h.sent[0].photo, "https://cdn.example.invalid/a.png");
-  assert.equal(h.sent[0].caption, "caption text");
+  assert.match(h.sent[0].contentType, /^multipart\/form-data; boundary=/);
+  assert.match(h.sent[0].multipart, /name="photo"\r\n\r\nattach:\/\/photo0/);
+  assert.match(h.sent[0].multipart, /name="caption"\r\n\r\ncaption text/);
+  assert.match(h.sent[0].multipart, /name="photo0"; filename="carousel-1\.png"/);
+  assert.match(h.sent[0].multipart, /bytes:https:\/\/cdn\.example\.invalid\/a\.png/);
   assert.equal(result.providerPostId, "55");
 });
 
-test("Telegram sends 2+ images as one sendMediaGroup call, caption only on the first item", async () => {
+test("Telegram uploads 2+ images as one multipart sendMediaGroup request", async () => {
   const h = harness([{ body: { ok: true, result: [{ message_id: 10 }, { message_id: 11 }, { message_id: 12 }] } }]);
   const result = await h.send("caption text", ["https://cdn.example.invalid/a.png", "https://cdn.example.invalid/b.png", "https://cdn.example.invalid/c.png"]);
   assert.equal(h.sent.length, 1);
   assert.ok(h.paths[0].endsWith("/sendMediaGroup"));
-  assert.deepEqual(h.sent[0].media, [
-    { type: "photo", media: "https://cdn.example.invalid/a.png", caption: "caption text" },
-    { type: "photo", media: "https://cdn.example.invalid/b.png" },
-    { type: "photo", media: "https://cdn.example.invalid/c.png" },
-  ]);
+  assert.match(h.sent[0].contentType, /^multipart\/form-data; boundary=/);
+  assert.match(h.sent[0].multipart, /attach:\/\/photo0/);
+  assert.match(h.sent[0].multipart, /attach:\/\/photo1/);
+  assert.match(h.sent[0].multipart, /attach:\/\/photo2/);
+  assert.match(h.sent[0].multipart, /caption text/);
+  assert.doesNotMatch(h.sent[0].multipart, /"media":"https:\/\//);
   assert.equal(result.providerPostId, "10");
   assert.match(result.providerPostId, /^\d+$/);
 });
@@ -362,6 +371,37 @@ test("Telegram channel validation separates transport failures from invalid cred
       return true;
     });
   }
+});
+
+test("VK validates a supplied photo token before saving the channel", async () => {
+  const calls = [];
+  const replies = [
+    { response: [{ id: 55, name: "Test community", photo_200: "https://vk.example/avatar.jpg" }] },
+    { response: { upload_url: "https://upload.vk.example/put" } },
+  ];
+  const loaded = load("app/api/_lib/social-channels.ts", {
+    "./publishing-config": load("app/api/_lib/publishing-config.ts"),
+    "../../../db/schema": {},
+    "node:https": {},
+    "node:http": {},
+    "./telegram-proxy": {},
+  }, {
+    fetch: async (url, options) => {
+      calls.push({ url: String(url), body: options.body });
+      const body = replies[calls.length - 1];
+      return { json: async () => body };
+    },
+  });
+
+  const result = await loaded.describeChannel({
+    platform: "vk",
+    vk: { groupId: "pretty-name", accessToken: "community-token", photoAccessToken: "user-photo-token" },
+  });
+  assert.equal(result.resolvedGroupId, "55");
+  assert.equal(calls.length, 2);
+  assert.match(calls[1].url, /photos\.getWallUploadServer/);
+  assert.equal(calls[1].body.get("group_id"), "55");
+  assert.equal(calls[1].body.get("access_token"), "user-photo-token");
 });
 
 test("saving a failed publication cannot silently requeue it", () => {
