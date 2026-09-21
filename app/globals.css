@@ -546,10 +546,16 @@ select:focus-visible {
   padding: 110px max(28px, calc((100vw - 1500px) / 2)) 64px;
   overflow: hidden;
   color: #fff;
+  /* Base gradient was neutral black/charcoal (#07070c/#14181d/#08080e,
+     ~0 hue saturation) - the site owner flagged the hero directly as
+     "black-gray instead of navy". Swapped for the same navy family used
+     everywhere else on the page (.showcase-brief, .plan-section); the
+     two radial highlights above were already the right slate-blue tone,
+     so only this base linear-gradient needed to change. */
   background:
     radial-gradient(circle at 79% 27%, rgba(91, 107, 130, 0.82), transparent 24%),
     radial-gradient(circle at 14% 87%, rgba(88, 104, 127, 0.58), transparent 29%),
-    linear-gradient(126deg, #07070c 0%, #14181d 50%, #08080e 100%);
+    linear-gradient(126deg, #041426 0%, #08233f 50%, #06182e 100%);
   isolation: isolate;
 }
 
@@ -2243,8 +2249,10 @@ select:focus-visible {
      outer contour. */
   border: 1px solid transparent;
   border-radius: 5px 46px 5px 5px;
-  background: rgba(4, 18, 37, 0.4);
-  backdrop-filter: blur(14px) saturate(130%);
+  /* No fill/blur at all now - same "the backing itself, not just the
+     border/shadow" fix as .workspace-history (site owner). Sits
+     directly on .workspace-shell's own page background. */
+  background: transparent;
 }
 
 .brief-panel::before {
@@ -3425,10 +3433,14 @@ textarea[data-autosize="true"] {
   width: 100%;
   padding: 150px max(48px, calc((100vw - 1360px) / 2));
   color: #fff;
+  /* Base color was a near-black neutral (#0b0d10) - site owner flagged
+     this exact section as still-black on the landing page; swapped for
+     the same navy family used elsewhere on the page (.showcase-brief,
+     .module-grid article:nth-child(3n)). */
   background:
     radial-gradient(720px 520px at 78% 12%, rgba(149, 163, 182, 0.42), transparent 62%),
     radial-gradient(520px 420px at 5% 90%, rgba(88, 104, 127, 0.3), transparent 68%),
-    #0b0d10;
+    #041426;
 }
 
 .plan-inner {
@@ -3618,9 +3630,14 @@ textarea[data-autosize="true"] {
 .price-card.popular {
   border-color: rgba(255, 255, 255, 0.18);
   color: #fff;
+  /* Gradient base was neutral charcoal (#0e1013 → #242a33), read as a
+     plain black card next to its navy siblings - site owner flagged it
+     directly (the "Агентство" tier). Swapped to the same navy family
+     used everywhere else, kept a touch deeper since this card is meant
+     to stand out as the highlighted tier. */
   background:
     radial-gradient(circle at 100% 0%, rgba(109, 125, 148, 0.58), transparent 36%),
-    linear-gradient(145deg, #0e1013, #242a33);
+    linear-gradient(145deg, #041426, #08233f);
   box-shadow: 0 34px 90px rgba(46, 54, 65, 0.23), inset 0 1px rgba(255, 255, 255, 0.13);
 }
 
@@ -4828,18 +4845,14 @@ footer nav a {
      .studio/.semantic-shell/.adaptation-shell/etc. */
   border: 1px solid transparent;
   border-radius: 4px 24px 4px 4px;
-  /* Was a slightly different navy (#0a2340/#082b4c/#061c34) than every
-     other module shell's own consolidated tone (#06182e/#08233f/#041426,
-     see the shared dark-theme rule further down covering .semantic-shell/
-     .adaptation-shell/.competitor-setup-card/.content-plan-setup/
-     .brand-profile-body) - close enough to read as the same colour in
-     isolation, different enough to read as the page "jumping" shade
-     switching between Материалы and any other module (site owner). Also
-     dropped the box-shadow - same "big frame" the site owner flagged on
-     every module's own shell, not just the heading strip fixed earlier. */
-  background:
-    radial-gradient(circle at 92% 2%, rgba(91, 107, 130, 0.16), transparent 34%),
-    linear-gradient(135deg, #06182e 0%, #08233f 55%, #041426 100%);
+  /* No fill at all now - dropping the box-shadow alone still left a
+     visibly distinct navy panel sitting on .workspace-shell's own page
+     background underneath it (site owner: "убрал вроде обводку, а саму
+     подложку нет" - the border/shadow were never the only thing making
+     this read as a separate card, the fill itself did too). Content
+     sits directly on the shared page background now, same as
+     .workspace-module-heading already does. */
+  background: transparent;
 }
 
 .workspace-history-head span {
@@ -5876,13 +5889,12 @@ footer nav a {
   overflow: hidden;
   border: 1px solid transparent;
   border-radius: 4px 38px 4px 4px;
-  background:
-    radial-gradient(circle at 92% 3%, rgba(91, 107, 130, 0.26), transparent 32%),
-    linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
-  /* box-shadow removed - same "big frame" the site owner flagged on
-     every module's own shell (not just the heading strip fixed earlier);
-     this rule's own background is overridden anyway by the shared
-     dark-theme rule further down the file. */
+  /* No fill at all now - box-shadow alone wasn't the whole "big frame"
+     (site owner: "убрал вроде обводку, а саму подложку нет"); this
+     rule's own background used to be overridden anyway by the shared
+     dark-theme rule further down the file, which is now transparent
+     too. */
+  background: transparent;
   /* No backdrop-filter (was blur(14px) saturate(145%)) - the base
      linear-gradient is solid hex color with no alpha anywhere, so this
      was 100% invisible while still costing a full-panel recomposite.
@@ -7405,9 +7417,13 @@ footer nav a {
   overflow: hidden;
   color: #fff;
   border-radius: 4px 38px 4px 4px;
-  background:
-    radial-gradient(circle at 96% 0%, rgba(91, 107, 130, 0.26), transparent 32%),
-    linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
+  /* No fill at all now - same "the backing itself, not just the border/
+     shadow" fix as .semantic-shell (site owner). The smaller cards this
+     selector's own border/box-shadow removal was shared with
+     (.competitor-matrix-card/.competitor-insights-grid article/
+     .competitor-actionbar) keep their own backgrounds - those are real
+     content cards inside the module, not the module's own outer shell. */
+  background: transparent;
 }
 
 .competitor-setup-head {
@@ -8897,16 +8913,17 @@ footer nav a {
 
 .content-plan-setup {
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.88);
+  /* This "paper-white" border/background turned out to be dead weight,
+     not a deliberate look: the higher-specificity :root[data-theme]
+     rules further down the file already override this selector's
+     background regardless of theme (same as the other four module
+     shells they're grouped with), so this base rule's own white fill
+     was never actually visible - only the border was. No fill at all
+     now, same "the backing itself, not just the border/shadow" fix as
+     the rest (site owner). */
+  border: 1px solid transparent;
   border-radius: 4px 34px 4px 4px;
-  background:
-    radial-gradient(circle at 93% 4%, rgba(91, 107, 130, 0.17), transparent 27%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(244, 246, 248, 0.72));
-  /* box-shadow removed - same "big frame" reasoning as .semantic-shell.
-     Background/border left alone - unlike the other module shells,
-     this one is deliberately paper-white even in dark theme (a physical
-     "planning sheet" look), not a stray light-theme leak, so it's out of
-     scope for this pass. */
+  background: transparent;
 }
 
 .content-plan-setup-head {
@@ -9825,10 +9842,9 @@ footer nav a {
   color: #fff;
   border: 1px solid transparent;
   border-radius: 4px 38px 4px 4px;
-  background:
-    radial-gradient(circle at 96% 0%, rgba(91, 107, 130, 0.26), transparent 32%),
-    linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
-  /* box-shadow removed - same "big frame" reasoning as .semantic-shell. */
+  /* No fill at all now - same "the backing itself, not just the border/
+     shadow" fix as .semantic-shell (site owner). */
+  background: transparent;
   /* No backdrop-filter (was blur(14px) saturate(145%)) - the base
      linear-gradient is solid hex with no alpha at any point, so it was
      100% invisible - and this is very likely the main source of the
@@ -17432,9 +17448,12 @@ input[type="radio"] {
    --------------------------------------------------------------------- */
 .brand-profile-body {
   color: #fff;
-  background:
-    radial-gradient(circle at 88% 0%, rgba(91, 107, 130, 0.18), transparent 40%),
-    linear-gradient(135deg, #06182e, #08233f 55%, #041426 100%);
+  /* No fill at all now - same "the backing itself, not just the border/
+     shadow" fix as .semantic-shell (site owner). This is the rule that
+     actually wins (later in the cascade, not theme-guarded - see the
+     comment above), the lighter default further up the file is
+     already-dead weight this leaves alone. */
+  background: transparent;
 }
 
 .profile-mode-bar {
@@ -17680,10 +17699,12 @@ input[type="radio"] {
 .content-plan-setup {
   color: #fff;
   border-color: transparent;
-  background:
-    radial-gradient(circle at 93% 4%, rgba(91, 107, 130, 0.26), transparent 32%),
-    linear-gradient(135deg, #0a2340, #082b4c 55%, #061c34 100%);
-  box-shadow: 0 26px 80px rgba(3, 12, 26, 0.3), inset 0 1px rgba(255, 255, 255, 0.1);
+  /* background/box-shadow were dead weight here too, same trap as the
+     base rule further up: the consolidated :root[data-theme] rule below
+     only ever overrode `background`, never `box-shadow` - this rule's
+     own shadow had nothing higher-specificity contesting it and was
+     still rendering the "big frame" the site owner kept flagging. */
+  background: transparent;
 }
 
 .content-plan-setup-head > div > span,
@@ -19142,8 +19163,11 @@ input[type="radio"] {
    --------------------------------------------------------------------- */
 [data-theme="light"] .studio {
   border-color: transparent;
-  background: rgba(255, 255, 255, 0.55);
-  box-shadow: 0 44px 110px rgba(20, 40, 80, 0.14), inset 0 1px rgba(255, 255, 255, 0.7);
+  /* Same leftover-shell trap as .content-plan-setup/.semantic-shell -
+     .studio isn't part of the 5-shell consolidated rule, so this
+     light-theme override had its own background+shadow with nothing
+     else contesting it and was still rendering a visible card. */
+  background: transparent;
 }
 
 [data-theme="light"] .brief-panel {
@@ -19697,10 +19721,10 @@ input[type="radio"] {
 [data-theme="light"] .content-plan-setup {
   color: #0d1b31;
   border-color: transparent;
-  background:
-    radial-gradient(circle at 93% 4%, rgba(53, 104, 212, 0.16), transparent 32%),
-    linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%);
-  box-shadow: 0 26px 80px rgba(20, 40, 80, 0.1), inset 0 1px #fff;
+  /* Same leftover-shadow trap as the dark rule above - the consolidated
+     :root[data-theme="light"] rule only overrides `background`, so this
+     box-shadow had nothing contesting it and was still rendering. */
+  background: transparent;
 }
 
 [data-theme="light"] .content-plan-setup-head > div > span,
@@ -20165,10 +20189,10 @@ input[type="radio"] {
   --line: rgba(15, 23, 42, 0.14);
   color: #0d1b31;
   border-color: transparent;
-  background:
-    radial-gradient(circle at 96% 0%, rgba(53, 104, 212, 0.16), transparent 32%),
-    linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%);
-  box-shadow: 0 28px 82px rgba(20, 40, 80, 0.1), inset 0 1px #fff;
+  /* Same leftover-shadow trap as .content-plan-setup - the consolidated
+     :root[data-theme="light"] rule only overrides `background`, so this
+     box-shadow had nothing contesting it and was still rendering. */
+  background: transparent;
 }
 
 [data-theme="light"] .adaptation-input-card {
@@ -20419,10 +20443,10 @@ input[type="radio"] {
   --line: rgba(15, 23, 42, 0.14);
   color: #0d1b31;
   border-color: transparent;
-  background:
-    radial-gradient(circle at 92% 3%, rgba(53, 104, 212, 0.16), transparent 32%),
-    linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%);
-  box-shadow: 0 28px 82px rgba(20, 40, 80, 0.1), inset 0 1px #fff;
+  /* Same leftover-shadow trap as .content-plan-setup - the consolidated
+     :root[data-theme="light"] rule only overrides `background`, so this
+     box-shadow had nothing contesting it and was still rendering. */
+  background: transparent;
 }
 
 [data-theme="light"] .semantic-mode {
@@ -20909,14 +20933,19 @@ input[type="radio"] {
 [data-theme="light"] .competitor-insights-grid article,
 [data-theme="light"] .competitor-actionbar {
   border-color: transparent;
-  box-shadow: 0 24px 70px rgba(20, 40, 80, 0.1), inset 0 1px #fff;
+  /* box-shadow removed - dark theme already dropped it for all four of
+     these selectors together (see the shared rule near .competitor-
+     setup-card's own base rule); this light-theme copy still had it and
+     was the one leftover "big frame" shadow site-wide. The three nested
+     content cards (matrix/insights/actionbar) keep their own separately
+     declared backgrounds just like in dark theme - only the shadow goes. */
 }
 
 [data-theme="light"] .competitor-setup-card {
   color: #0d1b31;
-  background:
-    radial-gradient(circle at 96% 0%, rgba(53, 104, 212, 0.16), transparent 32%),
-    linear-gradient(135deg, #e3eaf6, #f0f4fa 55%, #ffffff 100%);
+  /* No fill at all now - same "the backing itself, not just the border/
+     shadow" fix as the dark rule (site owner). */
+  background: transparent;
 }
 
 [data-theme="light"] .competitor-setup-head > div > span,
@@ -20945,14 +20974,20 @@ input[type="radio"] {
    field. This prevents forms from becoming one undifferentiated panel
    when modules are opened one after another.
    --------------------------------------------------------------------- */
+/* No fill at all now, either theme - same "the backing itself, not just
+   the border/shadow" fix as every other module shell (site owner: "и
+   контент даже возможно станет шире, эта подложка сужала рабочее
+   поле"). .content-plan-setup is included here too - its own base rule
+   further up looks like a deliberately different "paper" card (a real
+   border, not transparent), but this higher-specificity rule already
+   overrode that background regardless of theme, so it was never
+   actually paper-white in practice. */
 :root:not([data-theme="light"]) .brand-profile-body,
 :root:not([data-theme="light"]) .semantic-shell,
 :root:not([data-theme="light"]) .competitor-setup-card,
 :root:not([data-theme="light"]) .content-plan-setup,
 :root:not([data-theme="light"]) .adaptation-shell {
-  background:
-    radial-gradient(circle at 92% 2%, rgba(91, 107, 130, 0.16), transparent 34%),
-    linear-gradient(135deg, #06182e 0%, #08233f 55%, #041426 100%);
+  background: transparent;
 }
 
 :root:not([data-theme="light"]) .brand-fields input,
@@ -20977,9 +21012,7 @@ input[type="radio"] {
 :root[data-theme="light"] .competitor-setup-card,
 :root[data-theme="light"] .content-plan-setup,
 :root[data-theme="light"] .adaptation-shell {
-  background:
-    radial-gradient(circle at 92% 2%, rgba(53, 104, 212, 0.14), transparent 34%),
-    linear-gradient(135deg, #d9e4f2 0%, #e8eef7 55%, #f5f8fc 100%);
+  background: transparent;
 }
 
 :root[data-theme="light"] .brand-fields input,
@@ -21505,9 +21538,7 @@ input[type="radio"] {
    inside the light workspace. */
 [data-theme="light"] .workspace-history {
   color: #0d1b31;
-  background:
-    radial-gradient(circle at 92% 0%, rgba(53, 104, 212, 0.18), transparent 32%),
-    linear-gradient(135deg, #e3eaf6, #f0f4fa 57%, #fff);
+  background: transparent;
 }
 
 [data-theme="light"] .workspace-history-head span {
