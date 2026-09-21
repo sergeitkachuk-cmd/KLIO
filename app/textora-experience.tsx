@@ -5287,6 +5287,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           slideCount,
           brandId: useBrand ? activeBrandId || undefined : undefined,
           useLogo: useBrand && Boolean(brand.logoKey) && useLogoInImage,
+          aspectRatio: imageAspectRatio,
+          outputFormat: imageOutputFormat,
         }),
       });
       const startPayload = await safeJson(startResponse) as { error?: string; jobId?: string };

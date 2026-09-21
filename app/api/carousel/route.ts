@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { generations } from "../../../db/schema";
 import { aiConfigured } from "../_lib/ai-config";
-import { imageConfigured } from "../_lib/image-generation";
+import { imageConfigured, parseImageGenerationOptions } from "../_lib/image-generation";
 import { CAROUSEL_MAX_SLIDES, CAROUSEL_MIN_SLIDES, runCarouselGeneration } from "../_lib/carousel";
 import { claimAsyncJob, failAsyncJob } from "../_lib/async-jobs";
 import { hasUnsafeRequestOrigin } from "../_lib/request-origin";
@@ -33,7 +33,16 @@ export async function POST(request: Request) {
     if (isAiRateLimited(request, "carousel", 4)) return Response.json({ error: "Слишком много запусков подряд. Подождите минуту и повторите." }, { status: 429 });
 
     const identity = await workspaceIdentity();
-    const raw = await readBoundedJson(request, 50_000) as CarouselPayload;
+    const rawBody = await readBoundedJson(request, 50_000);
+    // Carousel slides used to always generate square (site owner: "выбрал
+    // портретную, а он сделал всё равно квадрат") - runCarouselGeneration
+    // never received the aspect ratio/format the images module's own
+    // picker shows, so every slide fell back to generateImageBytes's
+    // no-size-sent default. Parsed from the pre-cast body since
+    // CarouselPayload below has no index signature for
+    // parseImageGenerationOptions's Record<string, unknown> parameter.
+    const imageOptions = parseImageGenerationOptions(rawBody);
+    const raw = rawBody as CarouselPayload;
     const slideCount = Math.round(Number(raw.slideCount));
     if (!Number.isFinite(slideCount) || slideCount < CAROUSEL_MIN_SLIDES || slideCount > CAROUSEL_MAX_SLIDES) {
       return Response.json({ error: `Число слайдов — от ${CAROUSEL_MIN_SLIDES} до ${CAROUSEL_MAX_SLIDES}.` }, { status: 400 });
@@ -72,7 +81,7 @@ export async function POST(request: Request) {
       return Response.json({ error: `Недостаточно квоты: нужно ${slideCount}, доступно ${Math.max(0, rule.generationLimit - account.generationsUsed)} из ${rule.generationLimit} материалов ${rule.periodLabel}.` }, { status: 429 });
     }
 
-    const input = { text, slideCount, brandId, useLogo, baseUrl: resolveBaseUrl(request) };
+    const input = { text, slideCount, brandId, useLogo, imageOptions, baseUrl: resolveBaseUrl(request) };
     const job = await claimAsyncJob("carousel_generation", identity.email, input, CAROUSEL_TIMEOUT_MS + 10_000);
     if (job.reused) return Response.json({ jobId: job.id, reused: true });
 

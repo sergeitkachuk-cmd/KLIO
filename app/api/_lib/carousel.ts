@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { brands } from "../../../db/schema";
 import { callAiModel } from "./ai-router";
-import { createCarouselSlideImage } from "./image-generation";
+import { createCarouselSlideImage, type ImageGenerationOptions } from "./image-generation";
 import { downloadBrandLogo } from "./storage";
 import { getWorkspaceDb, recordGeneration, WorkspaceAccessError } from "./workspace-account";
 import { failAsyncJob, markAsyncJobProcessing } from "./async-jobs";
@@ -36,14 +36,20 @@ function carouselSchema(count: number) {
 
 // Same editorial-structuring framing generate_content_plan already uses
 // for topics - a real arc (hook, points in descending priority, payoff),
-// not paragraphs chopped at even intervals.
+// not paragraphs chopped at even intervals. The concreteness rule below
+// was added after the structuring rule alone still produced slides the
+// site owner found thin/generic ("не очень информативными") - "one key
+// thesis per slide" was satisfied by restating the topic itself rather
+// than pulling an actual detail out of it, since nothing forced the model
+// to reach for one.
 function buildInstructions(count: number): string {
   return [
     "Ты редактор, который превращает готовый текст в карусель для соцсетей (Instagram/VK, несколько слайдов подряд).",
     `Разбей присланный текст ровно на ${count} слайдов.`,
     "Каждый слайд: headline — короткий цепляющий заголовок (до 8 слов), subtext — одна поддерживающая строка (до 14 слов). Это готовый текст для картинки, без кавычек, без нумерации слайдов, без markdown.",
     "Собери настоящую карусель, а не текст, порезанный на равные куски: первый слайд — цепляющий хук по теме, средние слайды — по одному ключевому тезису на слайд от самого важного к деталям, последний слайд — вывод или явный призыв к действию.",
-    "Опирайся только на факты из присланного текста, не добавляй то, чего там нет.",
+    "Каждый слайд должен нести конкретику из текста, а не общую фразу без содержания: цифру, факт, название метода/программы, механизм или пример. Плохо (слишком общо): «Дело не только в силе воли». Хорошо: та же мысль, но с конкретной причиной или деталью из текста — что именно меняется и почему.",
+    "Опирайся только на факты из присланного текста, не добавляй то, чего там нет. Если в тексте для какого-то слайда нет конкретики — возьми ту конкретную деталь, которая там всё же есть, вместо общих слов.",
   ].join("\n");
 }
 
@@ -52,6 +58,7 @@ export type CarouselInput = {
   slideCount: number;
   brandId?: string;
   useLogo?: boolean;
+  imageOptions?: ImageGenerationOptions;
   baseUrl: string;
 };
 
@@ -110,7 +117,7 @@ export async function runCarouselGeneration(jobId: string, input: CarouselInput,
       const prompt = `Слайд ${index + 1} из ${count} карусели для соцсетей, как обложка к статье: крупный заголовок и короткая поддерживающая строка, единой композицией с фоном.${logoReminder}\nЗаголовок: «${slide.headline}»\nПодзаголовок: «${slide.subtext}»`;
       let generated;
       try {
-        generated = await createCarouselSlideImage(prompt, reference, ownerEmail, input.baseUrl, `${jobId}-${index}`, {}, CAROUSEL_IMAGE_MODEL);
+        generated = await createCarouselSlideImage(prompt, reference, ownerEmail, input.baseUrl, `${jobId}-${index}`, input.imageOptions ?? {}, CAROUSEL_IMAGE_MODEL);
       } catch (error) {
         throw new Error(`Не удалось создать слайд ${index + 1} из ${count} — генерация карусели остановлена. ${error instanceof Error ? error.message : ""}`.trim());
       }
