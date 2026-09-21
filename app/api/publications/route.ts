@@ -367,6 +367,14 @@ export async function POST(request: Request) {
           tone: currentGeneration.tone,
           targetLength: currentGeneration.targetLength,
           imageUrl: nextImageUrl ?? currentGeneration.imageUrl,
+          // Missing before this fix: a forked row silently lost its
+          // carousel-ness (slidesJson defaults to "" on any new
+          // generations row) the moment someone edited an already-
+          // published carousel post (even just its date) - resolveImageUrls
+          // (publish-attempt.ts) then correctly, safely fell back to a
+          // single image, with no signal to the person that the carousel
+          // they re-scheduled would no longer go out as one.
+          slidesJson: currentGeneration.slidesJson,
         }).returning();
         const [forkedPublication] = await db.insert(publications).values({
           id: crypto.randomUUID(),

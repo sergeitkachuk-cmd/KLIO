@@ -18,6 +18,28 @@ export type PublishAttemptResult =
   | { status: "scheduled"; errorMessage: string }
   | { status: "failed"; errorMessage: string };
 
+// carousel.ts always sets a fresh carousel's imageUrl to slides[0].imageUrl
+// (kept for the existing single-image thumbnail/lightbox/download paths to
+// work unmodified) - "still equals slide 1" is what distinguishes an
+// untouched carousel from one where the publication editor's own
+// upload/pick/"Открепить" controls (unchanged by this feature) already
+// overrode imageUrl to a specific photo or blanked it, which must keep
+// behaving exactly as it does today. No new column or request field: this
+// is derived fresh from already-persisted data every time a publication is
+// actually sent, so an old scheduled/failed row picks up this behavior
+// automatically instead of needing a resave.
+export function resolveImageUrls(generation: { imageUrl: string; slidesJson: string }, telegramDeliveryMode: string): string[] {
+  if (telegramDeliveryMode === "text_only") return [];
+  if (!generation.imageUrl) return [];
+  let slides: unknown;
+  try { slides = JSON.parse(generation.slidesJson || "[]"); } catch { slides = []; }
+  const slideUrls = Array.isArray(slides)
+    ? slides.filter((slide): slide is { imageUrl: string } => Boolean(slide) && typeof slide === "object" && typeof (slide as { imageUrl?: unknown }).imageUrl === "string")
+    : [];
+  const isUntouchedCarousel = slideUrls.length > 0 && slideUrls[0].imageUrl === generation.imageUrl;
+  return isUntouchedCarousel ? slideUrls.slice(0, 10).map((slide) => slide.imageUrl) : [generation.imageUrl];
+}
+
 // `workspaceUrl` is only used for the failure email's "Открыть КЛИО" link —
 // callers already have APP_BASE_URL resolved, no reason to re-derive it here.
 //
@@ -59,7 +81,7 @@ export async function attemptPublish(publicationId: string, ownerEmail: string, 
       platform: channel.platform,
       credentialsJson: channel.credentialsJson,
       text: `${generation.title}\n\n${generation.body}`.trim(),
-      imageUrl: publication.telegramDeliveryMode === "text_only" ? null : generation.imageUrl || null,
+      imageUrls: resolveImageUrls(generation, publication.telegramDeliveryMode),
     });
     confirmedPostId = result.providerPostId;
     await persistSuccess(confirmedPostId);

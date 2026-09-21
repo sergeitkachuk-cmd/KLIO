@@ -126,7 +126,19 @@ async function fetchImageBytes(imageUrl: string): Promise<Blob> {
   }
 }
 
-type TelegramMessagePayload = { ok: boolean; result?: { message_id: number }; description?: string; error_code?: number };
+// sendMediaGroup's result is an array (one Message per media item, in
+// input order) instead of sendPhoto/sendMessage's single object - both
+// shapes are possible depending which method produced this payload.
+type TelegramMessagePayload = { ok: boolean; result?: { message_id: number } | { message_id: number }[]; description?: string; error_code?: number };
+
+// telegramPublicationUrl (social-channels.ts) and fastPublicationResponse
+// (publications/route.ts) both require providerPostId to match /^\d+$/ -
+// a bare numeric string, never a list - so this always resolves to just
+// the FIRST item's id, matching the "first message is the one that
+// carries the post" convention this file already used for sendPhoto.
+function firstMessageId(result: TelegramMessagePayload["result"]): number | undefined {
+  return Array.isArray(result) ? result[0]?.message_id : result?.message_id;
+}
 
 function splitTelegramText(text: string, limit: number): string[] {
   const result: string[] = [];
@@ -142,10 +154,10 @@ function splitTelegramText(text: string, limit: number): string[] {
   return result;
 }
 
-async function publishToTelegram(creds: TelegramCredentials, text: string, imageUrl: string | null): Promise<{ providerPostId: string }> {
+async function publishToTelegram(creds: TelegramCredentials, text: string, imageUrls: string[]): Promise<{ providerPostId: string }> {
   const base = `${telegramApiBase()}/bot${creds.botToken}`;
   const signal = AbortSignal.timeout(120_000);
-  async function send(method: "sendPhoto" | "sendMessage", body: object): Promise<TelegramMessagePayload> {
+  async function send(method: "sendPhoto" | "sendMessage" | "sendMediaGroup", body: object): Promise<TelegramMessagePayload> {
     let response: TelegramApiResponse;
     try {
       response = await postToTelegramApi(`${base}/${method}`, body, signal);
@@ -174,7 +186,7 @@ async function publishToTelegram(creds: TelegramCredentials, text: string, image
     const payload = (() => {
       try { return JSON.parse(response.body); } catch { return null; }
     })() as TelegramMessagePayload | null;
-    if (!payload?.ok || !payload.result?.message_id) {
+    if (!payload?.ok || !firstMessageId(payload.result)) {
       const permanent = response.status === 401 || response.status === 403 || response.status === 400;
       throw new PublishError(
         payload?.description ? `Telegram отклонил публикацию: ${payload.description}` : `Telegram отклонил публикацию (HTTP ${response.status}).`,
@@ -185,13 +197,20 @@ async function publishToTelegram(creds: TelegramCredentials, text: string, image
   }
 
   // Telegram allows only 1,024 characters in a photo caption, while a
-  // normal message holds 4,096. Keep the photo as the first message and
+  // normal message holds 4,096. Keep the photo(s) as the first message and
   // continue the full text below it instead of silently cutting the ending.
-  const captionParts = imageUrl ? splitTelegramText(text, PLATFORM_TEXT_LIMITS.telegram.withImage) : [];
-  const first = imageUrl
-    ? await send("sendPhoto", { chat_id: creds.chatId, photo: imageUrl, caption: captionParts[0] ?? "" })
-    : await send("sendMessage", { chat_id: creds.chatId, text: splitTelegramText(text, PLATFORM_TEXT_LIMITS.telegram.textOnly)[0] ?? "" });
-  const remaining = imageUrl
+  const photos = imageUrls.slice(0, 10);
+  const hasImage = photos.length > 0;
+  const captionParts = hasImage ? splitTelegramText(text, PLATFORM_TEXT_LIMITS.telegram.withImage) : [];
+  // sendMediaGroup requires 2-10 items - exactly one photo still goes
+  // through sendPhoto unchanged, so this only branches differently once
+  // there's actually more than one image to send as a real album/group.
+  const first = photos.length > 1
+    ? await send("sendMediaGroup", { chat_id: creds.chatId, media: photos.map((url, index) => ({ type: "photo", media: url, ...(index === 0 ? { caption: captionParts[0] ?? "" } : {}) })) })
+    : hasImage
+      ? await send("sendPhoto", { chat_id: creds.chatId, photo: photos[0], caption: captionParts[0] ?? "" })
+      : await send("sendMessage", { chat_id: creds.chatId, text: splitTelegramText(text, PLATFORM_TEXT_LIMITS.telegram.textOnly)[0] ?? "" });
+  const remaining = hasImage
     ? captionParts.slice(1).flatMap((part) => splitTelegramText(part, PLATFORM_TEXT_LIMITS.telegram.textOnly))
     : splitTelegramText(text, PLATFORM_TEXT_LIMITS.telegram.textOnly).slice(1);
   let sent = 1;
@@ -199,10 +218,10 @@ async function publishToTelegram(creds: TelegramCredentials, text: string, image
     for (const part of remaining) { await send("sendMessage", { chat_id: creds.chatId, text: part }); sent++; }
   } catch (error) {
     const partial = new PublishError(`Telegram принял ${sent} ч. публикации, но отправка не завершена. Автоматический повтор остановлен. Проверьте канал перед повторной отправкой. ${error instanceof Error ? error.message : ""}`, false);
-    partial.providerPostId = String(first.result?.message_id);
+    partial.providerPostId = String(firstMessageId(first.result));
     throw partial;
   }
-  return { providerPostId: String(first.result?.message_id) };
+  return { providerPostId: String(firstMessageId(first.result)) };
 }
 
 async function vkCall(method: string, params: Record<string, string>): Promise<Record<string, unknown>> {
@@ -301,9 +320,18 @@ async function uploadPhotoForWall(creds: VkCredentials, imageUrl: string): Promi
   return `photo${savedPhoto.owner_id}_${savedPhoto.id}`;
 }
 
-async function publishToVk(creds: VkCredentials, text: string, imageUrl: string | null): Promise<{ providerPostId: string }> {
-  const hasImage = Boolean(imageUrl);
-  const attachment = imageUrl ? await uploadPhotoForWall(creds, imageUrl) : null;
+async function publishToVk(creds: VkCredentials, text: string, imageUrls: string[]): Promise<{ providerPostId: string }> {
+  const photos = imageUrls.slice(0, 10);
+  const hasImage = photos.length > 0;
+  // Sequential, not Promise.all - each image is its own
+  // getWallUploadServer + upload + saveWallPhoto (uploadPhotoForWall's own
+  // comment has the full 4-call breakdown), and VK's per-second rate limit
+  // for a community token is tight enough that bursting up to 8 of these
+  // at once risked tripping it. wall.post itself still runs exactly once,
+  // after every upload has succeeded - same invariant the single-image
+  // path already relied on for its retry classification below.
+  const attachments: string[] = [];
+  for (const url of photos) attachments.push(await uploadPhotoForWall(creds, url));
 
   const result = await vkCall("wall.post", {
     // wall.post addresses a community by its *negative* owner_id — every
@@ -314,7 +342,7 @@ async function publishToVk(creds: VkCredentials, text: string, imageUrl: string 
     owner_id: String(-vkGroupIdNumber(creds.groupId)),
     from_group: "1",
     message: truncateForPlatform("vk", text, hasImage),
-    ...(attachment ? { attachments: attachment } : {}),
+    ...(attachments.length ? { attachments: attachments.join(",") } : {}),
     access_token: creds.accessToken,
   });
 
@@ -329,7 +357,7 @@ export async function publishToChannel(params: {
   platform: string;
   credentialsJson: string;
   text: string;
-  imageUrl: string | null;
+  imageUrls: string[];
 }): Promise<{ providerPostId: string }> {
   let credentials: ChannelCredentials;
   try {
@@ -339,10 +367,10 @@ export async function publishToChannel(params: {
   }
 
   if (params.platform === "telegram" && credentials.platform === "telegram") {
-    return publishToTelegram(credentials.telegram, params.text, params.imageUrl);
+    return publishToTelegram(credentials.telegram, params.text, params.imageUrls);
   }
   if (params.platform === "vk" && credentials.platform === "vk") {
-    return publishToVk(credentials.vk, params.text, params.imageUrl);
+    return publishToVk(credentials.vk, params.text, params.imageUrls);
   }
   throw new PublishError(`Неизвестная или несовпадающая площадка публикации: ${params.platform}.`, false);
 }
