@@ -3,16 +3,33 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { Window } from "happy-dom";
 import * as React from "react";
+import * as ReactDOM from "react-dom";
 import * as jsx from "react/jsx-runtime";
 import * as sdk from "@openai/chatkit-react";
 import ts from "typescript";
+
+function loadComponent(path, dependencies = {}) {
+  const output = ts.transpileModule(readFileSync(new URL(`../${path}`, import.meta.url), "utf8"), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
+  }).outputText;
+  const exports = {};
+  new Function("require", "exports", output)((name) => {
+    assert.ok(name in dependencies, `Unexpected dependency: ${name}`);
+    return dependencies[name];
+  }, exports);
+  return exports;
+}
+
+const generationSettings = loadComponent("app/dialogue-generation-settings.ts", {
+  "./content-plans": loadComponent("app/content-plans.ts"),
+});
 
 // Exercise the real React SDK with its element initially undefined, just as
 // it is while the external ChatKit script is still downloading or blocked.
 async function mountWorkspace(t, { savedThread = "thread-saved", storageBlocked = false } = {}) {
   const window = new Window({ url: "https://preview.example.invalid" });
   const previous = new Map();
-  for (const name of ["window", "document", "customElements", "localStorage", "AbortController"]) {
+  for (const name of ["window", "document", "customElements", "localStorage"]) {
     previous.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
     Object.defineProperty(globalThis, name, {
       configurable: true,
@@ -61,6 +78,11 @@ async function mountWorkspace(t, { savedThread = "thread-saved", storageBlocked 
     "@openai/chatkit-react": sdk,
     "next/script": { default: (options) => { scriptProps = options; return null; } },
     "./dialogue-chatkit.css": {},
+    "./dialogue-generation-settings": generationSettings,
+    "./module-select": loadComponent("app/module-select.tsx", {
+      react: React, "react/jsx-runtime": jsx, "react-dom": ReactDOM,
+      "./help-tip": { HelpTip: () => null },
+    }),
     "./dialogue-workspace-legacy": {
       LegacyDialogueWorkspace: () => React.createElement("div", { "data-legacy": "true" }, "Available dialogue"),
     },
@@ -93,6 +115,10 @@ async function mountWorkspace(t, { savedThread = "thread-saved", storageBlocked 
         if (this.failure) throw this.failure;
         this.dispatchEvent(new window.CustomEvent("chatkit.thread.change", { detail: { threadId: id } }));
       }
+      async setComposerValue(value) {
+        this.composerValue = value;
+        this.dispatchEvent(new window.CustomEvent("chatkit.tool.change", { detail: { toolId: value.selectedToolId } }));
+      }
     }
     window.customElements.define("openai-chatkit", TestChatKit);
   }
@@ -113,6 +139,15 @@ async function mountWorkspace(t, { savedThread = "thread-saved", storageBlocked 
     expire: () => React.act(async () => startupTimeout()),
     scriptError: () => React.act(async () => scriptProps.onError()),
     clickNew: () => React.act(async () => container.querySelector(".klio-chatkit-new").click()),
+    chooseTool: (toolId) => React.act(async () => element().dispatchEvent(new window.CustomEvent("chatkit.tool.change", { detail: { toolId } }))),
+    chooseOption: async (label, text) => {
+      const field = [...container.querySelectorAll(".module-select")].find((node) => node.querySelector(".field-label-help")?.textContent === label);
+      assert.ok(field, `Missing setting: ${label}`);
+      await React.act(async () => field.querySelector("button").click());
+      const option = [...window.document.querySelectorAll('[role="option"]')].find((node) => node.textContent.replace("✓", "").trim() === text);
+      assert.ok(option, `Missing option: ${text}`);
+      await React.act(async () => option.click());
+    },
   };
 }
 
@@ -226,3 +261,71 @@ for (const synchronous of [false, true]) {
     assert.equal(h.container.querySelector("[data-legacy]"), null);
   });
 }
+
+test("ChatKit image settings reach the submitted payload even after the SDK clears the tool", async (t) => {
+  const h = await mountWorkspace(t);
+  await h.define();
+  await h.ready();
+  await h.render({ hasLogo: true });
+  await h.chooseTool("image");
+  await h.chooseOption("Ориентация", "Портретная");
+  await h.chooseOption("Формат файла", "WEBP");
+  await React.act(async () => h.container.querySelector(".klio-chatkit-settings-logo input").click());
+  await React.act(async () => h.container.querySelector(".klio-chatkit-settings-toggle").click());
+  assert.equal(h.container.querySelector(".klio-chatkit-settings-grid").hidden, true);
+  await h.chooseTool(null); // Native tool is one-shot; submitted payload remains authoritative.
+  let sent;
+  t.mock.method(globalThis, "fetch", async (request) => { sent = request; return new Response("{}"); });
+  await h.element().options.api.fetch("/api/chatkit", {
+    method: "POST", headers: { "x-test": "preserved" },
+    body: JSON.stringify({ type: "threads.create", params: { input: { content: [{ type: "input_text", text: "Обложка" }], inference_options: { tool_choice: { id: "image" } } } } }),
+  });
+  assert.equal(sent.credentials, "same-origin");
+  assert.equal(sent.headers.get("x-test"), "preserved");
+  const payload = await sent.json();
+  assert.deepEqual(payload.params.klio_settings, { imageAspectRatio: "9:16", imageOutputFormat: "webp", useLogo: true });
+  assert.equal(payload.params.input.content[0].text, "Обложка");
+  assert.deepEqual(h.uncaught, []);
+});
+
+test("topic and text settings are independent of plain chat and theme changes", async (t) => {
+  const h = await mountWorkspace(t);
+  await h.define();
+  await h.ready();
+  await h.chooseTool("text");
+  await h.chooseOption("Формат", "SEO-статья");
+  await h.chooseOption("Тон", "Экспертный");
+  await h.chooseOption("Объём", "Длинный");
+  await h.render({ theme: "dark" });
+  const sent = [];
+  t.mock.method(globalThis, "fetch", async (request) => { sent.push(await request.json()); return new Response("{}"); });
+  const submit = (tool) => h.element().options.api.fetch(new Request("https://preview.example.invalid/api/chatkit", {
+    method: "POST", body: JSON.stringify({ type: "threads.add_user_message", params: { thread_id: "thread-saved", input: { inference_options: { tool_choice: tool ? { id: tool } : null } } } }),
+  }));
+  await submit("text");
+  assert.deepEqual(sent.at(-1).params.klio_settings, { format: "seo", tone: "Экспертный", length: "long" });
+  await h.chooseTool("topics");
+  assert.equal(h.container.textContent.includes("Объём"), false);
+  await h.chooseOption("Количество тем", "8");
+  await submit("topics");
+  assert.deepEqual(sent.at(-1).params.klio_settings, { format: "seo", topicCount: "8" });
+  await h.chooseTool(null);
+  assert.equal(h.container.querySelector(".klio-chatkit-settings"), null);
+  await submit(null);
+  assert.deepEqual(sent.at(-1).params.klio_settings, {});
+  await h.chooseTool("text");
+  assert.ok(h.container.textContent.includes("Экспертный"));
+  assert.ok(h.container.textContent.includes("Длинный"));
+  assert.deepEqual(h.uncaught, []);
+});
+
+test("business switcher works without enabling brand context", async (t) => {
+  const h = await mountWorkspace(t);
+  const changed = [];
+  await h.render({ brandId: "one", brandName: "Первый бизнес", brands: [{ id: "one", name: "Первый бизнес" }, { id: "two", name: "Второй бизнес" }], onBrandChange: (id) => changed.push(id) });
+  await React.act(async () => h.container.querySelector('[aria-label="Выбрать бизнес"]').click());
+  await React.act(async () => h.container.querySelector('[role="option"][aria-selected="false"]').click());
+  assert.deepEqual(changed, ["two"]);
+  assert.equal(h.container.querySelector(".klio-chatkit-brand-context input").checked, false);
+  assert.equal(h.container.querySelector(".klio-chatkit-brand-options"), null);
+});

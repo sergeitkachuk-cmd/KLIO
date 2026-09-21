@@ -5674,11 +5674,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"} title={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"}><Icon name={theme === "dark" ? "sun" : "moon"}/></button>
           <a className="telegram-header-link" href="https://t.me/kliopress" target="_blank" rel="noreferrer" aria-label="Telegram КЛИО"><Icon name="telegram"/><span className="telegram-header-link-text">Telegram КЛИО</span></a>
           <div className={`account-menu ${accountMenuOpen ? "is-open" : ""}`} ref={accountMenuRef}>
-            <button type="button" className="workspace-account" onClick={() => setAccountMenuOpen((value) => !value)} aria-haspopup="menu" aria-expanded={accountMenuOpen}>
+            <button type="button" className="workspace-account" onClick={() => setAccountMenuOpen((value) => !value)} aria-label={`Меню аккаунта: ${workspaceUserName}`} aria-haspopup="menu" aria-expanded={accountMenuOpen}>
               <i>{nameInitials(workspaceUserName)}{feedbackUnread > 0 && <em className="workspace-account-badge">{feedbackUnread}</em>}</i><b>{workspaceUserName}</b><small>{workspaceAccount.planName} · 1 пользователь</small><em className="ui-chevron" aria-hidden="true" />
             </button>
             {accountMenuOpen && <div className="account-menu-list" role="menu">
               <Link href="/account" role="menuitem">Личный кабинет</Link>
+              {workspaceMode === "dialogue" && <div className="dialogue-mobile-modes" role="group" aria-label="Режим работы">
+                <button type="button" role="menuitemradio" aria-checked="true" onClick={() => setAccountMenuOpen(false)}>Диалоговый режим ✓</button>
+                <button type="button" role="menuitemradio" aria-checked="false" disabled={modeSaving} onClick={() => { setAccountMenuOpen(false); void changeWorkspaceMode("professional"); }}>Профессиональный режим</button>
+              </div>}
               {/* Mobile-only now (see the header's own .theme-toggle above,
                   hidden on mobile via CSS) - this copy is what the header
                   button was moved into for mobile specifically, where

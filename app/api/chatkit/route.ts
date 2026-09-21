@@ -3,6 +3,7 @@ import type {
   DialogueMessage,
   DialogueThread,
 } from "../../dialogue-model";
+import { settingsForTool, type GenerationSettings } from "../../dialogue-generation-settings";
 import {
   GET as dialogueGET,
   POST as dialoguePOST,
@@ -436,12 +437,10 @@ async function streamMessage(
     mode,
     cardId,
     useBrandContext,
-    settings: {
-      topicCount: 5,
-      imageAspectRatio: "4:3",
-      imageOutputFormat: "png",
-      useLogo: false,
-    },
+    settings: settingsForTool(mode, (
+      params.klio_settings && typeof params.klio_settings === "object" && !Array.isArray(params.klio_settings)
+        ? params.klio_settings : {}
+    ) as Partial<GenerationSettings>),
   });
   if (!accepted.thread)
     throw new AdapterError("КЛИО не приняла сообщение.", 502);

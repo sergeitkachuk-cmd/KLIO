@@ -28,15 +28,15 @@
 }
 
 :root[data-theme="dark"] .workspace-shell.is-dialogue .klio-chat-v2 {
-  --chat-bg: #212325;
-  --chat-sidebar: #181a1c;
-  --chat-surface: #2d3033;
-  --chat-surface-hover: #383c40;
-  --chat-card: #292c2f;
+  --chat-bg: #081b30;
+  --chat-sidebar: #061629;
+  --chat-surface: #102c49;
+  --chat-surface-hover: #193954;
+  --chat-card: #102c49;
   --chat-text: #f1f3f5;
-  --chat-muted: #b3bac4;
-  --chat-faint: #8f98a4;
-  --chat-line: #3b4045;
+  --chat-muted: #a9bdd1;
+  --chat-faint: #91a9c0;
+  --chat-line: #2a435c;
   --chat-accent: #b8d4e7;
   --chat-accent-contrast: #172433;
   --chat-accent-soft: #293c4b;
@@ -798,8 +798,8 @@ body > .klio-chat-intent-menu > button:is(:hover, .active) {
 }
 
 :root[data-theme="dark"] body > .klio-chat-intent-menu {
-  border-color: #3b4045;
-  background: #292c2f;
+  border-color: #2a435c;
+  background: #102c49;
   color: #f1f3f5;
   box-shadow: 0 20px 55px #0008;
 }
@@ -814,11 +814,11 @@ body > .klio-chat-intent-menu > button:is(:hover, .active) {
 }
 
 :root[data-theme="dark"] body > .klio-chat-intent-menu > button small {
-  color: #b3bac4;
+  color: #a9bdd1;
 }
 
 :root[data-theme="dark"] body > .klio-chat-intent-menu > button:is(:hover, .active) {
-  background: #383c40;
+  background: #193954;
 }
 
 /* Editor follows the same quiet surface language as the chat. */

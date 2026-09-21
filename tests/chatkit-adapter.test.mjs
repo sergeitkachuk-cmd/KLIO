@@ -19,6 +19,9 @@ function chatKitRoute(dialogueRoute) {
     {
       "../../dialogue-model": model,
       "../dialogue/route": dialogueRoute,
+      "../../dialogue-generation-settings": load("app/dialogue-generation-settings.ts", {
+        "./content-plans": load("app/content-plans.ts"),
+      }),
     },
     {
       TextEncoder,
@@ -143,4 +146,56 @@ test("ChatKit history and item paging stay on the KLIO dialogue database", async
     ),
     true,
   );
+});
+
+test("ChatKit passes text/topic settings into the real dialogue generation context", async (t) => {
+  const harness = await createDialogueHarness();
+  t.after(() => harness.close());
+  const contexts = [];
+  harness.setAi(async (input) => {
+    contexts.push(JSON.parse(input.input));
+    return { reply: "Готово", action: "create", cards: [{ kind: "post", title: "Материал", body: "Текст материала" }], profile: [] };
+  });
+  const route = chatKitRoute(harness.route);
+  const thread = await harness.create();
+  for (const [tool, settings] of [
+    ["text", { format: "seo", tone: "Экспертный", length: "long", topicCount: 10 }],
+    ["topics", { format: "social", topicCount: 8, tone: "Экспертный", length: "long" }],
+  ]) {
+    const response = await request(route, { type: "threads.add_user_message", params: {
+      thread_id: thread.id, klio_settings: settings,
+      input: { content: [{ type: "input_text", text: "Подготовь материал" }], inference_options: { tool_choice: { id: tool } } },
+    } });
+    const events = parseEvents(await response.text());
+    assert.equal(events.some((event) => event.type === "error"), false, JSON.stringify(events));
+  }
+  assert.equal(contexts[0].settings.format, "seo");
+  assert.equal(contexts[0].settings.tone, "Экспертный");
+  assert.equal(contexts[0].settings.target_characters_with_spaces, 4000);
+  assert.ok(contexts[0].settings.format_contract.rules.length);
+  assert.equal(contexts[1].settings.format, "social");
+  assert.equal(contexts[1].settings.topic_count, 8);
+  assert.equal(contexts[1].settings.tone, null);
+  assert.equal(contexts[1].settings.target_characters_with_spaces, null);
+});
+
+test("ChatKit forwards image options to the image service and rejects invalid enum values", async (t) => {
+  const harness = await createDialogueHarness();
+  t.after(() => harness.close());
+  const route = chatKitRoute(harness.route);
+  const thread = await harness.create();
+  for (const settings of [
+    { imageAspectRatio: "9:16", imageOutputFormat: "webp", useLogo: false },
+    { imageAspectRatio: "not-a-size", imageOutputFormat: "exe", useLogo: false },
+  ]) {
+    const response = await request(route, { type: "threads.add_user_message", params: {
+      thread_id: thread.id, klio_settings: settings,
+      input: { content: [{ type: "input_text", text: "Нарисуй лес" }], inference_options: { tool_choice: { id: "image" } } },
+    } });
+    const events = parseEvents(await response.text());
+    assert.equal(events.some((event) => event.type === "error"), false, JSON.stringify(events));
+  }
+  assert.equal(harness.imageCalls.length, 2);
+  assert.deepEqual(JSON.parse(JSON.stringify(harness.imageCalls[0].args.at(-1))), { aspectRatio: "9:16", outputFormat: "webp" });
+  assert.deepEqual(JSON.parse(JSON.stringify(harness.imageCalls[1].args.at(-1))), {});
 });

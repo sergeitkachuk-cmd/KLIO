@@ -99,6 +99,7 @@ export async function createDialogueHarness() {
         .where(orm.eq(schema.accounts.email, owner))
     )[0];
   let calls = 0;
+  const imageCalls = [];
   let tavily = async () => null;
   let ai = async (input) => {
     const context = JSON.parse(input.input);
@@ -213,8 +214,8 @@ export async function createDialogueHarness() {
       "../_lib/base-url": { resolveBaseUrl: () => "http://127.0.0.1:3027" },
       "../_lib/image-generation": {
         imageConfigured: () => true,
-        createImage: async () => "https://cdn.example.invalid/generated.png",
-        createImageFromLogo: async () => "https://cdn.example.invalid/generated-with-logo.png",
+        createImage: async (...args) => { imageCalls.push({ logo: false, args }); return "https://cdn.example.invalid/generated.png"; },
+        createImageFromLogo: async (...args) => { imageCalls.push({ logo: true, args }); return "https://cdn.example.invalid/generated-with-logo.png"; },
       },
       "../_lib/storage": {
         downloadBrandLogo: async () => ({ bytes: new Uint8Array(), contentType: "image/png" }),
@@ -270,6 +271,7 @@ export async function createDialogueHarness() {
     account,
     owner,
     calls: () => calls,
+    imageCalls,
     AiCallError,
     setAi: (value) => {
       ai = value;

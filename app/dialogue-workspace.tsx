@@ -4,6 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Script from "next/script";
 import { ChatKit, useChatKit } from "@openai/chatkit-react";
 import type { DialogueCard, DialogueThread } from "./dialogue-model";
+import { ModuleSelect } from "./module-select";
+import {
+  DEFAULT_GENERATION_SETTINGS, FORMAT_OPTIONS, TONE_OPTIONS, LENGTH_OPTIONS,
+  TOPIC_COUNT_OPTIONS, IMAGE_ASPECT_OPTIONS, IMAGE_FORMAT_OPTIONS, settingsForTool,
+  type GenerationSettings,
+} from "./dialogue-generation-settings";
 import {
   LegacyDialogueWorkspace,
   type DialogueWorkspaceProps,
@@ -64,6 +70,10 @@ function ChatKitWorkspace(
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
+  const [selectedTool, setSelectedTool] = useState<string | null>(null);
+  const [settingsExpanded, setSettingsExpanded] = useState(true);
+  const [generationSettings, setGenerationSettings] = useState(DEFAULT_GENERATION_SETTINGS);
+  const generationSettingsRef = useRef(generationSettings);
   const [editCard, setEditCard] = useState<DialogueCard | null>(null);
   const [editThreadId, setEditThreadId] = useState("");
   const [editTitle, setEditTitle] = useState("");
@@ -81,6 +91,31 @@ function ChatKitWorkspace(
   });
   const activeThreadRef = useRef<string | null>(null);
   const readyRef = useRef(false);
+
+  function changeSetting<K extends keyof GenerationSettings>(key: K, value: GenerationSettings[K]) {
+    const next = { ...generationSettingsRef.current, [key]: value };
+    generationSettingsRef.current = next;
+    setGenerationSettings(next);
+  }
+
+  const chatFetch = useCallback<typeof fetch>(async (input, init) => {
+    // ChatKit owns the composer. Add KLIO settings only to message submissions,
+    // using the tool in the submitted payload (selection clears after send).
+    const target = typeof input === "string" ? new URL(input, window.location.href) : input;
+    const outgoing = new Request(target, { ...init, credentials: "same-origin" });
+    if (outgoing.method !== "POST") return fetch(outgoing);
+    const body = await outgoing.clone().json().catch(() => null);
+    if (body?.type !== "threads.create" && body?.type !== "threads.add_user_message") return fetch(outgoing);
+    const tool = body.params?.input?.inference_options?.tool_choice?.id || "";
+    body.params = {
+      ...body.params,
+      klio_settings: settingsForTool(tool, generationSettingsRef.current, Boolean(props.hasLogo)),
+    };
+    const headers = new Headers(outgoing.headers);
+    headers.delete("content-length");
+    headers.set("content-type", "application/json");
+    return fetch(new Request(outgoing, { headers, body: JSON.stringify(body) }));
+  }, [props.hasLogo]);
 
   const loadThread = useCallback(async (threadId: string) => {
     return readJson<{ thread: DialogueThread }>(
@@ -129,8 +164,7 @@ function ChatKitWorkspace(
     api: {
       url: apiUrl,
       domainKey: props.domainKey,
-      fetch: (input, init) =>
-        fetch(input, { ...init, credentials: "same-origin" }),
+      fetch: chatFetch,
     },
     locale: "ru-RU",
     theme: {
@@ -143,10 +177,13 @@ function ChatKitWorkspace(
       },
       color: {
         accent: {
-          primary: props.theme === "dark" ? "#f2f2f2" : "#111111",
+          primary: props.theme === "dark" ? "#c7dbed" : "#254263",
           level: 1,
         },
-        grayscale: { hue: 215, tint: 1, shade: 0 },
+        grayscale: { hue: 214, tint: props.theme === "dark" ? 9 : 2, shade: 0 },
+        surface: props.theme === "dark"
+          ? { background: "#081b30", foreground: "#102c49" }
+          : { background: "#ffffff", foreground: "#f1f5f9" },
       },
     },
     header: {
@@ -228,6 +265,10 @@ function ChatKitWorkspace(
     onResponseStart: () => {
       setError("");
       setNotice("");
+    },
+    onToolChange: ({ toolId }) => {
+      setSelectedTool(toolId);
+      setSettingsExpanded(true);
     },
     onResponseEnd: () => {
       props.onUsage();
@@ -380,8 +421,7 @@ function ChatKitWorkspace(
     >
       <aside className="klio-chatkit-rail" aria-label="Разделы КЛИО">
         <div className="klio-chatkit-rail-head">
-          <b>КЛИО</b>
-          <button
+          <button className="klio-chatkit-close-rail"
             type="button"
             aria-label="Закрыть меню"
             onClick={() => setRailOpen(false)}
@@ -413,40 +453,28 @@ function ChatKitWorkspace(
         </nav>
         <div className="klio-chatkit-rail-spacer" />
         <div className="klio-chatkit-brand">
-          <span>Пространство</span>
-          {props.brands.length ? (
-            <div className="klio-chatkit-brand-select">
-              <button
-                type="button"
-                onClick={() => setBrandMenuOpen((open) => !open)}
-                aria-expanded={brandMenuOpen}
-              >
-                <i>{(props.brandName || "Л").trim().charAt(0).toUpperCase()}</i>
-                <span>{props.brandName || "Личное"}</span>
-                <em aria-hidden="true">⌄</em>
-              </button>
-              {brandMenuOpen && (
-                <div role="listbox" aria-label="Выберите бизнес">
-                  {props.brands.map((brand) => (
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={brand.id === props.brandId}
-                      key={brand.id}
-                      onClick={() => {
-                        setBrandMenuOpen(false);
-                        props.onBrandChange(brand.id);
-                      }}
-                    >
-                      {brand.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <strong>Личное пространство</strong>
-          )}
+          <span>Ваш бизнес</span>
+          <div className="klio-chatkit-brand-select">
+            <button
+              type="button"
+              aria-label="Выбрать бизнес"
+              aria-expanded={brandMenuOpen}
+              onClick={() => setBrandMenuOpen((open) => !open)}
+            >
+              <i>{(props.brandName || "Л").trim().charAt(0).toUpperCase()}</i>
+              <span title={props.brandName || "Личное пространство"}>{props.brandName || "Личное пространство"}</span>
+              <em aria-hidden="true">⌄</em>
+            </button>
+            {brandMenuOpen && <div className="klio-chatkit-brand-options">
+              {props.brands.length > 0 && <div role="listbox" aria-label="Выберите бизнес">
+                {props.brands.map((brand) => <button type="button" role="option" aria-selected={brand.id === props.brandId} key={brand.id} onClick={() => {
+                  setBrandMenuOpen(false);
+                  props.onBrandChange(brand.id);
+                }}>{brand.name}</button>)}
+              </div>}
+              <button type="button" onClick={() => { setBrandMenuOpen(false); props.onNavigate("brand"); }}>{props.brands.length ? "Управление бизнесами" : "Добавить бизнес"} →</button>
+            </div>}
+          </div>
         </div>
         <label className="klio-chatkit-brand-context">
           <input
@@ -489,6 +517,27 @@ function ChatKitWorkspace(
           className={`klio-chatkit-frame ${chatReady ? "is-ready" : ""}`}
           aria-hidden={!chatReady}
         />
+        {chatReady && selectedTool && ["topics", "text", "image"].includes(selectedTool) && (
+          <section className="klio-chatkit-settings" aria-label="Параметры генерации">
+            <button type="button" className="klio-chatkit-settings-toggle" aria-expanded={settingsExpanded} aria-controls="chatkit-generation-settings" onClick={() => setSettingsExpanded((value) => !value)}>
+              <span>{selectedTool === "image" ? "Параметры изображения" : selectedTool === "topics" ? "Параметры тем" : "Параметры текста"}</span>
+              <span>{settingsExpanded ? "Свернуть" : "Настроить"} <span aria-hidden="true">{settingsExpanded ? "⌄" : "⌃"}</span></span>
+            </button>
+            <div id="chatkit-generation-settings" className="klio-chatkit-settings-grid" hidden={!settingsExpanded}>
+              {(selectedTool === "topics" || selectedTool === "text") && <ModuleSelect variant="chatkit" label="Формат" value={generationSettings.format} options={FORMAT_OPTIONS} onChange={(value) => changeSetting("format", value)} />}
+              {selectedTool === "topics" && <ModuleSelect variant="chatkit" label="Количество тем" value={generationSettings.topicCount} options={TOPIC_COUNT_OPTIONS} onChange={(value) => changeSetting("topicCount", value)} />}
+              {selectedTool === "text" && <>
+                <ModuleSelect variant="chatkit" label="Тон" value={generationSettings.tone} options={TONE_OPTIONS} onChange={(value) => changeSetting("tone", value)} />
+                <ModuleSelect variant="chatkit" label="Объём" value={generationSettings.length} options={LENGTH_OPTIONS} onChange={(value) => changeSetting("length", value)} />
+              </>}
+              {selectedTool === "image" && <>
+                <ModuleSelect variant="chatkit" label="Ориентация" value={generationSettings.imageAspectRatio} options={IMAGE_ASPECT_OPTIONS} onChange={(value) => changeSetting("imageAspectRatio", value)} />
+                <ModuleSelect variant="chatkit" label="Формат файла" value={generationSettings.imageOutputFormat} options={IMAGE_FORMAT_OPTIONS} onChange={(value) => changeSetting("imageOutputFormat", value)} />
+                {props.hasLogo ? <label className="klio-chatkit-settings-logo"><input type="checkbox" checked={generationSettings.useLogo} onChange={(event) => changeSetting("useLogo", event.target.checked)} />Использовать логотип бренда</label> : <button type="button" className="klio-chatkit-settings-logo" onClick={() => props.onNavigate("brand")}>Загрузить логотип бренда →</button>}
+              </>}
+            </div>
+          </section>
+        )}
         {!chatReady && (
           <div className="klio-chatkit-loading" role="status" aria-live="polite">
             <span aria-hidden="true" />
