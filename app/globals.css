@@ -15315,6 +15315,20 @@ input[type="radio"] {
        corner this bar carried before - these items act as buttons here,
        not as sidebar list rows. */
     border-radius: 999px;
+    /* The base rule's background: transparent/border: 0 works for a
+       vertical list (each row's own line of text is separation enough),
+       but here every item sits edge to edge in one horizontal bar with
+       only 8px of gap between them - with no fill of their own, every
+       non-active item read as one continuous run of icons and text
+       instead of separate buttons (site owner: "кнопки меню внизу
+       сливаются"). Same faint chip .button.ghost already uses
+       elsewhere, not a new heavy frame. */
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.045);
+  }
+
+  .workspace-sidebar nav a.active {
+    border-color: color-mix(in srgb, var(--sidebar-accent) 45%, transparent);
   }
 
   .workspace-sidebar nav i {
@@ -22002,7 +22016,13 @@ input[type="radio"] {
 
   [data-theme="light"] .workspace-sidebar nav a {
     color: #4a5568;
-    background: transparent;
+    /* Same fix as the dark-theme rule above - without its own chip fill,
+       every inactive item in this horizontal bar read as one continuous
+       run of icons/text instead of separate buttons (site owner:
+       "кнопки меню внизу сливаются"). Matches .button.ghost's light
+       treatment, not a new heavy frame. */
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    background: rgba(15, 23, 42, 0.035);
   }
 
   [data-theme="light"] .workspace-sidebar nav b {
