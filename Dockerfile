@@ -9,6 +9,8 @@ FROM node:22-bookworm-slim AS builder
 WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
+# Next.js embeds this public domain key into the browser bundle at build time.
+ARG NEXT_PUBLIC_CHATKIT_DOMAIN_KEY
 RUN npm run build
 
 FROM node:22-bookworm-slim AS runner
