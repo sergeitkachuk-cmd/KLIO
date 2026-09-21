@@ -6110,7 +6110,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <li>Для ключа сообщества отметьте права <b>«Стена»</b>, <b>«Сообщения»</b> и <b>«Фотографии»</b>.</li>
                   <li>Id сообщества — можно вписать и красивое имя из адреса (<code>vk.com/kliopress</code> → <code>kliopress</code>), и числовой id из «Работа с API»: КЛИО сам определит нужное число.</li>
                 </ol>
-                <label className="publications-editor-field"><span>Id сообщества</span><input type="text" value={pubChannelVk.groupId} onChange={(event) => setPubChannelVk((current) => ({ ...current, groupId: event.target.value }))} placeholder="kliopress или 123456789"/></label>
+                <label className="publications-editor-field"><span>Сообщество VK</span><input type="text" value={pubChannelVk.groupId} onChange={(event) => setPubChannelVk((current) => ({ ...current, groupId: event.target.value }))} placeholder="vk.com/kliopress, kliopress или 123456789"/></label>
                 <label className="publications-editor-field"><span>Токен сообщества</span><input type="text" value={pubChannelVk.accessToken} onChange={(event) => setPubChannelVk((current) => ({ ...current, accessToken: event.target.value }))} placeholder="vk1.a…"/></label>
               </>}
               {pubChannelError && <p className="generation-error" role="alert">{pubChannelError}</p>}

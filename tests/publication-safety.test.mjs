@@ -378,7 +378,7 @@ test("Telegram channel validation separates transport failures from invalid cred
   }
 });
 
-test("VK connects with one community token and resolves the numeric group id", async () => {
+test("VK normalizes a pasted community URL and resolves its numeric group id", async () => {
   const calls = [];
   const replies = [{ response: [{ id: 55, name: "Test community", photo_200: "https://vk.example/avatar.jpg" }] }];
   const loaded = load("app/api/_lib/social-channels.ts", {
@@ -397,13 +397,32 @@ test("VK connects with one community token and resolves the numeric group id", a
 
   const result = await loaded.describeChannel({
     platform: "vk",
-    vk: { groupId: "pretty-name", accessToken: "community-token" },
+    vk: { groupId: "https://vk.com/kliopress/?from=groups#about", accessToken: "community-token" },
   });
   assert.equal(result.resolvedGroupId, "55");
   assert.equal(calls.length, 1);
   assert.match(calls[0].url, /groups\.getById/);
-  assert.equal(calls[0].body.get("group_id"), "pretty-name");
+  assert.equal(calls[0].body.get("group_id"), "kliopress");
   assert.equal(calls[0].body.get("access_token"), "community-token");
+});
+
+test("VK rejects a foreign or malformed community URL before sending credentials", async () => {
+  let calls = 0;
+  const loaded = load("app/api/_lib/social-channels.ts", {
+    "./publishing-config": load("app/api/_lib/publishing-config.ts"),
+    "../../../db/schema": {},
+    "node:https": {},
+    "node:http": {},
+    "./telegram-proxy": {},
+  }, {
+    fetch: async () => { calls++; throw new Error("must not fetch"); },
+  });
+
+  await assert.rejects(loaded.describeChannel({
+    platform: "vk",
+    vk: { groupId: "https://example.com/not-vk", accessToken: "community-token" },
+  }), /Не удалось распознать адрес сообщества VK/);
+  assert.equal(calls, 0);
 });
 
 test("saving a failed publication cannot silently requeue it", () => {

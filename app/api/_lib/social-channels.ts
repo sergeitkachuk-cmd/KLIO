@@ -117,29 +117,45 @@ async function describeTelegramChannel(telegram: { botToken: string; chatId: str
   }
 }
 
+function normalizeVkGroupReference(input: string): string {
+  let value = input.trim();
+  const urlLike = /^https?:\/\//i.test(value) || /^(?:www\.|m\.)?vk\.(?:com|ru)\//i.test(value);
+  if (urlLike) {
+    try {
+      const parsed = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`);
+      const host = parsed.hostname.toLowerCase().replace(/^(?:www\.|m\.)/, "");
+      if (host !== "vk.com" && host !== "vk.ru") throw new Error("foreign host");
+      value = decodeURIComponent(parsed.pathname.split("/").filter(Boolean)[0] ?? "");
+    } catch {
+      throw new ChannelValidationError("Не удалось распознать адрес сообщества VK. Укажите числовой ID, короткое имя или ссылку вида vk.com/имя.");
+    }
+  }
+  value = value.split(/[?#]/, 1)[0].replace(/^@/, "").replace(/^\/+|\/+$/g, "").trim();
+  const prefixedId = value.match(/^(?:club|public|event)(\d+)$/i);
+  if (prefixedId) value = prefixedId[1];
+  if (/^-\d+$/.test(value)) value = value.slice(1);
+  if (!value || (!/^\d+$/.test(value) && !/^[a-zA-Z0-9_.]+$/.test(value))) {
+    throw new ChannelValidationError("Не удалось распознать сообщество VK. Укажите числовой ID, короткое имя или ссылку вида vk.com/имя.");
+  }
+  return value;
+}
+
 async function describeVkChannel(vk: VkCredentials): Promise<{ label: string; avatarUrl: string; resolvedGroupId: string }> {
   if (!vk.groupId.trim() || !vk.accessToken.trim()) {
     throw new ChannelValidationError("Укажите id сообщества и токен доступа.");
   }
-  // groups.getById accepts a screen name/vanity URL (vk.com/kliopress) just
-  // as well as the raw numeric id — and a "красивое" screen name is VK's
-  // own product feature, not an edge case, so requiring the numeric id up
-  // front (an earlier version of this function did exactly that) locked
-  // out most real communities. wall.post further down the pipeline still
-  // needs a real integer to negate into owner_id (see vkGroupIdNumber in
-  // social-publish.ts), so instead of asking the person to go dig it out
-  // of "Работа с API" themselves, resolve it here from VK's own answer —
-  // group.id in the groups.getById response is always the numeric id,
-  // regardless of which form was typed in — and save that instead of
-  // whatever was typed. The typed value (name or number) still round-trips
-  // through this same call as validation that it's real and reachable.
+  // VK's API accepts an id or screen name, but not a full page URL. People
+  // naturally paste that URL (and sometimes @name or -owner_id), so convert
+  // every supported form into the one value groups.getById expects before
+  // asking VK to resolve and validate it.
+  const groupReference = normalizeVkGroupReference(vk.groupId);
   let response: Response;
   try {
     response = await fetch("https://api.vk.com/method/groups.getById", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
-        group_id: vk.groupId,
+        group_id: groupReference,
         access_token: vk.accessToken,
         fields: "photo_200",
         v: VK_API_VERSION,
@@ -152,8 +168,11 @@ async function describeVkChannel(vk: VkCredentials): Promise<{ label: string; av
     | { response?: unknown; error?: { error_msg: string } }
     | null;
   if (!payload || payload.error) {
+    const invalidGroup = /group_ids?|domain/i.test(payload?.error?.error_msg ?? "");
     throw new ChannelValidationError(
-      payload?.error ? `VK отклонил подключение: ${payload.error.error_msg}` : "VK отклонил подключение — проверьте id сообщества и токен.",
+      invalidGroup
+        ? "VK не распознал сообщество. Укажите числовой ID, короткое имя или ссылку вида vk.com/имя."
+        : payload?.error ? `VK отклонил подключение: ${payload.error.error_msg}` : "VK отклонил подключение — проверьте id сообщества и токен.",
     );
   }
   // API version has moved between a bare array and a { groups: [...] }
