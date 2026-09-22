@@ -24,9 +24,10 @@ const IMAGE_BACKGROUND_VALUES = new Set(["auto", "transparent", "opaque"]);
 // cap was still sized for prompt-only bodies, so every logo-enabled request
 // was rejected here before it ever reached OpenAI (site owner: image
 // generation errors only when the logo toggle is on).
-const MAX_REQUEST_BYTES = 12_000_000;
+const MAX_REQUEST_BYTES = 24_000_000; // One source and one logo, each <= 8 MiB before base64.
 
 function resolveRequestSize(rawSize, aspectRatio) {
+  if (rawSize === "auto") return "auto";
   if (typeof rawSize === "string" && /^\d+x\d+$/.test(rawSize)) return rawSize;
   if (typeof aspectRatio === "string" && IMAGE_SIZE_BY_RATIO[aspectRatio]) return IMAGE_SIZE_BY_RATIO[aspectRatio];
   return "1024x1024";
@@ -52,7 +53,7 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare-2026-
   };
   return createServer(async (request, response) => {
     const reply = (status, body) => { response.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" }); response.end(JSON.stringify(body)); };
-    if (request.method === "GET" && request.url === "/health") return reply(apiKey && token?.length >= 32 ? 200 : 503, { ready: Boolean(apiKey && token?.length >= 32) });
+    if (request.method === "GET" && request.url === "/health") return reply(apiKey && token?.length >= 32 ? 200 : 503, { ready: Boolean(apiKey && token?.length >= 32), maxImageInputs: 2 });
     if (request.method !== "POST" || request.url !== "/generate") return reply(404, { error: "Not found" });
     if (!authorized(request.headers.authorization)) return reply(401, { error: "Unauthorized" });
     if (!apiKey) return reply(503, { error: "Image provider is not configured" });
@@ -67,9 +68,17 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare-2026-
     } catch { return reply(400, { error: "Invalid request" }); }
     finally { clearTimeout(timer); }
     if (!body || typeof body.prompt !== "string" || !body.prompt.trim() || body.prompt.length > 12000) return reply(400, { error: "Invalid prompt" });
-    if (body.image_b64 !== undefined && (typeof body.image_b64 !== "string" || !body.image_b64 || typeof body.image_type !== "string" || !/^image\/[a-z0-9.+-]+$/i.test(body.image_type)))
-      return reply(400, { error: "Invalid image" });
-    const logo = body.image_b64 ? { bytes: Buffer.from(body.image_b64, "base64"), contentType: body.image_type } : null;
+    if (body.images !== undefined && (!Array.isArray(body.images) || !body.images.length || body.images.length > 2 || body.image_b64 !== undefined))
+      return reply(400, { error: "Invalid images" });
+    const inputs = body.images || (body.image_b64 !== undefined ? [body] : []);
+    const images = [];
+    for (const input of inputs) {
+      if (!input || typeof input.image_b64 !== "string" || !input.image_b64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(input.image_b64)
+        || !/^image\/(png|jpeg|webp|gif)$/.test(input.image_type)) return reply(400, { error: "Invalid image" });
+      const bytes = Buffer.from(input.image_b64, "base64");
+      if (!bytes.length || bytes.length > 8 * 1024 * 1024) return reply(413, { error: "Image too large" });
+      images.push({ bytes, contentType: input.image_type });
+    }
     // Lets one caller ask for a different model than this service's own
     // startup default, without redeploying the relay for every app that
     // uses it. Falls back silently rather than rejecting, same as quality/
@@ -87,7 +96,8 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare-2026-
     const quality = IMAGE_QUALITY_VALUES.has(body.quality) ? body.quality : "high";
     const outputFormat = IMAGE_FORMAT_VALUES.has(body.output_format) ? body.output_format : "png";
     const background = IMAGE_BACKGROUND_VALUES.has(body.background) ? body.background : "auto";
-    const hash = createHash("sha256").update(body.prompt).update(logo ? logo.bytes : "").digest("hex");
+    const hash = createHash("sha256").update(JSON.stringify({ prompt: body.prompt, model: requestedModel, size: body.size || body.aspectRatio ? imageSize : null, quality, outputFormat, background,
+      images: images.map((image) => ({ type: image.contentType, sha256: createHash("sha256").update(image.bytes).digest("hex") })) })).digest("hex");
     const previous = jobs.get(id);
     if (previous && previous.hash !== hash) return reply(409, { error: "Request key already used" });
     if (!previous && running >= 2) return reply(429, { error: "Image service is busy" });
@@ -99,7 +109,7 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare-2026-
       job.result = (async () => {
         try {
           let upstream;
-          if (logo) {
+          if (images.length) {
             const form = new FormData();
             form.append("model", requestedModel);
             form.append("prompt", body.prompt);
@@ -108,7 +118,7 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare-2026-
             form.append("quality", quality);
             if (body.output_format) form.append("output_format", outputFormat);
             if (body.background) form.append("background", background);
-            form.append("image", new Blob([logo.bytes], { type: logo.contentType }), "reference");
+            images.forEach((image, index) => form.append(images.length > 1 ? "image[]" : "image", new Blob([image.bytes], { type: image.contentType }), `reference-${index}`));
             upstream = await providerFetch("https://api.openai.com/v1/images/edits", {
               method: "POST", headers: { Authorization: `Bearer ${apiKey}` },
               body: form,

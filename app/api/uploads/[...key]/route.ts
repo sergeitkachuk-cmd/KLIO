@@ -10,7 +10,7 @@
 
 import { downloadPublicationImage, StorageError } from "../../_lib/storage";
 
-export async function GET(_request: Request, context: { params: Promise<{ key: string[] }> }) {
+export async function GET(request: Request, context: { params: Promise<{ key: string[] }> }) {
   const { key: segments } = await context.params;
   const key = segments.join("/");
   // Defense in depth, not a real security boundary (the bucket only ever
@@ -20,11 +20,14 @@ export async function GET(_request: Request, context: { params: Promise<{ key: s
 
   try {
     const { bytes, contentType } = await downloadPublicationImage(key);
+    const download = new URL(request.url).searchParams.get("download") === "1";
+    const extension = ({ "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" } as Record<string, string>)[contentType] || "bin";
     return new Response(bytes, {
       headers: {
         "Content-Type": contentType,
         "Cache-Control": "public, max-age=31536000, immutable",
         "Content-Length": String(bytes.byteLength),
+        ...(download ? { "Content-Disposition": `attachment; filename="klio-image.${extension}"` } : {}),
       },
     });
   } catch (error) {

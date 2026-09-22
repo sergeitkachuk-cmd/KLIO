@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import ts from "typescript";
 import Ajv from "ajv";
 import { PGlite } from "@electric-sql/pglite";
@@ -42,12 +42,14 @@ export function load(path, dependencies = {}, globals = {}) {
   return exports;
 }
 export const model = load("app/dialogue-model.ts");
+export const imageGenerationErrors = load("app/api/_lib/image-generation-errors.ts");
 
 export async function createDialogueHarness() {
   const client = new PGlite();
   const schema = load("db/schema.ts", {
     "drizzle-orm": orm,
     "drizzle-orm/pg-core": pg,
+    "./namespace": load("db/namespace.ts"),
   });
   const dialect = new pg.PgDialect();
   const literal = (value) =>
@@ -55,6 +57,7 @@ export async function createDialogueHarness() {
       ? `'${value.replaceAll("'", "''")}'`
       : String(value);
   for (const table of Object.values(schema)) {
+    if (!orm.is(table, pg.PgTable)) continue;
     const config = pg.getTableConfig(table);
     const columns = config.columns.map((c) => {
       let def = "";
@@ -97,6 +100,9 @@ export async function createDialogueHarness() {
         .where(orm.eq(schema.accounts.email, owner))
     )[0];
   let calls = 0;
+  const imageCalls = [];
+  const imageDownloads = [];
+  let editImage = async () => "https://cdn.example.invalid/edited.png";
   let tavily = async () => null;
   let ai = async (input) => {
     const context = JSON.parse(input.input);
@@ -175,12 +181,25 @@ export async function createDialogueHarness() {
   class AiCallError extends Error {
     constructor(message, status) { super(message); this.status = status; }
   }
+  const carouselCalls = [];
+  let carouselImage = async (...args) => ({ url: `https://cdn.example.invalid/${args[4]}.png`, bytes: new Uint8Array([1]), contentType: "image/png" });
+  const carousel = load("app/api/_lib/carousel.ts", {
+    "drizzle-orm": orm, "../../../db/schema": schema,
+    "./ai-router": { callAiModel: async (input) => { calls++; return { result: await ai(input) }; } },
+    "./image-generation": { createCarouselSlideImage: async (...args) => { carouselCalls.push(args); return carouselImage(...args); } },
+    "./storage": { downloadBrandLogo: async () => ({ bytes: new Uint8Array([2]), contentType: "image/png" }) },
+    "./workspace-account": workspace, "./async-jobs": {},
+  });
   const route = load(
     "app/api/dialogue/route.ts",
     {
       "drizzle-orm": orm,
       "../../../db/schema": schema,
       "../../dialogue-model": model,
+      "../../dialogue-starters": load("app/dialogue-starters.ts"),
+      "../_lib/dialogue-image-source": load("app/api/_lib/dialogue-image-source.ts", {
+        "node:crypto": { createHash }, "../../dialogue-image-source": load("app/dialogue-image-source.ts"), "../../dialogue-starters": load("app/dialogue-starters.ts"),
+      }),
       "../../plans": plans,
       "../../content-plans": contentPlans,
       "../_lib/ai-config": {
@@ -211,12 +230,17 @@ export async function createDialogueHarness() {
       "../_lib/base-url": { resolveBaseUrl: () => "http://127.0.0.1:3027" },
       "../_lib/image-generation": {
         imageConfigured: () => true,
-        createImage: async () => "https://cdn.example.invalid/generated.png",
-        createImageFromLogo: async () => "https://cdn.example.invalid/generated-with-logo.png",
+        createImage: async (...args) => { imageCalls.push({ logo: false, args }); return "https://cdn.example.invalid/generated.png"; },
+        createImageFromLogo: async (...args) => { imageCalls.push({ logo: true, args }); return "https://cdn.example.invalid/generated-with-logo.png"; },
+        createImageFromSource: async (...args) => { imageCalls.push({ source: true, logo: Boolean(args[3]), args }); return editImage(...args); },
       },
+      "../_lib/image-generation-errors": imageGenerationErrors,
       "../_lib/storage": {
         downloadBrandLogo: async () => ({ bytes: new Uint8Array(), contentType: "image/png" }),
+        downloadPublicationImage: async (key) => { imageDownloads.push(key); return { bytes: new Uint8Array([1, 2, 3]), contentType: "image/png" }; },
       },
+      "../_lib/dialogue-image-prompt": load("app/api/_lib/dialogue-image-prompt.ts"),
+      "../_lib/carousel": carousel,
     },
     {
       fetch: async () => {
@@ -268,6 +292,11 @@ export async function createDialogueHarness() {
     account,
     owner,
     calls: () => calls,
+    imageCalls,
+    imageDownloads,
+    setEditImage: (value) => { editImage = value; },
+    carouselCalls,
+    setCarouselImage: (value) => { carouselImage = value; },
     AiCallError,
     setAi: (value) => {
       ai = value;

@@ -29,11 +29,9 @@ COPY --from=builder /app/certs ./certs
 # part of the container's own startup closes that gap.
 COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
 COPY --from=builder /app/db ./db
+COPY --from=builder /app/scripts/prepare-database.mjs ./scripts/prepare-database.mjs
 
 EXPOSE 3000
-# --force is non-interactive (no TTY in a container to answer prompts) and
-# is the same flag render.yaml already specified — this restores that
-# behavior rather than introducing a new one. A failed push fails the
-# container's startup instead of silently serving traffic against a
-# mismatched schema.
+# db:push wraps non-interactive Drizzle push and requires an explicit success
+# marker as well as exit code 0; this Drizzle version can exit 0 on an error.
 CMD ["sh", "-c", "npm run db:push && npm start"]

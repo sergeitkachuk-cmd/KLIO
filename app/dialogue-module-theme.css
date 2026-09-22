@@ -1,0 +1,120 @@
+/* Shared modules and their overlays follow the same palette as the dialogue.
+   Keep these scoped to dialogue mode; professional mode has its own design. */
+:root[data-theme] .workspace-shell.is-dialogue {
+  --dialogue-paper: var(--ck-bg);
+  --dialogue-soft: var(--ck-panel);
+  --dialogue-ink: var(--ck-text);
+  --dialogue-muted: var(--ck-muted);
+  --dialogue-line: var(--ck-line);
+}
+
+.workspace-shell.is-dialogue .workspace-history-list .material-card :is(footer span, small, .material-plan-status-summary) {
+  color: var(--ck-muted) !important;
+}
+.workspace-shell.is-dialogue .workspace-history-filters button > b,
+.workspace-shell.is-dialogue .workspace-history-list .material-card > div > span,
+.workspace-shell.is-dialogue .workspace-history-empty > i {
+  color: var(--ck-text);
+  background: var(--ck-hover);
+  border-color: var(--ck-line);
+}
+.workspace-shell.is-dialogue .material-plan-preview li { border-color: var(--ck-line); }
+.workspace-shell.is-dialogue .material-plan-preview li > span { color: var(--ck-text); }
+.workspace-shell.is-dialogue .publications-module .publications-day.is-selected {
+  background: var(--ck-hover);
+  border-color: var(--ck-muted);
+}
+.workspace-shell.is-dialogue .publications-module .publications-day.is-today {
+  background: var(--ck-panel);
+  border-color: var(--ck-muted);
+}
+.workspace-shell.is-dialogue .publications-module .publications-view-switch button.active {
+  background: var(--ck-hover);
+  color: var(--ck-text);
+}
+.workspace-shell.is-dialogue .publications-module .publications-chip-more {
+  background: var(--ck-hover);
+  color: var(--ck-text);
+}
+
+.workspace-shell.is-dialogue :is(.publications-editor-modal, .publications-channel-modal, .archive-editor-modal) {
+  color-scheme: dark;
+  background: var(--ck-bg);
+  color: var(--ck-text);
+  border-color: var(--ck-line);
+  border-radius: 18px;
+  box-shadow: 0 20px 60px #020b1733;
+  scrollbar-color: var(--ck-muted) var(--ck-bg);
+}
+:root[data-theme="light"] .workspace-shell.is-dialogue :is(.publications-editor-modal, .publications-channel-modal, .archive-editor-modal) {
+  color-scheme: light;
+}
+.workspace-shell.is-dialogue .archive-editor-overlay :is(.archive-editor-head, .archive-editor-document, .archive-editor-meta, .archive-editor-tools, .archive-editor-seo, .publications-channel-help, .publications-channel-steps, .publications-vk-note, .publications-telegram-length-choice) {
+  background: var(--ck-panel);
+  border-color: var(--ck-line);
+  color: var(--ck-text);
+  box-shadow: none;
+}
+.workspace-shell.is-dialogue .archive-editor-overlay :is(h2, h3, .archive-editor-head span, .archive-editor-head button, .archive-editor-meta b, .publications-editor-row label > span, .publications-channel-help b, .publications-channel-steps b, .publications-channel-steps code, .publications-vk-note b) {
+  color: var(--ck-text);
+}
+.workspace-shell.is-dialogue .archive-editor-overlay :is(.archive-editor-head p, .publications-editor-field > span, .publications-editor-field small, .pub-carousel-preview-note, .publications-channel-help, .publications-channel-steps li, .archive-editor-meta span) {
+  color: var(--ck-muted);
+}
+.workspace-shell.is-dialogue .archive-editor-overlay :is(input, textarea, .module-select-trigger) {
+  color-scheme: inherit;
+  background: var(--ck-panel) !important;
+  color: var(--ck-text) !important;
+  border-color: var(--ck-line) !important;
+  box-shadow: none !important;
+}
+.workspace-shell.is-dialogue .archive-editor-overlay :is(input, textarea)::placeholder { color: var(--ck-muted); }
+.workspace-shell.is-dialogue .archive-editor-overlay :is(input, textarea):focus-visible {
+  outline: 2px solid var(--ck-muted);
+  outline-offset: 2px;
+}
+.workspace-shell.is-dialogue .archive-editor-overlay :is(.publications-upload-button, .publications-image-remove, .publications-editor-channels button, .publications-platform-switch button, .archive-editor-actions button) {
+  background: var(--ck-panel);
+  color: var(--ck-text);
+  border-color: var(--ck-line);
+  box-shadow: none;
+}
+.workspace-shell.is-dialogue .archive-editor-overlay :is(.publications-editor-channels button.active, .publications-platform-switch button.active) {
+  background: var(--ck-text);
+  color: var(--ck-bg);
+  border-color: var(--ck-text);
+}
+.workspace-shell.is-dialogue .publications-module .publications-mobile-item {
+  background: var(--ck-panel);
+  border-color: var(--ck-line);
+  box-shadow: none;
+}
+.workspace-shell.is-dialogue .publications-module .publications-mobile-list {
+  background: var(--ck-bg);
+  border-color: var(--ck-line);
+}
+.workspace-shell.is-dialogue .publications-module .publications-mobile-list h3 { color: var(--ck-text); }
+.workspace-shell.is-dialogue .publications-module .publications-mobile-item em { color: var(--ck-muted); }
+.workspace-shell.is-dialogue .publications-module .publications-mobile-empty { border-color: var(--ck-line); }
+.workspace-shell.is-dialogue .publications-module .publications-mobile-item :is(b, strong) { color: var(--ck-text); }
+.workspace-shell.is-dialogue .publications-module :is(.publications-mobile-date, .publications-mobile-time) { color: var(--ck-muted); }
+.workspace-shell.is-dialogue .archive-editor-overlay .archive-editor-head :is(button, .archive-editor-head-actions) { background: transparent; }
+
+/* Portaled dropdowns do not inherit the workspace's tokens. The body gets the
+   same --ck-* values only while dialogue mode is active. */
+:root[data-theme] body:has(.workspace-shell.is-dialogue) > :is(.module-select-list, .pub-image-picker-list) {
+  background: var(--ck-panel);
+  color: var(--ck-text);
+  border-color: var(--ck-line);
+  box-shadow: 0 12px 32px #020b1733;
+}
+:root[data-theme] body:has(.workspace-shell.is-dialogue) > :is(.module-select-list, .pub-image-picker-list) > button {
+  color: var(--ck-text);
+  background: transparent;
+}
+:root[data-theme] body:has(.workspace-shell.is-dialogue) > :is(.module-select-list, .pub-image-picker-list) > button:is(:hover, .active) {
+  background: var(--ck-hover);
+  border-color: var(--ck-line);
+  color: var(--ck-text);
+}
+:root[data-theme] body:has(.workspace-shell.is-dialogue) > :is(.module-select-list, .pub-image-picker-list) > button :is(em, span) { color: var(--ck-text); }

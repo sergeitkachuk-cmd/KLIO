@@ -166,7 +166,7 @@ export async function sendFeedbackRepliedEmail(email: string, workspaceUrl: stri
 }
 
 // Sent by the trial-reminder cron job (not yet wired up — see workspace-account.ts's
-// TRIAL_DURATION_MS) once an account is approaching the end of its 48h trial window.
+// TRIAL_DURATION_MS) once an account is approaching the end of its 72h trial window.
 export async function sendTrialEndingEmail(email: string, workspaceUrl: string) {
   const safeUrl = escapeHtml(workspaceUrl);
   await sendTransactionalEmail({

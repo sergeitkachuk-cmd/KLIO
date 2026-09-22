@@ -4951,6 +4951,27 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     showToast("Исходная тема сохранена");
   }
 
+  async function sendDialogueTopicToGenerator(source: { title: string; body: string; useBrandContext: boolean }) {
+    if (!await changeWorkspaceMode("professional")) return;
+    setGeneratorMode("advanced");
+    setTopic(source.title);
+    setAccent(source.body);
+    setKeywords("");
+    setEditorialBrief(null);
+    setFormat("seo");
+    setTone("Экспертный");
+    setAuthorPosition(source.useBrandContext ? "brand" : "expert");
+    setLength(defaultLengthByFormat.seo);
+    setCustomLength(false);
+    setGeneratorUseBrand(source.useBrandContext);
+    if (source.useBrandContext) setUseBrand(true);
+    setGeneratorUseSemantics(false);
+    setGeneratorUseCompetitors(false);
+    setGenerationError("");
+    openModule("generator");
+    showToast("Тема и описание переданы в генератор. Проверьте параметры перед созданием текста.");
+  }
+
   function sendPlanItemToGenerator(item: ContentPlanItem) {
     const cleanTitle = cleanContentPlanTitle(item.title);
     const structureLines = item.structure.map((section) => `• ${section}: раскрыть применительно к теме материала и опереться только на подтверждённые факты`);
@@ -5674,11 +5695,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           <button type="button" className="theme-toggle" onClick={toggleTheme} aria-label={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"} title={theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему"}><Icon name={theme === "dark" ? "sun" : "moon"}/></button>
           <a className="telegram-header-link" href="https://t.me/kliopress" target="_blank" rel="noreferrer" aria-label="Telegram КЛИО"><Icon name="telegram"/><span className="telegram-header-link-text">Telegram КЛИО</span></a>
           <div className={`account-menu ${accountMenuOpen ? "is-open" : ""}`} ref={accountMenuRef}>
-            <button type="button" className="workspace-account" onClick={() => setAccountMenuOpen((value) => !value)} aria-haspopup="menu" aria-expanded={accountMenuOpen}>
+            <button type="button" className="workspace-account" onClick={() => setAccountMenuOpen((value) => !value)} aria-label={`Меню аккаунта: ${workspaceUserName}`} aria-haspopup="menu" aria-expanded={accountMenuOpen}>
               <i>{nameInitials(workspaceUserName)}{feedbackUnread > 0 && <em className="workspace-account-badge">{feedbackUnread}</em>}</i><b>{workspaceUserName}</b><small>{workspaceAccount.planName} · 1 пользователь</small><em className="ui-chevron" aria-hidden="true" />
             </button>
             {accountMenuOpen && <div className="account-menu-list" role="menu">
               <Link href="/account" role="menuitem">Личный кабинет</Link>
+              {workspaceMode === "dialogue" && <div className="dialogue-mobile-modes" role="group" aria-label="Режим работы">
+                <button type="button" role="menuitemradio" aria-checked="true" onClick={() => setAccountMenuOpen(false)}>Диалоговый режим ✓</button>
+                <button type="button" role="menuitemradio" aria-checked="false" disabled={modeSaving} onClick={() => { setAccountMenuOpen(false); void changeWorkspaceMode("professional"); }}>Профессиональный режим</button>
+              </div>}
               {/* Mobile-only now (see the header's own .theme-toggle above,
                   hidden on mobile via CSS) - this copy is what the header
                   button was moved into for mobile specifically, where
@@ -5755,6 +5780,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       </section>}
       {workspaceReady && workspaceUserKey && <DialogueWorkspace
         key={`${workspaceUserKey}:${activeBrandId}`} userKey={workspaceUserKey}
+        theme={theme}
         visible={workspaceMode === "dialogue" && activeModule === "start"}
         brandId={activeBrandId} brandName={activeWorkspaceBrand?.name || ""} brands={workspaceBrands}
         hasLogo={Boolean(brand.logoKey)}
@@ -5764,6 +5790,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         onNavigate={openModule} onBrandChange={id => void switchWorkspaceBrand(id)}
         onSaved={generation => setWorkspaceHistory(list => [{ ...list.find(item => item.id === generation.id), ...generation } as GenerationArchiveItem, ...list.filter(item => item.id !== generation.id)])}
         onProfessional={generation => void (async () => { if (await changeWorkspaceMode("professional")) { openModule("history"); openArchiveItem(generation as GenerationArchiveItem); } })()}
+        onGenerateTopic={sendDialogueTopicToGenerator}
         onProfile={value => { const record = normalizeWorkspaceBrand(value); if (record) { setWorkspaceBrands(list => [record, ...list.filter(item => item.id !== record.id)]); applyWorkspaceBrand(record); } void refreshDialogueUsage(); }}
         onUsage={() => void refreshDialogueUsage()}
         beforeProfile={() => activeBrandId ? saveActiveWorkspaceBrand(false) : Promise.resolve(true)}
@@ -7052,7 +7079,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
     <section className="pricing section" id="pricing">
       <div className="section-heading pricing-heading"><div><p className="kicker">Глава 04 / Тарифы</p><h2>Выберите объём<br/><em>редакционной работы<span className="klio-mark-dot">.</span></em></h2></div><div className="billing-toggle" role="group" aria-label="Период оплаты">{BILLING_PERIODS.map((period) => <button type="button" key={period.id} className={billing === period.id ? "active" : ""} onClick={() => setBilling(period.id)}>{BILLING_TOGGLE_LABELS[period.id]}{period.discount > 0 && <span>−{period.discount}%</span>}</button>)}</div></div>
-      <p className="pricing-trial-note">Новый аккаунт начинается с бесплатного 48‑часового периода. Платный тариф можно выбрать и оплатить в личном кабинете.</p><div className="price-grid">{pricing.map((plan) => { const period = BILLING_PERIODS.find((item) => item.id === billing) ?? BILLING_PERIODS[0]; const total = periodAmount(plan.monthly, plan.yearly, billing); const perMonth = Math.round(total / period.months); return <article className={`price-card ${plan.popular ? "popular" : ""}`} key={plan.name}>{plan.popular && <span className="popular-label">Полный доступ</span>}<p className="price-index">КЛИО / {plan.name}</p><h3>{plan.name}</h3><p className="price-description">{plan.description}</p><div className="price"><strong>{perMonth.toLocaleString("ru-RU")} ₽</strong><span>/ месяц</span></div><small>{billing === "monthly" ? "оплата помесячно" : `${total.toLocaleString("ru-RU")} ₽ при оплате за ${period.label}`}</small><b className="plan-limit">{plan.limit}</b><ul>{plan.features.map((feature) => <li key={feature}><Icon name="check"/>{feature}</li>)}</ul><a className="trial-plan-button" href="/signup?return_to=%2Fworkspace">Начать бесплатный период</a></article>; })}</div>
+      <p className="pricing-trial-note">Новый аккаунт начинается с бесплатного 72‑часового периода. Платный тариф можно выбрать и оплатить в личном кабинете.</p><div className="price-grid">{pricing.map((plan) => { const period = BILLING_PERIODS.find((item) => item.id === billing) ?? BILLING_PERIODS[0]; const total = periodAmount(plan.monthly, plan.yearly, billing); const perMonth = Math.round(total / period.months); return <article className={`price-card ${plan.popular ? "popular" : ""}`} key={plan.name}>{plan.popular && <span className="popular-label">Полный доступ</span>}<p className="price-index">КЛИО / {plan.name}</p><h3>{plan.name}</h3><p className="price-description">{plan.description}</p><div className="price"><strong>{perMonth.toLocaleString("ru-RU")} ₽</strong><span>/ месяц</span></div><small>{billing === "monthly" ? "оплата помесячно" : `${total.toLocaleString("ru-RU")} ₽ при оплате за ${period.label}`}</small><b className="plan-limit">{plan.limit}</b><ul>{plan.features.map((feature) => <li key={feature}><Icon name="check"/>{feature}</li>)}</ul><a className="trial-plan-button" href="/signup?return_to=%2Fworkspace">Начать бесплатный период</a></article>; })}</div>
       <div className="pricing-single-cta"><a className="trial-plan-button" href="/signup?return_to=%2Fworkspace">Начать бесплатный период</a><p>Сначала попробуйте КЛИО бесплатно, а тариф выберите позже в личном кабинете.</p></div><div className="payment-note"><span>МИР</span><span>СБП</span><span>₽</span><p>Оплата российскими картами и по СБП · документы для юридических лиц</p></div>
     </section>
 

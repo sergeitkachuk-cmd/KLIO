@@ -22,6 +22,7 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "Content-Security-Policy", value: "frame-ancestors 'self' https://chatgpt.com https://chat.openai.com; object-src 'none'; base-uri 'self'" },
           { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Klio-UI-Release", value: "2026-09-22-dialogue-image-edits-v5" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), usb=()" },
         ],

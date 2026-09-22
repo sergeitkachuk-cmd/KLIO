@@ -4,6 +4,51 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { createDialogueHarness, model } from "./helpers/dialogue-harness.mjs";
 
+test("dialogue history traverses identical timestamps without losing rows or crossing brands", async (t) => {
+  const h = await createDialogueHarness(); t.after(() => h.close());
+  const rows = Array.from({ length: 44 }, () => ({ id: randomUUID(), ownerEmail: h.owner, updatedAt: "2026-09-22T00:00:00.000Z", title: "Conversation" }));
+  await h.db.insert(h.schema.dialogueThreads).values(rows);
+  await h.db.insert(h.schema.dialogueThreads).values({ id: randomUUID(), ownerEmail: "another@example.com", updatedAt: rows[0].updatedAt });
+  const first = await (await h.route.GET(new Request("http://127.0.0.1:3027/api/dialogue"))).json();
+  const second = await (await h.route.GET(new Request(`http://127.0.0.1:3027/api/dialogue?before=${encodeURIComponent(first.next)}`))).json();
+  assert.equal(first.threads.length, 40); assert.equal(second.threads.length, 4); assert.equal(second.next, null);
+  assert.equal(new Set([...first.threads, ...second.threads].map((row) => row.id)).size, 44);
+  assert.equal((await h.route.GET(new Request("http://127.0.0.1:3027/api/dialogue?before=broken"))).status, 400);
+});
+
+test("rename and delete protect ownership, revisions and shared materials", async (t) => {
+  const h = await createDialogueHarness();
+  t.after(() => h.close());
+  let thread = await h.create();
+  const other = await h.create();
+  const initialRevision = thread.revision;
+  const empty = await h.request({ action: "rename", id: thread.id, revision: thread.revision, title: "   " });
+  assert.equal(empty.status, 400);
+  thread = (await h.post({ action: "rename", id: thread.id, revision: thread.revision, title: "  Рабочий диалог  " })).thread;
+  assert.equal(thread.title, "Рабочий диалог");
+  assert.equal(thread.revision, initialRevision + 1);
+  assert.equal((await h.request({ action: "delete", id: thread.id, revision: initialRevision })).status, 409);
+  h.setUser({ email: "another@example.com" });
+  for (const action of ["rename", "delete"]) assert.equal((await h.request({ action, id: thread.id, revision: thread.revision, title: "Чужой" })).status, 404);
+  h.setUser({ email: h.owner });
+  assert.equal((await h.request({ action: "delete", id: thread.id, revision: thread.revision }, { origin: "https://evil.invalid" })).status, 403);
+  await h.db.update(h.schema.dialogueThreads).set({ status: "processing" }).where(eq(h.schema.dialogueThreads.id, thread.id));
+  assert.equal((await h.request({ action: "delete", id: thread.id, revision: thread.revision })).status, 409);
+  await h.db.update(h.schema.dialogueThreads).set({ status: "idle" }).where(eq(h.schema.dialogueThreads.id, thread.id));
+  await h.post({ action: "send", id: thread.id, revision: thread.revision, requestId: randomUUID(), text: "Нарисуй лес", mode: "image" });
+  thread = await h.settled(thread.id);
+  const materials = await h.db.select().from(h.schema.generations);
+  assert.equal(materials.length, 1);
+  assert.ok(materials[0].imageUrl);
+  const account = await h.account();
+  assert.equal((await h.post({ action: "delete", id: thread.id, revision: thread.revision })).deletedId, thread.id);
+  assert.equal((await h.read(thread.id)).status, 404);
+  assert.equal((await h.read(other.id)).status, 200);
+  assert.deepEqual(await h.db.select().from(h.schema.generations), materials);
+  assert.deepEqual(await h.account(), account);
+  assert.equal((await h.request({ action: "delete", id: thread.id, revision: thread.revision })).status, 404);
+});
+
 test("brand context is off by default even when a business is selected", async (t) => {
   const h = await createDialogueHarness();
   t.after(() => h.close());
@@ -65,7 +110,7 @@ test("image generation from dialogue saves the result into materials", async (t)
       return {
         reply: "Пост готов.",
         action: "create",
-        cards: [{ kind: "post", title: "Пост для соцсетей", body: "Основной текст поста." }],
+        cards: [{ kind: "post", title: "Полное название ".repeat(10), body: "Основной текст поста. ".repeat(250) }],
         profile: [],
       };
     }
@@ -96,6 +141,36 @@ test("image generation from dialogue saves the result into materials", async (t)
   const materials = await h.db.select().from(h.schema.generations);
   assert.equal(materials.some((item) => item.topic === "Изображение" && item.imageUrl.includes("generated.png")), true);
   assert.equal(saved.data.cards.some((item) => item.id === card.id && item.imageUrl.includes("generated.png")), true);
+  assert.equal(materials[0].title, card.title);
+  assert.equal(materials[0].body, card.body);
+  assert.equal(saved.data.cards[0].body, card.body);
+});
+
+test("large image profiles are read in full before a bounded brief; invalid briefs refund quota without generating", async (t) => {
+  const h = await createDialogueHarness();
+  t.after(() => h.close());
+  const profile = { description: "Видеопроизводство. ".repeat(160), services: "Съёмка документальных фильмов. ".repeat(100), advantages: "Опыт в сложных проектах. ".repeat(140), products: "Видеоролики и видеоподкасты. ".repeat(100), prohibited: "Последнее ограничение: без кистей и мольбертов." };
+  await h.db.insert(h.schema.brands).values({ id: "large", ownerEmail: h.owner, name: "Кинокоманда", profileJson: JSON.stringify(profile) });
+  let seen;
+  h.setAi(async (input) => { seen = input; return { raw: "Творческая работа съёмочной группы в студии видеопроизводства: камера, свет, режиссёр. Без кистей и мольбертов." }; });
+  let thread = await h.create("large");
+  const send = async () => {
+    await h.post({ action: "send", id: thread.id, revision: thread.revision, requestId: randomUUID(), text: "Процесс в студии", mode: "image", useBrandContext: true });
+    thread = await h.settled(thread.id);
+  };
+  await send();
+  assert.equal(thread.status, "idle");
+  assert.equal(seen.operation, "dialogue_plain");
+  for (const value of Object.values(profile)) assert.ok(seen.input.includes(value.trim()));
+  assert.match(seen.input, /Запрос пользователя: Процесс в студии$/);
+  assert.ok(h.imageCalls[0].args[0].length <= 11000);
+  assert.match(h.imageCalls[0].args[0], /видеопроизводства/);
+  const used = (await h.account()).generationsUsed;
+  h.setAi(async () => ({ raw: "x".repeat(12000) }));
+  await send();
+  assert.equal(thread.status, "failed");
+  assert.equal(h.imageCalls.length, 1);
+  assert.equal((await h.account()).generationsUsed, used);
 });
 
 test("card revisions preserve manual text and allow undo; context keeps the selected artifact", () => {

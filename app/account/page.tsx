@@ -22,7 +22,7 @@ function formatDate(value: string | null | undefined): string {
 }
 
 // Day-only granularity (formatDate above) is fine for a plan that runs for
-// months, but reads as ambiguous for the trial's 48h window — "до 15
+// months, but reads as ambiguous for the trial's 72h window — "до 15
 // августа" doesn't say whether that's 00:01 or 23:59. Trial's own expiry
 // line below uses this instead.
 function formatDateTime(value: string | null | undefined): string {
@@ -34,7 +34,7 @@ function formatDateTime(value: string | null | undefined): string {
 
 // Same soon/critical/expired/missing bands as /admin (see planExpiryState in
 // ../plans) — phrased for the account holder instead of a table cell.
-// accountSummary() feeds the trial's own createdAt+48h deadline through the
+// accountSummary() feeds the trial's own createdAt+72h deadline through the
 // same planExpiresAt/planExpiryState fields a paid plan's real expiry uses
 // (see the comment there), so this only needs its own wording for trial,
 // not a separate branch to detect when there's nothing to show — `value` is
@@ -54,7 +54,7 @@ function planExpiryLabel(planId: string, state: string, value: string | null | u
 // date (see quotaPeriodEndsAt in db/schema.ts); a paid plan an admin
 // granted by hand falls back to a generic monthly-refresh note instead
 // since there is no payment date to anchor to. The trial never resets —
-// it just runs out after its fixed 48h window (see assertTrialActive).
+// it just runs out after its fixed 72h window (see assertTrialActive).
 function quotaResetLabel(planId: string, quotaResetsAt: string | null | undefined): string {
   if (planId === "trial") return "лимиты действуют один раз, на весь пробный период";
   if (!quotaResetsAt) return "лимиты обновляются ежемесячно";
