@@ -307,13 +307,22 @@ export async function createImageFromSource(
     image.contentType = detected;
   }
   const instruction = purpose === "edit"
-    ? "Первое изображение — исходник для редактирования. Измени именно его по запросу пользователя. Сохрани композицию, людей, предметы, ракурс и все детали, которых правка не касается. Не создавай новую сцену по старому описанию."
+    ? "Первое изображение — исходник для редактирования. Измени именно его по запросу пользователя. Сохрани композицию, людей, предметы, ракурс, освещение и все детали, которых правка не касается. Сохрани изображение по всей площади, включая края и углы. Не стирай участки исходника и не освобождай место под логотип. Не создавай новую сцену по старому описанию."
     : "Первое изображение — визуальный референс. Учитывай его реальные детали, композицию и стиль при выполнении запроса пользователя.";
   const logoInstruction = logo
-    ? "Второе изображение — настоящий логотип бренда. Используй именно этот знак и его надпись; не выдумывай другой бренд. Размести его на первом изображении в соответствии с запросом."
+    ? "Второе изображение — настоящий логотип бренда. Используй именно этот знак и его надпись; не выдумывай другой бренд. Размести его на первом изображении в соответствии с запросом. Прозрачность вокруг знака относится только к файлу логотипа: не переноси её на фотографию и не удаляй под ним или вокруг него исходное изображение."
     : "Логотип бренда не приложен. Не выдумывай фирменные знаки.";
-  const { bytes, contentType } = await generateImageBytes(`${instruction}\n${logoInstruction}\n\n${prompt}`, requestId,
-    purpose === "edit" ? { size: "auto", outputFormat: options.outputFormat, quality: options.quality } : options,
+  // With an RGBA logo, automatic background selection can make the entire
+  // edited photograph translucent. Request an opaque edit explicitly; PNG
+  // describes the file format and does not itself require transparency.
+  const editOptions = purpose === "edit"
+    ? { size: "auto", outputFormat: options.outputFormat, quality: options.quality, background: options.background ?? "opaque" as const }
+    : options;
+  const backgroundInstruction = editOptions.background === "opaque"
+    ? "Результат — цельное непрозрачное изображение. Не добавляй прозрачные участки, полупрозрачные края, виньетку, рамку или подложку под логотип."
+    : "";
+  const { bytes, contentType } = await generateImageBytes(`${instruction}\n${logoInstruction}\n${backgroundInstruction}\n\n${prompt}`, requestId,
+    editOptions,
     logo ? [source, logo] : source);
   return uploadPublicationImage(new File([bytes], "klio-edit", { type: contentType }), email, baseUrl);
 }

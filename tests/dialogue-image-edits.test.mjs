@@ -102,7 +102,9 @@ test("app and Render deliver source then logo as two files to edits, without cha
     assert.deepEqual(new Uint8Array(await images[0].arrayBuffer()), source.bytes);
     assert.deepEqual(new Uint8Array(await images[1].arrayBuffer()), logo.bytes);
     assert.equal(options.body.get("size"), "auto");
+    assert.equal(options.body.get("background"), "opaque");
     assert.match(options.body.get("prompt"), /Сохрани композицию/);
+    assert.match(options.body.get("prompt"), /включая края и углы/);
     return Response.json({ data: [{ b64_json: Buffer.from(png("edited")).toString("base64") }] });
   } });
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
@@ -115,6 +117,26 @@ test("app and Render deliver source then logo as two files to edits, without cha
   }, { FormData, process: { env: { KLIO_IMAGE_SERVICE_URL: "https://relay.example", KLIO_IMAGE_SERVICE_TOKEN: token } }, fetch: (url, options) => fetch(`${local}${new URL(url).pathname}`, options) });
   assert.equal(await image.createImageFromSource("Добавь логотип", source, "edit", logo, "owner", "https://klio.example", "edit-request-000000001", { aspectRatio: "1:1", outputFormat: "png" }), "saved-image");
   assert.equal(providerCalls, 1); assert.equal(uploaded.type, "image/png");
+});
+
+test("direct edits request opaque output by default and retain an explicitly chosen background", async () => {
+  const calls = [];
+  const image = load("app/api/_lib/image-generation.ts", {
+    "./storage": { storageConfigured: () => true, uploadPublicationImage: async () => "saved-image" },
+    "./image-type": load("app/api/_lib/image-type.ts"), "./image-generation-errors": imageGenerationErrors,
+  }, { FormData, fetch: async (url, options) => {
+    calls.push({ url: String(url), background: options.body.get("background"), prompt: options.body.get("prompt") });
+    return Response.json({ data: [{ b64_json: Buffer.from(png("edited")).toString("base64") }] });
+  } });
+  const source = { bytes: png("source"), contentType: "image/png" };
+  for (const background of [undefined, "transparent", "auto"]) {
+    await image.createImageFromSource("Измени изображение", source, "edit", undefined, "owner", "https://klio.example", "edit-request-000000001", { background });
+    assert.equal(calls.at(-1).url, "https://api.openai.com/v1/images/edits");
+    assert.equal(calls.at(-1).background, background ?? "opaque");
+    assert.equal(calls.at(-1).prompt.includes("Результат — цельное непрозрачное изображение"), !background);
+  }
+  await image.createImageFromSource("Новая сцена", source, "reference", undefined, "owner", "https://klio.example", "reference-request-0001");
+  assert.equal(calls.at(-1).background, null);
 });
 
 test("an old relay shows its specific cause, retains the source and refunds the dialogue without billing AI", async t => {
