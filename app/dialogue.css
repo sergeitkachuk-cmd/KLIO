@@ -882,10 +882,6 @@
    which is the component named in the report. */
 .workspace-shell.is-dialogue .workspace-content{--paper:var(--dialogue-paper);--ink:var(--dialogue-ink);--muted:var(--dialogue-muted);--line:var(--dialogue-line);--cobalt:var(--dialogue-accent);--violet:var(--dialogue-accent);--lilac:var(--dialogue-line)}
 .workspace-shell.is-dialogue .workspace-module{background:var(--dialogue-paper)!important;box-shadow:none!important;border:0!important;color:var(--dialogue-ink)}
-.workspace-shell.is-dialogue .workspace-module-heading{background:var(--dialogue-soft)!important;border-color:var(--dialogue-line)!important;box-shadow:none!important;backdrop-filter:none!important;color:var(--dialogue-ink)}
-.workspace-shell.is-dialogue .workspace-module-heading span{color:var(--dialogue-accent)!important}
-.workspace-shell.is-dialogue .workspace-module-heading h2{color:var(--dialogue-ink)!important}
-.workspace-shell.is-dialogue .workspace-module-heading>p{color:var(--dialogue-muted)!important}
 
 /* .field wraps every ModuleSelect trigger and most native inputs across
    every module (content-plan status, generator's tone/length/custom
@@ -959,8 +955,6 @@ body:has(.workspace-shell.is-dialogue)>.module-select-list>button>em{color:#2849
 .workspace-shell.is-dialogue .workspace-sidebar nav a b{text-transform:none;font-size:14px;letter-spacing:0}
 .workspace-shell.is-dialogue .workspace-sidebar .nav-coming-soon,.workspace-shell.is-dialogue .workspace-quota-stage,.workspace-shell.is-dialogue .workspace-heading,.workspace-shell.is-dialogue .workspace-launch-banner{display:none}
 .workspace-shell.is-dialogue .workspace-history,.workspace-shell.is-dialogue .brand-profile,.workspace-shell.is-dialogue .publications{background:var(--dialogue-paper)!important;box-shadow:none!important;border:0!important;color:var(--dialogue-ink)}
-.workspace-shell.is-dialogue .workspace-history-head h2{font-size:30px;letter-spacing:-.5px}
-.workspace-shell.is-dialogue .workspace-history-head p,.workspace-shell.is-dialogue .workspace-history-head span{color:var(--dialogue-muted)!important;font-size:13px}
 .workspace-shell.is-dialogue .workspace-history-filters button{background:var(--dialogue-soft)!important;border-color:var(--dialogue-line)!important;color:var(--dialogue-ink)!important;box-shadow:none;border-radius:9px}
 .workspace-shell.is-dialogue .workspace-history-filters button.active{background:var(--dialogue-line)!important}
 .workspace-shell.is-dialogue .material-card,.workspace-shell.is-dialogue .material-card.is-editor{background:var(--dialogue-paper)!important;color:var(--dialogue-ink)!important;box-shadow:none!important;border:1px solid var(--dialogue-line)!important;border-radius:12px;padding:20px}
@@ -1030,9 +1024,6 @@ body:has(.workspace-shell.is-dialogue)>.module-select-list>button>em{color:#2849
    calendar styles contain literal white text, so inherited color is not enough. */
 .workspace-shell.is-dialogue .workspace-content{background:var(--dialogue-paper);color:var(--dialogue-ink)}
 .workspace-shell.is-dialogue .workspace-layout{background:var(--dialogue-paper)}
-.workspace-shell.is-dialogue .workspace-history-head{background:var(--dialogue-soft);border:1px solid var(--dialogue-line);border-radius:16px;box-shadow:none}
-.workspace-shell.is-dialogue .workspace-history-head :is(h2,span){color:var(--dialogue-ink)}
-.workspace-shell.is-dialogue .workspace-history-head>p{color:var(--dialogue-muted)}
 .workspace-shell.is-dialogue .workspace-history-empty{color:var(--dialogue-ink);border-color:var(--dialogue-line);background:var(--dialogue-soft)}
 .workspace-shell.is-dialogue .workspace-history-empty h3{color:var(--dialogue-ink)}
 .workspace-shell.is-dialogue .workspace-history-empty p{color:var(--dialogue-muted)}

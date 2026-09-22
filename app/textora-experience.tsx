@@ -5221,16 +5221,24 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     if (modeSaving) return false;
     if (mode === workspaceMode) return true;
     setModeSaving(true);
-    try {
-      if (activeBrandId && !await saveActiveWorkspaceBrand(false)) return false;
-      const response = await fetch("/api/dialogue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "mode", mode }) });
-      const payload = await safeJson(response) as { error?: string };
-      if (!response.ok) throw new Error(payload.error || "Не удалось сохранить режим.");
-      setWorkspaceMode(mode);
-      if (mode === "dialogue") openModule("start");
-      return true;
-    } catch (error) { showToast(error instanceof Error ? error.message : "Не удалось переключить режим."); return false; }
-    finally { setModeSaving(false); }
+    // Both workspaces remain mounted: changing the visible surface needs no
+    // server round trip. Keep the current profile in memory and queue its save;
+    // beforeProfile still waits for that queue before brand-aware generation.
+    setWorkspaceMode(mode);
+    if (mode === "dialogue") openModule("start");
+    if (activeBrandId) void saveActiveWorkspaceBrand(false);
+    void (async () => {
+      try {
+        const response = await fetch("/api/dialogue", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "mode", mode }), signal: AbortSignal.timeout(15_000) });
+        const payload = await safeJson(response) as { error?: string };
+        if (!response.ok) throw new Error(payload.error || "Не удалось сохранить режим.");
+      } catch {
+        // Never switch back underneath an already edited message. The server
+        // preference only determines the initial mode on the next visit.
+        showToast("Режим открыт, но выбор не сохранился. При следующем входе его может понадобиться переключить снова.");
+      } finally { setModeSaving(false); }
+    })();
+    return true;
   }
 
   async function openMaterialInDialogue(id: string) {
@@ -5871,7 +5879,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             {archiveLoading && <p role="status">Загружаем материалы бренда…</p>}
             {archiveLoadError && <p role="alert">{archiveLoadError} <button type="button" onClick={() => void loadArchivePage(activeBrandId, archivePage?.brandId === activeBrandId ? archivePage : null)}>Повторить</button></p>}
             {archivePage?.brandId === activeBrandId && (archivePage.history || archivePage.materials) && <div><p>Показана часть архива. Счётчики и фильтры относятся к загруженным материалам.</p><button className="button ghost" type="button" disabled={archiveLoading} onClick={() => void loadArchivePage(activeBrandId, archivePage)}>Загрузить ещё материалы</button></div>}
-            <div className="workspace-history-head"><div><span>{activeWorkspaceBrand?.name || "Личное пространство"}</span><h2>Материалы<span className="klio-mark-dot">.</span></h2></div><p>{workspaceMode === "dialogue" ? "Сохранённые тексты, темы и заметки. Продолжайте работу в диалоге или редакторе." : "Здесь хранятся тексты, темы, заметки, планы и исследования текущего бренда. Откройте материал, чтобы продолжить работу."}</p></div>
+            <div className="workspace-history-head workspace-module-banner"><div><span>{activeWorkspaceBrand?.name || "Личное пространство"}</span><h2>Материалы<span className="klio-mark-dot">.</span></h2></div><p>{workspaceMode === "dialogue" ? "Сохранённые тексты, темы и заметки. Продолжайте работу в диалоге или редакторе." : "Здесь хранятся тексты, темы, заметки, планы и исследования текущего бренда. Откройте материал, чтобы продолжить работу."}</p></div>
             {activeMaterialCount > 0 && <div className="workspace-history-toolbar">
               <div className="workspace-history-filters" role="group" aria-label="Фильтр материалов по типу">
                 {materialsFilterOptions.filter(option => workspaceMode !== "dialogue" || option.count > 0 || ["all", "article", "dialogue_topic", "dialogue_note"].includes(option.id)).map((option) => <button type="button" className={materialsFilter === option.id ? "active" : ""} aria-pressed={materialsFilter === option.id} onClick={() => setMaterialsFilter(option.id)} key={option.id}><span>{option.label}</span><b>{option.count}</b></button>)}
@@ -6158,8 +6166,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </div>}
 
           <section className="brand-profile is-open" id="brand-profile" style={{ display: activeModule === "brand" ? undefined : "none" }}>
-            <div className="brand-profile-head">
-              <div><span>По желанию</span><h3>Профиль бренда<span className="klio-mark-dot">.</span></h3><p>КЛИО использует эти данные как редакционную память — факты и интонация переходят в каждый новый материал.</p></div>
+            <div className="brand-profile-head workspace-module-banner">
+              <div><span>По желанию</span><h3>Профиль бренда<span className="klio-mark-dot">.</span></h3></div>
+              <p>КЛИО использует эти данные как редакционную память — факты и интонация переходят в каждый новый материал.</p>
             </div>
             <div className="brand-profile-body">
               <div className="brand-profile-overview">
@@ -6269,7 +6278,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>
 
           <section className="workspace-module semantics-module" id="semantics" style={{ display: activeModule === "semantics" ? undefined : "none" }}>
-            <div className="workspace-module-heading tool-heading"><div><span>Шаг 2 · по желанию</span><h2>Поисковые запросы<span className="klio-mark-dot">.</span></h2></div><p>Укажите, чем интересуются ваши будущие клиенты. КЛИО найдёт реальные запросы и предложит: создать одну статью или получить план тем для сайта.</p></div>
+            <div className="workspace-module-heading tool-heading workspace-module-banner"><div><span>Шаг 2 · по желанию</span><h2>Поисковые запросы<span className="klio-mark-dot">.</span></h2></div><p>Укажите, чем интересуются ваши будущие клиенты. КЛИО найдёт реальные запросы и предложит: создать одну статью или получить план тем для сайта.</p></div>
             <div className="semantic-shell">
               <div className="semantic-search-card">
                 <div className="semantic-search-head">
@@ -6432,7 +6441,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>
 
           <section className="workspace-module competitor-module" id="competitors" style={{ display: activeModule === "competitors" ? undefined : "none" }}>
-            <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Анализ конкурентов<span className="klio-mark-dot">.</span></h2></div><p>Посмотрите, как сильные игроки отвечают на вопросы ваших будущих клиентов, и найдите полезные темы для своего сайта. КЛИО соберёт прямых конкурентов и подскажет, что стоит раскрыть в материале.</p></div>
+            <div className="workspace-module-heading tool-heading workspace-module-banner"><div><span>Самостоятельный инструмент · по желанию</span><h2>Анализ конкурентов<span className="klio-mark-dot">.</span></h2></div><p>Посмотрите, как сильные игроки отвечают на вопросы ваших будущих клиентов, и найдите полезные темы для своего сайта. КЛИО соберёт прямых конкурентов и подскажет, что стоит раскрыть в материале.</p></div>
 
             <div className="competitor-optional-shell">
               <div className="competitor-optional-body">
@@ -6546,7 +6555,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>
 
           <section className="workspace-module image-generator-module" id="images" style={{ display: activeModule === "images" ? undefined : "none" }}>
-            <div className="workspace-module-heading tool-heading"><div><span>Визуальные материалы</span><h2>Генерация изображений<span className="klio-mark-dot">.</span></h2></div><p>Опишите, что должно быть на картинке. КЛИО создаст её и сохранит в «Материалы».</p></div>
+            <div className="workspace-module-heading tool-heading workspace-module-banner"><div><span>Визуальные материалы</span><h2>Генерация изображений<span className="klio-mark-dot">.</span></h2></div><p>Опишите, что должно быть на картинке. КЛИО создаст её и сохранит в «Материалы».</p></div>
             <div className="image-generator-layout">
               <div className="image-generator-form">
                 <label htmlFor="image-prompt">Что изобразить</label>
@@ -6621,7 +6630,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>
 
           <section className="workspace-module generator-module" id="generator" style={{ display: activeModule === "generator" ? undefined : "none" }}>
-            <div className="workspace-module-heading tool-heading"><div><span>Главный экран</span><h2>Генератор материалов<span className="klio-mark-dot">.</span></h2></div><p>Укажите формат, тему, ключевые слова и то, что важно раскрыть. Остальные инструменты подключаются только по необходимости.</p></div>
+            <div className="workspace-module-heading tool-heading workspace-module-banner"><div><span>Главный экран</span><h2>Генератор материалов<span className="klio-mark-dot">.</span></h2></div><p>Укажите формат, тему, ключевые слова и то, что важно раскрыть. Остальные инструменты подключаются только по необходимости.</p></div>
             <div className="studio">
               <aside className="brief-panel">
                 <div className="brief-step"><div className="brief-step-label"><span>Шаг 01</span><b>Бриф материала</b></div><button type="button" className="brief-reset" onClick={resetGeneratorBrief}>Начать заново</button></div>
@@ -6725,7 +6734,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>
 
           <section className="workspace-module content-plan-module" id="content-plan" style={{ display: activeModule === "content-plan" ? undefined : "none" }}>
-            <div className="workspace-module-heading tool-heading"><div><span>Шаг 3 · для серии статей</span><h2>План статей<span className="klio-mark-dot">.</span></h2></div><p>КЛИО подготовит очередь тем для сайта. Откройте любую тему, проверьте краткий план и одним нажатием отправьте её в генератор.</p></div>
+            <div className="workspace-module-heading tool-heading workspace-module-banner"><div><span>Шаг 3 · для серии статей</span><h2>План статей<span className="klio-mark-dot">.</span></h2></div><p>КЛИО подготовит очередь тем для сайта. Откройте любую тему, проверьте краткий план и одним нажатием отправьте её в генератор.</p></div>
             <div className="content-plan-shell">
               <article className="content-plan-setup">
                 <div className="content-plan-setup-head">
@@ -6838,7 +6847,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>
 
           <section className="workspace-module adaptation-module" id="adaptation" style={{ display: activeModule === "adaptation" ? undefined : "none" }}>
-            <div className="workspace-module-heading tool-heading"><div><span>Самостоятельный инструмент · по желанию</span><h2>Редакторы КЛИО<span className="klio-mark-dot">.</span></h2></div><p>15 режимов для готового текста: вычитка, ясность, углубление темы, пересборка, SEO, соцсети, реклама, адаптация под голос бренда и смена интонации.</p></div>
+            <div className="workspace-module-heading tool-heading workspace-module-banner"><div><span>Самостоятельный инструмент · по желанию</span><h2>Редакторы КЛИО<span className="klio-mark-dot">.</span></h2></div><p>15 режимов для готового текста: вычитка, ясность, углубление темы, пересборка, SEO, соцсети, реклама, адаптация под голос бренда и смена интонации.</p></div>
             <div className="adaptation-shell">
               <article className="adaptation-input-card">
                 <div className="adaptation-card-head"><div><span>Исходник заказчика</span><h3 className="field-label-help">Вставьте готовый текст<HelpTip label="Вставьте готовый текст" text="Поле увеличивается вместе с текстом, а для длинного материала включает внутреннюю прокрутку. Исходник не перезаписывается."/></h3></div><b>{adaptationSource.trim().length.toLocaleString("ru-RU")} знаков</b></div>
@@ -6878,7 +6887,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>
 
           <section className="workspace-module publications-module" id="publications" style={{ display: activeModule === "publications" ? undefined : "none" }}>
-            <div className="workspace-module-heading tool-heading">
+            <div className="workspace-module-heading tool-heading workspace-module-banner">
               <div><span>Новое · по желанию</span><h2>Публикации<span className="klio-mark-dot">.</span></h2></div>
               <p>Ставьте готовый материал в календарь на нужную дату, время и канал — публикация уходит в VK и Telegram прямо из КЛИО.</p>
             </div>
