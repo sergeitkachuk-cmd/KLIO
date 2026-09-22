@@ -169,6 +169,34 @@ export async function downloadPublicationImage(key: string): Promise<{ bytes: Ui
   }
 }
 
+// Read only a bounded header for thumbnail dimensions, never the entire image.
+// The caller's signal also bounds the body read (not just the response headers).
+export async function publicationImageHeader(key: string, signal: AbortSignal): Promise<Uint8Array> {
+  if (!/^publications\/[a-f0-9]{64}\/[a-f0-9-]{36}\.(png|jpg|webp|gif)$/.test(key)) {
+    throw new StorageError("Некорректный путь изображения.", 400);
+  }
+  const response = await client().send(new GetObjectCommand({
+    Bucket: requiredEnv("S3_BUCKET"), Key: key, Range: "bytes=0-65535",
+  }), { abortSignal: signal });
+  if (!response.Body || !response.ContentLength || response.ContentLength > 65536) {
+    const body = response.Body as { destroy?: () => void } | undefined;
+    body?.destroy?.();
+    throw new StorageError("Не удалось прочитать размер изображения.");
+  }
+  const body = response.Body;
+  let onAbort: () => void = () => {};
+  const aborted = new Promise<never>((_, reject) => {
+    onAbort = () => {
+      (body as { destroy?: () => void }).destroy?.();
+      reject(signal.reason || new Error("Image header timed out"));
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    if (signal.aborted) onAbort();
+  });
+  try { return await Promise.race([body.transformToByteArray(), aborted]); }
+  finally { signal.removeEventListener("abort", onAbort); }
+}
+
 // Generous enough for a real brand-book export (design-heavy PDFs run
 // larger than a single social-post image) while staying well inside a
 // single request body.

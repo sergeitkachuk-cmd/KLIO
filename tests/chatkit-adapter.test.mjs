@@ -14,11 +14,12 @@ function parseEvents(body) {
     .map((line) => JSON.parse(line.slice(6)));
 }
 
-function chatKitRoute(dialogueRoute) {
+function chatKitRoute(dialogueRoute, imagePreviewSizes = async () => new Map()) {
   return load(
     "app/api/chatkit/route.ts",
     {
       "../../dialogue-model": model,
+      "../_lib/chatkit-image-preview": { imagePreviewSizes },
       "../../dialogue-starters": load("app/dialogue-starters.ts"),
       "../dialogue/route": dialogueRoute,
       "../../dialogue-generation-settings": load("app/dialogue-generation-settings.ts", {
@@ -44,6 +45,24 @@ async function request(route, body, suffix = "") {
     }),
   );
 }
+
+test("image widgets preserve actual aspect ratios in compact clickable previews", async () => {
+  for (const [width, height, maxWidth] of [[1536, 1024, "420px"], [1024, 1536, "240px"], [1024, 1024, "360px"]]) {
+    const card = { id: "image", title: "Image", body: "", imageUrl: "https://example.invalid/image.png", kind: "post", versions: [] };
+    const route = chatKitRoute({ GET: async () => Response.json({ thread: { id: "thread", data: { cards: [card], messages: [] } } }) }, async () => new Map([[card.imageUrl, { width, height }]]));
+    const response = await request(route, { type: "items.list", params: { thread_id: "thread" } });
+    const widget = (await response.json()).data[0].widget;
+    const image = widget.children.find((child) => child.type === "Image");
+    assert.equal(image.aspectRatio, width / height);
+    assert.equal(image.maxWidth, maxWidth);
+    assert.equal(image.fit, "contain", "do not crop portrait or landscape originals");
+    assert.equal(image.radius, "2xl");
+    assert.equal(image.onClickAction.type, "klio.open_image");
+    assert.deepEqual(image.onClickAction.payload, { threadId: "thread", cardId: "image" });
+    assert.equal(widget.padding.top, 0);
+    assert.equal(widget.gap, 2);
+  }
+});
 
 test("native ChatKit history supports rename and delete without access to other owners", async (t) => {
   const h = await createDialogueHarness();

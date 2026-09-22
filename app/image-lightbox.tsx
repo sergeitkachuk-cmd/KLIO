@@ -13,17 +13,24 @@ import { createPortal } from "react-dom";
 // as this app's other portaled overlays.
 export function ImageLightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
   const downTarget = useRef<EventTarget | null>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
+    const previousFocus = document.activeElement as HTMLElement | null;
     document.body.style.overflow = "hidden";
+    // The opener may be inside ChatKit's iframe: move focus into this document
+    // so Escape closes the preview instead of reaching the embedded composer.
+    closeButton.current?.focus();
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") { event.preventDefault(); onClose(); }
+      if (event.key === "Tab") { event.preventDefault(); closeButton.current?.focus(); }
     };
     document.addEventListener("keydown", closeOnEscape);
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", closeOnEscape);
+      previousFocus?.focus();
     };
   }, [onClose]);
 
@@ -49,7 +56,7 @@ export function ImageLightbox({ src, alt, onClose }: { src: string; alt: string;
       onMouseDown={handleBackdropDown}
       onClick={handleBackdropClick}
     >
-      <button type="button" className="image-lightbox-close" aria-label="Закрыть превью" onClick={onClose}>
+      <button ref={closeButton} type="button" className="image-lightbox-close" aria-label="Закрыть превью" onClick={onClose}>
         ×
       </button>
       {/* eslint-disable-next-line @next/next/no-img-element -- full-size

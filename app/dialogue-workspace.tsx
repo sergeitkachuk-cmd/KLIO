@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Script from "next/script";
 import { ChatKit, useChatKit } from "@openai/chatkit-react";
-import type { DialogueCard, DialogueThread } from "./dialogue-model";
+import { isStandaloneImage, type DialogueCard, type DialogueThread } from "./dialogue-model";
 import { ModuleSelect } from "./module-select";
 import { DialogueRecentThreads } from "./dialogue-recent-threads";
 import { DialogueThreadDialog, type ThreadAction } from "./dialogue-thread-actions";
 import { DialogueSettingsPopover } from "./dialogue-settings-popover";
 import { DialogueResultsMenu } from "./dialogue-results-menu";
+import { DialogueResultPreview } from "./dialogue-result-preview";
 import { ImageLightbox } from "./image-lightbox";
 import { dialogueTool, POST_STARTER, TOPICS_STARTER } from "./dialogue-starters";
 import {
@@ -21,6 +22,7 @@ import {
   type DialogueWorkspaceProps,
 } from "./dialogue-workspace-legacy";
 import "./dialogue-chatkit.css";
+import "./dialogue-module-theme.css";
 
 type MutationResult = {
   thread: DialogueThread;
@@ -85,6 +87,8 @@ function ChatKitWorkspace(
   const [editTitle, setEditTitle] = useState("");
   const [editBody, setEditBody] = useState("");
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewResult, setPreviewResult] = useState<{ card: DialogueCard; threadId: string } | null>(null);
+  const closeResult = useCallback(() => setPreviewResult(null), []);
   const [threadAction, setThreadAction] = useState<{ action: ThreadAction; thread: DialogueThread } | null>(null);
   const storageKey = `klio-chatkit:${props.userKey}:${props.brandId || "personal"}`;
   // Let the element restore its own thread after loading. Its imperative
@@ -330,6 +334,11 @@ function ChatKitWorkspace(
         const thread = await loadThread(threadId);
         const card = cardFrom(thread, cardId);
         if (!card) throw new Error("Материал не найден в этом диалоге.");
+        if (action.type === "klio.view_result") {
+          if (isStandaloneImage(thread, card)) setPreviewImage(card.imageUrl);
+          else setPreviewResult({ card, threadId });
+          return;
+        }
         if (action.type === "klio.edit") {
           setEditCard(card);
           setEditThreadId(threadId);
@@ -601,7 +610,7 @@ function ChatKitWorkspace(
             revision={historyRevision}
             onOpen={(card) => {
               if (!activeThreadId) return;
-              void handleWidgetAction({ type: card.imageUrl && !card.body.trim() ? "klio.open_image" : "klio.edit", payload: { threadId: activeThreadId, cardId: card.id } });
+              void handleWidgetAction({ type: "klio.view_result", payload: { threadId: activeThreadId, cardId: card.id } });
             }}
           />
           <button className="klio-chatkit-history-button" type="button" aria-label="История диалогов" title="История диалогов" disabled={!chatReady} onClick={() => void openRecentThread()}>
@@ -714,6 +723,10 @@ function ChatKitWorkspace(
         </div>
       )}
       {previewImage && <ImageLightbox src={previewImage} alt="Изображение из диалога" onClose={() => setPreviewImage(null)} />}
+      {previewResult && props.visible && <DialogueResultPreview card={previewResult.card} onClose={closeResult} onImage={() => { setPreviewImage(previewResult.card.imageUrl); closeResult(); }} onEdit={() => {
+        void handleWidgetAction({ type: "klio.edit", payload: { threadId: previewResult.threadId, cardId: previewResult.card.id } });
+        closeResult();
+      }} />}
       {threadAction && props.visible && <DialogueThreadDialog key={`${threadAction.action}:${threadAction.thread.id}`} thread={threadAction.thread} action={threadAction.action} onClose={() => setThreadAction(null)} onSubmit={submitThreadAction} />}
     </div>
   );

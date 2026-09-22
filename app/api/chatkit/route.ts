@@ -3,6 +3,8 @@ import type {
   DialogueMessage,
   DialogueThread,
 } from "../../dialogue-model";
+import { isStandaloneImage } from "../../dialogue-model";
+import { imagePreviewSizes } from "../_lib/chatkit-image-preview";
 import { settingsForTool, type GenerationSettings } from "../../dialogue-generation-settings";
 import { dialogueTool } from "../../dialogue-starters";
 import {
@@ -207,27 +209,11 @@ function clientAction(type: string, threadId: string, cardId: string) {
   };
 }
 
-function isStandaloneImage(thread: DialogueThread, card: DialogueCard) {
-  if (!card.imageUrl) return false;
-  if (!card.body.trim()) return true;
-  // Old standalone images were saved with their prompt as material body,
-  // then refreshed into the chat. Hide only that exact, unedited duplicate;
-  // never hide a real post or text subsequently edited in Materials.
-  if (card.versions.length) return false;
-  const index = thread.data.messages.findIndex((message) =>
-    message.role === "assistant"
-    && message.text === "Изображение готово и сохранено в материалы. Можно сразу подготовить публикацию или доработать карточку."
-    && message.cardIds?.includes(card.id));
-  const request = thread.data.messages[index - 1];
-  return request?.role === "user"
-    && card.title === request.text.slice(0, 100)
-    && card.body === request.text.slice(0, 4000);
-}
-
 function cardWidget(
   thread: DialogueThread,
   card: DialogueCard,
   createdAt: string,
+  imageSize?: { width: number; height: number },
 ) {
   const pureImage = isStandaloneImage(thread, card);
   const children: Array<Record<string, unknown>> = [];
@@ -248,6 +234,9 @@ function cardWidget(
       fit: "contain",
       radius: "2xl",
       width: "100%",
+      maxWidth: `${Math.round(Math.min(420, 360 * (imageSize ? imageSize.width / imageSize.height : 1)))}px`,
+      aspectRatio: imageSize ? imageSize.width / imageSize.height : 1,
+      onClickAction: clientAction("klio.open_image", thread.id, card.id),
     });
 
   const buttons: Array<Record<string, unknown>> = [];
@@ -323,14 +312,15 @@ function cardWidget(
     widget: {
       type: "Basic",
       direction: "col",
-      gap: 3,
-      padding: { top: 2, right: 0, bottom: 4, left: 0 },
+      gap: 2,
+      padding: { top: 0, right: 0, bottom: 2, left: 0 },
       children,
     },
   };
 }
 
-function threadItems(thread: DialogueThread) {
+async function threadItems(thread: DialogueThread) {
+  const sizes = await imagePreviewSizes(thread);
   const cards = new Map(thread.data.cards.map((card) => [card.id, card]));
   const items: ChatKitItem[] = [];
   const usedCards = new Set<string>();
@@ -345,12 +335,12 @@ function threadItems(thread: DialogueThread) {
       const card = cards.get(cardId);
       if (!card || usedCards.has(card.id)) continue;
       usedCards.add(card.id);
-      items.push(cardWidget(thread, card, createdAt));
+      items.push(cardWidget(thread, card, createdAt, sizes.get(card.imageUrl)));
     }
   }
   for (const card of thread.data.cards) {
     if (usedCards.has(card.id)) continue;
-    items.push(cardWidget(thread, card, createdAt));
+    items.push(cardWidget(thread, card, createdAt, sizes.get(card.imageUrl)));
   }
   return items;
 }
@@ -483,7 +473,7 @@ async function streamMessage(
   const newMessages = final.data.messages.filter(
     (message) => !oldMessageIds.has(message.id) && message.role === "assistant",
   );
-  const allItems = threadItems(final);
+  const allItems = await threadItems(final);
   const newMessageIds = new Set(newMessages.map((message) => message.id));
   const newCardIds = new Set(newMessages.flatMap((message) => message.cardIds || []));
   // Publish the final metadata before image widgets so ChatKit knows which
@@ -558,7 +548,7 @@ async function nonStreamingResponse(
     const id = clean(params.thread_id, 100);
     const payload = await getDialogue(source, { id });
     if (!payload.thread) throw new AdapterError("Диалог не найден.", 404);
-    const items = threadItems(payload.thread);
+    const items = await threadItems(payload.thread);
     return Response.json(
       request.type === "threads.get_by_id"
         ? chatThread(payload.thread, items)

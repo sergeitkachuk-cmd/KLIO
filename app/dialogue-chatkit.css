@@ -11,6 +11,7 @@
 }
 
 .workspace-shell.is-dialogue,
+body:has(.workspace-shell.is-dialogue),
 .klio-chatkit-thread-menu,
 .klio-chatkit-thread-dialog-layer,
 .klio-chatkit-settings-popover,
@@ -45,6 +46,7 @@
 }
 
 html[data-theme="light"] .workspace-shell.is-dialogue,
+html[data-theme="light"] body:has(.workspace-shell.is-dialogue),
 html[data-theme="light"] .klio-chatkit-thread-menu,
 html[data-theme="light"] .klio-chatkit-thread-dialog-layer,
 html[data-theme="light"] .klio-chatkit-settings-popover,
@@ -766,6 +768,31 @@ html[data-theme="light"] .klio-chatkit-toast.is-error {
 .klio-chatkit-editor h2 {
   margin: 0;
   font-size: 20px;
+}
+
+.klio-chatkit-result-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.65;
+}
+
+.klio-chatkit-result-preview .klio-chatkit-result-image {
+  justify-self: start;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.klio-chatkit-result-image img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(420px, 100%);
+  max-height: 360px;
 }
 
 .klio-chatkit-editor header button {

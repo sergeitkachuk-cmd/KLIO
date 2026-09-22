@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { DialogueCard, DialogueThread } from "./dialogue-model";
+import { isStandaloneImage, type DialogueCard, type DialogueThread } from "./dialogue-model";
 
 export function DialogueResultsMenu({ threadId, ready, visible, revision, onOpen }: {
   threadId: string | null;
@@ -10,7 +10,8 @@ export function DialogueResultsMenu({ threadId, ready, visible, revision, onOpen
   revision: number;
   onOpen: (card: DialogueCard) => void;
 }) {
-  const [cards, setCards] = useState<DialogueCard[]>([]);
+  const [thread, setThread] = useState<DialogueThread | null>(null);
+  const cards = thread?.data.cards || [];
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -29,7 +30,7 @@ export function DialogueResultsMenu({ threadId, ready, visible, revision, onOpen
         if (!response.ok) throw new Error("Results unavailable");
         const payload = await response.json() as { thread?: DialogueThread };
         if (!Array.isArray(payload.thread?.data.cards)) throw new Error("Invalid results");
-        if (!controller.signal.aborted) setCards(payload.thread.data.cards);
+        if (!controller.signal.aborted) setThread(payload.thread);
       } catch {
         if (!controller.signal.aborted) setFailed(true);
       } finally {
@@ -63,7 +64,7 @@ export function DialogueResultsMenu({ threadId, ready, visible, revision, onOpen
     </button>
     {open && <div id="chatkit-results-list" className="klio-chatkit-results-list" role="group" aria-label="Результаты этого диалога">
       {cards.map((card) => <button key={card.id} type="button" onClick={() => { setOpen(false); onOpen(card); }}>
-        <small>{card.imageUrl && !card.body.trim() ? "Изображение" : card.kind === "topic" ? "Тема" : card.kind === "note" ? "Заметка" : "Текст"}</small>
+        <small>{thread && isStandaloneImage(thread, card) ? "Изображение" : card.imageUrl ? "Текст и изображение" : card.kind === "topic" ? "Тема" : card.kind === "note" ? "Заметка" : "Текст"}</small>
         <span>{card.title}</span>
       </button>)}
       {!cards.length && !failed && <p>{loading ? "Загружаем результаты…" : "Здесь появятся темы, тексты и изображения этого диалога"}</p>}

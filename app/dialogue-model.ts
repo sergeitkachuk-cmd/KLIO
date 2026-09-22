@@ -31,6 +31,20 @@ export type DialogueThread = {
   updatedAt: string;
   data: DialogueData;
 };
+export function isStandaloneImage(thread: DialogueThread, card: DialogueCard) {
+  if (!card.imageUrl) return false;
+  if (!card.body.trim()) return true;
+  // Only recognize the exact legacy prompt duplicate. Preserve edited text.
+  if (card.versions.length) return false;
+  const index = thread.data.messages.findIndex((message) =>
+    message.role === "assistant"
+    && message.text === "Изображение готово и сохранено в материалы. Можно сразу подготовить публикацию или доработать карточку."
+    && message.cardIds?.includes(card.id));
+  const request = thread.data.messages[index - 1];
+  return request?.role === "user"
+    && card.title === request.text.slice(0, 100)
+    && card.body === request.text.slice(0, 4000);
+}
 export function cardSnapshot(
   card: Pick<DialogueCard, "title" | "body" | "imageUrl">,
 ) {

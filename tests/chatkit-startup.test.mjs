@@ -90,6 +90,9 @@ async function mountWorkspace(t, { savedThread = "thread-saved", storageBlocked 
     "@openai/chatkit-react": sdk,
     "next/script": { default: (options) => { scriptProps = options; return null; } },
     "./dialogue-chatkit.css": {},
+    "./dialogue-module-theme.css": {},
+    "./dialogue-model": loadComponent("app/dialogue-model.ts"),
+    "./dialogue-result-preview": loadComponent("app/dialogue-result-preview.tsx", { react: React, "react/jsx-runtime": jsx }),
     "./dialogue-thread-actions": loadComponent("app/dialogue-thread-actions.tsx", {
       react: React, "react/jsx-runtime": jsx, "react-dom": ReactDOM,
     }),
@@ -103,7 +106,7 @@ async function mountWorkspace(t, { savedThread = "thread-saved", storageBlocked 
       react: React, "react/jsx-runtime": jsx, "react-dom": ReactDOM,
     }),
     "./dialogue-results-menu": loadComponent("app/dialogue-results-menu.tsx", {
-      react: React, "react/jsx-runtime": jsx,
+      react: React, "react/jsx-runtime": jsx, "./dialogue-model": loadComponent("app/dialogue-model.ts"),
     }),
     "./image-lightbox": loadComponent("app/image-lightbox.tsx", {
       react: React, "react/jsx-runtime": jsx, "react-dom": ReactDOM,
@@ -657,7 +660,8 @@ test("results menu opens complete topics and images from the current thread with
   await React.act(async () => h.container.querySelector(".klio-chatkit-results-trigger").click());
   assert.match(h.container.querySelector(".klio-chatkit-results-list").textContent, /ТемаСъёмочный процесс/);
   await React.act(async () => h.container.querySelector(".klio-chatkit-results-list button").click());
-  assert.equal(h.container.querySelector(".klio-chatkit-editor textarea").value, topic.body);
+  assert.equal(h.container.querySelector(".klio-chatkit-result-body").textContent, topic.body);
+  assert.equal(h.container.querySelector(".klio-chatkit-editor textarea"), null, "viewing must not start an edit");
   assert.equal(h.container.querySelector(".klio-chatkit-results-list"), null);
   await React.act(async () => h.container.querySelector(".klio-chatkit-editor header button").click());
   await React.act(async () => h.container.querySelector(".klio-chatkit-results-trigger").click());
@@ -672,4 +676,38 @@ test("results menu opens complete topics and images from the current thread with
   assert.equal(h.container.querySelector(".klio-chatkit-results-list").textContent.includes(topic.title), false);
   await React.act(async () => h.container.querySelector(".klio-chatkit-history-button").click());
   assert.equal(h.element().historyOpened, true);
+});
+
+test("legacy prompt duplicates open as images; manually edited text remains readable and editable", async (t) => {
+  const prompt = "Картинку к статье на тему: Творческий процесс в студии.";
+  const card = { id: "legacy", kind: "post", title: prompt, body: prompt, imageUrl: "https://cdn.example.invalid/studio.png", versions: [] };
+  const thread = { id: "thread-saved", data: { cards: [card], messages: [
+    { role: "user", text: prompt },
+    { role: "assistant", text: "Изображение готово и сохранено в материалы. Можно сразу подготовить публикацию или доработать карточку.", cardIds: [card.id] },
+  ] } };
+  const h = await mountWorkspace(t, { threadFetch: async () => Response.json({ thread }) });
+  await h.define(); await h.ready();
+  await React.act(async () => h.container.querySelector(".klio-chatkit-results-trigger").click());
+  assert.equal(h.container.querySelector(".klio-chatkit-results-list small").textContent, "Изображение");
+  await React.act(async () => h.container.querySelector(".klio-chatkit-results-list button").click());
+  assert.equal(h.window.document.querySelector(".image-lightbox-image").src, card.imageUrl);
+  assert.equal(h.container.querySelector(".klio-chatkit-editor"), null);
+  await React.act(async () => h.window.document.querySelector(".image-lightbox-close").click());
+  await React.act(async () => h.element().options.widgets.onAction({ type: "klio.open_image", payload: { threadId: thread.id, cardId: card.id } }));
+  assert.equal(h.window.document.querySelector(".image-lightbox-image").src, card.imageUrl);
+  assert.equal(h.window.document.activeElement, h.window.document.querySelector(".image-lightbox-close"));
+  await React.act(async () => h.window.document.dispatchEvent(new h.window.KeyboardEvent("keydown", { key: "Escape" })));
+  assert.equal(h.window.document.querySelector(".image-lightbox-image"), null);
+
+  card.body = "Отредактированный пользователем текст";
+  await h.event("response.end");
+  await React.act(async () => h.container.querySelector(".klio-chatkit-results-trigger").click());
+  assert.equal(h.container.querySelector(".klio-chatkit-results-list small").textContent, "Текст и изображение");
+  await React.act(async () => h.container.querySelector(".klio-chatkit-results-list button").click());
+  assert.equal(h.container.querySelector(".klio-chatkit-result-body").textContent, card.body);
+  assert.equal(h.container.querySelector("textarea"), null);
+  assert.equal(h.container.querySelector(".klio-chatkit-result-image img").src, card.imageUrl);
+  await React.act(async () => h.container.querySelector(".klio-chatkit-result-preview footer button:last-child").click());
+  assert.equal(h.container.querySelector(".klio-chatkit-editor textarea").value, card.body);
+  assert.deepEqual(h.uncaught, []);
 });
