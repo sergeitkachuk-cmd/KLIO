@@ -84,6 +84,12 @@ html[data-theme="light"] .module-select-list.module-select-chatkit {
   gap: 8px;
 }
 
+:root[data-theme="light"] .workspace-shell.is-dialogue > .workspace-header {
+  background: #f7f9fc;
+  color: #17283a;
+  border-bottom: 1px solid #d9e2ec;
+}
+
 /* One continuous sidebar column, including the logo area above it. */
 @media (min-width: 821px) {
   .workspace-shell.is-dialogue:has(> .klio-chatkit-shell:not([hidden])) > .workspace-header {

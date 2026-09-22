@@ -2666,12 +2666,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   ].some(Boolean));
 
   useEffect(() => {
-    // Reads what the blocking bootstrap script in layout.tsx already
-    // wrote to <html data-theme> before first paint, so this effect
-    // exists to sync REACT'S OWN state with that (for toggleTheme below
-    // to flip from the right starting point), not to apply the theme
-    // itself - the DOM attribute is already correct by the time this
-    // runs. Same localStorage key, read the same defensive way.
+    // Keep the pre-paint document theme, saved preference and toggle state in
+    // agreement, including after hydration recovery and client navigation.
     // Deferred a tick (rather than calling setTheme directly in the
     // effect body) purely to satisfy react-hooks/set-state-in-effect,
     // which flags any synchronous setState in an effect on the
@@ -2680,12 +2676,18 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     // one, but queueing it keeps the codebase's zero-eslint-disable
     // baseline intact instead of carving out an exception.
     queueMicrotask(() => {
+      const root = document.documentElement;
+      let initialTheme: "light" | "dark" = root.dataset.theme === "light" ? "light" : "dark";
       try {
-        if (window.localStorage.getItem("klio-theme") === "light") setTheme("light");
+        const savedTheme = window.localStorage.getItem("klio-theme");
+        if (savedTheme === "light" || savedTheme === "dark") initialTheme = savedTheme;
       } catch {
-        // localStorage can throw in some privacy-mode/embedded contexts;
-        // theme just stays dark for this visit.
+        // Keep the theme already applied to the document if storage is blocked.
       }
+      // Also repair the DOM after hydration/client navigation, not just the
+      // toggle icon: all module palettes must read the same theme as React.
+      root.setAttribute("data-theme", initialTheme);
+      setTheme(initialTheme);
     });
     queueMicrotask(() => {
       try {

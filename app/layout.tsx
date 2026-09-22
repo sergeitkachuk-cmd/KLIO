@@ -66,7 +66,7 @@ export const metadata: Metadata = {
 const themeBootstrapScript = `try {
   var t = localStorage.getItem("klio-theme");
   document.documentElement.setAttribute("data-theme", t === "light" ? "light" : "dark");
-} catch (e) {}`;
+} catch (e) { document.documentElement.setAttribute("data-theme", "dark"); }`;
 
 export default function RootLayout({
   children,
@@ -74,7 +74,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru">
+    <html lang="ru" data-theme="dark" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
       </head>
