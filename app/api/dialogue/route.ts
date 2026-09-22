@@ -20,6 +20,7 @@ import { planRule } from "../../plans";
 import { CORE_SYSTEM_RULES, FINAL_QA_RULES, FORMAT_PLANS, TONE_PLANS, sanitizePublicationText, type ContentFormat, type ContentTone } from "../../content-plans";
 import { aiConfigured, OPERATION_CONFIG } from "../_lib/ai-config";
 import { AiCallError, callAiModel } from "../_lib/ai-router";
+import { ImageRelayUpgradeRequiredError } from "../_lib/image-generation-errors";
 import { readBoundedJson, RequestBodyError } from "../_lib/request-body";
 import { hasUnsafeRequestOrigin } from "../_lib/request-origin";
 import { isRateLimited } from "../_lib/rate-limit";
@@ -599,7 +600,9 @@ async function runReply(
       row.id,
       row.ownerEmail,
       row.requestId,
-      error instanceof WorkspaceAccessError || error instanceof AiCallError
+      error instanceof ImageRelayUpgradeRequiredError
+        ? `${error.message} Сообщение и исходник сохранены, лимит возвращён.`
+        : error instanceof WorkspaceAccessError || error instanceof AiCallError
         ? error.message
         : "Не удалось завершить ответ. Сообщение сохранено, лимит возвращён. Попробуйте ещё раз.",
     ).catch(() => {});

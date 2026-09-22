@@ -1,5 +1,6 @@
 import { storageConfigured, uploadPublicationImage } from "./storage";
 import { imageContentType } from "./image-type";
+import { ImageRelayUpgradeRequiredError } from "./image-generation-errors";
 
 export type ImageAspectRatio = "1:1" | "4:3" | "4:5" | "16:9" | "9:16";
 export type ImageOutputFormat = "png" | "jpeg" | "webp";
@@ -154,9 +155,10 @@ async function generateImageBytes(
       // An older relay silently ignores unknown fields. Fail before a paid
       // request rather than generate a different scene without the source.
       const health = await fetch(new URL("/health", serviceUrl), { cache: "no-store", signal: AbortSignal.timeout(10_000) });
-      const capabilities = await health.json().catch(() => ({}));
-      if (!health.ok || capabilities.maxImageInputs < images.length || !capabilities.maxImageInputs)
-        throw new Error("Сервер изображений ещё не обновлён для доработки с логотипом. Исходник сохранён; повторите после обновления сервера.");
+      if (!health.ok) throw new Error("Не удалось проверить доступность сервера изображений.");
+      const capabilities = await health.json().catch(() => null);
+      if (!Number.isInteger(capabilities?.maxImageInputs) || capabilities.maxImageInputs < images.length)
+        throw new ImageRelayUpgradeRequiredError();
     }
     const imageRequest = {
       model: resolvedModel,

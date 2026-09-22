@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID, createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { createDialogueHarness, load } from "./helpers/dialogue-harness.mjs";
+import { createDialogueHarness, imageGenerationErrors, load } from "./helpers/dialogue-harness.mjs";
 import { imageService } from "../services/klio-images/server.mjs";
 
 const sourceUrl = (email) => `https://klio.example/api/uploads/publications/${createHash("sha256").update(email).digest("hex")}/${randomUUID()}.png`;
@@ -67,6 +67,8 @@ test("uploaded references and explicit older slides use the chosen source; error
   await h.post(payload(thread, { text: "Убери камеру", imageSource: { cardId: "original", purpose: "edit" } }));
   thread = await h.settled(thread.id);
   assert.equal(thread.status, "failed"); assert.equal((await h.account()).generationsUsed, 1);
+  assert.match(thread.error, /Не удалось завершить ответ/);
+  assert.ok(!thread.error.includes("Provider unavailable"));
   assert.equal((await h.db.select().from(h.schema.generations)).length, 1);
   assert.equal(h.imageDownloads[1], new URL(thread.data.cards[0].imageUrl).pathname.slice("/api/uploads/".length));
 });
@@ -109,18 +111,51 @@ test("app and Render deliver source then logo as two files to edits, without cha
   const image = load("app/api/_lib/image-generation.ts", {
     "./storage": { storageConfigured: () => true, uploadPublicationImage: async (file) => { uploaded = file; return "saved-image"; } },
     "./image-type": load("app/api/_lib/image-type.ts"),
+    "./image-generation-errors": imageGenerationErrors,
   }, { FormData, process: { env: { KLIO_IMAGE_SERVICE_URL: "https://relay.example", KLIO_IMAGE_SERVICE_TOKEN: token } }, fetch: (url, options) => fetch(`${local}${new URL(url).pathname}`, options) });
   assert.equal(await image.createImageFromSource("Добавь логотип", source, "edit", logo, "owner", "https://klio.example", "edit-request-000000001", { aspectRatio: "1:1", outputFormat: "png" }), "saved-image");
   assert.equal(providerCalls, 1); assert.equal(uploaded.type, "image/png");
 });
 
-test("an old relay is rejected before billing instead of silently dropping the source or logo", async () => {
+test("an old relay shows its specific cause, retains the source and refunds the dialogue without billing AI", async t => {
+  const h = await createDialogueHarness(); t.after(() => h.close());
+  await h.db.insert(h.schema.brands).values({ id: "studio", name: "Студия", ownerEmail: h.owner, profileJson: JSON.stringify({ logoKey: "real-logo" }) });
+  const thread = await seed(h, "studio");
   const calls = [];
   const image = load("app/api/_lib/image-generation.ts", {
     "./storage": { storageConfigured: () => true }, "./image-type": load("app/api/_lib/image-type.ts"),
+    "./image-generation-errors": imageGenerationErrors,
   }, { process: { env: { KLIO_IMAGE_SERVICE_URL: "https://relay.example" } }, fetch: async (url) => { calls.push(new URL(url).pathname); return Response.json({ ready: true }); } });
   const reference = { bytes: png("source"), contentType: "image/png" };
-  await assert.rejects(image.createImageFromSource("Логотип", reference, "edit", reference, "owner", "https://klio.example", "edit-request-000000001"), /ещё не обновлён/);
+  h.setEditImage(() => image.createImageFromSource("Логотип", reference, "edit", reference, h.owner, "https://klio.example", "edit-request-000000001"));
+  const request = payload(thread);
+  await h.post(request);
+  const failed = await h.settled(thread.id);
+  assert.equal(failed.status, "failed");
+  assert.match(failed.error, /сервер изображений ещё не обновлён/);
+  assert.match(failed.error, /Сообщение и исходник сохранены, лимит возвращён/);
+  assert.equal(failed.data.messages.at(-1).id, request.requestId);
+  assert.equal(failed.data.messages.at(-1).imageSource.purpose, "edit");
+  assert.equal(new URL(failed.data.messages.at(-1).imageSource.url).pathname, new URL(thread.data.cards[0].imageUrl).pathname);
+  assert.equal(failed.data.cards.length, 1);
+  assert.equal((await h.account()).generationsUsed, 0);
+  assert.equal((await h.account()).lifetimeGenerationsUsed, 0);
+  assert.equal((await h.db.select().from(h.schema.generations)).length, 0);
+  assert.deepEqual(calls, ["/health"]);
+});
+
+test("an unavailable relay is not misreported as needing an update and never receives an edit", async () => {
+  const calls = [];
+  const image = load("app/api/_lib/image-generation.ts", {
+    "./storage": { storageConfigured: () => true }, "./image-type": load("app/api/_lib/image-type.ts"),
+    "./image-generation-errors": imageGenerationErrors,
+  }, { process: { env: { KLIO_IMAGE_SERVICE_URL: "https://relay.example" } }, fetch: async url => { calls.push(new URL(url).pathname); return new Response("Unavailable", { status: 503 }); } });
+  const reference = { bytes: png("source"), contentType: "image/png" };
+  await assert.rejects(image.createImageFromSource("Логотип", reference, "edit", reference, "owner", "https://klio.example", "edit-request-000000001"), error => {
+    assert.equal(error instanceof imageGenerationErrors.ImageRelayUpgradeRequiredError, false);
+    assert.match(error.message, /проверить доступность/);
+    return true;
+  });
   assert.deepEqual(calls, ["/health"]);
 });
 

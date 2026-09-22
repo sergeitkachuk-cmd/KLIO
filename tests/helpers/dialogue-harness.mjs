@@ -42,6 +42,7 @@ export function load(path, dependencies = {}, globals = {}) {
   return exports;
 }
 export const model = load("app/dialogue-model.ts");
+export const imageGenerationErrors = load("app/api/_lib/image-generation-errors.ts");
 
 export async function createDialogueHarness() {
   const client = new PGlite();
@@ -233,6 +234,7 @@ export async function createDialogueHarness() {
         createImageFromLogo: async (...args) => { imageCalls.push({ logo: true, args }); return "https://cdn.example.invalid/generated-with-logo.png"; },
         createImageFromSource: async (...args) => { imageCalls.push({ source: true, logo: Boolean(args[3]), args }); return editImage(...args); },
       },
+      "../_lib/image-generation-errors": imageGenerationErrors,
       "../_lib/storage": {
         downloadBrandLogo: async () => ({ bytes: new Uint8Array(), contentType: "image/png" }),
         downloadPublicationImage: async (key) => { imageDownloads.push(key); return { bytes: new Uint8Array([1, 2, 3]), contentType: "image/png" }; },
