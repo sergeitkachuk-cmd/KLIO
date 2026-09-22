@@ -10,6 +10,7 @@ import { DialogueThreadDialog, type ThreadAction } from "./dialogue-thread-actio
 import { DialogueSettingsPopover } from "./dialogue-settings-popover";
 import { DialogueResultsMenu } from "./dialogue-results-menu";
 import { DialogueResultPreview } from "./dialogue-result-preview";
+import { DialogueResultActions } from "./dialogue-result-actions";
 import { ImageLightbox } from "./image-lightbox";
 import { dialogueTool, POST_STARTER, TOPICS_STARTER } from "./dialogue-starters";
 import {
@@ -86,9 +87,11 @@ function ChatKitWorkspace(
   const [editThreadId, setEditThreadId] = useState("");
   const [editTitle, setEditTitle] = useState("");
   const [editBody, setEditBody] = useState("");
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ card: DialogueCard; threadId: string; pureImage: boolean } | null>(null);
   const [previewResult, setPreviewResult] = useState<{ card: DialogueCard; threadId: string } | null>(null);
   const closeResult = useCallback(() => setPreviewResult(null), []);
+  const closeImage = useCallback(() => setPreviewImage(null), []);
+  const closePreviews = useCallback(() => { setPreviewResult(null); setPreviewImage(null); }, []);
   const [threadAction, setThreadAction] = useState<{ action: ThreadAction; thread: DialogueThread } | null>(null);
   const storageKey = `klio-chatkit:${props.userKey}:${props.brandId || "personal"}`;
   // Let the element restore its own thread after loading. Its imperative
@@ -331,15 +334,25 @@ function ChatKitWorkspace(
       setError("");
       setNotice("");
       try {
+        if (action.type === "klio.copy") {
+          const preview = [previewResult, previewImage].find((item) => item?.threadId === threadId && item.card.id === cardId);
+          if (!preview) throw new Error("Откройте материал для копирования.");
+          if (!navigator.clipboard?.writeText) throw new Error("Браузер не разрешил копирование. Выделите текст в просмотре и скопируйте его.");
+          // Copy the visible text before any fetch can consume Safari's user activation.
+          await navigator.clipboard.writeText(`${preview.card.title}\n\n${preview.card.body}`.trim());
+          setNotice("Текст скопирован");
+          return;
+        }
         const thread = await loadThread(threadId);
         const card = cardFrom(thread, cardId);
         if (!card) throw new Error("Материал не найден в этом диалоге.");
         if (action.type === "klio.view_result") {
-          if (isStandaloneImage(thread, card)) setPreviewImage(card.imageUrl);
+          if (isStandaloneImage(thread, card)) setPreviewImage({ card, threadId, pureImage: true });
           else setPreviewResult({ card, threadId });
           return;
         }
         if (action.type === "klio.edit") {
+          closePreviews();
           setEditCard(card);
           setEditThreadId(threadId);
           setEditTitle(card.title);
@@ -347,7 +360,7 @@ function ChatKitWorkspace(
           return;
         }
         if (action.type === "klio.open_image") {
-          if (card.imageUrl) setPreviewImage(card.imageUrl);
+          if (card.imageUrl) { closeResult(); setPreviewImage({ card, threadId, pureImage: isStandaloneImage(thread, card) }); }
           return;
         }
         if (action.type === "klio.image") {
@@ -359,6 +372,7 @@ function ChatKitWorkspace(
             text: prompt,
             toolChoice: { id: `image-card:${card.id}` },
           });
+          closePreviews();
           return;
         }
         if (action.type === "klio.topic_post" || action.type === "klio.topic_article") {
@@ -367,10 +381,12 @@ function ChatKitWorkspace(
             text: `Создай отдельный ${article ? "развёрнутый материал для сайта" : "готовый пост для соцсетей"} на тему «${card.title}». ${card.body}\nИсходную карточку темы сохрани без изменений.`,
             toolChoice: { id: article ? "topic-article" : "topic-post" },
           });
+          closePreviews();
           return;
         }
         if (action.type === "klio.topic_generator") {
           await props.onGenerateTopic?.({ title: card.title, body: card.body, useBrandContext });
+          closePreviews();
           return;
         }
         if (action.type === "klio.save" || action.type === "klio.publish") {
@@ -378,9 +394,8 @@ function ChatKitWorkspace(
           if (result.generation) props.onSaved(result.generation);
           props.onUsage();
           if (action.type === "klio.publish" && result.generation) {
-            const pureImage =
-              Boolean(result.generation.imageUrl) &&
-              !result.generation.body.trim();
+            const pureImage = isStandaloneImage(thread, card);
+            closePreviews();
             props.onSchedule({
               generationId: result.generation.id,
               title: pureImage ? "" : result.generation.title,
@@ -389,6 +404,11 @@ function ChatKitWorkspace(
             });
           } else {
             setNotice("Сохранено в материалах");
+            const updated = cardFrom(result.thread, cardId);
+            if (updated) {
+              setPreviewResult((current) => current?.threadId === threadId && current.card.id === cardId ? { ...current, card: updated } : current);
+              setPreviewImage((current) => current?.threadId === threadId && current.card.id === cardId ? { ...current, card: updated } : current);
+            }
           }
           await chatkit.fetchUpdates();
         }
@@ -401,7 +421,7 @@ function ChatKitWorkspace(
       } finally {
         setActionBusy(false);
       }
-    }, [actionBusy, chatkit, loadThread, mutate, props, useBrandContext]);
+    }, [actionBusy, chatkit, loadThread, mutate, props, useBrandContext, closePreviews, closeResult, previewResult, previewImage]);
 
   useEffect(() => {
     onWidgetActionRef.current = handleWidgetAction;
@@ -722,11 +742,9 @@ function ChatKitWorkspace(
           </section>
         </div>
       )}
-      {previewImage && <ImageLightbox src={previewImage} alt="Изображение из диалога" onClose={() => setPreviewImage(null)} />}
-      {previewResult && props.visible && <DialogueResultPreview card={previewResult.card} onClose={closeResult} onImage={() => { setPreviewImage(previewResult.card.imageUrl); closeResult(); }} onEdit={() => {
-        void handleWidgetAction({ type: "klio.edit", payload: { threadId: previewResult.threadId, cardId: previewResult.card.id } });
-        closeResult();
-      }} />}
+      {previewImage && props.visible && <ImageLightbox src={previewImage.card.imageUrl} alt="Изображение из диалога" onClose={closeImage} actions={<DialogueResultActions card={previewImage.card} pureImage={previewImage.pureImage} busy={actionBusy} error={error} notice={notice} onAction={(type) => void handleWidgetAction({ type, payload: { threadId: previewImage.threadId, cardId: previewImage.card.id } })} />} />}
+      {previewResult && props.visible && <DialogueResultPreview card={previewResult.card} onClose={closeResult} onImage={() => void handleWidgetAction({ type: "klio.open_image", payload: { threadId: previewResult.threadId, cardId: previewResult.card.id } })}
+        actions={<DialogueResultActions card={previewResult.card} pureImage={false} busy={actionBusy} error={error} notice={notice} onAction={(type) => void handleWidgetAction({ type, payload: { threadId: previewResult.threadId, cardId: previewResult.card.id } })} />} />}
       {threadAction && props.visible && <DialogueThreadDialog key={`${threadAction.action}:${threadAction.thread.id}`} thread={threadAction.thread} action={threadAction.action} onClose={() => setThreadAction(null)} onSubmit={submitThreadAction} />}
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { MouseEvent as ReactMouseEvent } from "react";
+import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 // A generated image's thumbnail (chat card, generator result panel) is
@@ -11,9 +11,10 @@ import { createPortal } from "react-dom";
 // same image at (near-)full size in an overlay; portaled to escape
 // whatever clipping/stacking context the thumbnail lives in, same reason
 // as this app's other portaled overlays.
-export function ImageLightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+export function ImageLightbox({ src, alt, onClose, actions }: { src: string; alt: string; onClose: () => void; actions?: ReactNode }) {
   const downTarget = useRef<EventTarget | null>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
+  const overlay = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -24,7 +25,13 @@ export function ImageLightbox({ src, alt, onClose }: { src: string; alt: string;
     closeButton.current?.focus();
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") { event.preventDefault(); onClose(); }
-      if (event.key === "Tab") { event.preventDefault(); closeButton.current?.focus(); }
+      if (event.key === "Tab") {
+        const controls = overlay.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href]');
+        if (!controls?.length) return;
+        const first = controls[0], last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
     };
     document.addEventListener("keydown", closeOnEscape);
     return () => {
@@ -49,7 +56,8 @@ export function ImageLightbox({ src, alt, onClose }: { src: string; alt: string;
 
   return createPortal(
     <div
-      className="image-lightbox-overlay"
+      ref={overlay}
+      className={`image-lightbox-overlay${actions ? " image-lightbox-with-actions" : ""}`}
       role="dialog"
       aria-modal="true"
       aria-label={alt}
@@ -63,6 +71,7 @@ export function ImageLightbox({ src, alt, onClose }: { src: string; alt: string;
           preview of an already-loaded, already-optimized thumbnail's own
           source; next/image needs known dimensions this doesn't have. */}
       <img className="image-lightbox-image" src={src} alt={alt} />
+      {actions && <div className="image-lightbox-actions">{actions}</div>}
     </div>,
     document.body,
   );

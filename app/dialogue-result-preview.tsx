@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import type { DialogueCard } from "./dialogue-model";
 
-export function DialogueResultPreview({ card, onClose, onEdit, onImage }: {
+export function DialogueResultPreview({ card, onClose, onImage, actions }: {
   card: DialogueCard;
   onClose: () => void;
-  onEdit: () => void;
   onImage: () => void;
+  actions: ReactNode;
 }) {
   const panel = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -16,7 +16,7 @@ export function DialogueResultPreview({ card, onClose, onEdit, onImage }: {
     const keydown = (event: KeyboardEvent) => {
       if (event.key === "Escape") { event.preventDefault(); onClose(); }
       if (event.key !== "Tab") return;
-      const buttons = panel.current?.querySelectorAll<HTMLButtonElement>("button");
+      const buttons = panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href]');
       if (!buttons?.length) return;
       const first = buttons[0], last = buttons[buttons.length - 1];
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
@@ -34,7 +34,7 @@ export function DialogueResultPreview({ card, onClose, onEdit, onImage }: {
         {/* eslint-disable-next-line @next/next/no-img-element -- preserve intrinsic proportions of stored images */}
         <img src={card.imageUrl} alt={card.title} />
       </button>}
-      <footer><button type="button" onClick={onClose}>Закрыть</button><button type="button" onClick={onEdit}>Редактировать</button></footer>
+      <footer>{actions}</footer>
     </section>
   </div>;
 }

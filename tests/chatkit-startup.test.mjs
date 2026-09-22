@@ -73,6 +73,8 @@ async function mountWorkspace(t, { savedThread = "thread-saved", storageBlocked 
     theme: "light",
     visible: true,
     onUsage() {},
+    onSaved() {},
+    onSchedule() {},
     onNavigate() {},
     beforeProfile: async () => true,
   };
@@ -93,6 +95,7 @@ async function mountWorkspace(t, { savedThread = "thread-saved", storageBlocked 
     "./dialogue-module-theme.css": {},
     "./dialogue-model": loadComponent("app/dialogue-model.ts"),
     "./dialogue-result-preview": loadComponent("app/dialogue-result-preview.tsx", { react: React, "react/jsx-runtime": jsx }),
+    "./dialogue-result-actions": loadComponent("app/dialogue-result-actions.tsx", { "react/jsx-runtime": jsx }),
     "./dialogue-thread-actions": loadComponent("app/dialogue-thread-actions.tsx", {
       react: React, "react/jsx-runtime": jsx, "react-dom": ReactDOM,
     }),
@@ -676,6 +679,87 @@ test("results menu opens complete topics and images from the current thread with
   assert.equal(h.container.querySelector(".klio-chatkit-results-list").textContent.includes(topic.title), false);
   await React.act(async () => h.container.querySelector(".klio-chatkit-history-button").click());
   assert.equal(h.element().historyOpened, true);
+});
+
+test("image result preview downloads locally and opens a publication draft without the old prompt caption", async (t) => {
+  const prompt = "Картинка творческого процесса в студии";
+  const key = `publications/${"a".repeat(64)}/00000000-0000-0000-0000-000000000001.png`;
+  const card = { id: "image-card", kind: "post", title: prompt, body: prompt, imageUrl: `https://main.example.invalid/api/uploads/${key}`, savedId: "saved-image", versions: [] };
+  const thread = { id: "thread-saved", revision: 7, data: { cards: [card], messages: [
+    { role: "user", text: prompt },
+    { role: "assistant", text: "Изображение готово и сохранено в материалы. Можно сразу подготовить публикацию или доработать карточку.", cardIds: [card.id] },
+  ] } };
+  const mutations = [], scheduled = [];
+  const h = await mountWorkspace(t, {
+    threadFetch: async () => Response.json({ thread }),
+    mutationFetch: async (body) => { mutations.push(body); return Response.json({ thread, generation: { id: card.savedId, title: prompt, body: prompt, imageUrl: card.imageUrl } }); },
+  });
+  await h.render({ onSchedule: (value) => scheduled.push(value) });
+  await h.define(); await h.ready();
+  await React.act(async () => h.container.querySelector(".klio-chatkit-results-trigger").click());
+  await React.act(async () => h.container.querySelector(".klio-chatkit-results-list button").click());
+  const overlay = h.window.document.querySelector(".image-lightbox-overlay");
+  assert.ok(overlay);
+  assert.equal(overlay.querySelector("a[download]").getAttribute("href"), `/api/uploads/${key}?download=1`);
+  assert.equal(overlay.querySelector('[data-action="klio.save"]').disabled, true);
+  assert.equal(overlay.querySelector('[data-action="klio.edit"]'), null);
+  const publish = overlay.querySelector('[data-action="klio.publish"]');
+  await React.act(async () => {
+    overlay.querySelector(".image-lightbox-close").focus();
+    h.window.document.dispatchEvent(new h.window.KeyboardEvent("keydown", { key: "Tab", shiftKey: true }));
+  });
+  assert.equal(h.window.document.activeElement, publish, "keyboard users can reach preview actions");
+  await React.act(async () => publish.click());
+  assert.equal(mutations.length, 1);
+  assert.equal(mutations[0].action, "save", "preview only prepares a draft; it must not publish externally");
+  assert.equal(mutations[0].cardId, card.id);
+  assert.equal(mutations[0].revision, 7);
+  assert.deepEqual(scheduled, [{ generationId: card.savedId, title: "", body: "", imageUrl: card.imageUrl }]);
+  assert.equal(h.window.document.querySelector(".image-lightbox-overlay"), null);
+  assert.deepEqual(h.uncaught, []);
+});
+
+test("failed preview save stays visible for retry and then updates its saved state", async (t) => {
+  const card = { id: "post-card", kind: "post", title: "Полезный пост", body: "Полный текст", imageUrl: "", versions: [] };
+  const thread = { id: "thread-saved", revision: 2, data: { cards: [card], messages: [] } };
+  let fail = true;
+  const h = await mountWorkspace(t, {
+    threadFetch: async () => Response.json({ thread }),
+    mutationFetch: async () => {
+      if (fail) return Response.json({ error: "Не удалось сохранить. Повторите попытку." }, { status: 503 });
+      card.savedId = "saved-post";
+      return Response.json({ thread, generation: { id: card.savedId, title: card.title, body: card.body } });
+    },
+  });
+  await h.define(); await h.ready();
+  await React.act(async () => h.element().options.widgets.onAction({ type: "klio.view_result", payload: { threadId: thread.id, cardId: card.id } }));
+  const preview = () => h.container.querySelector(".klio-chatkit-result-preview");
+  await React.act(async () => preview().querySelector('[data-action="klio.save"]').click());
+  assert.match(preview().querySelector('[role="alert"]').textContent, /Повторите попытку/);
+  assert.equal(preview().querySelector('[data-action="klio.save"]').disabled, false);
+  fail = false;
+  await React.act(async () => preview().querySelector('[data-action="klio.save"]').click());
+  assert.equal(preview().querySelector('[role="alert"]'), null);
+  assert.equal(preview().querySelector('[data-action="klio.save"]').disabled, true);
+  assert.match(preview().querySelector('[role="status"]').textContent, /Сохранено/);
+  assert.equal(preview().querySelector(".klio-chatkit-result-body").textContent, card.body);
+  assert.deepEqual(h.uncaught, []);
+});
+
+test("topic result preview starts a post from that topic without searching the chat", async (t) => {
+  const card = { id: "topic-12", kind: "topic", title: "За кадром", body: "Работа оператора и режиссёра", imageUrl: "", versions: [] };
+  const thread = { id: "thread-saved", data: { cards: [card], messages: [] } };
+  const h = await mountWorkspace(t, { threadFetch: async () => Response.json({ thread }) });
+  await h.define(); await h.ready();
+  await React.act(async () => h.element().options.widgets.onAction({ type: "klio.view_result", payload: { threadId: thread.id, cardId: card.id } }));
+  const preview = h.container.querySelector(".klio-chatkit-result-preview");
+  for (const action of ["klio.topic_post", "klio.topic_article", "klio.topic_generator", "klio.image", "klio.edit"]) assert.ok(preview.querySelector(`[data-action="${action}"]`));
+  await React.act(async () => preview.querySelector('[data-action="klio.topic_post"]').click());
+  assert.equal(h.element().sentMessage.toolChoice.id, "topic-post");
+  assert.ok(h.element().sentMessage.text.includes(card.title));
+  assert.ok(h.element().sentMessage.text.includes(card.body));
+  assert.equal(h.container.querySelector(".klio-chatkit-result-preview"), null);
+  assert.equal(card.body, "Работа оператора и режиссёра");
 });
 
 test("legacy prompt duplicates open as images; manually edited text remains readable and editable", async (t) => {
