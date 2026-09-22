@@ -23104,14 +23104,20 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 .brand-fields .brand-profile-field textarea { margin-top: 4px; }
 .brand-fields .brand-profile-field .brand-website-row { margin-top: 4px; }
 .brand-fields .brand-profile-field .brand-website-row input { margin-top: 0; }
-.brand-tab-shell .brand-fields .brand-profile-field .brand-website-row button {
+.brand-tab-shell .brand-fields .brand-profile-field .brand-website-row button:not(.brand-book-remove) {
   color: #fff;
-  background: #2f3743;
-  border-color: #8c9baf;
+  background: linear-gradient(120deg, #08243d, #123d60 65%, #254f70);
+  border-color: #496b89;
 }
-.brand-tab-shell .brand-fields .brand-profile-field .brand-website-row button:hover:not(:disabled) {
-  background: #3e4959;
-  border-color: #cad1da;
+.brand-tab-shell .brand-fields .brand-profile-field .brand-website-row button:not(.brand-book-remove):hover:not(:disabled) {
+  background: linear-gradient(120deg, #123652, #1e5175 65%, #2d6285);
+  border-color: #6387a8;
+}
+.brand-tab-shell .brand-fields .brand-profile-field .brand-website-row button:not(.brand-book-remove):disabled {
+  color: #edf3fa;
+  background: linear-gradient(120deg, #3e5267, #52657a);
+  border-color: #657c92;
+  opacity: 1;
 }
 .brand-tab-shell .brand-fields .brand-profile-field .brand-website-row button:focus-visible {
   outline: 2px solid var(--profile-accent);
