@@ -21,7 +21,7 @@ import { DialogueCardGenerationDialog } from "./dialogue-card-generation-dialog"
 import { cardGenerationDefaults, cardGenerationRequest, type CardGenerationChoices, type CardGenerationKind } from "./dialogue-card-generation";
 import {
   DEFAULT_GENERATION_SETTINGS, FORMAT_OPTIONS, TONE_OPTIONS, LENGTH_OPTIONS,
-  TOPIC_COUNT_OPTIONS, IMAGE_ASPECT_OPTIONS, IMAGE_FORMAT_OPTIONS, IMAGE_KIND_OPTIONS, CAROUSEL_COUNT_OPTIONS, IMAGE_TEXT_OPTIONS, LOGO_PLACEMENT_OPTIONS, LOGO_POSITION_OPTIONS, settingsForTool,
+  TOPIC_COUNT_OPTIONS, IMAGE_ASPECT_OPTIONS, IMAGE_FORMAT_OPTIONS, IMAGE_KIND_OPTIONS, CAROUSEL_COUNT_OPTIONS, IMAGE_TEXT_OPTIONS, LOGO_PLACEMENT_OPTIONS, LOGO_POSITION_OPTIONS, AUTHOR_POSITION_OPTIONS, settingsForTool,
   type GenerationSettings,
 } from "./dialogue-generation-settings";
 import type { DialogueWorkspaceProps } from "./dialogue-workspace-types";
@@ -587,6 +587,7 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
               {(selectedTool === "topics" || selectedTool === "text") && <ModuleSelect variant="chatkit" label="Формат" value={generationSettings.format} options={FORMAT_OPTIONS} onChange={(value) => changeSetting("format", value)} />}
               {selectedTool === "topics" && <ModuleSelect variant="chatkit" label="Количество тем" value={generationSettings.topicCount} options={TOPIC_COUNT_OPTIONS} onChange={(value) => changeSetting("topicCount", value)} />}
               {selectedTool === "text" && <>
+                <ModuleSelect variant="chatkit" label="Авторская позиция" value={useBrandContext && props.brandId ? generationSettings.authorPosition || "brand" : generationSettings.authorPosition === "brand" ? "neutral" : generationSettings.authorPosition || "neutral"} options={AUTHOR_POSITION_OPTIONS.filter((option) => useBrandContext && props.brandId || option.value !== "brand")} onChange={(value) => changeSetting("authorPosition", value)} help="Определяет, от чьего лица будет написан текст. При включённом профиле по умолчанию КЛИО пишет от имени бренда." />
                 <ModuleSelect variant="chatkit" label="Тон" value={generationSettings.tone} options={TONE_OPTIONS} onChange={(value) => changeSetting("tone", value)} />
                 <ModuleSelect variant="chatkit" label="Объём" value={generationSettings.length} options={LENGTH_OPTIONS} onChange={(value) => changeSetting("length", value)} />
               </>}

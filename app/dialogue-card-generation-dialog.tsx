@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { DialogueModal } from "./dialogue-modal";
-import { FORMAT_OPTIONS, TONE_OPTIONS, LENGTH_OPTIONS, TEXT_LENGTH_TARGETS, IMAGE_ASPECT_OPTIONS, IMAGE_FORMAT_OPTIONS, IMAGE_TEXT_OPTIONS, LOGO_PLACEMENT_OPTIONS, LOGO_POSITION_OPTIONS, type GenerationSettings } from "./dialogue-generation-settings";
+import { ModuleSelect } from "./module-select";
+import { FORMAT_OPTIONS, TONE_OPTIONS, LENGTH_OPTIONS, TEXT_LENGTH_TARGETS, IMAGE_ASPECT_OPTIONS, IMAGE_FORMAT_OPTIONS, IMAGE_TEXT_OPTIONS, LOGO_PLACEMENT_OPTIONS, LOGO_POSITION_OPTIONS, AUTHOR_POSITION_OPTIONS, type GenerationSettings } from "./dialogue-generation-settings";
 import { CARD_IMAGE_STYLES, type CardGenerationChoices, type CardGenerationKind } from "./dialogue-card-generation";
 
 export function DialogueCardGenerationDialog({ kind, title, initial, brandName, hasBrand, hasLogo, remaining, onClose, onSubmit }: {
@@ -50,6 +51,7 @@ export function DialogueCardGenerationDialog({ kind, title, initial, brandName, 
       </> : <>
         {group("Формат", "format", FORMAT_OPTIONS.filter(option => option.value))}
         {group("Объём", "length", LENGTH_OPTIONS.filter(option => option.value).map(option => ({ ...option, label: `${option.label} · ≈ ${TEXT_LENGTH_TARGETS[option.value]} зн.` })))}
+        <ModuleSelect label="Авторская позиция" value={choices.useBrandContext && hasBrand ? choices.settings.authorPosition || "brand" : choices.settings.authorPosition === "brand" ? "neutral" : choices.settings.authorPosition || "neutral"} options={AUTHOR_POSITION_OPTIONS.filter(option => choices.useBrandContext && hasBrand || option.value !== "brand")} onChange={value => update("authorPosition", value)} help="Определяет, от чьего лица написан текст. При профиле бренда по умолчанию КЛИО пишет от имени компании." />
         <label className="klio-card-generation-tone">Стиль
           <select value={choices.settings.tone} disabled={busy} onChange={event => update("tone", event.target.value)}>
             {TONE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.value ? option.label : choices.useBrandContext && hasBrand ? "По голосу бренда" : "Нейтральный"}</option>)}

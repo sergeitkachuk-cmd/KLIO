@@ -32,6 +32,7 @@ test("topic generation waits for confirmation and uses visible size, tone and br
   assert.equal(sent.settings.length, "long");
   assert.equal(sent.settings.tone, "Дружелюбный");
   assert.equal(sent.settings.format, "social");
+  assert.equal(sent.settings.authorPosition, "brand");
   assert.equal(sent.useBrandContext, true);
   assert.equal(flushed, 1);
   assert.ok(sent.text.includes(props.brandName));
@@ -104,15 +105,15 @@ test("failed profile save keeps confirmation choices and does not spend a genera
 
 test("confirmed topic choices reach the model with the whole profile and leave the topic intact", async t => {
   const h = await createDialogueHarness(); t.after(() => h.close());
-  const profile = { description: "Видеопроизводство. ".repeat(400), audience: "Компании", voice: "Спокойный", prohibited: "Без обещаний роста продаж", customField: "Важная деталь в конце профиля" };
+  const profile = { description: "Видеопроизводство. ".repeat(400), audience: "Компании", voice: "Спокойный", prohibited: "Без обещаний роста продаж", signature: "С заботой о вас, студия КЛИО.", customField: "Важная деталь в конце профиля" };
   await h.db.insert(h.schema.brands).values({ id: "studio", ownerEmail: h.owner, name: props.brandName, profileJson: JSON.stringify(profile) });
   let current = await h.create("studio");
   await h.post({ action: "send", id: current.id, revision: current.revision, requestId: randomUUID(), text: "Предложи темы для студии", mode: "topics", useBrandContext: true });
   current = await h.settled(current.id);
   const initialCount = current.data.cards.length;
   const original = current.data.cards[0];
-  let seen;
-  h.setAi(async input => { seen = JSON.parse(input.input); return { reply: "Готово", action: "create", cards: [{ kind: "post", title: "Наш процесс", body: "Готовый текст" }], profile: [] }; });
+  let seen, instructions;
+  h.setAi(async input => { seen = JSON.parse(input.input); instructions = input.instructions; return { reply: "Готово", action: "create", cards: [{ kind: "post", title: "Наш процесс", body: "Готовый текст" }], profile: [] }; });
   const request = cardGenerationRequest("text", original, { useBrandContext: true, settings: { ...generation.DEFAULT_GENERATION_SETTINGS, format: "social", tone: "Экспертный", length: "long" } }, { id: "studio", name: props.brandName, hasLogo: false });
   await h.post({ action: "send", id: current.id, revision: current.revision, requestId: randomUUID(), text: request.text, ...request.options });
   current = await h.settled(current.id);
@@ -120,9 +121,14 @@ test("confirmed topic choices reach the model with the whole profile and leave t
   assert.equal(seen.settings.format, "social");
   assert.equal(seen.settings.target_characters_with_spaces, 4000);
   assert.equal(seen.settings.tone, "Экспертный");
+  assert.equal(seen.settings.authorPosition, "brand");
+  assert.equal(seen.editorial_policy.author_position, "brand");
+  assert.equal(seen.editorial_policy.signature_required, true);
+  assert.match(instructions, /от лица бренда/i);
   assert.equal(seen.brandContextEnabled, true);
   assert.equal(seen.profile.name, props.brandName);
   for (const [key, value] of Object.entries(profile)) assert.equal(seen.profile[key], value);
   assert.deepEqual(current.data.cards.find(item => item.id === original.id), original);
   assert.equal(current.data.cards.length, initialCount + 1);
+  assert.ok(current.data.cards.at(-1).body.endsWith(profile.signature));
 });

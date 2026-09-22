@@ -11,6 +11,13 @@ export const TONE_OPTIONS = [
   { value: "", label: "Авто" },
   ...Object.keys(TONE_PLANS).map((tone) => ({ value: tone, label: tone })),
 ];
+export const AUTHOR_POSITION_OPTIONS = [
+  { value: "brand", label: "От лица бренда" },
+  { value: "expert", label: "Эксперт" },
+  { value: "journalist", label: "Журналист" },
+  { value: "customer", label: "Клиент" },
+  { value: "neutral", label: "Нейтральная" },
+];
 export const LENGTH_OPTIONS = [
   { value: "", label: "Авто" },
   { value: "short", label: "Короткий" },
@@ -66,22 +73,23 @@ export type GenerationSettings = {
   imageText?: string;
   logoPlacement?: string;
   logoPosition?: string;
+  authorPosition?: string;
 };
 
 export const DEFAULT_GENERATION_SETTINGS: GenerationSettings = {
   format: "", tone: "", length: "", topicCount: "5",
   imageAspectRatio: "4:3", imageOutputFormat: "png", useLogo: false,
   imageKind: "single", carouselSlideCount: "5",
-  imageTextMode: "auto", imageText: "", logoPlacement: "scene", logoPosition: "bottom-right",
+  imageTextMode: "auto", imageText: "", logoPlacement: "scene", logoPosition: "bottom-right", authorPosition: "brand",
 };
 
 // Whitelist by task so a previous text/image selection cannot affect chat.
 // /api/dialogue separately validates every value before running generation.
 export function settingsForTool(tool: string, settings: Partial<GenerationSettings>, hasLogo = true) {
   if (tool === "topics") return { format: settings.format, topicCount: settings.topicCount ?? "5" };
-  if (tool === "text") return { format: settings.format, tone: settings.tone, length: settings.length };
-  if (tool === "topic-post") return { format: "social", tone: settings.tone, length: "short" };
-  if (tool === "topic-article") return { format: "seo", tone: settings.tone, length: "long" };
+  if (tool === "text") return { format: settings.format, tone: settings.tone, length: settings.length, authorPosition: settings.authorPosition || "brand" };
+  if (tool === "topic-post") return { format: "social", tone: settings.tone, length: "short", authorPosition: settings.authorPosition || "brand" };
+  if (tool === "topic-article") return { format: "seo", tone: settings.tone, length: "long", authorPosition: settings.authorPosition || "brand" };
   if (tool === "carousel" || tool === "image" || tool.startsWith("image-card:")) return {
     imageAspectRatio: settings.imageAspectRatio || "4:3",
     imageOutputFormat: settings.imageOutputFormat || "png",

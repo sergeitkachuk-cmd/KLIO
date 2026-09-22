@@ -15,6 +15,7 @@ import { ImageLightbox } from "./image-lightbox";
 import { FOUNDATION_FIELDS, VOICE_FIELDS, mergeProfileFill, missingVoiceFoundation } from "./brand-profile-fill";
 import { russianGeoTree } from "./geo-data";
 import { ADAPTATION_PLANS, FORMAT_PLANS, TONE_PLANS } from "./content-plans";
+import { publicationBodyWithSignature, publicationBodyWithoutTrailingSignature } from "./publication-signature";
 import { PLAN_RULES, type PlanId } from "./plans";
 import { BILLING_PERIODS, PLAN_PRICES, periodAmount, LAUNCH_DISCOUNT_PERCENT, type BillingPeriod } from "./billing-pricing";
 
@@ -1802,6 +1803,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     telegramDeliveryChoice: "photo_continue" | "text_only" | "adapt" | null;
     title: string;
     body: string;
+    signatureEnabled: boolean;
+    signatureText: string;
     imageUrl: string;
     date: string;
     time: string;
@@ -1922,6 +1925,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       telegramDeliveryChoice: null,
       title: existing?.title ?? "",
       body: existing?.body ?? "",
+      signatureEnabled: !existing && Boolean(effectiveBrand.signature.trim()),
+      signatureText: effectiveBrand.signature.trim(),
       imageUrl: existing?.imageUrl ?? "",
       date: localDayKey(base),
       time: `${String(base.getHours()).padStart(2, "0")}:${String(base.getMinutes()).padStart(2, "0")}`,
@@ -1943,6 +1948,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // someone save, close, and reopen the same entry first.
   async function submitPubEditor(publishNow = false) {
     if (!pubEditor || !activeBrandId) return;
+    const publicationBody = publicationBodyWithSignature(pubEditor.body, pubEditor.signatureEnabled, pubEditor.signatureText);
     if (!pubEditor.channelIds.length) {
       setPubEditor((current) => current && { ...current, error: "Выберите хотя бы один канал." });
       return;
@@ -1964,7 +1970,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             scheduledAt: scheduledAt.toISOString(),
             channelId: pubEditor.channelIds[0],
             title: pubEditor.title,
-            body: pubEditor.body,
+            body: publicationBody,
             imageUrl: pubEditor.imageUrl,
             telegramDeliveryMode: pubEditor.telegramDeliveryMode,
           }),
@@ -1981,7 +1987,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             brandId: activeBrandId,
             generationId: pubEditor.generationId,
             title: pubEditor.title,
-            body: pubEditor.body,
+            body: publicationBody,
             imageUrl: pubEditor.imageUrl,
             telegramDeliveryMode: pubEditor.telegramDeliveryMode,
             channelIds: pubEditor.channelIds,
@@ -2008,7 +2014,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
   async function adaptPubForTelegram() {
     if (!pubEditor) return;
-    const sourceText = `${pubEditor.title}\n\n${pubEditor.body}`.trim();
+    const sourceText = `${pubEditor.title}\n\n${publicationBodyWithSignature(pubEditor.body, pubEditor.signatureEnabled, pubEditor.signatureText)}`.trim();
     setPubEditor((current) => current && { ...current, busy: true, error: "" });
     try {
       const startResponse = await fetch("/api/adapt", {
@@ -2138,7 +2144,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           telegramDeliveryMode: "photo_continue",
           telegramDeliveryChoice: null,
           title: pubPendingDraft.title,
-          body: pubPendingDraft.body,
+          body: publicationBodyWithoutTrailingSignature(pubPendingDraft.body, effectiveBrand.signature),
+          signatureEnabled: Boolean(effectiveBrand.signature.trim()),
+          signatureText: effectiveBrand.signature.trim(),
           imageUrl: pubPendingDraft.imageUrl || "",
           date: localDayKey(now),
           time: `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`,
@@ -5463,7 +5471,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       telegramDeliveryMode: "photo_continue",
       telegramDeliveryChoice: null,
       title: source.title.trim(),
-      body: source.body.trim(),
+      body: publicationBodyWithoutTrailingSignature(source.body, effectiveBrand.signature),
+      signatureEnabled: Boolean(effectiveBrand.signature.trim()),
+      signatureText: effectiveBrand.signature.trim(),
       imageUrl: source.imageUrl || workspaceHistory.find(item => item.id === source.generationId)?.imageUrl || "",
       date: localDayKey(now),
       time: `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`,
@@ -6060,6 +6070,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               {pubEditor.status === "scheduled" && pubEditor.retryCount > 0 && <p className="publications-retry-note">Отправка временно не удалась. Публикация остаётся в очереди: следующая попытка будет автоматически выполнена в течение минуты.</p>}
               <label className="publications-editor-field"><span>Заголовок <small>необязательно</small></span><AutoTextarea rows={1} value={pubEditor.title} onChange={(event) => setPubEditor((current) => current && { ...current, title: event.target.value })}/></label>
               <label className="publications-editor-field"><span>Текст публикации</span><AutoTextarea rows={8} value={pubEditor.body} onChange={(event) => setPubEditor((current) => current && { ...current, body: event.target.value })} placeholder="Текст, который уйдёт в канал"/></label>
+              <div className="publications-signature-control">
+                <label className="publications-signature-toggle">
+                  <input type="checkbox" checked={pubEditor.signatureEnabled} onChange={(event) => setPubEditor((current) => current && { ...current, signatureEnabled: event.target.checked })}/>
+                  <span>Добавить фирменную подпись</span>
+                </label>
+                {pubEditor.signatureEnabled && <label className="publications-editor-field"><span>Подпись</span><AutoTextarea rows={2} value={pubEditor.signatureText} onChange={(event) => setPubEditor((current) => current && { ...current, signatureText: event.target.value })} placeholder="Напишите подпись для этой публикации"/></label>}
+                <small>{effectiveBrand.signature.trim() ? "Подставлена из профиля бренда. Здесь её можно изменить только для этой публикации." : "Можно написать подпись только для этой публикации; профиль бренда не изменится."}</small>
+              </div>
               {pubCarouselSlideUrls.length > 1 && <div className="publications-editor-field">
                 <span>Карусель — {pubCarouselSlideUrls.length} картинок</span>
                 <div className="pub-image-picker-list pub-carousel-preview">
@@ -6089,7 +6107,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </div>
               {pubImageUploadError && <p role="alert">{pubImageUploadError}</p>}
               {pubEditor.imageUrl && <Image key={pubEditor.imageUrl} unoptimized width={1200} height={800} style={{ height: "auto" }} className="publications-editor-preview" src={pubEditor.imageUrl} alt="Превью картинки" onLoad={() => setPubImageUploadError("")} onError={() => setPubImageUploadError("Картинка по указанному адресу недоступна. Проверьте ссылку или загрузите файл заново.")}/>}
-              {pubEditor.imageUrl && pubEditor.channelIds.some((id) => pubChannels.find((channel) => channel.id === id)?.platform === "telegram") && `${pubEditor.title}\n\n${pubEditor.body}`.trim().length > 1024 && <div className="publications-telegram-length-choice">
+              {pubEditor.imageUrl && pubEditor.channelIds.some((id) => pubChannels.find((channel) => channel.id === id)?.platform === "telegram") && `${pubEditor.title}\n\n${publicationBodyWithSignature(pubEditor.body, pubEditor.signatureEnabled, pubEditor.signatureText)}`.trim().length > 1024 && <div className="publications-telegram-length-choice">
                 <strong>Текст длинный для публикации вместе с картинкой</strong>
                 <p>Выберите, как отправить пост в Telegram. Текст не будет потерян.</p>
                 <div>

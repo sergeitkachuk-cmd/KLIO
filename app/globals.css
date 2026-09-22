@@ -12802,6 +12802,37 @@ input[type="radio"] {
   color: rgba(255, 255, 255, 0.35);
 }
 
+.publications-signature-control {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.publications-signature-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.publications-signature-toggle input {
+  width: 17px;
+  height: 17px;
+  accent-color: #91b5e5;
+}
+
+.publications-signature-control > small {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .publications-editor-preview {
   width: 100%;
   max-height: 220px;
