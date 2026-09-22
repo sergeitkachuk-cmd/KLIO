@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Script from "next/script";
-import { ChatKit, useChatKit } from "@openai/chatkit-react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from "react";
+import { DialogueAssistantThread } from "./dialogue-assistant-thread";
+import { createDialogueSession } from "./dialogue-session";
+import { DialogueHistory } from "./dialogue-history";
+import { DialogueModal } from "./dialogue-modal";
 import { isStandaloneImage, type DialogueCard, type DialogueThread } from "./dialogue-model";
 import { ModuleSelect } from "./module-select";
 import { DialogueRecentThreads } from "./dialogue-recent-threads";
@@ -12,18 +14,18 @@ import { DialogueResultsMenu } from "./dialogue-results-menu";
 import { DialogueResultPreview } from "./dialogue-result-preview";
 import { DialogueResultActions } from "./dialogue-result-actions";
 import { ImageLightbox } from "./image-lightbox";
-import { dialogueTool, POST_STARTER, TOPICS_STARTER } from "./dialogue-starters";
+import { dialogueTool } from "./dialogue-starters";
 import {
   DEFAULT_GENERATION_SETTINGS, FORMAT_OPTIONS, TONE_OPTIONS, LENGTH_OPTIONS,
   TOPIC_COUNT_OPTIONS, IMAGE_ASPECT_OPTIONS, IMAGE_FORMAT_OPTIONS, settingsForTool,
   type GenerationSettings,
 } from "./dialogue-generation-settings";
-import {
-  LegacyDialogueWorkspace,
-  type DialogueWorkspaceProps,
-} from "./dialogue-workspace-legacy";
+import type { DialogueWorkspaceProps } from "./dialogue-workspace-types";
+// Shared workspace modules still need their dialogue palette and layout.
+import "./dialogue.css";
 import "./dialogue-chatkit.css";
 import "./dialogue-module-theme.css";
+import "./dialogue-assistant.css";
 
 type MutationResult = {
   thread: DialogueThread;
@@ -36,9 +38,6 @@ type MutationResult = {
   };
   selectedId?: string;
 };
-
-const CHATKIT_SCRIPT =
-  "https://cdn.platform.openai.com/deployments/chatkit/chatkit.js";
 
 async function readJson<T>(response: Response): Promise<T> {
   const payload = (await response.json().catch(() => ({}))) as T & {
@@ -64,15 +63,11 @@ function actionPayload(action: { payload?: Record<string, unknown> }) {
   };
 }
 
-function ChatKitWorkspace(
-  props: DialogueWorkspaceProps & {
-    domainKey: string;
-    onUnavailable: () => void;
-  },
-) {
-  const { onUnavailable, beforeProfile } = props;
+function NativeWorkspace(props: DialogueWorkspaceProps) {
+  const { beforeProfile } = props;
   const [historyRevision, setHistoryRevision] = useState(0);
-  const [chatReady, setChatReady] = useState(false);
+  const chatReady = true;
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
   const [useBrandContext, setUseBrandContext] = useState(false);
   const [railOpen, setRailOpen] = useState(false);
@@ -94,72 +89,37 @@ function ChatKitWorkspace(
   const closePreviews = useCallback(() => { setPreviewResult(null); setPreviewImage(null); }, []);
   const [threadAction, setThreadAction] = useState<{ action: ThreadAction; thread: DialogueThread } | null>(null);
   const storageKey = `klio-chatkit:${props.userKey}:${props.brandId || "personal"}`;
-  // Let the element restore its own thread after loading. Its imperative
-  // methods do not exist while the external script is still downloading.
-  const [initialThread] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem(storageKey) || null;
-    } catch {
-      // SSR and browsers with unavailable storage start with a blank thread.
-      return null;
-    }
-  });
-  const [activeThreadId, setActiveThreadId] = useState<string | null>(initialThread);
-  const activeThreadRef = useRef<string | null>(initialThread);
-  const readyRef = useRef(false);
-
+  const [session] = useState(() => createDialogueSession({
+    brandId: props.brandId || null, storageKey,
+    onChange: () => setHistoryRevision((value) => value + 1),
+  }));
+  const snapshot = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getServerSnapshot);
+  const updateUsage = useEffectEvent(() => { if (snapshot.thread) props.onUsage(); });
+  useEffect(() => { updateUsage(); }, [snapshot.thread?.id, snapshot.thread?.revision, snapshot.thread?.status]);
+  const activeThreadId = snapshot.selectedId;
+  const activeThreadRef = useRef(activeThreadId);
+  useEffect(() => { activeThreadRef.current = activeThreadId; }, [activeThreadId]);
+  useEffect(() => { session.start(); return () => session.stop(); }, [session]);
+  useEffect(() => { if (props.visible) void session.refresh(); }, [props.visible, session]);
+  const operationLock = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   function changeSetting<K extends keyof GenerationSettings>(key: K, value: GenerationSettings[K]) {
     const next = { ...generationSettingsRef.current, [key]: value };
     generationSettingsRef.current = next;
     setGenerationSettings(next);
   }
 
-  const chatFetch = useCallback<typeof fetch>(async (input, init) => {
-    // ChatKit owns the composer. Add KLIO settings only to message submissions,
-    // using the tool in the submitted payload (selection clears after send).
-    const target = typeof input === "string" ? new URL(input, window.location.href) : input;
-    const outgoing = new Request(target, { ...init, credentials: "same-origin" });
-    if (outgoing.method !== "POST") return fetch(outgoing);
-    const body = await outgoing.clone().json().catch(() => null);
-    if (body?.type === "threads.delete" || body?.type === "threads.update") {
-      const response = await fetch(outgoing);
-      if (response.ok) setHistoryRevision((value) => value + 1);
-      return response;
-    }
-    if (body?.type !== "threads.create" && body?.type !== "threads.add_user_message") return fetch(outgoing);
-    const messageInput = body.params?.input;
-    const text = (messageInput?.content || []).filter((part: { type: string }) => part.type === "input_text")
-      .map((part: { text?: string }) => part.text || "").join("\n");
-    const tool = dialogueTool(messageInput?.inference_options?.tool_choice?.id || "", text, body.type === "threads.create");
-    if (tool && messageInput) messageInput.inference_options = {
-      ...messageInput.inference_options, tool_choice: { id: tool },
-    };
-    body.params = {
-      ...body.params,
-      klio_settings: settingsForTool(tool, generationSettingsRef.current, Boolean(props.hasLogo)),
-      klio_brand_context: Boolean(props.brandId) && useBrandContext,
-    };
-    // Flush the same pending profile edits used by the professional workspace
-    // before the server reads the profile for this message.
-    if (body.params.klio_brand_context && !await beforeProfile()) {
-      const message = "Не удалось сохранить профиль бренда. Проверьте изменения в «Мой бизнес» и повторите запрос.";
-      setError(message);
-      throw new Error(message);
-    }
-    outgoing.signal.throwIfAborted();
-    const headers = new Headers(outgoing.headers);
-    headers.delete("content-length");
-    headers.set("content-type", "application/json");
-    return fetch(new Request(outgoing, { headers, body: JSON.stringify(body) }));
-  }, [props.hasLogo, props.brandId, beforeProfile, useBrandContext]);
-
   const loadThread = useCallback(async (threadId: string) => {
     return readJson<{ thread: DialogueThread }>(
       await fetch(`/api/dialogue?id=${encodeURIComponent(threadId)}`, {
         cache: "no-store",
       }),
-    ).then((payload) => payload.thread);
-  }, []);
+    ).then((payload) => {
+      if ((payload.thread.brandId || null) !== (props.brandId || null)) throw new Error("Диалог недоступен в этом пространстве.");
+      return payload.thread;
+    });
+  }, [props.brandId]);
 
   const mutate = useCallback(
     async (
@@ -179,163 +139,75 @@ function ChatKitWorkspace(
           }),
         }),
       ).then((result) => {
+        if ((result.thread.brandId || null) === (props.brandId || null)) session.accept(result.thread);
         setHistoryRevision((value) => value + 1);
         return result;
       }),
-    [],
+    [session, props.brandId],
   );
 
-  const onWidgetActionRef = useRef<
-    ((
-      action: { type: string; payload?: Record<string, unknown> },
-    ) => Promise<void>) | null
-  >(null);
-
-  const apiUrl = useMemo(() => {
-    const query = new URLSearchParams();
-    if (props.brandId) query.set("brandId", props.brandId);
-    if (useBrandContext) query.set("brandContext", "1");
-    return `/api/chatkit?${query.toString()}`;
-  }, [props.brandId, useBrandContext]);
-
-  const chatkit = useChatKit({
-    initialThread,
-    api: {
-      url: apiUrl,
-      domainKey: props.domainKey,
-      fetch: chatFetch,
+  const sendText = useCallback(async (text: string, requestedTool?: string) => {
+    setError(""); setNotice("");
+    const tool = dialogueTool(requestedTool ?? selectedTool ?? "", text, !session.getSnapshot().thread?.data.messages.length);
+    const context = Boolean(props.brandId) && useBrandContext;
+    const sent = await session.send(text, {
+      mode: tool.startsWith("image-card:") || tool === "image" ? "image" : tool === "topics" ? "topics" : ["text", "topic-post", "topic-article"].includes(tool) ? "text" : "chat",
+      ...(tool.startsWith("image-card:") ? { cardId: tool.slice("image-card:".length) } : {}),
+      useBrandContext: context, settings: settingsForTool(tool, generationSettingsRef.current, props.hasLogo),
+    }, context ? beforeProfile : undefined);
+    if (sent) { setSelectedTool(null); setSettingsExpanded(false); }
+    return sent;
+  }, [beforeProfile, props.brandId, props.hasLogo, selectedTool, session, useBrandContext]);
+  // Actions on cards use the same local runtime and the same server contract.
+  const dialogue = {
+    setThreadId: session.open, fetchUpdates: session.refresh,
+    sendUserMessage: async ({ text, toolChoice }: { text: string; toolChoice: { id: string } }) => {
+      if (!await sendText(text, toolChoice.id)) throw new Error(session.getSnapshot().error || "Дождитесь завершения текущего ответа.");
     },
-    locale: "ru-RU",
-    theme: {
-      colorScheme: props.theme,
-      radius: "pill",
-      density: "normal",
-      typography: {
-        baseSize: 16,
-        fontFamily: "var(--font-sans), Arial, sans-serif",
-      },
-      color: {
-        accent: {
-          primary: props.theme === "dark" ? "#c7dbed" : "#254263",
-          level: 1,
-        },
-        grayscale: { hue: 214, tint: props.theme === "dark" ? 9 : 2, shade: 0 },
-        surface: props.theme === "dark"
-          ? { background: "#081b30", foreground: "#102c49" }
-          : { background: "#ffffff", foreground: "#f1f5f9" },
-      },
-    },
-    header: { enabled: false },
-    history: {
-      enabled: true,
-      showDelete: true,
-      showRename: true,
-    },
-    startScreen: {
-      greeting: "Чем я могу помочь?",
-      prompts: [
-        {
-          label: "Предложить темы",
-          prompt: TOPICS_STARTER,
-          icon: "lightbulb",
-        },
-        {
-          label: "Написать пост",
-          prompt: POST_STARTER,
-          icon: "square-text",
-        },
-        {
-          label: "Разобрать идею",
-          prompt: "Помоги развить мою идею и предложи следующие шаги",
-          icon: "sparkle",
-        },
-      ],
-    },
-    composer: {
-      placeholder: "Спросите КЛИО или поставьте задачу",
-      attachments: { enabled: false },
-      tools: [
-        {
-          id: "topics",
-          label: "Предложить темы",
-          shortLabel: "Темы",
-          icon: "lightbulb",
-          placeholderOverride: "Какие темы подобрать?",
-        },
-        {
-          id: "text",
-          label: "Написать текст",
-          shortLabel: "Текст",
-          icon: "square-text",
-          placeholderOverride: "О чём и для какой площадки написать?",
-        },
-        {
-          id: "image",
-          label: "Создать изображение",
-          shortLabel: "Изображение",
-          icon: "square-image",
-          placeholderOverride: "Опишите изображение",
-        },
-      ],
-    },
-    threadItemActions: { feedback: false, retry: false },
-    thread: { autoScroll: true },
-    disclaimer: {
-      text: "КЛИО может ошибаться. Проверяйте важные факты перед публикацией.",
-    },
-    widgets: {
-      onAction: async (action) => {
-        await onWidgetActionRef.current?.(action);
-      },
-    },
-    onThreadChange: ({ threadId }) => {
-      activeThreadRef.current = threadId;
-      setActiveThreadId(threadId);
-      try {
-        if (threadId) localStorage.setItem(storageKey, threadId);
-        else localStorage.removeItem(storageKey);
-      } catch {
-        // Conversation selection still works if private mode blocks storage.
+  };
+  async function applyProfile(messageId: string) {
+    if (operationLock.current || !snapshot.thread) return;
+    operationLock.current = true; setActionBusy(true); setError("");
+    try {
+      if (!await beforeProfile()) throw new Error("Сначала сохраните текущие правки профиля бизнеса.");
+      const result = await mutate(snapshot.thread, "profile", { messageId }) as MutationResult & { brand?: unknown };
+      if (!mounted.current) return;
+      if (result.brand) {
+        // Applying a suggested profile can create a business and move the
+        // thread out of personal space. Restore it in the new space as well.
+        try {
+          localStorage.setItem(`klio-chatkit:${props.userKey}:${result.thread.brandId || "personal"}`, result.thread.id);
+          if ((result.thread.brandId || "") !== (props.brandId || "")) localStorage.removeItem(storageKey);
+        } catch { /* Optional selection cache. */ }
+        props.onProfile(result.brand);
       }
-    },
-    onResponseStart: () => {
-      setError("");
-      setNotice("");
-    },
-    onToolChange: ({ toolId }) => {
-      setSelectedTool(toolId);
-      setSettingsExpanded(false);
-    },
-    onResponseEnd: () => {
-      props.onUsage();
-      setHistoryRevision((value) => value + 1);
-    },
-    onHistoryClose: () => setHistoryRevision((value) => value + 1),
-    onReady: () => {
-      readyRef.current = true;
-      setChatReady(true);
-    },
-    onError: ({ error: chatError }) => {
-      console.error("ChatKit UI error", chatError);
-      if (!readyRef.current) {
-        onUnavailable();
-        return;
-      }
-      setError((current) => current || "Не удалось открыть ответ. Диалог сохранён — попробуйте ещё раз.");
-    },
-  });
+      setNotice("Профиль бренда обновлён");
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Не удалось применить профиль."); }
+    finally { operationLock.current = false; setActionBusy(false); }
+  }
+  const imported = useRef(0);
+  useEffect(() => {
+    const request = props.importMaterial;
+    if (!request || imported.current === request.nonce || snapshot.loading || snapshot.sending || snapshot.thread?.status === "processing" || operationLock.current) return;
+    imported.current = request.nonce;
+    operationLock.current = true; setActionBusy(true);
+    void session.ensureThread().then((thread) => mutate(thread, "import", { generationId: request.id }))
+      .catch((caught) => setError(caught instanceof Error ? caught.message : "Не удалось импортировать материал."))
+      .finally(() => { operationLock.current = false; setActionBusy(false); });
+  }, [props.importMaterial, snapshot.loading, snapshot.sending, snapshot.thread?.status, session, mutate]);
 
-  const handleWidgetAction = useCallback(
-    async (action: { type: string; payload?: Record<string, unknown> }) => {
-      if (actionBusy) return;
+  const handleWidgetAction = async (action: { type: string; payload?: Record<string, unknown> }) => {
+      if (operationLock.current || session.getSnapshot().sending) return;
       const { threadId, cardId } = actionPayload(action);
       if (!threadId || !cardId) return;
+      operationLock.current = true;
       setActionBusy(true);
       setError("");
       setNotice("");
       try {
         if (action.type === "klio.copy") {
-          const preview = [previewResult, previewImage].find((item) => item?.threadId === threadId && item.card.id === cardId);
+          const currentCard = session.getSnapshot().thread?.data.cards.find((card) => card.id === cardId);
+          const preview = [previewResult, previewImage].find((item) => item?.threadId === threadId && item.card.id === cardId) || (currentCard ? { card: currentCard } : null);
           if (!preview) throw new Error("Откройте материал для копирования.");
           if (!navigator.clipboard?.writeText) throw new Error("Браузер не разрешил копирование. Выделите текст в просмотре и скопируйте его.");
           // Copy the visible text before any fetch can consume Safari's user activation.
@@ -344,6 +216,7 @@ function ChatKitWorkspace(
           return;
         }
         const thread = await loadThread(threadId);
+        if (!mounted.current) return;
         const card = cardFrom(thread, cardId);
         if (!card) throw new Error("Материал не найден в этом диалоге.");
         if (action.type === "klio.view_result") {
@@ -368,7 +241,7 @@ function ChatKitWorkspace(
             0,
             1600,
           );
-          await chatkit.sendUserMessage({
+          await dialogue.sendUserMessage({
             text: prompt,
             toolChoice: { id: `image-card:${card.id}` },
           });
@@ -377,7 +250,7 @@ function ChatKitWorkspace(
         }
         if (action.type === "klio.topic_post" || action.type === "klio.topic_article") {
           const article = action.type === "klio.topic_article";
-          await chatkit.sendUserMessage({
+          await dialogue.sendUserMessage({
             text: `Создай отдельный ${article ? "развёрнутый материал для сайта" : "готовый пост для соцсетей"} на тему «${card.title}». ${card.body}\nИсходную карточку темы сохрани без изменений.`,
             toolChoice: { id: article ? "topic-article" : "topic-post" },
           });
@@ -391,6 +264,7 @@ function ChatKitWorkspace(
         }
         if (action.type === "klio.save" || action.type === "klio.publish") {
           const result = await mutate(thread, "save", { cardId: card.id });
+          if (!mounted.current) return;
           if (result.generation) props.onSaved(result.generation);
           props.onUsage();
           if (action.type === "klio.publish" && result.generation) {
@@ -410,7 +284,7 @@ function ChatKitWorkspace(
               setPreviewImage((current) => current?.threadId === threadId && current.card.id === cardId ? { ...current, card: updated } : current);
             }
           }
-          await chatkit.fetchUpdates();
+          await dialogue.fetchUpdates();
         }
       } catch (caught) {
         setError(
@@ -419,27 +293,15 @@ function ChatKitWorkspace(
             : "Не удалось выполнить действие.",
         );
       } finally {
+        operationLock.current = false;
         setActionBusy(false);
       }
-    }, [actionBusy, chatkit, loadThread, mutate, props, useBrandContext, closePreviews, closeResult, previewResult, previewImage]);
-
-  useEffect(() => {
-    onWidgetActionRef.current = handleWidgetAction;
-  }, [handleWidgetAction]);
-
-  useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      if (!readyRef.current) onUnavailable();
-    }, 12_000);
-    return () => window.clearTimeout(timeout);
-  }, [onUnavailable]);
+    };
 
   async function startNewThread() {
-    if (!readyRef.current) return;
+    if (operationLock.current || snapshot.sending) return;
     try {
-      await chatkit.setThreadId(null);
-      activeThreadRef.current = null;
-      setActiveThreadId(null);
+      await dialogue.setThreadId(null);
       setError("");
       setNotice("");
       setRailOpen(false);
@@ -449,10 +311,10 @@ function ChatKitWorkspace(
   }
 
   async function openRecentThread(threadId?: string) {
-    if (!readyRef.current) return;
+    if (operationLock.current || snapshot.sending) return;
     try {
-      if (threadId) await chatkit.setThreadId(threadId);
-      else await chatkit.showHistory();
+      if (threadId) await dialogue.setThreadId(threadId);
+      else setHistoryOpen(true);
       setRailOpen(false);
       setError("");
       setNotice("");
@@ -462,7 +324,8 @@ function ChatKitWorkspace(
   }
 
   async function prepareThreadAction(action: ThreadAction, id: string) {
-    if (actionBusy) return;
+    if (operationLock.current) return;
+    operationLock.current = true;
     setActionBusy(true); setError("");
     setRailOpen(false);
     try {
@@ -473,7 +336,7 @@ function ChatKitWorkspace(
       setThreadAction({ action, thread });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Не удалось открыть диалог.");
-    } finally { setActionBusy(false); }
+    } finally { operationLock.current = false; setActionBusy(false); }
   }
 
   async function submitThreadAction(title: string) {
@@ -490,10 +353,9 @@ function ChatKitWorkspace(
     try {
       if (activeThreadRef.current === thread.id) {
         if (action === "delete") {
-          activeThreadRef.current = null; setActiveThreadId(null);
           try { localStorage.removeItem(storageKey); } catch { /* Storage can be disabled. */ }
-          await chatkit.setThreadId(null);
-        } else await chatkit.fetchUpdates();
+          await dialogue.setThreadId(null);
+        } else await dialogue.fetchUpdates();
       }
     } catch {
       setError("Изменения сохранены. Обновите страницу, чтобы обновить ленту диалога.");
@@ -501,15 +363,18 @@ function ChatKitWorkspace(
   }
 
   async function saveEdit() {
-    if (!editCard || !editThreadId) return;
+    if (!editCard || !editThreadId || operationLock.current) return;
     if (!editTitle.trim() || !editBody.trim()) {
       setError("Добавьте название и текст.");
       return;
     }
+    operationLock.current = true;
     setActionBusy(true);
     setError("");
     try {
       const thread = await loadThread(editThreadId);
+      const latest = cardFrom(thread, editCard.id);
+      if (!latest || latest.title !== editCard.title || latest.body !== editCard.body || latest.imageUrl !== editCard.imageUrl) throw new Error("Материал изменён в другом окне. Скопируйте свои правки и откройте его заново.");
       await mutate(thread, "edit", {
         cardId: editCard.id,
         title: editTitle,
@@ -518,7 +383,7 @@ function ChatKitWorkspace(
       setEditCard(null);
       setEditThreadId("");
       setNotice("Изменения сохранены");
-      await chatkit.fetchUpdates();
+      await dialogue.fetchUpdates();
     } catch (caught) {
       setError(
         caught instanceof Error
@@ -526,6 +391,7 @@ function ChatKitWorkspace(
           : "Не удалось сохранить изменения.",
       );
     } finally {
+      operationLock.current = false;
       setActionBusy(false);
     }
   }
@@ -548,7 +414,7 @@ function ChatKitWorkspace(
         <button
           type="button"
           className="klio-chatkit-new"
-          disabled={!chatReady}
+          disabled={snapshot.sending || actionBusy}
           onClick={() => void startNewThread()}
         >
           <span aria-hidden="true">＋</span> Новый диалог
@@ -584,6 +450,7 @@ function ChatKitWorkspace(
               type="button"
               aria-label="Выбрать бизнес"
               aria-expanded={brandMenuOpen}
+              disabled={snapshot.sending || actionBusy}
               onClick={() => setBrandMenuOpen((open) => !open)}
             >
               <i>{(props.brandName || "Л").trim().charAt(0).toUpperCase()}</i>
@@ -629,28 +496,28 @@ function ChatKitWorkspace(
             visible={props.visible}
             revision={historyRevision}
             onOpen={(card) => {
-              if (!activeThreadId) return;
-              void handleWidgetAction({ type: "klio.view_result", payload: { threadId: activeThreadId, cardId: card.id } });
+              const target = document.getElementById(`klio-chat-card-${card.id}`);
+              if (target) {
+                target.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "center" });
+                target.focus({ preventScroll: true });
+              } else { void session.refresh(); setNotice("Обновляем результаты диалога. Выберите материал ещё раз."); }
             }}
           />
           <button className="klio-chatkit-history-button" type="button" aria-label="История диалогов" title="История диалогов" disabled={!chatReady} onClick={() => void openRecentThread()}>
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11a9 9 0 1 1 3 7M3 4v7h7M12 7v5l3 2" /></svg>
           </button>
         </div>
-        {(notice || error) && (
+        {(notice || error || snapshot.error) && (
           <div
-            className={`klio-chatkit-toast ${error ? "is-error" : ""}`}
-            role={error ? "alert" : "status"}
+            className={`klio-chatkit-toast ${error || snapshot.error ? "is-error" : ""}`}
+            role={error || snapshot.error ? "alert" : "status"}
           >
-            {error || notice}
+            {error || snapshot.error || notice}
+            {snapshot.error && snapshot.selectedId && <button type="button" onClick={() => void session.refresh()}>Обновить диалог</button>}
           </div>
         )}
-        <ChatKit
-          control={chatkit.control}
-          className={`klio-chatkit-frame ${chatReady ? "is-ready" : ""}`}
-          aria-hidden={!chatReady}
-        />
-        {chatReady && <div className="klio-chatkit-composer-options">
+        <DialogueAssistantThread key={snapshot.view} session={session} snapshot={snapshot} tool={selectedTool} onTool={(tool) => { setSelectedTool(tool); setSettingsExpanded(false); }} onSend={sendText} busy={actionBusy} onAction={(type, cardId) => { if (activeThreadId) void handleWidgetAction({ type, payload: { threadId: activeThreadId, cardId } }); }} onProfile={(messageId) => void applyProfile(messageId)} options={
+<div className="klio-chatkit-composer-options">
           <label className="klio-chatkit-brand-context">
             <input type="checkbox" checked={useBrandContext} disabled={!props.brandId} onChange={(event) => setUseBrandContext(event.target.checked)} />
             <span>Профиль бренда</span>
@@ -671,13 +538,8 @@ function ChatKitWorkspace(
               </>}
           </DialogueSettingsPopover>
         )}
-        </div>}
-        {!chatReady && (
-          <div className="klio-chatkit-loading" role="status" aria-live="polite">
-            <span aria-hidden="true" />
-            <p>Открываем диалог…</p>
-          </div>
-        )}
+        </div>
+        } />
         <span className="klio-chatkit-thread-state" aria-live="polite">
           {actionBusy
             ? "Выполняем…"
@@ -687,25 +549,11 @@ function ChatKitWorkspace(
         </span>
       </main>
       {editCard && (
-        <div className="klio-chatkit-editor-layer" role="presentation">
-          <section
-            className="klio-chatkit-editor"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Редактировать материал"
-          >
-            <header>
-              <h2>Редактировать материал</h2>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditCard(null);
-                  setEditThreadId("");
-                }}
-              >
-                ×
-              </button>
-            </header>
+        <DialogueModal title="Редактировать материал" busy={actionBusy} onClose={() => {
+          if ((editTitle !== editCard.title || editBody !== editCard.body) && !window.confirm("Закрыть без сохранения правок?")) return;
+          setEditCard(null); setEditThreadId("");
+        }}>
+          <div className="klio-aui-editor-fields">
             <label>
               <span>Заголовок</span>
               <input
@@ -722,9 +570,12 @@ function ChatKitWorkspace(
               />
             </label>
             <footer>
+              {error && <p role="alert">{error}</p>}
               <button
                 type="button"
+                disabled={actionBusy}
                 onClick={() => {
+                  if ((editTitle !== editCard.title || editBody !== editCard.body) && !window.confirm("Закрыть без сохранения правок?")) return;
                   setEditCard(null);
                   setEditThreadId("");
                 }}
@@ -739,41 +590,18 @@ function ChatKitWorkspace(
                 Сохранить
               </button>
             </footer>
-          </section>
-        </div>
+          </div>
+        </DialogueModal>
       )}
       {previewImage && props.visible && <ImageLightbox src={previewImage.card.imageUrl} alt="Изображение из диалога" onClose={closeImage} actions={<DialogueResultActions card={previewImage.card} pureImage={previewImage.pureImage} busy={actionBusy} error={error} notice={notice} onAction={(type) => void handleWidgetAction({ type, payload: { threadId: previewImage.threadId, cardId: previewImage.card.id } })} />} />}
       {previewResult && props.visible && <DialogueResultPreview card={previewResult.card} onClose={closeResult} onImage={() => void handleWidgetAction({ type: "klio.open_image", payload: { threadId: previewResult.threadId, cardId: previewResult.card.id } })}
         actions={<DialogueResultActions card={previewResult.card} pureImage={false} busy={actionBusy} error={error} notice={notice} onAction={(type) => void handleWidgetAction({ type, payload: { threadId: previewResult.threadId, cardId: previewResult.card.id } })} />} />}
       {threadAction && props.visible && <DialogueThreadDialog key={`${threadAction.action}:${threadAction.thread.id}`} thread={threadAction.thread} action={threadAction.action} onClose={() => setThreadAction(null)} onSubmit={submitThreadAction} />}
+      {historyOpen && props.visible && <DialogueHistory brandId={props.brandId} onClose={() => setHistoryOpen(false)} onOpen={(id) => { setHistoryOpen(false); void openRecentThread(id); }} />}
     </div>
   );
 }
 
 export function DialogueWorkspace(props: DialogueWorkspaceProps) {
-  const configuredDomainKey =
-    process.env.NEXT_PUBLIC_CHATKIT_DOMAIN_KEY?.trim() || "";
-  const [scriptFailed, setScriptFailed] = useState(false);
-  const useLegacyFallback = useCallback(() => setScriptFailed(true), []);
-  const domainKey =
-    configuredDomainKey ||
-    (process.env.NODE_ENV === "development" ? "domain_pk_localhost_dev" : "");
-  if (!domainKey || scriptFailed)
-    return <LegacyDialogueWorkspace {...props} />;
-
-  return (
-    <>
-      <Script
-        src={CHATKIT_SCRIPT}
-        strategy="afterInteractive"
-        onError={useLegacyFallback}
-      />
-      <ChatKitWorkspace
-        key={`${props.userKey}:${props.brandId || "personal"}`}
-        {...props}
-        domainKey={domainKey}
-        onUnavailable={useLegacyFallback}
-      />
-    </>
-  );
+  return <NativeWorkspace key={`${props.userKey}:${props.brandId || "personal"}`} {...props} />;
 }

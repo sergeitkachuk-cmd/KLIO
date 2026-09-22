@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, lt, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, lt, or, sql } from "drizzle-orm";
 import {
   accounts,
   brands,
@@ -599,6 +599,11 @@ export async function GET(request: Request) {
     const brandId = clean(q.get("brandId"));
     await verifyBrand(db, brandId || null, user.email);
     const before = clean(q.get("before"), 80);
+    // Include the id in the cursor: several conversations can have the same
+    // updatedAt, and filtering by the timestamp alone silently skips them.
+    const [beforeTime, beforeId] = before.split("|");
+    if (before && (!Number.isFinite(Date.parse(beforeTime)) || (beforeId && !/^[\da-f-]{36}$/i.test(beforeId))))
+      throw new WorkspaceAccessError("Некорректная страница истории.", 400);
     const rows = await db
       .select({
         id: dialogueThreads.id,
@@ -613,7 +618,7 @@ export async function GET(request: Request) {
           brandId
             ? eq(dialogueThreads.brandId, brandId)
             : isNull(dialogueThreads.brandId),
-          before ? lt(dialogueThreads.updatedAt, before) : undefined,
+          before ? (beforeId ? or(lt(dialogueThreads.updatedAt, beforeTime), and(eq(dialogueThreads.updatedAt, beforeTime), lt(dialogueThreads.id, beforeId))) : lt(dialogueThreads.updatedAt, beforeTime)) : undefined,
         ),
       )
       .orderBy(desc(dialogueThreads.updatedAt), desc(dialogueThreads.id))
@@ -621,7 +626,7 @@ export async function GET(request: Request) {
     return Response.json(
       {
         threads: rows.slice(0, 40),
-        next: rows.length > 40 ? rows[39].updatedAt : null,
+        next: rows.length > 40 ? `${rows[39].updatedAt}|${rows[39].id}` : null,
         imageAvailable: imageConfigured(),
       },
       { headers: { "Cache-Control": "private, no-store" } },

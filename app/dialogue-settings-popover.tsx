@@ -44,15 +44,8 @@ export function DialogueSettingsPopover({ open, onOpenChange, title, children }:
       onOpenChange(false);
       trigger.current?.focus();
     };
-    // Focus entering the external ChatKit iframe is not a document click.
-    const blur = () => {
-      queueMicrotask(() => {
-        if (document.activeElement?.closest("openai-chatkit")) onOpenChange(false);
-      });
-    };
     document.addEventListener("pointerdown", outside);
     document.addEventListener("keydown", escape, true);
-    window.addEventListener("blur", blur);
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", measure, true);
     window.visualViewport?.addEventListener("resize", measure);
@@ -60,7 +53,6 @@ export function DialogueSettingsPopover({ open, onOpenChange, title, children }:
     return () => {
       document.removeEventListener("pointerdown", outside);
       document.removeEventListener("keydown", escape, true);
-      window.removeEventListener("blur", blur);
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
       window.visualViewport?.removeEventListener("resize", measure);

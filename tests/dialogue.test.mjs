@@ -4,6 +4,18 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { createDialogueHarness, model } from "./helpers/dialogue-harness.mjs";
 
+test("dialogue history traverses identical timestamps without losing rows or crossing brands", async (t) => {
+  const h = await createDialogueHarness(); t.after(() => h.close());
+  const rows = Array.from({ length: 44 }, () => ({ id: randomUUID(), ownerEmail: h.owner, updatedAt: "2026-09-22T00:00:00.000Z", title: "Conversation" }));
+  await h.db.insert(h.schema.dialogueThreads).values(rows);
+  await h.db.insert(h.schema.dialogueThreads).values({ id: randomUUID(), ownerEmail: "another@example.com", updatedAt: rows[0].updatedAt });
+  const first = await (await h.route.GET(new Request("http://127.0.0.1:3027/api/dialogue"))).json();
+  const second = await (await h.route.GET(new Request(`http://127.0.0.1:3027/api/dialogue?before=${encodeURIComponent(first.next)}`))).json();
+  assert.equal(first.threads.length, 40); assert.equal(second.threads.length, 4); assert.equal(second.next, null);
+  assert.equal(new Set([...first.threads, ...second.threads].map((row) => row.id)).size, 44);
+  assert.equal((await h.route.GET(new Request("http://127.0.0.1:3027/api/dialogue?before=broken"))).status, 400);
+});
+
 test("rename and delete protect ownership, revisions and shared materials", async (t) => {
   const h = await createDialogueHarness();
   t.after(() => h.close());
