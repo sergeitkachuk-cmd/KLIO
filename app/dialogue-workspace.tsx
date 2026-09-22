@@ -17,6 +17,8 @@ import { ImageLightbox } from "./image-lightbox";
 import { isImageEditRequest, requestedLogoChange, resolveDialogueTool, TOPICS_STARTER } from "./dialogue-starters";
 import { dialogueImageSourceUrl, latestDialogueImage, type DialogueImageSource } from "./dialogue-image-source";
 import { DialogueImageAttachment } from "./dialogue-image-attachment";
+import { DialogueCardGenerationDialog } from "./dialogue-card-generation-dialog";
+import { cardGenerationDefaults, cardGenerationRequest, type CardGenerationChoices, type CardGenerationKind } from "./dialogue-card-generation";
 import {
   DEFAULT_GENERATION_SETTINGS, FORMAT_OPTIONS, TONE_OPTIONS, LENGTH_OPTIONS,
   TOPIC_COUNT_OPTIONS, IMAGE_ASPECT_OPTIONS, IMAGE_FORMAT_OPTIONS, IMAGE_KIND_OPTIONS, CAROUSEL_COUNT_OPTIONS, settingsForTool,
@@ -79,6 +81,7 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
   const [toolChoice, setSelectedTool] = useState<string | null>(null);
   const [settingsExpanded, setSettingsExpanded] = useState(false);
   const [generationSettings, setGenerationSettings] = useState(DEFAULT_GENERATION_SETTINGS);
+  const [cardGeneration, setCardGeneration] = useState<{ card: DialogueCard; threadId: string; view: number; kind: CardGenerationKind; initial: CardGenerationChoices } | null>(null);
   const generationSettingsRef = useRef(generationSettings);
   const [editCard, setEditCard] = useState<DialogueCard | null>(null);
   const [editThreadId, setEditThreadId] = useState("");
@@ -189,9 +192,6 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
   // Actions on cards use the same local runtime and the same server contract.
   const dialogue = {
     setThreadId: session.open, fetchUpdates: session.refresh,
-    sendUserMessage: async ({ text, toolChoice }: { text: string; toolChoice: { id: string } }) => {
-      if (!await sendText(text, toolChoice.id)) throw new Error(session.getSnapshot().error || "Дождитесь завершения текущего ответа.");
-    },
   };
   async function applyProfile(messageId: string) {
     if (operationLock.current || !snapshot.thread) return;
@@ -277,24 +277,13 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
           if (card.imageUrl) { closeResult(); setPreviewImage({ card, threadId, pureImage: isStandaloneImage(thread, card), src }); }
           return;
         }
-        if (action.type === "klio.image") {
-          const prompt = `Сделай иллюстрацию для материала: ${card.title}\n\n${card.body}`.slice(
-            0,
-            1600,
-          );
-          await dialogue.sendUserMessage({
-            text: prompt,
-            toolChoice: { id: `image-card:${card.id}` },
-          });
-          closePreviews();
-          return;
-        }
-        if (action.type === "klio.topic_post" || action.type === "klio.topic_article") {
-          const article = action.type === "klio.topic_article";
-          await dialogue.sendUserMessage({
-            text: `Создай отдельный ${article ? "развёрнутый материал для сайта" : "готовый пост для соцсетей"} на тему «${card.title}». ${card.body}\nИсходную карточку темы сохрани без изменений.`,
-            toolChoice: { id: article ? "topic-article" : "topic-post" },
-          });
+        if (["klio.image", "klio.topic_post", "klio.topic_article"].includes(action.type)) {
+          const current = session.getSnapshot();
+          if (current.selectedId !== threadId) return;
+          setCardGeneration({ card, threadId, view: current.view, kind: action.type === "klio.image" ? "image" : "text", initial: {
+            settings: cardGenerationDefaults(action.type, generationSettingsRef.current),
+            useBrandContext: Boolean(props.brandId) && useBrandContext,
+          } });
           closePreviews();
           return;
         }
@@ -338,6 +327,26 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
         setActionBusy(false);
       }
     };
+
+  async function confirmCardGeneration(choices: CardGenerationChoices) {
+    const current = session.getSnapshot();
+    if (!cardGeneration || current.selectedId !== cardGeneration.threadId || current.view !== cardGeneration.view)
+      throw new Error("Диалог изменился. Откройте настройки у нужной карточки ещё раз.");
+    if (operationLock.current || current.sending) throw new Error("Дождитесь завершения текущего действия.");
+    operationLock.current = true; setActionBusy(true); setError(""); setNotice("");
+    try {
+      const request = cardGenerationRequest(cardGeneration.kind, cardGeneration.card, choices, { id: props.brandId, name: props.brandName, hasLogo: props.hasLogo });
+      const sent = await session.send(request.text, request.options, request.options.useBrandContext ? beforeProfile : undefined);
+      if (!sent) throw new Error(session.getSnapshot().error || "Не удалось начать генерацию. Попробуйте ещё раз.");
+      if (!mounted.current) return true;
+      generationSettingsRef.current = choices.settings;
+      setGenerationSettings(choices.settings);
+      setUseBrandContext(request.options.useBrandContext);
+      setSelectedTool(cardGeneration.kind);
+      setCardGeneration(null);
+      return true;
+    } finally { operationLock.current = false; if (mounted.current) setActionBusy(false); }
+  }
 
   async function startNewThread() {
     if (operationLock.current || snapshot.sending) return;
@@ -602,6 +611,12 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
               : "Новый диалог"}
         </span>
       </main>
+      {cardGeneration && props.visible && cardGeneration.view === snapshot.view && <DialogueCardGenerationDialog
+        key={`${cardGeneration.threadId}:${cardGeneration.card.id}:${cardGeneration.kind}`}
+        kind={cardGeneration.kind} title={cardGeneration.card.title} initial={cardGeneration.initial}
+        brandName={props.brandName} hasBrand={Boolean(props.brandId)} hasLogo={props.hasLogo}
+        remaining={props.generationsRemaining} onClose={() => setCardGeneration(null)} onSubmit={confirmCardGeneration}
+      />}
       {editCard && (
         <DialogueModal title="Редактировать материал" busy={actionBusy} onClose={() => {
           if ((editTitle !== editCard.title || editBody !== editCard.body) && !window.confirm("Закрыть без сохранения правок?")) return;

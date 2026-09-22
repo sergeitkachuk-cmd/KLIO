@@ -880,22 +880,23 @@
    variables - shared ones (module headings, .field/.module-select inputs,
    .button variants) plus brand-profile's own tab bar/score card/checklist,
    which is the component named in the report. */
-.workspace-shell.is-dialogue .workspace-content{--paper:var(--dialogue-paper);--ink:var(--dialogue-ink);--muted:var(--dialogue-muted);--line:var(--dialogue-line);--cobalt:var(--dialogue-accent);--violet:var(--dialogue-accent);--lilac:var(--dialogue-line)}
+/* The brand editor shares professional styles in both modes. */
+.workspace-shell.is-dialogue .workspace-content > :not(.brand-profile){--paper:var(--dialogue-paper);--ink:var(--dialogue-ink);--muted:var(--dialogue-muted);--line:var(--dialogue-line);--cobalt:var(--dialogue-accent);--violet:var(--dialogue-accent);--lilac:var(--dialogue-line)}
 .workspace-shell.is-dialogue .workspace-module{background:var(--dialogue-paper)!important;box-shadow:none!important;border:0!important;color:var(--dialogue-ink)}
 
 /* .field wraps every ModuleSelect trigger and most native inputs across
    every module (content-plan status, generator's tone/length/custom
    objём, image aspect/format) - one override here reaches all of them
    instead of repeating this per module. */
-.workspace-shell.is-dialogue .workspace-content .field{color:var(--dialogue-muted)}
-.workspace-shell.is-dialogue .workspace-content .field :is(input,textarea,select){border-color:var(--dialogue-line)!important;background:var(--dialogue-paper)!important;box-shadow:none!important;color:var(--dialogue-ink)!important}
-.workspace-shell.is-dialogue .workspace-content .field :is(input,textarea)::placeholder{color:var(--dialogue-muted)!important;opacity:1}
-.workspace-shell.is-dialogue .workspace-content .field :is(input,textarea,select):focus{border-color:var(--dialogue-accent)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--dialogue-accent) 18%,transparent)!important}
-.workspace-shell.is-dialogue .workspace-content .module-select-trigger{border-color:var(--dialogue-line)!important;background:var(--dialogue-paper)!important;box-shadow:none!important}
-.workspace-shell.is-dialogue .workspace-content .module-select-trigger:hover,
-.workspace-shell.is-dialogue .workspace-content .module-select.is-open .module-select-trigger{border-color:var(--dialogue-accent)!important;background:var(--dialogue-soft)!important}
-.workspace-shell.is-dialogue .workspace-content .module-select-trigger b{color:var(--dialogue-ink)!important}
-.workspace-shell.is-dialogue .workspace-content .module-select-trigger>em{color:var(--dialogue-muted)!important}
+.workspace-shell.is-dialogue .workspace-content > :not(.brand-profile) .field{color:var(--dialogue-muted)}
+.workspace-shell.is-dialogue .workspace-content > :not(.brand-profile) .field :is(input,textarea,select){border-color:var(--dialogue-line)!important;background:var(--dialogue-paper)!important;box-shadow:none!important;color:var(--dialogue-ink)!important}
+.workspace-shell.is-dialogue .workspace-content > :not(.brand-profile) .field :is(input,textarea)::placeholder{color:var(--dialogue-muted)!important;opacity:1}
+.workspace-shell.is-dialogue .workspace-content > :not(.brand-profile) .field :is(input,textarea,select):focus{border-color:var(--dialogue-accent)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--dialogue-accent) 18%,transparent)!important}
+.workspace-shell.is-dialogue .workspace-content > :not(.brand-profile) .module-select-trigger{border-color:var(--dialogue-line)!important;background:var(--dialogue-paper)!important;box-shadow:none!important}
+.workspace-shell.is-dialogue .workspace-content > :not(.brand-profile) .module-select-trigger:hover,
+.workspace-shell.is-dialogue .workspace-content > :not(.brand-profile) .module-select.is-open .module-select-trigger{border-color:var(--dialogue-accent)!important;background:var(--dialogue-soft)!important}
+.workspace-shell.is-dialogue .workspace-content > :not(.brand-profile) .module-select-trigger b{color:var(--dialogue-ink)!important}
+.workspace-shell.is-dialogue .workspace-content > :not(.brand-profile) .module-select-trigger>em{color:var(--dialogue-muted)!important}
 /* Portals to document.body - a sibling of .workspace-shell, not a
    descendant - so --dialogue-* custom properties never reach it (same
    reasoning as the .module-select-dialogue variant above); :has() detects
@@ -903,58 +904,34 @@
    variant prop threaded through every one of these call sites. Literal
    colors matching --dialogue-paper/ink/line/muted/accent, gated on
    data-theme the same way that palette itself is. */
-body:has(.workspace-shell.is-dialogue)>.module-select-list{color:#17283a;background:#ffffff;border-color:#d9e2ec;box-shadow:0 12px 30px #15233626}
-body:has(.workspace-shell.is-dialogue)>.module-select-list>button{color:#17283a}
-body:has(.workspace-shell.is-dialogue)>.module-select-list>button:hover,
-body:has(.workspace-shell.is-dialogue)>.module-select-list>button.active{background:#f1f5f9;border-color:#d9e2ec}
-body:has(.workspace-shell.is-dialogue)>.module-select-list>button>em{color:#28496d}
-:root[data-theme="dark"] body:has(.workspace-shell.is-dialogue)>.module-select-list{color:#edf3fa;background:#081b30;border-color:#2a435c;box-shadow:0 22px 55px #0a0f16b3}
-:root[data-theme="dark"] body:has(.workspace-shell.is-dialogue)>.module-select-list>button{color:#edf3fa}
-:root[data-theme="dark"] body:has(.workspace-shell.is-dialogue)>.module-select-list>button:hover,
-:root[data-theme="dark"] body:has(.workspace-shell.is-dialogue)>.module-select-list>button.active{background:#102c49;border-color:#2a435c}
-:root[data-theme="dark"] body:has(.workspace-shell.is-dialogue)>.module-select-list>button>em{color:#b2c9e3}
+body:has(.workspace-shell.is-dialogue:not([data-active-module="brand"]))>.module-select-list{color:#17283a;background:#ffffff;border-color:#d9e2ec;box-shadow:0 12px 30px #15233626}
+body:has(.workspace-shell.is-dialogue:not([data-active-module="brand"]))>.module-select-list>button{color:#17283a}
+body:has(.workspace-shell.is-dialogue:not([data-active-module="brand"]))>.module-select-list>button:hover,
+body:has(.workspace-shell.is-dialogue:not([data-active-module="brand"]))>.module-select-list>button.active{background:#f1f5f9;border-color:#d9e2ec}
+body:has(.workspace-shell.is-dialogue:not([data-active-module="brand"]))>.module-select-list>button>em{color:#28496d}
+:root[data-theme="dark"] body:has(.workspace-shell.is-dialogue:not([data-active-module="brand"]))>.module-select-list{color:#edf3fa;background:#081b30;border-color:#2a435c;box-shadow:0 22px 55px #0a0f16b3}
+:root[data-theme="dark"] body:has(.workspace-shell.is-dialogue:not([data-active-module="brand"]))>.module-select-list>button{color:#edf3fa}
+:root[data-theme="dark"] body:has(.workspace-shell.is-dialogue:not([data-active-module="brand"]))>.module-select-list>button:hover,
+:root[data-theme="dark"] body:has(.workspace-shell.is-dialogue:not([data-active-module="brand"]))>.module-select-list>button.active{background:#102c49;border-color:#2a435c}
+:root[data-theme="dark"] body:has(.workspace-shell.is-dialogue:not([data-active-module="brand"]))>.module-select-list>button>em{color:#b2c9e3}
 
 /* CTA buttons reused across every module. White text needs a dark fill in
    light mode but a light fill in dark mode (var(--dialogue-accent) itself
    flips from a dark blue to a pale one between themes) - same flat pair
    already used for the mode-switch toggle above, not the accent variable
    directly. */
-.workspace-shell.is-dialogue .workspace-content .button.ghost,
-.workspace-shell.is-dialogue .workspace-content .button.outline{border-color:var(--dialogue-line)!important;background:var(--dialogue-paper)!important;color:var(--dialogue-ink)!important}
-:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-content .button.primary{background:#254263!important;color:#fff!important;box-shadow:none!important}
-:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-content .button.primary{background:#cbdbec!important;color:#17283a!important;box-shadow:none!important}
+.workspace-shell.is-dialogue .workspace-content > :not(.brand-profile) .button.ghost,
+.workspace-shell.is-dialogue .workspace-content > :not(.brand-profile) .button.outline{border-color:var(--dialogue-line)!important;background:var(--dialogue-paper)!important;color:var(--dialogue-ink)!important}
+:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-content > :not(.brand-profile) .button.primary{background:#254263!important;color:#fff!important;box-shadow:none!important}
+:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-content > :not(.brand-profile) .button.primary{background:#cbdbec!important;color:#17283a!important;box-shadow:none!important}
 
-/* Профиль бренда: named in the report as still reading "professional" -
-   its tab bar, score/checklist cards and inputs hardcode a purple/lavender
-   palette instead of reading the tokens hijacked above. */
-.workspace-shell.is-dialogue .brand-tab-shell{--profile-text:var(--dialogue-ink);--profile-muted:var(--dialogue-muted);--profile-accent:var(--dialogue-accent);--profile-help-bg:var(--dialogue-soft);--profile-rule:var(--dialogue-line);background:var(--dialogue-soft)!important;border-color:var(--dialogue-line)!important;box-shadow:none!important}
-.workspace-shell.is-dialogue .brand-tabs{background:var(--dialogue-paper)!important;border-color:var(--dialogue-line)!important}
-.workspace-shell.is-dialogue .brand-tabs button{color:var(--dialogue-muted)!important;background:var(--dialogue-paper)!important;border-color:var(--dialogue-line)!important}
-.workspace-shell.is-dialogue .brand-tabs button:hover{border-color:var(--dialogue-accent)!important;color:var(--dialogue-ink)!important;background:var(--dialogue-soft)!important;box-shadow:none!important}
-.workspace-shell.is-dialogue .brand-tabs button i{border-color:var(--dialogue-line)!important;color:var(--dialogue-muted)!important}
-.workspace-shell.is-dialogue .brand-tabs button>span{border-color:var(--dialogue-line)!important;color:var(--dialogue-muted)!important}
-.workspace-shell.is-dialogue .brand-tabs button.active{border-color:transparent!important;box-shadow:none!important}
-:root[data-theme="light"] .workspace-shell.is-dialogue .brand-tabs button.active{background:#254263!important;color:#fff!important}
-:root[data-theme="dark"] .workspace-shell.is-dialogue .brand-tabs button.active{background:#cbdbec!important;color:#17283a!important}
-.workspace-shell.is-dialogue .brand-tabs button.active :is(i,span){border-color:currentColor!important;color:inherit!important;background:transparent!important}
-.workspace-shell.is-dialogue :is(.brand-score,.brand-checklist){background:var(--dialogue-soft)!important;border-color:var(--dialogue-line)!important;box-shadow:none!important}
-.workspace-shell.is-dialogue .brand-score>div::after{background:var(--dialogue-paper)!important;border-color:var(--dialogue-line)!important}
-.workspace-shell.is-dialogue .brand-checklist>div i{border-color:var(--dialogue-line)!important;color:var(--dialogue-muted)!important}
-.workspace-shell.is-dialogue .brand-checklist>div.is-complete i{border-color:var(--dialogue-accent)!important;color:var(--dialogue-accent)!important;background:var(--dialogue-paper)!important}
-.workspace-shell.is-dialogue .brand-fields :is(label,.brand-profile-field){color:var(--dialogue-muted)!important}
-.workspace-shell.is-dialogue .brand-fields :is(label,.brand-profile-field)>small{color:var(--dialogue-muted)!important}
-.workspace-shell.is-dialogue .brand-fields :is(input,textarea){border-color:var(--dialogue-line)!important;background:var(--dialogue-paper)!important;box-shadow:none!important;color:var(--dialogue-ink)!important}
-.workspace-shell.is-dialogue .brand-fields :is(input,textarea):focus{border-color:var(--dialogue-accent)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--dialogue-accent) 18%,transparent)!important}
-.workspace-shell.is-dialogue .brand-website-row button{border-color:var(--dialogue-line)!important;background:var(--dialogue-paper)!important;color:var(--dialogue-ink)!important}
-.workspace-shell.is-dialogue .brand-website-row .brand-book-status{color:var(--dialogue-muted)!important}
-.workspace-shell.is-dialogue :is(.profile-ai-note,.profile-assistant-row,.profile-foundation-warning){border-color:var(--dialogue-line)!important;background:var(--dialogue-soft)!important}
 .workspace-shell.is-dialogue .workspace-sidebar,.workspace-shell.is-dialogue .workspace-project{background:var(--dialogue-soft)!important;box-shadow:none;border-color:var(--dialogue-line)}
 .workspace-shell.is-dialogue .workspace-sidebar nav a{background:transparent!important;box-shadow:none!important;border-color:transparent!important;border-radius:9px;color:var(--dialogue-ink)!important;min-height:44px}
 .workspace-shell.is-dialogue .workspace-sidebar nav a.active{background:var(--dialogue-line)!important}
 .workspace-shell.is-dialogue .workspace-sidebar nav a i{color:var(--dialogue-muted)!important;background:transparent!important;box-shadow:none}
 .workspace-shell.is-dialogue .workspace-sidebar nav a b{text-transform:none;font-size:14px;letter-spacing:0}
 .workspace-shell.is-dialogue .workspace-sidebar .nav-coming-soon,.workspace-shell.is-dialogue .workspace-quota-stage,.workspace-shell.is-dialogue .workspace-heading,.workspace-shell.is-dialogue .workspace-launch-banner{display:none}
-.workspace-shell.is-dialogue .workspace-history,.workspace-shell.is-dialogue .brand-profile,.workspace-shell.is-dialogue .publications{background:var(--dialogue-paper)!important;box-shadow:none!important;border:0!important;color:var(--dialogue-ink)}
+.workspace-shell.is-dialogue .workspace-history,.workspace-shell.is-dialogue .publications{background:var(--dialogue-paper)!important;box-shadow:none!important;border:0!important;color:var(--dialogue-ink)}
 .workspace-shell.is-dialogue .workspace-history-filters button{background:var(--dialogue-soft)!important;border-color:var(--dialogue-line)!important;color:var(--dialogue-ink)!important;box-shadow:none;border-radius:9px}
 .workspace-shell.is-dialogue .workspace-history-filters button.active{background:var(--dialogue-line)!important}
 .workspace-shell.is-dialogue .material-card,.workspace-shell.is-dialogue .material-card.is-editor{background:var(--dialogue-paper)!important;color:var(--dialogue-ink)!important;box-shadow:none!important;border:1px solid var(--dialogue-line)!important;border-radius:12px;padding:20px}

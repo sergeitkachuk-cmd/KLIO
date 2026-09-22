@@ -67,6 +67,8 @@ test("topic cards expose generator, post and image actions with full source cont
   const ui = await mountDialogue(t, { threads: [withCard(card())], selected: "saved" });
   await ui.click(ui.findButton("В генератор")); assert.equal(ui.generated[0].body, "Подробное описание темы");
   await ui.click(ui.findButton("Написать пост"));
+  assert.equal(ui.calls.some((c) => c.action === "send"), false);
+  await ui.click(ui.findButton("Создать текст", ui.document.querySelector('[role="dialog"]')));
   const send = ui.calls.find((c) => c.action === "send");
   assert.equal(send.mode, "text"); assert.equal(send.settings.format, "social"); assert.ok(send.text.includes("Подробное описание темы"));
 });

@@ -17,6 +17,7 @@ export const LENGTH_OPTIONS = [
   { value: "medium", label: "Средний" },
   { value: "long", label: "Длинный" },
 ];
+export const TEXT_LENGTH_TARGETS: Record<string, number> = { short: 600, medium: 1800, long: 4000 };
 export const TOPIC_COUNT_OPTIONS = [3, 5, 8, 10].map((n) => ({ value: String(n), label: String(n) }));
 // One option per actual output size supported by the existing image service.
 export const IMAGE_ASPECT_OPTIONS = [

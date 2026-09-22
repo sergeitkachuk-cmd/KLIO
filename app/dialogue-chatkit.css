@@ -109,8 +109,7 @@ html[data-theme="light"] .module-select-list.module-select-chatkit {
 .workspace-shell.is-dialogue .workspace-header .brand small,
 .workspace-shell.is-dialogue .workspace-account b,
 .workspace-shell.is-dialogue .workspace-account small,
-.workspace-shell.is-dialogue .workspace-account > em,
-.dialogue-mobile-modes {
+.workspace-shell.is-dialogue .workspace-account > em {
   display: none;
 }
 
@@ -922,12 +921,6 @@ html[data-theme="light"] .klio-result-actions .klio-result-action-error { color:
     min-height: 52px;
     padding: 0 14px;
   }
-
-  .workspace-shell.is-dialogue .workspace-header-actions > .workspace-mode-switch {
-    display: none;
-  }
-
-  .workspace-shell.is-dialogue .dialogue-mobile-modes { display: block; }
 
   .klio-chatkit-composer-options { padding: 0 12px 8px; }
 

@@ -202,6 +202,7 @@ export async function createDialogueHarness() {
       }),
       "../../plans": plans,
       "../../content-plans": contentPlans,
+      "../../dialogue-generation-settings": load("app/dialogue-generation-settings.ts", { "./content-plans": contentPlans }),
       "../_lib/ai-config": {
         aiConfigured: () => true,
         OPERATION_CONFIG: { dialogue_plain: { model: "gpt-5.6-luna" }, dialogue_deepseek_plain: { model: "deepseek-flash" } },

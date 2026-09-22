@@ -1,0 +1,107 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import * as React from "react";
+import { randomUUID } from "node:crypto";
+import { mountDialogue, sampleThread } from "./helpers/dialogue-ui.mjs";
+import { createDialogueHarness, load } from "./helpers/dialogue-harness.mjs";
+
+const plans = load("app/content-plans.ts");
+const generation = load("app/dialogue-generation-settings.ts", { "./content-plans": plans });
+const { cardGenerationRequest } = load("app/dialogue-card-generation.ts", { "./dialogue-generation-settings": generation });
+const card = { id: "topic", kind: "topic", title: "Работа в студии", body: "Как готовится съёмочная группа", imageUrl: "", versions: [] };
+const thread = () => sampleThread("saved", { brandId: "studio", data: { messages: [{ id: "a", role: "assistant", text: "Темы готовы", cardIds: [card.id] }], cards: [card] } });
+const props = { brandId: "studio", brandName: "Съёмочная студия", brands: [{ id: "studio", name: "Съёмочная студия" }], hasLogo: true };
+const sends = ui => ui.calls.filter(call => call.action === "send");
+
+test("topic generation waits for confirmation and uses visible size, tone and brand choices", async t => {
+  let flushed = 0;
+  const ui = await mountDialogue(t, { threads: [thread()], selected: "saved", overrides: { ...props, beforeProfile: async () => { flushed++; return true; } } });
+  await ui.type("Не терять мой черновик");
+  await ui.click(ui.document.querySelector(".klio-chatkit-brand-context input"));
+  await ui.click(ui.findButton("Написать пост"));
+  const dialog = ui.document.querySelector('[role="dialog"]');
+  assert.equal(sends(ui).length, 0);
+  assert.equal(flushed, 0);
+  assert.equal(dialog.querySelector('input[type="checkbox"]').checked, true);
+  assert.ok(dialog.textContent.includes(props.brandName));
+  await ui.click(ui.findButton("Длинный · ≈ 4000 зн.", dialog));
+  await React.act(async () => { const select = dialog.querySelector("select"); select.value = "Дружелюбный"; select.dispatchEvent(new ui.window.Event("change", { bubbles: true })); });
+  await ui.click(ui.findButton("Создать текст", dialog));
+  assert.equal(sends(ui).length, 1);
+  const sent = sends(ui)[0];
+  assert.equal(sent.settings.length, "long");
+  assert.equal(sent.settings.tone, "Дружелюбный");
+  assert.equal(sent.settings.format, "social");
+  assert.equal(sent.useBrandContext, true);
+  assert.equal(flushed, 1);
+  assert.ok(sent.text.includes(props.brandName));
+  assert.equal(sent.cardId, undefined);
+  assert.deepEqual(ui.records.get("saved").data.cards[0], card);
+  assert.equal(ui.document.querySelector("textarea.klio-aui-input").value, "Не терять мой черновик");
+  assert.equal(ui.document.querySelector('[role="dialog"]'), null);
+  assert.deepEqual(ui.errors, []);
+});
+
+test("image from text can be cancelled or confirmed with its own orientation, logo and brand toggles", async t => {
+  const ui = await mountDialogue(t, { threads: [thread()], selected: "saved", overrides: props });
+  await ui.click(ui.findButton("Создать картинку"));
+  let dialog = ui.document.querySelector('[role="dialog"]');
+  await ui.click(ui.findButton("Отмена", dialog));
+  assert.equal(sends(ui).length, 0);
+  await ui.click(ui.findButton("Создать картинку"));
+  dialog = ui.document.querySelector('[role="dialog"]');
+  await ui.click(ui.findButton("Фотореализм", dialog));
+  await ui.click(ui.findButton("Портретная", dialog));
+  await ui.click(ui.findButton("WEBP", dialog));
+  await ui.click(dialog.querySelectorAll('input[type="checkbox"]')[1]);
+  await ui.click(ui.findButton("Создать изображение", dialog));
+  const sent = sends(ui)[0];
+  assert.equal(sent.mode, "image");
+  assert.ok(sent.text.includes("Фотореалистичная фотография"));
+  assert.equal(sent.cardId, card.id);
+  assert.equal(sent.settings.imageAspectRatio, "9:16");
+  assert.equal(sent.settings.imageOutputFormat, "webp");
+  assert.equal(sent.settings.useLogo, true);
+  assert.equal(sent.useBrandContext, false);
+  assert.equal(sent.settings.length, undefined);
+  assert.equal(sends(ui).length, 1);
+  assert.deepEqual(ui.errors, []);
+});
+
+test("failed profile save keeps confirmation choices and does not spend a generation", async t => {
+  const ui = await mountDialogue(t, { threads: [thread()], selected: "saved", overrides: { ...props, beforeProfile: async () => false } });
+  await ui.click(ui.findButton("Написать статью"));
+  const dialog = ui.document.querySelector('[role="dialog"]');
+  await ui.click(dialog.querySelector('input[type="checkbox"]'));
+  await ui.click(ui.findButton("Короткий · ≈ 600 зн.", dialog));
+  await ui.click(ui.findButton("Создать текст", dialog));
+  assert.equal(sends(ui).length, 0);
+  assert.ok(dialog.querySelector('[role="alert"]').textContent.includes("сохранить профиль"));
+  assert.equal(ui.findButton("Короткий · ≈ 600 зн.", dialog).getAttribute("aria-pressed"), "true");
+  assert.equal(dialog.querySelector('input[type="checkbox"]').checked, true);
+});
+
+test("confirmed topic choices reach the model with the whole profile and leave the topic intact", async t => {
+  const h = await createDialogueHarness(); t.after(() => h.close());
+  const profile = { description: "Видеопроизводство. ".repeat(400), audience: "Компании", voice: "Спокойный", prohibited: "Без обещаний роста продаж", customField: "Важная деталь в конце профиля" };
+  await h.db.insert(h.schema.brands).values({ id: "studio", ownerEmail: h.owner, name: props.brandName, profileJson: JSON.stringify(profile) });
+  let current = await h.create("studio");
+  await h.post({ action: "send", id: current.id, revision: current.revision, requestId: randomUUID(), text: "Предложи темы для студии", mode: "topics", useBrandContext: true });
+  current = await h.settled(current.id);
+  const initialCount = current.data.cards.length;
+  const original = current.data.cards[0];
+  let seen;
+  h.setAi(async input => { seen = JSON.parse(input.input); return { reply: "Готово", action: "create", cards: [{ kind: "post", title: "Наш процесс", body: "Готовый текст" }], profile: [] }; });
+  const request = cardGenerationRequest("text", original, { useBrandContext: true, settings: { ...generation.DEFAULT_GENERATION_SETTINGS, format: "social", tone: "Экспертный", length: "long" } }, { id: "studio", name: props.brandName, hasLogo: false });
+  await h.post({ action: "send", id: current.id, revision: current.revision, requestId: randomUUID(), text: request.text, ...request.options });
+  current = await h.settled(current.id);
+  assert.equal(current.status, "idle");
+  assert.equal(seen.settings.format, "social");
+  assert.equal(seen.settings.target_characters_with_spaces, 4000);
+  assert.equal(seen.settings.tone, "Экспертный");
+  assert.equal(seen.brandContextEnabled, true);
+  assert.equal(seen.profile.name, props.brandName);
+  for (const [key, value] of Object.entries(profile)) assert.equal(seen.profile[key], value);
+  assert.deepEqual(current.data.cards.find(item => item.id === original.id), original);
+  assert.equal(current.data.cards.length, initialCount + 1);
+});

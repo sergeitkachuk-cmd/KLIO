@@ -8,11 +8,11 @@ export function DialogueModal({ title, onClose, children, busy = false }: { titl
   useEffect(() => { latest.current = { onClose, busy }; }, [onClose, busy]);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
-    panel.current?.querySelector<HTMLElement>("input,button,textarea")?.focus();
+    panel.current?.querySelector<HTMLElement>("input,button,textarea,select")?.focus();
     const key = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !latest.current.busy) { event.preventDefault(); latest.current.onClose(); }
       if (event.key !== "Tab") return;
-      const items = Array.from(panel.current?.querySelectorAll<HTMLElement>("button:not(:disabled),input:not(:disabled),textarea:not(:disabled),a[href]") || []);
+      const items = Array.from(panel.current?.querySelectorAll<HTMLElement>("button:not(:disabled),input:not(:disabled),textarea:not(:disabled),select:not(:disabled),a[href]") || []);
       const first = items[0], last = items.at(-1);
       if (!first || !last) return;
       if (!panel.current?.contains(document.activeElement) || document.activeElement === (event.shiftKey ? first : last)) { event.preventDefault(); (event.shiftKey ? last : first).focus(); }

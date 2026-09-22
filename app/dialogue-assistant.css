@@ -98,5 +98,26 @@
 .klio-aui-attachment-preview label { display:grid; gap:3px; min-width:0; color:var(--ck-muted); font-size:11px; }
 .klio-aui-attachment-preview select { width:auto; max-width:190px; border:0; padding:2px; background:var(--ck-panel); color:var(--ck-text); font:inherit; font-size:12px; }
 .klio-aui-message-source { display:flex; justify-content:flex-end; margin-bottom:6px; }
+
+/* The same short review step for text from a topic and an image from a text. */
+.klio-card-generation { display: grid; gap: 16px; }
+.klio-card-generation .klio-card-generation-source { margin: 0; color: var(--ck-muted); font-size: 13px; }
+.klio-card-generation fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.klio-card-generation legend { padding: 0; margin-bottom: 8px; font-weight: 600; }
+.klio-card-generation-choices { display: flex; flex-wrap: wrap; gap: 6px; }
+.klio-card-generation .klio-card-generation-choices button { padding: 7px 11px; min-height: 36px; font-size: 12px; }
+.klio-card-generation .klio-card-generation-choices button[aria-pressed="true"],
+.klio-card-generation button.klio-card-generation-submit { color: var(--ck-bg); background: var(--ck-text); border-color: var(--ck-text); }
+.klio-card-generation-tone { font-weight: 600; }
+.klio-card-generation-tone select { min-width: 0; width: 100%; min-height: 42px; padding: 8px 12px; color: var(--ck-text); background: var(--ck-panel); border: 1px solid var(--ck-line); border-radius: 10px; font: inherit; font-size: 16px; font-weight: 400; color-scheme: dark; }
+html[data-theme="light"] .klio-card-generation-tone select { color-scheme: light; }
+.klio-card-generation label.klio-card-generation-check { display: flex; align-items: flex-start; gap: 10px; }
+.klio-card-generation .klio-card-generation-check input { width: 16px; min-height: 16px; height: 16px; margin: 3px 0 0; padding: 0; flex-shrink: 0; accent-color: var(--ck-text); }
+.klio-card-generation-check small { display: block; color: var(--ck-muted); margin-top: 3px; overflow-wrap: anywhere; }
+.klio-card-generation .klio-card-generation-quota { margin: 0; font-size: 12px; color: var(--ck-muted); }
+.klio-card-generation .klio-card-generation-error { margin: 0; color: #ffafb7; }
+html[data-theme="light"] .klio-card-generation .klio-card-generation-error { color: #b42332; }
+.klio-card-generation footer { margin-top: 0; }
+.klio-card-generation :is(button,select,input):focus-visible { outline: 2px solid var(--ck-muted); outline-offset: 3px; }
 .klio-aui-message-source img { width:88px; max-height:88px; object-fit:contain; border-radius:12px; }
 .klio-aui-carousel figure > button:not(.klio-aui-image) { display:block; margin-top:6px; border:1px solid var(--ck-line); border-radius:16px; padding:6px 10px; background:var(--ck-panel); color:var(--ck-text); font-size:12px; cursor:pointer; }

@@ -3,6 +3,7 @@ import { Manrope } from "next/font/google";
 import "./globals.css";
 import "../public/workspace-refresh-20260816-2.css";
 import "./workspace-module-headers.css";
+import "./workspace-typography.css";
 import CookieConsent from "./cookie-consent";
 import YandexMetrica from "./yandex-metrica";
 import { SITE_BASE_URL } from "./site-url";

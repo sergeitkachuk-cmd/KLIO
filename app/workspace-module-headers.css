@@ -1,6 +1,7 @@
 /* The overview banner is the visual reference for every workspace module.
    Shared tokens keep professional and embedded dialogue modules identical. */
-.workspace-shell {
+.workspace-shell,
+.account-page {
   --module-banner-background: radial-gradient(circle at 88% 0%, rgba(91, 107, 130, .29), transparent 35%), linear-gradient(120deg, #04162b, #0a3155 66%, #071f38);
   --module-banner-border: rgba(151, 190, 234, .17);
   --module-banner-shadow: 0 24px 64px rgba(3, 17, 34, .25), inset 0 1px rgba(255, 255, 255, .1);
@@ -10,7 +11,8 @@
   --module-banner-divider: rgba(151, 190, 234, .22);
 }
 
-:root[data-theme="light"] .workspace-shell {
+:root[data-theme="light"] .workspace-shell,
+:root[data-theme="light"] .account-page {
   --module-banner-background: radial-gradient(circle at 88% 0%, rgba(53, 104, 212, .16), transparent 35%), linear-gradient(120deg, #e3eaf6, #f0f4fa 66%, #fff);
   --module-banner-border: rgba(15, 23, 42, .14);
   --module-banner-shadow: 0 24px 64px rgba(20, 40, 80, .12), inset 0 1px rgba(255, 255, 255, .7);
@@ -71,6 +73,18 @@
 
 :root .workspace-shell .workspace-module-banner .klio-mark-dot {
   color: var(--module-banner-kicker);
+}
+
+:root .workspace-shell .workspace-module-banner > div > :is(h2, h3):first-child {
+  margin-top: 0;
+}
+
+/* Research tools form a separate group in the desktop sidebar. The horizontal
+   mobile navigation keeps its existing spacing. */
+@media (min-width: 821px) {
+  .workspace-shell .workspace-sidebar nav > a[href="#semantics"] {
+    margin-top: 20px;
+  }
 }
 
 :root .workspace-shell .workspace-module-banner > p {

@@ -80,7 +80,7 @@ export async function mountDialogue(t, { threads = [], selected = null, override
   const errors = [];
   const root = createRoot(container, { onUncaughtError: (error) => errors.push(error) });
   const { DialogueWorkspace } = load(fileURLToPath(new URL("../../app/dialogue-workspace.tsx", import.meta.url)));
-  let props = { userKey: "test-user", brandId: "", brandName: "", brands: [], theme: "light", visible: true, hasLogo: false,
+  let props = { userKey: "test-user", brandId: "", brandName: "", brands: [], theme: "light", visible: true, hasLogo: false, generationsRemaining: 20, researchRemaining: 10, dialogueRemaining: 50,
     beforeProfile: async () => true, onUsage: () => usages.push(true), onSaved: () => {}, onSchedule: (value) => published.push(value), onGenerateTopic: (value) => generated.push(value), onNavigate: (value) => navigated.push(value), onBrandChange: () => {}, onProfile: (value) => profiled.push(value), onProfessional: () => {}, importMaterial: null, ...overrides };
   async function render(changes = {}) {
     props = { ...props, ...changes }; document.documentElement.dataset.theme = props.theme;
