@@ -64,7 +64,7 @@ export function DialogueResultsMenu({ threadId, ready, visible, revision, onOpen
     </button>
     {open && <div id="chatkit-results-list" className="klio-chatkit-results-list" role="group" aria-label="Результаты этого диалога">
       {cards.map((card) => <button key={card.id} type="button" onClick={() => { setOpen(false); onOpen(card); }}>
-        <small>{thread && isStandaloneImage(thread, card) ? "Изображение" : card.imageUrl ? "Текст и изображение" : card.kind === "topic" ? "Тема" : card.kind === "note" ? "Заметка" : "Текст"}</small>
+        <small>{card.slides?.length ? `Карусель · ${card.slides.length} слайдов` : thread && isStandaloneImage(thread, card) ? "Изображение" : card.imageUrl ? "Текст и изображение" : card.kind === "topic" ? "Тема" : card.kind === "note" ? "Заметка" : "Текст"}</small>
         <span>{card.title}</span>
       </button>)}
       {!cards.length && !failed && <p>{loading ? "Загружаем результаты…" : "Здесь появятся темы, тексты и изображения этого диалога"}</p>}

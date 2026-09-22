@@ -39,9 +39,10 @@ import { resolveBaseUrl } from "../_lib/base-url";
 import { createImage, createImageFromLogo, imageConfigured, type ImageAspectRatio, type ImageOutputFormat } from "../_lib/image-generation";
 import { downloadBrandLogo } from "../_lib/storage";
 import { buildDialogueImagePrompt } from "../_lib/dialogue-image-prompt";
+import { generateCarouselSlides, CAROUSEL_MIN_SLIDES, CAROUSEL_MAX_SLIDES } from "../_lib/carousel";
 
 export const runtime = "nodejs";
-export const maxDuration = 240;
+export const maxDuration = 600;
 type Row = typeof dialogueThreads.$inferSelect;
 type Db = Awaited<ReturnType<typeof getWorkspaceDb>>;
 const clean = (v: unknown, n = 100) =>
@@ -74,9 +75,16 @@ const owned = (id: string, email: string) =>
 // PlanRule.dialogueActionLimit's own comment for the full history).
 type QuotaKind = "generation" | "research" | "dialogue";
 function quotaKindForMode(mode: string): QuotaKind {
-  if (mode === "image" || mode === "text") return "generation";
+  if (mode === "image" || mode === "text" || mode === "carousel") return "generation";
   if (mode === "topics") return "research";
   return "dialogue";
+}
+
+function materialSlides(value: string | null): DialogueCard["slides"] {
+  try {
+    const rows = JSON.parse(value || "[]");
+    return Array.isArray(rows) ? rows.filter((row) => typeof row?.headline === "string" && typeof row?.subtext === "string" && typeof row?.imageUrl === "string").slice(0, CAROUSEL_MAX_SLIDES) : [];
+  } catch { return []; }
 }
 
 // Replaces the old manual "Поиск в интернете" checkbox (site owner: "давай
@@ -157,7 +165,7 @@ async function refreshSavedCards(
       )
       .limit(1);
     if (g && card.savedSnapshot && sameCard(card, card.savedSnapshot))
-      Object.assign(card, cardSnapshot(g), { savedSnapshot: cardSnapshot(g) });
+      Object.assign(card, cardSnapshot(g), { savedSnapshot: cardSnapshot(g), slides: materialSlides(g.slidesJson) });
   }
 }
 
@@ -201,14 +209,15 @@ async function failRequest(
       .for("update")
       .limit(1);
     if (account && periodOf(account) === row.debitPeriod) {
-      const kind = row.debitKind as QuotaKind;
+      const [kind, amount] = row.debitKind.split(":");
+      const units = kind === "generation" ? Math.max(1, Math.min(CAROUSEL_MAX_SLIDES, Number(amount) || 1)) : 1;
       await tx
         .update(accounts)
         .set(
           kind === "generation"
             ? {
-                generationsUsed: sql`GREATEST(0, ${accounts.generationsUsed} - 1)`,
-                lifetimeGenerationsUsed: sql`GREATEST(0, ${accounts.lifetimeGenerationsUsed} - 1)`,
+                generationsUsed: sql`GREATEST(0, ${accounts.generationsUsed} - ${units})`,
+                lifetimeGenerationsUsed: sql`GREATEST(0, ${accounts.lifetimeGenerationsUsed} - ${units})`,
               }
             : kind === "research"
             ? {
@@ -249,6 +258,7 @@ async function runReply(
     imageAspectRatio: ImageAspectRatio | null;
     imageOutputFormat: ImageOutputFormat | null;
     useLogo: boolean;
+    slideCount: number;
   },
 ) {
   try {
@@ -259,8 +269,38 @@ async function runReply(
     const last = data.messages.at(-1)!.text;
     const useBrandContext = data.messages.at(-1)!.useBrandContext === true;
     let saveRequested = false;
-    if (mode === "image") {
-      let prompt = buildDialogueImagePrompt({ request: last, selected, brand, useBrandContext });
+    let carouselMaterial: typeof generations.$inferInsert | undefined;
+    if (mode === "carousel") {
+      const slides = await generateCarouselSlides(row.requestId, {
+        text: last, slideCount: settings.slideCount, brandId: row.brandId || undefined,
+        useBrandContext, useLogo: settings.useLogo, baseUrl,
+        imageOptions: {
+          ...(settings.imageAspectRatio ? { aspectRatio: settings.imageAspectRatio } : {}),
+          ...(settings.imageOutputFormat ? { outputFormat: settings.imageOutputFormat } : {}),
+        },
+      }, row.ownerEmail, async () => {
+        const [active] = await db.select({ id: dialogueThreads.id }).from(dialogueThreads).where(and(owned(row.id, row.ownerEmail), eq(dialogueThreads.status, "processing"), eq(dialogueThreads.requestId, row.requestId))).limit(1);
+        if (!active) throw new WorkspaceAccessError("Задание карусели уже завершено или прервано.", 409);
+      });
+      const card: DialogueCard = {
+        id: crypto.randomUUID(), kind: "post", title: slides[0].headline,
+        body: last, imageUrl: slides[0].imageUrl, slides,
+        savedId: crypto.randomUUID(), versions: [],
+      };
+      card.savedSnapshot = cardSnapshot(card);
+      carouselMaterial = {
+        id: card.savedId!, ownerEmail: row.ownerEmail, brandId: row.brandId,
+        format: "external", origin: "generator", topic: "Карусель",
+        ...cardSnapshot(card), slidesJson: JSON.stringify(slides),
+      };
+      data.cards.push(card);
+      data.messages.push({ id: crypto.randomUUID(), role: "assistant", text: `Карусель из ${slides.length} слайдов сохранена в материалы.`, cardIds: [card.id] });
+    } else if (mode === "image") {
+      const previousRequests = !selected ? data.messages.slice(0, -1).filter((message) => message.role === "user" && message.mode === "image").slice(-3).map((message) => message.text).join("\n").slice(-6000) : "";
+      const imageRequest = previousRequests
+        ? `Предыдущие задания на изображения (контекст для просьбы «ещё вариант»):\n${previousRequests}\n\nТекущий запрос имеет приоритет. Если задана новая тема, используй только её:\n${last}`
+        : last;
+      let prompt = buildDialogueImagePrompt({ request: imageRequest, selected, brand, useBrandContext });
       // The shared image relay accepts 12,000 characters, including logo
       // guidance. Read long profiles in full before producing a bounded brief;
       // never let the image transport truncate the user's request at the end.
@@ -520,6 +560,7 @@ async function runReply(
     await db.transaction(async tx => {
       const [active] = await tx.select().from(dialogueThreads).where(and(owned(row.id, row.ownerEmail), eq(dialogueThreads.status, "processing"), eq(dialogueThreads.requestId, row.requestId))).for("update").limit(1);
       if (!active) return;
+      if (carouselMaterial) await tx.insert(generations).values(carouselMaterial);
       if (saveRequested && selected) {
         await saveCard(tx, row.ownerEmail, active.brandId, selected);
         data.messages.at(-1)!.text = "Материал сохранён. Он доступен в разделе «Материалы».";
@@ -574,7 +615,7 @@ export async function GET(request: Request) {
       if (!row) throw new WorkspaceAccessError("Диалог не найден.", 404);
       if (
         row.status === "processing" &&
-        Date.now() - Date.parse(row.updatedAt) > 210_000
+        Date.now() - Date.parse(row.updatedAt) > (row.debitKind.startsWith("generation:") ? 660_000 : 210_000)
       ) {
         await failRequest(
           row.id,
@@ -725,6 +766,9 @@ export async function POST(request: Request) {
         ? settingsRaw.imageOutputFormat as ImageOutputFormat
         : null;
     const useLogo = settingsRaw.useLogo === true;
+    const slideCount = Number(settingsRaw.slideCount ?? 5);
+    if (mode === "carousel" && (!Number.isInteger(slideCount) || slideCount < CAROUSEL_MIN_SLIDES || slideCount > CAROUSEL_MAX_SLIDES))
+      throw new WorkspaceAccessError(`Выберите от ${CAROUSEL_MIN_SLIDES} до ${CAROUSEL_MAX_SLIDES} слайдов.`, 400);
     const genSettings = {
       format: requestedFormat,
       format_contract: requestedFormat ? {
@@ -739,20 +783,23 @@ export async function POST(request: Request) {
       imageAspectRatio,
       imageOutputFormat,
       useLogo,
+      slideCount,
     };
     if (action === "send") {
-      if (!aiConfigured("dialogue") && mode !== "image")
+      if (!aiConfigured(mode === "carousel" ? "generate_carousel_slides" : "dialogue") && mode !== "image")
         throw new WorkspaceAccessError(
           "ИИ пока не подключён. Попробуйте позже.",
           503,
         );
-      if (mode === "image" && !imageConfigured())
+      if ((mode === "image" || mode === "carousel") && !imageConfigured())
         throw new WorkspaceAccessError(
           "Генерация изображений пока не подключена. Можно загрузить свою картинку.",
           503,
         );
       if (!requestId || !clean(p.text, 8000))
         throw new WorkspaceAccessError("Напишите сообщение.", 400);
+      if (mode === "carousel" && clean(p.text, 8000).length < 20)
+        throw new WorkspaceAccessError("Добавьте текст для карусели — не менее 20 символов.", 400);
       if (isRateLimited(`dialogue:${user.email}`, 20, 60_000))
         throw new WorkspaceAccessError(
           "Слишком много сообщений. Подождите минуту.",
@@ -847,15 +894,18 @@ export async function POST(request: Request) {
         const limit = quotaKind === "generation" ? rule.generationLimit
           : quotaKind === "research" ? rule.researchLimit
           : rule.dialogueActionLimit;
-        if (used >= limit)
-          throw new WorkspaceAccessError("Лимит тарифа исчерпан.", 429);
+        const units = mode === "carousel" ? slideCount : 1;
+        if (used + units > limit) {
+          const label = quotaKind === "generation" ? "материалов" : quotaKind === "research" ? "исследований" : "ответов в диалоге";
+          throw new WorkspaceAccessError(`Недостаточно ${label}: нужно ${units}, осталось ${Math.max(0, limit - used)} ${rule.periodLabel}.`, 429);
+        }
         await tx
           .update(accounts)
           .set(
             quotaKind === "generation"
               ? {
-                  generationsUsed: used + 1,
-                  lifetimeGenerationsUsed: account.lifetimeGenerationsUsed + 1,
+                  generationsUsed: used + units,
+                  lifetimeGenerationsUsed: account.lifetimeGenerationsUsed + units,
                 }
               : quotaKind === "research"
               ? {
@@ -874,6 +924,7 @@ export async function POST(request: Request) {
           role: "user",
           text: clean(p.text, 8000),
           useBrandContext: p.useBrandContext === true,
+          mode,
         });
         [row] = await tx
           .update(dialogueThreads)
@@ -883,7 +934,7 @@ export async function POST(request: Request) {
             status: "processing",
             error: "",
             requestId,
-            debitKind: quotaKind,
+            debitKind: mode === "carousel" ? `generation:${units}` : quotaKind,
             debitPeriod: periodOf(account),
             revision: row.revision + 1,
             updatedAt: new Date().toISOString(),
@@ -938,6 +989,7 @@ export async function POST(request: Request) {
             savedId: g.id,
             savedSnapshot: cardSnapshot(g),
             versions: [],
+            slides: materialSlides(g.slidesJson),
           };
           data.cards.push(card);
           data.messages.push({

@@ -28,7 +28,7 @@ export function DialogueResultActions({ card, pureImage, busy, onAction, error, 
   const action = (type: string, label: string, disabled = false) => <button key={type} type="button" data-action={type} disabled={busy || disabled} onClick={() => onAction(type)}>{label}</button>;
   return <div className="klio-result-actions" aria-busy={busy}>
     <div className="klio-result-actions-buttons">
-      {downloadUrl && <a href={downloadUrl} download rel="noopener noreferrer">Скачать изображение</a>}
+      {downloadUrl && !card.slides?.length && <a href={downloadUrl} download rel="noopener noreferrer">Скачать изображение</a>}
       {!pureImage && action("klio.copy", "Копировать текст")}
       {action("klio.save", saved ? "Сохранено в материалах" : card.savedId ? "Обновить материал" : "В материалы", saved)}
       {(pureImage || card.kind !== "topic") && action("klio.publish", "В публикацию")}

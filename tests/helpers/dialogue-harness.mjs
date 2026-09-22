@@ -178,6 +178,15 @@ export async function createDialogueHarness() {
   class AiCallError extends Error {
     constructor(message, status) { super(message); this.status = status; }
   }
+  const carouselCalls = [];
+  let carouselImage = async (...args) => ({ url: `https://cdn.example.invalid/${args[4]}.png`, bytes: new Uint8Array([1]), contentType: "image/png" });
+  const carousel = load("app/api/_lib/carousel.ts", {
+    "drizzle-orm": orm, "../../../db/schema": schema,
+    "./ai-router": { callAiModel: async (input) => { calls++; return { result: await ai(input) }; } },
+    "./image-generation": { createCarouselSlideImage: async (...args) => { carouselCalls.push(args); return carouselImage(...args); } },
+    "./storage": { downloadBrandLogo: async () => ({ bytes: new Uint8Array([2]), contentType: "image/png" }) },
+    "./workspace-account": workspace, "./async-jobs": {},
+  });
   const route = load(
     "app/api/dialogue/route.ts",
     {
@@ -221,6 +230,7 @@ export async function createDialogueHarness() {
         downloadBrandLogo: async () => ({ bytes: new Uint8Array(), contentType: "image/png" }),
       },
       "../_lib/dialogue-image-prompt": load("app/api/_lib/dialogue-image-prompt.ts"),
+      "../_lib/carousel": carousel,
     },
     {
       fetch: async () => {
@@ -273,6 +283,8 @@ export async function createDialogueHarness() {
     owner,
     calls: () => calls,
     imageCalls,
+    carouselCalls,
+    setCarouselImage: (value) => { carouselImage = value; },
     AiCallError,
     setAi: (value) => {
       ai = value;

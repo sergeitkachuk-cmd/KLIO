@@ -14,10 +14,10 @@ import { DialogueResultsMenu } from "./dialogue-results-menu";
 import { DialogueResultPreview } from "./dialogue-result-preview";
 import { DialogueResultActions } from "./dialogue-result-actions";
 import { ImageLightbox } from "./image-lightbox";
-import { dialogueTool } from "./dialogue-starters";
+import { inferDialogueTool, TOPICS_STARTER } from "./dialogue-starters";
 import {
   DEFAULT_GENERATION_SETTINGS, FORMAT_OPTIONS, TONE_OPTIONS, LENGTH_OPTIONS,
-  TOPIC_COUNT_OPTIONS, IMAGE_ASPECT_OPTIONS, IMAGE_FORMAT_OPTIONS, settingsForTool,
+  TOPIC_COUNT_OPTIONS, IMAGE_ASPECT_OPTIONS, IMAGE_FORMAT_OPTIONS, IMAGE_KIND_OPTIONS, CAROUSEL_COUNT_OPTIONS, settingsForTool,
   type GenerationSettings,
 } from "./dialogue-generation-settings";
 import type { DialogueWorkspaceProps } from "./dialogue-workspace-types";
@@ -82,7 +82,7 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
   const [editThreadId, setEditThreadId] = useState("");
   const [editTitle, setEditTitle] = useState("");
   const [editBody, setEditBody] = useState("");
-  const [previewImage, setPreviewImage] = useState<{ card: DialogueCard; threadId: string; pureImage: boolean } | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ card: DialogueCard; threadId: string; pureImage: boolean; src?: string } | null>(null);
   const [previewResult, setPreviewResult] = useState<{ card: DialogueCard; threadId: string } | null>(null);
   const closeResult = useCallback(() => setPreviewResult(null), []);
   const closeImage = useCallback(() => setPreviewImage(null), []);
@@ -104,11 +104,11 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
   const operationLock = useRef(false);
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
-  function changeSetting<K extends keyof GenerationSettings>(key: K, value: GenerationSettings[K]) {
+  const changeSetting = useCallback(<K extends keyof GenerationSettings,>(key: K, value: GenerationSettings[K]) => {
     const next = { ...generationSettingsRef.current, [key]: value };
     generationSettingsRef.current = next;
     setGenerationSettings(next);
-  }
+  }, []);
 
   const loadThread = useCallback(async (threadId: string) => {
     return readJson<{ thread: DialogueThread }>(
@@ -148,16 +148,26 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
 
   const sendText = useCallback(async (text: string, requestedTool?: string) => {
     setError(""); setNotice("");
-    const tool = dialogueTool(requestedTool ?? selectedTool ?? "", text, !session.getSnapshot().thread?.data.messages.length);
+    const inferred = !requestedTool && !selectedTool ? inferDialogueTool(text) : null;
+    if (inferred) {
+      if (inferred === "image" || inferred === "carousel") changeSetting("imageKind", inferred === "carousel" ? "carousel" : "single");
+      setSelectedTool(inferred === "carousel" ? "image" : inferred);
+    }
+    const chosenTool = requestedTool ?? selectedTool ?? inferred ?? "chat";
+    const tool = chosenTool === "image" && generationSettingsRef.current.imageKind === "carousel" ? "carousel" : chosenTool;
     const context = Boolean(props.brandId) && useBrandContext;
-    const sent = await session.send(text, {
-      mode: tool.startsWith("image-card:") || tool === "image" ? "image" : tool === "topics" ? "topics" : ["text", "topic-post", "topic-article"].includes(tool) ? "text" : "chat",
+    const prompt = text.trim() || (tool === "topics" ? TOPICS_STARTER : "");
+    const sent = await session.send(prompt, {
+      mode: tool === "carousel" ? "carousel" : tool.startsWith("image-card:") || tool === "image" ? "image" : tool === "topics" ? "topics" : ["text", "topic-post", "topic-article"].includes(tool) ? "text" : "chat",
       ...(tool.startsWith("image-card:") ? { cardId: tool.slice("image-card:".length) } : {}),
       useBrandContext: context, settings: settingsForTool(tool, generationSettingsRef.current, props.hasLogo),
     }, context ? beforeProfile : undefined);
-    if (sent) { setSelectedTool(null); setSettingsExpanded(false); }
+    if (sent) {
+      if (!text.trim() && !session.getSnapshot().draft.trim()) session.setDraft("");
+      setSettingsExpanded(false);
+    }
     return sent;
-  }, [beforeProfile, props.brandId, props.hasLogo, selectedTool, session, useBrandContext]);
+  }, [beforeProfile, changeSetting, props.brandId, props.hasLogo, selectedTool, session, useBrandContext]);
   // Actions on cards use the same local runtime and the same server contract.
   const dialogue = {
     setThreadId: session.open, fetchUpdates: session.refresh,
@@ -233,7 +243,9 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
           return;
         }
         if (action.type === "klio.open_image") {
-          if (card.imageUrl) { closeResult(); setPreviewImage({ card, threadId, pureImage: isStandaloneImage(thread, card) }); }
+          const index = Number(action.payload?.slideIndex);
+          const src = Number.isInteger(index) && index >= 0 ? card.slides?.[index]?.imageUrl : undefined;
+          if (card.imageUrl) { closeResult(); setPreviewImage({ card, threadId, pureImage: isStandaloneImage(thread, card), src }); }
           return;
         }
         if (action.type === "klio.image") {
@@ -302,6 +314,8 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
     if (operationLock.current || snapshot.sending) return;
     try {
       await dialogue.setThreadId(null);
+      setSelectedTool(null);
+      setSettingsExpanded(false);
       setError("");
       setNotice("");
       setRailOpen(false);
@@ -516,7 +530,7 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
             {snapshot.error && snapshot.selectedId && <button type="button" onClick={() => void session.refresh()}>Обновить диалог</button>}
           </div>
         )}
-        <DialogueAssistantThread key={snapshot.view} session={session} snapshot={snapshot} tool={selectedTool} onTool={(tool) => { setSelectedTool(tool); setSettingsExpanded(false); }} onSend={sendText} busy={actionBusy} onAction={(type, cardId) => { if (activeThreadId) void handleWidgetAction({ type, payload: { threadId: activeThreadId, cardId } }); }} onProfile={(messageId) => void applyProfile(messageId)} options={
+        <DialogueAssistantThread key={snapshot.view} session={session} snapshot={snapshot} tool={selectedTool === "image" && generationSettings.imageKind === "carousel" ? "carousel" : selectedTool} onTool={(tool) => { setSelectedTool(tool); if (tool === "image") changeSetting("imageKind", "single"); setSettingsExpanded(false); }} onSend={sendText} busy={actionBusy} onAction={(type, cardId, slideIndex) => { if (activeThreadId) void handleWidgetAction({ type, payload: { threadId: activeThreadId, cardId, slideIndex } }); }} onProfile={(messageId) => void applyProfile(messageId)} options={
 <div className="klio-chatkit-composer-options">
           <label className="klio-chatkit-brand-context">
             <input type="checkbox" checked={useBrandContext} disabled={!props.brandId} onChange={(event) => setUseBrandContext(event.target.checked)} />
@@ -532,12 +546,22 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
                 <ModuleSelect variant="chatkit" label="Объём" value={generationSettings.length} options={LENGTH_OPTIONS} onChange={(value) => changeSetting("length", value)} />
               </>}
               {selectedTool === "image" && <>
+                <ModuleSelect variant="chatkit" label="Результат" value={generationSettings.imageKind} options={IMAGE_KIND_OPTIONS} onChange={(value) => changeSetting("imageKind", value)} />
+                {generationSettings.imageKind === "carousel" && <>
+                  <ModuleSelect variant="chatkit" label="Количество слайдов" value={generationSettings.carouselSlideCount} options={CAROUSEL_COUNT_OPTIONS} onChange={(value) => changeSetting("carouselSlideCount", value)} />
+                  <small>Первый слайд — обложка, дальше текстовые слайды. Один слайд — один материал из лимита.</small>
+                </>}
                 <ModuleSelect variant="chatkit" label="Ориентация" value={generationSettings.imageAspectRatio} options={IMAGE_ASPECT_OPTIONS} onChange={(value) => changeSetting("imageAspectRatio", value)} />
                 <ModuleSelect variant="chatkit" label="Формат файла" value={generationSettings.imageOutputFormat} options={IMAGE_FORMAT_OPTIONS} onChange={(value) => changeSetting("imageOutputFormat", value)} />
                 {props.hasLogo ? <label className="klio-chatkit-settings-logo"><input type="checkbox" checked={generationSettings.useLogo} onChange={(event) => changeSetting("useLogo", event.target.checked)} />Логотип на изображении</label> : <button type="button" className="klio-chatkit-settings-logo" onClick={() => props.onNavigate("brand")}>＋ Добавить логотип</button>}
               </>}
           </DialogueSettingsPopover>
         )}
+        <small className="klio-aui-quota">
+          {selectedTool === "topics" ? `Подбор тем: осталось ${props.researchRemaining ?? "—"} запусков`
+            : selectedTool === "image" || selectedTool === "text" ? `Материалы: осталось ${props.generationsRemaining ?? "—"}${selectedTool === "image" && generationSettings.imageKind === "carousel" ? ` · на карусель нужно ${generationSettings.carouselSlideCount}` : ""}`
+            : `Общение: осталось ${props.dialogueRemaining ?? "—"} ответов`}
+        </small>
         </div>
         } />
         <span className="klio-chatkit-thread-state" aria-live="polite">
@@ -593,7 +617,7 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
           </div>
         </DialogueModal>
       )}
-      {previewImage && props.visible && <ImageLightbox src={previewImage.card.imageUrl} alt="Изображение из диалога" onClose={closeImage} actions={<DialogueResultActions card={previewImage.card} pureImage={previewImage.pureImage} busy={actionBusy} error={error} notice={notice} onAction={(type) => void handleWidgetAction({ type, payload: { threadId: previewImage.threadId, cardId: previewImage.card.id } })} />} />}
+      {previewImage && props.visible && <ImageLightbox src={previewImage.src || previewImage.card.imageUrl} alt="Изображение из диалога" onClose={closeImage} actions={<DialogueResultActions card={previewImage.card} pureImage={previewImage.pureImage} busy={actionBusy} error={error} notice={notice} onAction={(type) => void handleWidgetAction({ type, payload: { threadId: previewImage.threadId, cardId: previewImage.card.id } })} />} />}
       {previewResult && props.visible && <DialogueResultPreview card={previewResult.card} onClose={closeResult} onImage={() => void handleWidgetAction({ type: "klio.open_image", payload: { threadId: previewResult.threadId, cardId: previewResult.card.id } })}
         actions={<DialogueResultActions card={previewResult.card} pureImage={false} busy={actionBusy} error={error} notice={notice} onAction={(type) => void handleWidgetAction({ type, payload: { threadId: previewResult.threadId, cardId: previewResult.card.id } })} />} />}
       {threadAction && props.visible && <DialogueThreadDialog key={`${threadAction.action}:${threadAction.thread.id}`} thread={threadAction.thread} action={threadAction.action} onClose={() => setThreadAction(null)} onSubmit={submitThreadAction} />}

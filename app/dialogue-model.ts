@@ -4,6 +4,7 @@ export type DialogueCard = {
   title: string;
   body: string;
   imageUrl: string;
+  slides?: Array<{ headline: string; subtext: string; imageUrl: string }>;
   savedId?: string;
   savedSnapshot?: { title: string; body: string; imageUrl: string };
   versions: Array<{ title: string; body: string; imageUrl: string }>;
@@ -13,6 +14,7 @@ export type DialogueMessage = {
   role: "user" | "assistant";
   text: string;
   useBrandContext?: boolean;
+  mode?: string;
   cardIds?: string[];
   action?: "save" | "schedule" | "image" | "profile";
   profile?: Record<string, string>;
@@ -32,6 +34,7 @@ export type DialogueThread = {
   data: DialogueData;
 };
 export function isStandaloneImage(thread: DialogueThread, card: DialogueCard) {
+  if (card.slides?.length) return true;
   if (!card.imageUrl) return false;
   if (!card.body.trim()) return true;
   // Only recognize the exact legacy prompt duplicate. Preserve edited text.

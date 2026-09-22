@@ -1,6 +1,6 @@
 // "comp" is a hand-granted goodwill period (admin-only, see
 // admin-account-controls.tsx) — distinct from "trial" (the automatic,
-// tightly-limited 48h window every new signup starts on) for cases like
+// tightly-limited 72h window every new signup starts on) for cases like
 // compensating an account that hit a real bug on day one. Never
 // purchasable: PLAN_PRICES in billing-pricing.ts has no "comp" entry, and
 // every payment route already rejects any planId missing from there.
@@ -36,21 +36,18 @@ export type PlanRule = {
 };
 
 // New signups start here (see ensureAccount in api/_lib/workspace-account.ts)
-// and get TRIAL_DURATION_MS (48h, defined there) of work before every
+// and get TRIAL_DURATION_MS (72h, defined there) of work before every
 // AI-costing action is blocked outright — see assertTrialActive.
 export const PLAN_RULES: Record<PlanId, PlanRule> = {
   trial: {
     id: "trial",
     name: "Пробный",
-    // Doubled 2026-09-20 alongside every paid plan below - dialogue mode's
-    // own text/image generations now correctly draw on this same pool
-    // (previously miscounted as an editor action for text, so this pool
-    // saw none of that traffic before), not a change in what a single
-    // material itself costs.
-    generationLimit: 10,
-    researchLimit: 3,
-    editorActionLimit: 5,
-    dialogueActionLimit: 8,
+    // Enough room to try the full workflow over the three-day trial.
+    // Chat, research and materials remain independent allowance pools.
+    generationLimit: 20,
+    researchLimit: 10,
+    editorActionLimit: 20,
+    dialogueActionLimit: 50,
     brandLimit: 1,
     seatLimit: 1,
     channelLimit: 0,

@@ -43,12 +43,12 @@ function monthKey(date = new Date()) {
 // payment carry quotaPeriodEndsAt, anchored to the payment date — any paid
 // plan an admin granted by hand without one falls back to the legacy plain
 // calendar-month comparison instead. The trial plan never reaches this at
-// all: it isn't a recurring period, it's a single 48h window (see
+// all: it isn't a recurring period, it's a single 72h window (see
 // isTrialExpired/assertTrialActive) — without this guard, a trial account
 // that's sat expired for weeks would have its counters silently zeroed back
 // to "fresh" on the next visit after a month boundary, while still being
 // hard-blocked by assertTrialActive underneath. Found 2026-09-03: an
-// account created 2026-08-13 (long past its 48h window) still showed full
+// account created 2026-08-13 (long past its 72h window) still showed full
 // quota on /account after the calendar flipped to September.
 function quotaPeriodElapsed(account: typeof accounts.$inferSelect, now: Date) {
   if (account.planId === "trial") return false;
@@ -146,13 +146,13 @@ function isPaidPlanExpired(account: typeof accounts.$inferSelect) {
 }
 
 // New accounts start on the "trial" plan (see ensureAccount) with a fixed
-// 48h window rather than a monthly reset — once it elapses, every
+// 72h window rather than a monthly reset — once it elapses, every
 // AI-costing action is blocked outright (see assertTrialActive) regardless
 // of how much of the trial's own generationLimit/researchLimit/
 // editorActionLimit was actually used. Shared by accountSummary (so
 // /account actually shows this instead of silently hiding it) and
 // assertTrialActive (the real enforcement) so the two can't drift apart.
-export const TRIAL_DURATION_MS = 48 * 60 * 60 * 1000;
+export const TRIAL_DURATION_MS = 72 * 60 * 60 * 1000;
 
 function isTrialExpired(account: typeof accounts.$inferSelect) {
   if (account.planId !== "trial") return false;
@@ -161,7 +161,7 @@ function isTrialExpired(account: typeof accounts.$inferSelect) {
 }
 
 // Trial never had its own expiry timestamp before — assertTrialActive
-// computed createdAt+48h inline and nothing else saw it, so neither /account
+// computed createdAt+72h inline and nothing else saw it, so neither /account
 // nor /admin had anything to show while the trial was still running, nor any
 // way to tell a fresh trial from a 3-week-old expired one. This is derived,
 // not stored — the accounts table itself still has no trial expiry column,
@@ -215,7 +215,7 @@ export function accountSummary(account: typeof accounts.$inferSelect, brandCount
     // for paid plans an admin granted by hand, which still reset on the
     // calendar month instead.
     quotaResetsAt: account.quotaPeriodEndsAt,
-    // The trial's own createdAt+48h deadline for trial accounts (see
+    // The trial's own createdAt+72h deadline for trial accounts (see
     // trialExpiresAt above, also used directly by /admin); for paid plans,
     // the real payment/admin-granted expiry, or null if an admin granted one
     // without an expiry — the account page flags that "missing" case.

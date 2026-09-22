@@ -352,7 +352,7 @@ export default async function AdminPage() {
       planName: plan.name,
       planId: account.planId,
       // Raw column is always null for "trial" (see the schema comment on
-      // accounts.planExpiresAt) — trialExpiresAt derives the real createdAt+48h
+      // accounts.planExpiresAt) — trialExpiresAt derives the real createdAt+72h
       // deadline so the admin table shows an actual date/countdown instead of
       // the bare "Пробный период" label formatPlanExpiry falls back to.
       planExpiresAt: account.planId === "trial" ? trialExpiresAt(account) : account.planExpiresAt,

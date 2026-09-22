@@ -83,3 +83,10 @@
   .klio-aui-disclaimer { font-size:10px; }
 }
 @media(prefers-reduced-motion:reduce) { .klio-aui-pulse { animation:none; } }
+/* Keep carousel previews in their generated proportions, inside the thread. */
+.klio-aui-carousel { display: flex; gap: 12px; max-width: 100%; overflow-x: auto; scroll-snap-type: x proximity; padding-block: 4px 12px; }
+.klio-aui-carousel figure { flex: 0 0 min(240px, 75vw); min-width: 0; margin: 0; scroll-snap-align: start; }
+.klio-aui-carousel .klio-aui-image { width: 100%; }
+.klio-aui-carousel figcaption { margin-top: 8px; font-size: 13px; line-height: 1.4; }
+.klio-aui-carousel a { display: inline-block; margin-top: 6px; color: inherit; font-size: 12px; }
+.klio-aui-quota { color: var(--ck-muted); font-size: 12px; }

@@ -34,7 +34,7 @@ export const accounts = pgTable("accounts", {
   // Anchors the monthly usage-quota reset to the payment date instead of
   // the calendar month (see nextQuotaPeriodEnd in api/_lib/subscription.ts
   // and the reset logic in api/_lib/workspace-account.ts's ensureAccount).
-  // Null for the trial plan (governed by its own 48h wall-clock window) and
+  // Null for the trial plan (governed by its own 72h wall-clock window) and
   // for paid plans an admin granted by hand without a real payment — those
   // fall back to the legacy calendar-month reset via generationMonth below.
   quotaPeriodEndsAt: text("quota_period_ends_at"),

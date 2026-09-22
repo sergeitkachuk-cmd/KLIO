@@ -104,7 +104,7 @@ async function createCarouselHarness() {
   }
 
   return {
-    db, schema, owner, plans,
+    db, schema, owner, plans, workspaceAccount,
     account: async () => (await db.select().from(schema.accounts).where(orm.eq(schema.accounts.email, owner)))[0],
     generations: async () => db.select().from(schema.generations).where(orm.eq(schema.generations.ownerEmail, owner)),
     seedAccount,
@@ -122,6 +122,24 @@ async function createCarouselHarness() {
 function slides(count) {
   return Array.from({ length: count }, (_, i) => ({ headline: `Заголовок ${i + 1}`, subtext: `Текст ${i + 1}` }));
 }
+
+test("trial lasts three days and exhausted research cannot block ordinary dialogue", async t => {
+  const h = await createCarouselHarness(); t.after(() => h.close());
+  const started = new Date(Date.now() - 60 * 60 * 60 * 1000).toISOString();
+  await h.seedAccount({ planId: "trial", createdAt: started, researchUsed: 10 });
+  const account = await h.account();
+  const summary = h.workspaceAccount.accountSummary(account);
+  assert.equal(summary.generationLimit, 20); assert.equal(summary.researchLimit, 10);
+  assert.equal(summary.editorActionLimit, 20); assert.equal(summary.dialogueActionLimit, 50);
+  assert.equal(Date.parse(h.workspaceAccount.trialExpiresAt(account)) - Date.parse(started), 72 * 60 * 60 * 1000);
+  await assert.doesNotReject(h.workspaceAccount.assertSecondaryQuotaAvailable("dialogue"));
+  await assert.rejects(h.workspaceAccount.assertSecondaryQuotaAvailable("research"), /исследований/);
+  await h.db.update(h.schema.accounts).set({ dialogueActionsUsed: 50 });
+  await assert.rejects(h.workspaceAccount.assertSecondaryQuotaAvailable("dialogue"), /диалоговых ответов/);
+  await h.db.update(h.schema.accounts).set({ dialogueActionsUsed: 0, createdAt: new Date(Date.now() - 73 * 60 * 60 * 1000).toISOString() });
+  await assert.rejects(h.workspaceAccount.assertSecondaryQuotaAvailable("dialogue"));
+  assert.equal(h.workspaceAccount.accountSummary(await h.account()).dialogueActionsRemaining, 0);
+});
 
 test("carousel debits exactly one generation per slide and saves one row with slidesJson", async t => {
   const h = await createCarouselHarness();

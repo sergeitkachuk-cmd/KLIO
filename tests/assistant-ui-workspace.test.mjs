@@ -107,6 +107,7 @@ test("text settings do not leak into ordinary conversation after clearing the mo
   await ui.click(fields[0]); await ui.click(ui.findButton("SEO-статья"));
   await ui.type("Напиши статью про съёмку"); await ui.click(ui.findButton("Отправить сообщение"));
   const first = ui.calls.find((c) => c.action === "send"); assert.equal(first.settings.format, "seo");
+  await ui.click(ui.findButton("Выбрать режим")); await ui.click(ui.findButton("Общение"));
   await ui.type("А какая сегодня погода?"); await ui.click(ui.findButton("Отправить сообщение"));
   const last = ui.calls.filter((c) => c.action === "send").at(-1); assert.equal(last.mode, "chat"); assert.deepEqual(last.settings, {});
 });
@@ -116,6 +117,139 @@ test("topics mode submits a chosen count and never silently switches to generic 
   const fields = ui.document.querySelectorAll(".klio-chatkit-settings-popover .module-select button");
   await ui.click(fields[1]); await ui.click(ui.findButton("8")); await ui.type("Темы для блога студии"); await ui.click(ui.findButton("Отправить сообщение"));
   const send = ui.calls.find((c) => c.action === "send"); assert.equal(send.mode, "topics"); assert.equal(send.settings.topicCount, "8");
+  assert.equal(send.text, "Темы для блога студии");
+});
+
+test("topics run from an empty composer with brand, social format and three results", async (t) => {
+  const h = await createDialogueHarness(); t.after(() => h.close());
+  await h.db.insert(h.schema.brands).values({ id: "studio", ownerEmail: h.owner, name: "Киностудия", profileJson: JSON.stringify({ services: "Съёмка видеоподкастов" }) });
+  let context;
+  h.setAi(async (input) => {
+    context = JSON.parse(input.input);
+    return { reply: "Вот три темы.", action: "create", profile: [], cards: Array.from({ length: 3 }, (_, i) => ({ kind: "topic", title: `Тема ${i + 1}`, body: "Расскажите о процессе съёмки видеоподкаста." })) };
+  });
+  const ui = await mountDialogue(t, {
+    overrides: { brandId: "studio", brandName: "Киностудия" },
+    fetchOverride: async (url, _, body) => body ? h.request(body) : h.route.GET(new Request(`http://127.0.0.1:3027${url}`)),
+  });
+  await ui.click(ui.findButton("Предложить темы"));
+  await ui.click(ui.document.querySelector(".klio-chatkit-brand-context input"));
+  await ui.click(ui.document.querySelector(".klio-chatkit-settings-toggle"));
+  const fields = ui.document.querySelectorAll(".klio-chatkit-settings-popover .module-select button");
+  await ui.click(fields[0]); await ui.click(ui.findButton("Пост для соцсетей"));
+  await ui.click(fields[1]); await ui.click(ui.findButton("3"));
+  assert.equal(ui.document.querySelector("textarea.klio-aui-input").value, "");
+  assert.equal(ui.calls.filter((c) => c.action === "send").length, 0);
+  assert.equal(ui.findButton("Отправить сообщение").disabled, false);
+  await ui.click(ui.findButton("Отправить сообщение"));
+  const sends = ui.calls.filter((c) => c.action === "send");
+  assert.equal(sends.length, 1); assert.equal(sends[0].mode, "topics");
+  assert.equal(sends[0].useBrandContext, true);
+  assert.deepEqual(sends[0].settings, { format: "social", topicCount: "3" });
+  const settled = await h.settled(sends[0].id);
+  assert.equal(settled.status, "idle"); assert.equal(settled.data.cards.length, 3);
+  assert.ok(JSON.stringify(context).includes("Съёмка видеоподкастов"));
+  assert.equal((await h.account()).researchUsed, 1);
+});
+
+test("empty topics support Enter without a brand; other modes still need a message", async (t) => {
+  const ui = await mountDialogue(t);
+  assert.equal(ui.findButton("Отправить сообщение").disabled, true);
+  await ui.click(ui.findButton("Предложить темы"));
+  await ui.type("   ");
+  await React.act(async () => ui.document.querySelector("textarea.klio-aui-input").dispatchEvent(new ui.window.KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true })));
+  const sends = ui.calls.filter((c) => c.action === "send");
+  assert.equal(sends.length, 1); assert.equal(sends[0].mode, "topics");
+  assert.equal(sends[0].useBrandContext, false); assert.ok(sends[0].text.trim());
+  assert.equal(ui.document.querySelector("textarea.klio-aui-input").value, "");
+  await ui.click(ui.findButton("Выбрать режим")); await ui.click(ui.findButton("Общение"));
+  assert.equal(ui.findButton("Отправить сообщение").disabled, true);
+  for (const mode of ["Создать изображение", "Написать текст"]) {
+    await ui.click(ui.findButton("Выбрать режим"));
+    await ui.click(ui.findButton(mode, ui.document.querySelector(".klio-aui-tool-menu")));
+    assert.equal(ui.findButton("Отправить сообщение").disabled, true);
+  }
+  assert.equal(ui.calls.filter((c) => c.action === "send").length, 1);
+});
+
+test("empty topics retain settings for retry when saving the brand fails", async (t) => {
+  let saved = false;
+  const ui = await mountDialogue(t, { overrides: { brandId: "studio", beforeProfile: async () => saved } });
+  await ui.click(ui.findButton("Предложить темы"));
+  await ui.click(ui.document.querySelector(".klio-chatkit-brand-context input"));
+  await ui.click(ui.findButton("Отправить сообщение"));
+  assert.equal(ui.calls.filter((c) => c.action === "send").length, 0);
+  assert.equal(ui.document.querySelector("textarea.klio-aui-input").value, "");
+  assert.ok(ui.document.querySelector(".klio-aui-tool-chip").textContent.includes("Предложить темы"));
+  saved = true;
+  await ui.click(ui.findButton("Отправить сообщение"));
+  assert.equal(ui.calls.filter((c) => c.action === "send").length, 1);
+});
+
+test("new dialogue clears failed topics mode and chat never silently becomes research", async (t) => {
+  const ui = await mountDialogue(t, { overrides: { researchRemaining: 0, dialogueRemaining: 50 }, fetchOverride: async (_, __, body) => body?.action === "send" && body.mode === "topics" ? Response.json({ error: "Лимит исследований исчерпан" }, { status: 429 }) : null });
+  await ui.click(ui.findButton("Предложить темы")); await ui.click(ui.findButton("Отправить сообщение"));
+  await ui.click(ui.document.querySelector(".klio-chatkit-new"));
+  assert.equal(ui.document.querySelector(".klio-aui-tool-chip"), null);
+  await ui.type("Расскажи, как подбирать темы для контента"); await ui.click(ui.findButton("Отправить сообщение"));
+  assert.equal(ui.calls.filter((c) => c.action === "send").at(-1).mode, "chat");
+  assert.ok(ui.document.body.textContent.includes("Тестовый ответ"));
+});
+
+test("image mode persists for another variant and explicit chat still permits discussing images", async (t) => {
+  const ui = await mountDialogue(t);
+  await ui.type("Нарисуй картинку съёмочного процесса"); await ui.click(ui.findButton("Отправить сообщение"));
+  assert.ok(ui.document.querySelector(".klio-aui-tool-chip").textContent.includes("Создать изображение"));
+  await ui.type("Сделай ещё один вариант"); await ui.click(ui.findButton("Отправить сообщение"));
+  assert.deepEqual(ui.calls.filter((c) => c.action === "send").map((c) => c.mode), ["image", "image"]);
+  await ui.click(ui.findButton("Выбрать режим")); await ui.click(ui.findButton("Общение"));
+  await ui.type("Нарисуй картинку — это хорошая формулировка?"); await ui.click(ui.findButton("Отправить сообщение"));
+  assert.equal(ui.calls.filter((c) => c.action === "send").at(-1).mode, "chat");
+  await ui.click(ui.document.querySelector(".klio-chatkit-new"));
+  await ui.type("Как создать картинку?"); await ui.click(ui.findButton("Отправить сообщение"));
+  assert.equal(ui.calls.filter((c) => c.action === "send").at(-1).mode, "chat");
+});
+
+test("carousel image settings save all slides, preview the selected slide and publish one whole material", async (t) => {
+  const h = await createDialogueHarness(); t.after(() => h.close());
+  await h.db.insert(h.schema.brands).values({ id: "studio", ownerEmail: h.owner, name: "Киностудия", profileJson: JSON.stringify({ services: "Съёмка видеоподкастов", logoKey: "logo" }) });
+  let seen;
+  h.setAi(async (input) => { seen = input; return { slides: Array.from({ length: 3 }, (_, i) => ({ headline: `Съёмка ${i + 1}`, subtext: "Расскажите о подготовке видеоподкаста и работе со светом." })) }; });
+  const ui = await mountDialogue(t, {
+    overrides: { brandId: "studio", hasLogo: true },
+    fetchOverride: async (url, _, body) => body ? h.request(body) : h.route.GET(new Request(`http://127.0.0.1:3027${url}`)),
+  });
+  await ui.click(ui.findButton("Создать изображение"));
+  await ui.click(ui.document.querySelector(".klio-chatkit-brand-context input"));
+  await ui.click(ui.document.querySelector(".klio-chatkit-settings-toggle"));
+  const select = async (label, value) => {
+    const field = [...ui.document.querySelectorAll(".klio-chatkit-settings-popover .module-select")].find((node) => node.textContent.includes(label));
+    assert.ok(field); await ui.click(field.querySelector("button")); await ui.click(ui.findButton(value));
+  };
+  await select("Результат", "Карусель"); await select("Количество слайдов", "3");
+  await select("Ориентация", "Портретная"); await select("Формат файла", "WEBP");
+  await ui.click(ui.document.querySelector(".klio-chatkit-settings-logo input"));
+  await ui.type("Подготовка видеоподкаста: спланируйте разговор, настройте свет, проверьте звук и камеры.");
+  await ui.click(ui.findButton("Отправить сообщение"));
+  const send = ui.calls.find((c) => c.action === "send"); assert.equal(send.mode, "carousel");
+  const settled = await h.settled(send.id);
+  assert.equal(settled.data.cards[0].slides.length, 3);
+  assert.equal((await h.account()).generationsUsed, 3);
+  assert.equal(h.carouselCalls.length, 3);
+  assert.equal(h.carouselCalls[0][5].aspectRatio, "9:16"); assert.equal(h.carouselCalls[0][5].outputFormat, "webp");
+  assert.ok(h.carouselCalls[0][1]);
+  assert.equal(JSON.parse(seen.input).profile.services, "Съёмка видеоподкастов");
+  await React.act(async () => { await new Promise((r) => setTimeout(r, 1700)); });
+  assert.equal(ui.document.querySelectorAll(".klio-aui-carousel figure").length, 3);
+  await ui.click(ui.findButton("Увеличить слайд 2"));
+  assert.ok([...ui.document.querySelectorAll('[role="dialog"] img')].some((img) => img.src === settled.data.cards[0].slides[1].imageUrl));
+  await ui.click(ui.findButton("В публикацию", ui.document.querySelector('[role="dialog"]')));
+  assert.equal(ui.published.length, 1); assert.equal(ui.published[0].body, "");
+  const materials = await h.db.select().from(h.schema.generations);
+  assert.equal(materials.length, 1); assert.equal(materials[0].topic, "Карусель");
+  assert.equal(ui.published[0].generationId, materials[0].id);
+  assert.equal(JSON.parse(materials[0].slidesJson).length, 3);
+  assert.equal((await h.db.select().from(h.schema.publications)).length, 0);
 });
 test("switching business cannot retain another business's thread or brand flag", async (t) => {
   const ui = await mountDialogue(t, { threads: [sampleThread("one", { brandId: "one" }), sampleThread("two", { brandId: "two" })], selected: "one", overrides: { brandId: "one" } });

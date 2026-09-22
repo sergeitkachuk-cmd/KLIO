@@ -8,12 +8,12 @@ import { AssistantRuntimeProvider, ComposerPrimitive, MessagePrimitive, ThreadPr
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import { ArrowDown, ArrowUp, Copy, ImageIcon, Lightbulb, MessageCircle, Plus, SquarePen, X } from "lucide-react";
 import { isStandaloneImage, type DialogueCard } from "./dialogue-model";
-import { DialogueResultActions } from "./dialogue-result-actions";
+import { DialogueResultActions, imageDownloadUrl } from "./dialogue-result-actions";
 import type { DialogueSession } from "./dialogue-session";
 
 const TOOLS = [
-  { id: "", label: "Общение", placeholder: "Спросите КЛИО или поставьте задачу", Icon: MessageCircle },
-  { id: "topics", label: "Предложить темы", placeholder: "Какие темы подобрать?", Icon: Lightbulb },
+  { id: "chat", label: "Общение", placeholder: "Спросите КЛИО или поставьте задачу", Icon: MessageCircle },
+  { id: "topics", label: "Предложить темы", placeholder: "Уточните пожелания к темам (необязательно)", Icon: Lightbulb },
   { id: "text", label: "Написать текст", placeholder: "О чём и для какой площадки написать?", Icon: SquarePen },
   { id: "image", label: "Создать изображение", placeholder: "Опишите изображение", Icon: ImageIcon },
 ];
@@ -26,13 +26,15 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
   tool: string | null;
   onTool: (tool: string | null) => void;
   onSend: (text: string, tool?: string) => Promise<boolean>;
-  onAction: (type: string, cardId: string) => void;
+  onAction: (type: string, cardId: string, slideIndex?: number) => void;
   onProfile: (messageId: string) => void;
   busy: boolean;
   options: ReactNode;
 }) {
   const { thread, loading, sending, draft } = snapshot;
   const running = sending || thread?.status === "processing";
+  const sendDisabled = Boolean(loading || busy || running || (snapshot.selectedId && !thread));
+  const emptyTopics = tool === "topics" && !draft.trim();
   const [menuOpen, setMenuOpen] = useState(false);
   const [copyNotice, setCopyNotice] = useState("");
   const picker = useRef<HTMLDivElement>(null);
@@ -43,7 +45,7 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
   })), [thread?.data.messages]);
   const runtime = useExternalStoreRuntime({
     messages, convertMessage, isRunning: running, isLoading: loading,
-    isSendDisabled: Boolean(loading || busy || running || (snapshot.selectedId && !thread)),
+    isSendDisabled: sendDisabled,
     onNew: async (message) => {
       const text = message.content.filter((part) => part.type === "text").map((part) => part.text).join("\n");
       const sent = await onSend(text);
@@ -58,7 +60,7 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
     document.addEventListener("pointerdown", close); document.addEventListener("keydown", key);
     return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", key); };
   }, [menuOpen]);
-  const activeTool = TOOLS.find((item) => item.id === tool) || TOOLS[0];
+  const activeTool = tool === "carousel" ? { ...TOOLS[3], label: "Карусель", placeholder: "Добавьте текст для слайдов или подробно опишите тему" } : TOOLS.find((item) => item.id === tool) || TOOLS[0];
   const empty = !messages.length && !loading;
   // A revised card may be referenced by several messages. Render its current
   // version once, at the last reference, so result navigation has one target.
@@ -69,7 +71,16 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
     const pureImage = isStandaloneImage(thread, card);
     return <article key={card.id} id={`klio-chat-card-${card.id}`} tabIndex={-1} className={`klio-aui-card ${pureImage ? "is-image" : ""}`} aria-label={pureImage ? "Сгенерированное изображение" : card.title}>
       {!pureImage && <><h3>{card.title}</h3><p className="klio-aui-card-body">{card.body}</p></>}
-      {card.imageUrl && <button className="klio-aui-image" type="button" aria-label="Увеличить изображение" onClick={() => onAction("klio.open_image", card.id)}>
+      {card.slides?.length ? <div className="klio-aui-carousel" aria-label={`Карусель: ${card.slides.length} слайдов`}>
+        {card.slides.map((slide, index) => <figure key={`${card.id}-${index}`}>
+          <button className="klio-aui-image" type="button" aria-label={`Увеличить слайд ${index + 1}`} onClick={() => onAction("klio.open_image", card.id, index)}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={slide.imageUrl} alt={slide.headline} loading="lazy" />
+          </button>
+          <figcaption>{index + 1}. {slide.headline}</figcaption>
+          <a href={imageDownloadUrl(slide.imageUrl)} download>Скачать слайд</a>
+        </figure>)}
+      </div> : card.imageUrl && <button className="klio-aui-image" type="button" aria-label="Увеличить изображение" onClick={() => onAction("klio.open_image", card.id)}>
         {/* User images retain their actual aspect ratio without a square crop. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={card.imageUrl} alt={pureImage ? "Сгенерированное изображение" : card.title} loading="lazy" />
@@ -105,17 +116,25 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
         </div>
         <ThreadPrimitive.ViewportFooter className="klio-aui-footer">
           {!empty && <ThreadPrimitive.ScrollToBottom className="klio-aui-icon klio-aui-to-bottom" aria-label="К последнему сообщению"><ArrowDown size={18} /></ThreadPrimitive.ScrollToBottom>}
-          <ComposerPrimitive.Root className="klio-aui-composer">
+          <ComposerPrimitive.Root className="klio-aui-composer" onSubmit={(event) => {
+            // Topic ideation is already specified by the selected mode/settings.
+            // Use the same form submission for the button and desktop Enter.
+            if (tool !== "topics" || runtime.thread.composer.getState().text.trim()) return;
+            event.preventDefault();
+            if (!sendDisabled) void onSend("");
+          }}>
             <ComposerPrimitive.Input ref={input} className="klio-aui-input" aria-label="Сообщение КЛИО" placeholder={activeTool.placeholder} rows={1} maxLength={8000} autoFocus={false} cancelOnEscape={false} addAttachmentOnPaste={false} unstable_insertNewlineOnTouchEnter onChange={(event) => session.setDraft(event.target.value)} />
             <div className="klio-aui-compose-tools">
               <div className="klio-aui-picker" ref={picker}>
                 <button type="button" className="klio-aui-icon" aria-label="Выбрать режим" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><Plus size={23} /></button>
                 {menuOpen && <div className="klio-aui-tool-menu" aria-label="Режим генерации">
-                  {TOOLS.map(({ id, label, Icon }) => <button type="button" key={id} aria-pressed={(tool || "") === id} onClick={() => { onTool(id || null); setMenuOpen(false); input.current?.focus(); }}><Icon size={18} />{label}</button>)}
+                  {TOOLS.map(({ id, label, Icon }) => <button type="button" key={id} aria-pressed={(tool || "chat") === id || (tool === "carousel" && id === "image")} onClick={() => { onTool(id); setMenuOpen(false); input.current?.focus(); }}><Icon size={18} />{label}</button>)}
                 </div>}
               </div>
-              {tool && <button type="button" className="klio-aui-tool-chip" onClick={() => onTool(null)} title="Переключиться на обычное общение"><activeTool.Icon size={17} />{activeTool.label}<X size={15} /></button>}
-              <ComposerPrimitive.Send className="klio-aui-send" aria-label="Отправить сообщение"><ArrowUp size={21} /></ComposerPrimitive.Send>
+              {tool && tool !== "chat" && <button type="button" className="klio-aui-tool-chip" onClick={() => onTool(null)} title="Переключиться на обычное общение"><activeTool.Icon size={17} />{activeTool.label}<X size={15} /></button>}
+              {emptyTopics
+                ? <button type="submit" className="klio-aui-send" aria-label="Отправить сообщение" title="Создать темы по выбранным параметрам" disabled={sendDisabled}><ArrowUp size={21} /></button>
+                : <ComposerPrimitive.Send className="klio-aui-send" aria-label="Отправить сообщение"><ArrowUp size={21} /></ComposerPrimitive.Send>}
             </div>
           </ComposerPrimitive.Root>
           {options}
