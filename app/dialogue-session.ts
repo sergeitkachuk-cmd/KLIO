@@ -1,4 +1,5 @@
 import type { DialogueThread } from "./dialogue-model";
+import type { DialogueImageSource } from "./dialogue-image-source";
 
 type Snapshot = {
   thread: DialogueThread | null;
@@ -7,9 +8,10 @@ type Snapshot = {
   sending: boolean;
   error: string;
   draft: string;
+  imageSource: DialogueImageSource | null;
   view: number;
 };
-type SendOptions = { mode: string; cardId?: string; useBrandContext: boolean; settings: Record<string, unknown> };
+type SendOptions = { mode: string; cardId?: string; imageSource?: DialogueImageSource; useBrandContext: boolean; settings: Record<string, unknown> };
 type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
 export async function dialogueRequest<T>(values: Record<string, unknown> | string): Promise<T> {
@@ -40,7 +42,7 @@ export function createDialogueSession(options: {
   pollMs?: number;
 }) {
   const request = options.request || dialogueRequest;
-  let state: Snapshot = { thread: null, selectedId: null, loading: true, sending: false, error: "", draft: "", view: 0 };
+  let state: Snapshot = { thread: null, selectedId: null, loading: true, sending: false, error: "", draft: "", imageSource: null, view: 0 };
   const initial = state;
   const listeners = new Set<() => void>();
   let epoch = 0;
@@ -53,6 +55,13 @@ export function createDialogueSession(options: {
   function write(key: string, value: string) { try { if (value) storage().setItem(key, value); else storage().removeItem(key); } catch { /* Optional browser cache. */ } }
   const draftKey = (id = state.selectedId) => `${options.storageKey}:${id || "new"}:draft`;
   const pendingKey = (id = state.selectedId) => `${options.storageKey}:${id || "new"}:pending`;
+  const sourceKey = (id = state.selectedId) => `${draftKey(id)}:image`;
+  function readImageSource(id: string | null) {
+    try {
+      const value = JSON.parse(read(sourceKey(id)));
+      return value && ["edit", "reference"].includes(value.purpose) && (typeof value.cardId === "string" || typeof value.uploadUrl === "string") ? value as DialogueImageSource : null;
+    } catch { return null; }
+  }
   function readPending() {
     try {
       const value = JSON.parse(read(pendingKey()));
@@ -76,7 +85,11 @@ export function createDialogueSession(options: {
     update({ thread, loading: false, error: "" });
     const submitted = pending || readPending();
     if (submitted && thread.data.messages.some((message) => message.id === submitted.id)) {
-      try { if (JSON.parse(submitted.signature).text === state.draft) setDraft(""); } catch { /* Invalid optional cache. */ }
+      try {
+        const sent = JSON.parse(submitted.signature);
+        if (sent.text === state.draft) setDraft("");
+        if (JSON.stringify(sent.imageSource) === JSON.stringify(state.imageSource)) setImageSource(null);
+      } catch { /* Invalid optional cache. */ }
       pending = null; write(pendingKey(), "");
     }
     if (changed) options.onChange?.();
@@ -102,7 +115,7 @@ export function createDialogueSession(options: {
     if (state.sending) return;
     epoch++; clearTimeout(timer); pending = null; creating = "";
     write(options.storageKey, id || "");
-    update({ selectedId: id, thread: null, loading: Boolean(id), error: "", draft: read(draftKey(id)), view: state.view + 1 });
+    update({ selectedId: id, thread: null, loading: Boolean(id), error: "", draft: read(draftKey(id)), imageSource: readImageSource(id), view: state.view + 1 });
     if (id) await refresh();
   }
   async function ensureThread(ticket = epoch) {
@@ -118,11 +131,14 @@ export function createDialogueSession(options: {
     write(`${options.storageKey}:creating`, "");
     write(draftKey(result.thread.id), state.draft);
     write(draftKey(null), "");
+    write(sourceKey(result.thread.id), state.imageSource ? JSON.stringify(state.imageSource) : "");
+    write(sourceKey(null), "");
     update({ selectedId: result.thread.id });
     accept(result.thread);
     return result.thread;
   }
   function setDraft(draft: string) { if (draft !== state.draft) { write(draftKey(), draft); update({ draft }); } }
+  function setImageSource(imageSource: DialogueImageSource | null) { write(sourceKey(), imageSource ? JSON.stringify(imageSource) : ""); update({ imageSource }); }
   async function send(text: string, sendOptions: SendOptions, before?: () => Promise<boolean>) {
     if (state.sending || state.loading || state.thread?.status === "processing" || !text.trim()) return false;
     const ticket = epoch;
@@ -167,7 +183,7 @@ export function createDialogueSession(options: {
     getServerSnapshot: () => initial,
     start() { live = true; update({ sending: false }); void open(read(options.storageKey) || null); },
     stop() { live = false; epoch++; clearTimeout(timer); },
-    open, refresh, ensureThread, accept, send, setDraft,
+    open, refresh, ensureThread, accept, send, setDraft, setImageSource,
   };
 }
 export type DialogueSession = ReturnType<typeof createDialogueSession>;

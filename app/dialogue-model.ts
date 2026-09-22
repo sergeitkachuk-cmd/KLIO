@@ -15,6 +15,7 @@ export type DialogueMessage = {
   text: string;
   useBrandContext?: boolean;
   mode?: string;
+  imageSource?: { url: string; purpose: "edit" | "reference" };
   cardIds?: string[];
   action?: "save" | "schedule" | "image" | "profile";
   profile?: Record<string, string>;

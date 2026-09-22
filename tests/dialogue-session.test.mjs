@@ -13,6 +13,25 @@ function harness(t, request, extra = {}) {
   t.after(() => store.stop()); store.start();
   return { store, cache };
 }
+
+test("image references persist with their own draft, survive a failed send and clear on acceptance", async (t) => {
+  let fail = true;
+  const { store, cache } = harness(t, async (p) => {
+    if (typeof p === "string") return { thread: thread("a") };
+    if (fail) throw new Error("Offline");
+    return { thread: thread("a", { revision: 1, data: { cards: [], messages: [{ id: p.requestId, role: "user", text: p.text }] } }) };
+  });
+  await store.open("a");
+  const imageSource = { cardId: "image-1", purpose: "edit" };
+  store.setDraft("Убери провод"); store.setImageSource(imageSource);
+  await store.open(null); assert.equal(store.getSnapshot().imageSource, null);
+  await store.open("a"); assert.equal(JSON.stringify(store.getSnapshot().imageSource), JSON.stringify(imageSource));
+  assert.equal(await store.send("Убери провод", { ...input, mode: "image", imageSource }), false);
+  assert.ok(cache.get("test:a:draft:image"));
+  fail = false;
+  assert.equal(await store.send("Убери провод", { ...input, mode: "image", imageSource }), true);
+  assert.equal(store.getSnapshot().imageSource, null); assert.equal(cache.get("test:a:draft:image"), undefined);
+});
 test("double submission creates and sends once, even before the thread exists", async (t) => {
   const wait = deferred(); const calls = [];
   const { store } = harness(t, async (p) => { calls.push(p); if (p.action === "create") { await wait.promise; return { thread: thread(p.id) }; } return { thread: thread(p.id, { revision: 1, status: "processing", data: { messages: [{ id: p.requestId, role: "user", text: p.text }], cards: [] } }) }; });

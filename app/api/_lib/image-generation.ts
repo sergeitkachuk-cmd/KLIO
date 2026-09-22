@@ -4,6 +4,7 @@ import { imageContentType } from "./image-type";
 export type ImageAspectRatio = "1:1" | "4:3" | "4:5" | "16:9" | "9:16";
 export type ImageOutputFormat = "png" | "jpeg" | "webp";
 export type ImageQuality = "low" | "medium" | "high";
+export type ImageInput = { bytes: Uint8Array<ArrayBuffer>; contentType: string };
 export type ImageGenerationOptions = {
   size?: string;
   aspectRatio?: ImageAspectRatio;
@@ -53,7 +54,7 @@ export function parseImageGenerationOptions(input: Record<string, unknown>): Ima
 
 export function resolveImageGenerationOptions(options: ImageGenerationOptions = {}) {
   const ratio = options.aspectRatio && IMAGE_SIZE_BY_RATIO[options.aspectRatio] ? options.aspectRatio : "4:3";
-  const size = options.size && /^\d+x\d+$/.test(options.size) ? options.size : IMAGE_SIZE_BY_RATIO[ratio];
+  const size = options.size && (options.size === "auto" || /^\d+x\d+$/.test(options.size)) ? options.size : IMAGE_SIZE_BY_RATIO[ratio];
   // Was "medium", and only ever sent to the provider when a caller
   // explicitly set options.quality - which nothing in this app actually
   // does (no quality picker anywhere in the UI), so every real request
@@ -115,13 +116,15 @@ async function generateImageBytes(
   prompt: string,
   requestId: string,
   options: ImageGenerationOptions = {},
-  logo?: { bytes: Uint8Array<ArrayBuffer>; contentType: string },
+  logo?: ImageInput | ImageInput[],
   model?: string,
 ) {
   // Browser requests only KLIO. Provider credentials and calls stay on the server;
   // image bytes are copied to our existing object store, never hotlinked to OpenAI.
   // API contract: https://developers.openai.com/api/docs/guides/image-generation
   const serviceUrl = process.env.KLIO_IMAGE_SERVICE_URL?.trim();
+  const images = Array.isArray(logo) ? logo : logo ? [logo] : [];
+  if (images.length > 2) throw new Error("Можно использовать один исходник и один логотип.");
   const endpoint = serviceUrl
     ? new URL("/generate", serviceUrl)
     : new URL(logo ? "https://api.openai.com/v1/images/edits" : "https://api.openai.com/v1/images/generations");
@@ -147,6 +150,14 @@ async function generateImageBytes(
   let requestBody: string | FormData;
   let contentTypeHeader: string | undefined;
   if (serviceUrl) {
+    if (images.length > 1) {
+      // An older relay silently ignores unknown fields. Fail before a paid
+      // request rather than generate a different scene without the source.
+      const health = await fetch(new URL("/health", serviceUrl), { cache: "no-store", signal: AbortSignal.timeout(10_000) });
+      const capabilities = await health.json().catch(() => ({}));
+      if (!health.ok || capabilities.maxImageInputs < images.length || !capabilities.maxImageInputs)
+        throw new Error("Сервер изображений ещё не обновлён для доработки с логотипом. Исходник сохранён; повторите после обновления сервера.");
+    }
     const imageRequest = {
       model: resolvedModel,
       prompt: prompt.slice(0, 12000),
@@ -162,7 +173,8 @@ async function generateImageBytes(
       quality: resolved.quality,
       ...(options.outputFormat ? { output_format: resolved.outputFormat } : {}),
       ...(options.background ? { background: resolved.background } : {}),
-      ...(logo ? { image_b64: Buffer.from(logo.bytes).toString("base64"), image_type: logo.contentType } : {}),
+      ...(images.length > 1 ? { images: images.map((item) => ({ image_b64: Buffer.from(item.bytes).toString("base64"), image_type: item.contentType })) }
+        : images[0] ? { image_b64: Buffer.from(images[0].bytes).toString("base64"), image_type: images[0].contentType } : {}),
     };
     requestBody = JSON.stringify(imageRequest);
     contentTypeHeader = "application/json";
@@ -175,7 +187,7 @@ async function generateImageBytes(
     form.append("quality", resolved.quality);
     if (options.outputFormat) form.append("output_format", resolved.outputFormat);
     if (options.background) form.append("background", resolved.background);
-    form.append("image", new File([logo.bytes], "reference", { type: logo.contentType }));
+    images.forEach((item, index) => form.append(images.length > 1 ? "image[]" : "image", new File([item.bytes], `reference-${index}`, { type: item.contentType })));
     requestBody = form;
   } else {
     requestBody = JSON.stringify({
@@ -278,6 +290,30 @@ export async function createImageFromLogo(
     email,
     baseUrl,
   );
+}
+
+// The first image is the actual scene. The optional second image is only
+// the logo; it must never replace the scene as the sole provider input.
+export async function createImageFromSource(
+  prompt: string, source: ImageInput, purpose: "edit" | "reference", logo: ImageInput | undefined,
+  email: string, baseUrl: string, requestId: string, options: ImageGenerationOptions = {},
+) {
+  for (const image of [source, ...(logo ? [logo] : [])]) {
+    const detected = imageContentType(image.bytes);
+    if (image.bytes.byteLength > 8 * 1024 * 1024 || !detected || !["image/png", "image/jpeg", "image/webp"].includes(detected))
+      throw new Error("Не удалось прочитать исходное изображение. Загрузите PNG, JPEG или WEBP до 8 МБ.");
+    image.contentType = detected;
+  }
+  const instruction = purpose === "edit"
+    ? "Первое изображение — исходник для редактирования. Измени именно его по запросу пользователя. Сохрани композицию, людей, предметы, ракурс и все детали, которых правка не касается. Не создавай новую сцену по старому описанию."
+    : "Первое изображение — визуальный референс. Учитывай его реальные детали, композицию и стиль при выполнении запроса пользователя.";
+  const logoInstruction = logo
+    ? "Второе изображение — настоящий логотип бренда. Используй именно этот знак и его надпись; не выдумывай другой бренд. Размести его на первом изображении в соответствии с запросом."
+    : "Логотип бренда не приложен. Не выдумывай фирменные знаки.";
+  const { bytes, contentType } = await generateImageBytes(`${instruction}\n${logoInstruction}\n\n${prompt}`, requestId,
+    purpose === "edit" ? { size: "auto", outputFormat: options.outputFormat, quality: options.quality } : options,
+    logo ? [source, logo] : source);
+  return uploadPublicationImage(new File([bytes], "klio-edit", { type: contentType }), email, baseUrl);
 }
 
 // Sibling to createImageFromLogo above, for a carousel's per-slide

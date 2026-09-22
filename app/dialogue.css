@@ -1,15 +1,23 @@
 .workspace-mode-switch {
+  /* Dark is also the site's default before the theme bootstrap runs. Keep
+     each surface/foreground pair together, including when storage is blocked. */
+  --mode-bg: #102c49;
+  --mode-text: #edf3fa;
+  --mode-line: #2a435c;
+  --mode-selected-bg: #cbdbec;
+  --mode-selected-text: #17283a;
   display: flex;
   gap: 3px;
   padding: 4px;
-  border: 1px solid var(--line, #ddd);
+  border: 1px solid var(--mode-line);
   border-radius: 12px;
-  background: var(--surface, #f6f6f4);
+  background: var(--mode-bg);
+  color: var(--mode-text);
 }
 .workspace-mode-switch button {
   border: 0;
   background: transparent;
-  color: inherit;
+  color: var(--mode-text);
   padding: 7px 11px;
   border-radius: 8px;
   font: inherit;
@@ -20,17 +28,22 @@
   display: none;
 }
 .workspace-mode-switch button[aria-pressed="true"] {
-  background: #254263;
-  color: #fff;
+  background: var(--mode-selected-bg);
+  color: var(--mode-selected-text);
 }
-[data-theme="dark"] .workspace-mode-switch {
-  background: #1e2520;
-  color: #edf1eb;
-  border-color: #374138;
+.workspace-mode-switch button span {
+  color: inherit;
 }
-[data-theme="dark"] .workspace-mode-switch button[aria-pressed="true"] {
-  background: #cbdbec;
-  color: #172018;
+[data-theme="light"] .workspace-mode-switch {
+  --mode-bg: #edf2f7;
+  --mode-text: #1e3650;
+  --mode-line: #ccd8e4;
+  --mode-selected-bg: #254263;
+  --mode-selected-text: #ffffff;
+}
+.workspace-mode-switch button:focus-visible {
+  outline: 2px solid var(--mode-text);
+  outline-offset: 2px;
 }
 .klio-chat {
   --chat-bg: #fff;
@@ -963,24 +976,6 @@ body:has(.workspace-shell.is-dialogue)>.module-select-list>button>em{color:#2849
    from turning labels white on light surfaces. */
 .workspace-shell.is-dialogue .klio-chat{--chat-bg:#ffffff;--chat-side:#f1f5f9;--chat-text:#17283a;--chat-muted:#596d82;--chat-line:#d9e2ec;--chat-accent:#28496d;color:var(--chat-text)}
 :root[data-theme="dark"] .workspace-shell.is-dialogue .klio-chat{--chat-bg:#081b30;--chat-side:#102c49;--chat-text:#edf3fa;--chat-muted:#a9bdd1;--chat-line:#2a435c;--chat-accent:#b2c9e3}
-/* Every property !important and repeated on the inner spans too - the
-   pressed button reportedly still rendered a dark background with dark
-   (unreadable) text in light theme (site owner: "когда нажата кнопка
-   диалог, она сама тёмная и текст в ней тоже"), which a plain color
-   override on `button` should already have prevented; this leaves no
-   partial-override gap regardless of the exact prior conflict. */
-:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch{background:#edf2f7!important;border-color:#ccd8e4!important}
-:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch button,
-:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch button span{color:#1e3650!important}
-:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"]{background:#254263!important}
-:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"],
-:root[data-theme="light"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"] span{color:#fff!important}
-:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch{background:#102c49!important;border-color:#2a435c!important}
-:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch button,
-:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch button span{color:#edf3fa!important}
-:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"]{background:#cbdbec!important}
-:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"],
-:root[data-theme="dark"] .workspace-shell.is-dialogue .workspace-mode-switch button[aria-pressed="true"] span{color:#17283a!important}
 .workspace-shell.is-dialogue .klio-chat :is(button,input,textarea){color:var(--chat-text)}
 .workspace-shell.is-dialogue .klio-chat :is(h1,h2,h3,b,strong,p,span,label,small){color:inherit}
 .workspace-shell.is-dialogue .klio-chat :is(.klio-chat-author,.klio-chat-card-meta,.klio-chat-history>span,.klio-chat-business>span,.klio-chat-top span,.klio-chat-compose>small){color:var(--chat-muted)}

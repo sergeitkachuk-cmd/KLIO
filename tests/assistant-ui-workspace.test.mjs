@@ -210,6 +210,61 @@ test("image mode persists for another variant and explicit chat still permits di
   assert.equal(ui.calls.filter((c) => c.action === "send").at(-1).mode, "chat");
 });
 
+test("a forgotten generation mode yields to conversation and drops generation settings", async (t) => {
+  const ui = await mountDialogue(t, { overrides: { researchRemaining: 0 } });
+  for (const label of ["Предложить темы", "Создать изображение", "Написать текст"]) {
+    await ui.click(ui.findButton("Выбрать режим")); await ui.click(ui.findButton(label, ui.document.querySelector(".klio-aui-tool-menu")));
+    await ui.type("А почему ты считаешь это хорошей идеей?"); await ui.click(ui.findButton("Отправить сообщение"));
+    const send = ui.calls.filter(c => c.action === "send").at(-1);
+    assert.equal(send.mode, "chat"); assert.deepEqual(send.settings, {});
+    assert.equal(ui.document.querySelector(".klio-aui-tool-chip"), null);
+    assert.match(ui.document.querySelector(".klio-aui-quota").textContent, /Общение/);
+  }
+});
+
+test("Refine chooses the clicked older image without generating and submits that exact source", async (t) => {
+  const oldImage = card({ id: "old", body: "", kind: "post", imageUrl: "https://preview.example.invalid/old.png" });
+  const newerImage = card({ id: "newer", body: "", kind: "post", imageUrl: "https://preview.example.invalid/newer.png" });
+  const row = sampleThread("saved", { data: { cards: [oldImage, newerImage], messages: [{ id: "a1", role: "assistant", text: "Готово", cardIds: ["old"] }, { id: "a2", role: "assistant", text: "Готово", cardIds: ["newer"] }] } });
+  const ui = await mountDialogue(t, { threads: [row], selected: "saved" });
+  await ui.click(ui.findButton("Доработать", ui.document.getElementById("klio-chat-card-old")));
+  assert.equal(ui.calls.filter(c => c.action === "send").length, 0);
+  assert.equal(ui.document.querySelector(".klio-aui-attachment-preview img").src, oldImage.imageUrl);
+  await ui.type("Убери провод на столе"); await ui.click(ui.findButton("Отправить сообщение"));
+  const send = ui.calls.find(c => c.action === "send");
+  assert.equal(send.mode, "image"); assert.deepEqual(send.imageSource, { cardId: "old", purpose: "edit" });
+  assert.equal(ui.document.querySelector(".klio-aui-attachment-preview"), null);
+  assert.equal(ui.records.get("saved").data.cards[0].imageUrl, oldImage.imageUrl);
+});
+
+test("new conversations do not inherit an attached reference", async (t) => {
+  const value = card({ kind: "post", body: "", imageUrl: "https://preview.example.invalid/image.png" });
+  const ui = await mountDialogue(t, { threads: [withCard(value)], selected: "saved" });
+  await ui.click(ui.findButton("Доработать"));
+  await ui.click(ui.document.querySelector(".klio-chatkit-new"));
+  assert.equal(ui.document.querySelector(".klio-aui-attachment-preview"), null);
+  await ui.type("Привет!"); await ui.click(ui.findButton("Отправить сообщение"));
+  const send = ui.calls.find(c => c.action === "send");
+  assert.equal(send.mode, "chat"); assert.equal(send.imageSource, undefined);
+});
+
+test("uploading a reference attaches the stored file without triggering a paid generation", async (t) => {
+  const url = "https://preview.example.invalid/api/uploads/publications/" + "a".repeat(64) + "/00000000-0000-0000-0000-000000000001.png";
+  const ui = await mountDialogue(t, { fetchOverride: async (path, init) => {
+    if (path !== "/api/uploads") return null;
+    assert.equal(init.body.get("file").name, "reference.png"); return Response.json({ url }, { status: 201 });
+  } });
+  await ui.click(ui.findButton("Создать изображение"));
+  const input = ui.document.querySelector('[aria-label="Загрузить референс"]');
+  Object.defineProperty(input, "files", { configurable: true, value: [new File(["fixture"], "reference.png", { type: "image/png" })] });
+  await React.act(async () => input.dispatchEvent(new ui.window.Event("change", { bubbles: true })));
+  assert.equal(ui.calls.filter(c => c.action === "send").length, 0);
+  assert.equal(ui.document.querySelector(".klio-aui-attachment-preview img").src, url);
+  await ui.type("Интерьер в таком стиле"); await ui.click(ui.findButton("Отправить сообщение"));
+  const send = ui.calls.find(c => c.action === "send");
+  assert.deepEqual(send.imageSource, { uploadUrl: url, purpose: "reference" });
+});
+
 test("carousel image settings save all slides, preview the selected slide and publish one whole material", async (t) => {
   const h = await createDialogueHarness(); t.after(() => h.close());
   await h.db.insert(h.schema.brands).values({ id: "studio", ownerEmail: h.owner, name: "Киностудия", profileJson: JSON.stringify({ services: "Съёмка видеоподкастов", logoKey: "logo" }) });

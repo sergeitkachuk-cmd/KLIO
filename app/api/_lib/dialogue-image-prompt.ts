@@ -3,10 +3,13 @@ type ImageBrief = {
   selected?: { title: string; body: string };
   brand: { name: string; profileJson: string } | null;
   useBrandContext: boolean;
+  sourcePurpose?: "edit" | "reference";
 };
 
-export function buildDialogueImagePrompt({ request, selected, brand, useBrandContext }: ImageBrief) {
-  const parts = [selected
+export function buildDialogueImagePrompt({ request, selected, brand, useBrandContext, sourcePurpose }: ImageBrief) {
+  const parts = [sourcePurpose === "edit"
+    ? "Доработай приложенное изображение по запросу. Сохрани исходную сцену и её детали, кроме явно запрошенных изменений. Профиль бренда не должен заменять исходную сцену."
+    : selected
     ? "Создай изображение-обложку для материала, как баннер к статье: заголовок уместно вынести на изображение крупным текстом, как настоящую обложку."
     : "Создай изображение по описанию. Не добавляй надписи, если они не запрошены."];
   if (useBrandContext && brand) {

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import ts from "typescript";
 import Ajv from "ajv";
 import { PGlite } from "@electric-sql/pglite";
@@ -100,6 +100,8 @@ export async function createDialogueHarness() {
     )[0];
   let calls = 0;
   const imageCalls = [];
+  const imageDownloads = [];
+  let editImage = async () => "https://cdn.example.invalid/edited.png";
   let tavily = async () => null;
   let ai = async (input) => {
     const context = JSON.parse(input.input);
@@ -193,6 +195,10 @@ export async function createDialogueHarness() {
       "drizzle-orm": orm,
       "../../../db/schema": schema,
       "../../dialogue-model": model,
+      "../../dialogue-starters": load("app/dialogue-starters.ts"),
+      "../_lib/dialogue-image-source": load("app/api/_lib/dialogue-image-source.ts", {
+        "node:crypto": { createHash }, "../../dialogue-image-source": load("app/dialogue-image-source.ts"), "../../dialogue-starters": load("app/dialogue-starters.ts"),
+      }),
       "../../plans": plans,
       "../../content-plans": contentPlans,
       "../_lib/ai-config": {
@@ -225,9 +231,11 @@ export async function createDialogueHarness() {
         imageConfigured: () => true,
         createImage: async (...args) => { imageCalls.push({ logo: false, args }); return "https://cdn.example.invalid/generated.png"; },
         createImageFromLogo: async (...args) => { imageCalls.push({ logo: true, args }); return "https://cdn.example.invalid/generated-with-logo.png"; },
+        createImageFromSource: async (...args) => { imageCalls.push({ source: true, logo: Boolean(args[3]), args }); return editImage(...args); },
       },
       "../_lib/storage": {
         downloadBrandLogo: async () => ({ bytes: new Uint8Array(), contentType: "image/png" }),
+        downloadPublicationImage: async (key) => { imageDownloads.push(key); return { bytes: new Uint8Array([1, 2, 3]), contentType: "image/png" }; },
       },
       "../_lib/dialogue-image-prompt": load("app/api/_lib/dialogue-image-prompt.ts"),
       "../_lib/carousel": carousel,
@@ -283,6 +291,8 @@ export async function createDialogueHarness() {
     owner,
     calls: () => calls,
     imageCalls,
+    imageDownloads,
+    setEditImage: (value) => { editImage = value; },
     carouselCalls,
     setCarouselImage: (value) => { carouselImage = value; },
     AiCallError,

@@ -36,8 +36,10 @@ import {
 import { researchAdaptationFacts } from "../_lib/tavily";
 import { readWebsiteContext } from "../_lib/website-context";
 import { resolveBaseUrl } from "../_lib/base-url";
-import { createImage, createImageFromLogo, imageConfigured, type ImageAspectRatio, type ImageOutputFormat } from "../_lib/image-generation";
-import { downloadBrandLogo } from "../_lib/storage";
+import { createImage, createImageFromLogo, createImageFromSource, imageConfigured, type ImageAspectRatio, type ImageOutputFormat } from "../_lib/image-generation";
+import { downloadBrandLogo, downloadPublicationImage } from "../_lib/storage";
+import { DialogueImageSourceError, resolveDialogueImageSource, type ResolvedDialogueImageSource } from "../_lib/dialogue-image-source";
+import { requestedLogoChange } from "../../dialogue-starters";
 import { buildDialogueImagePrompt } from "../_lib/dialogue-image-prompt";
 import { generateCarouselSlides, CAROUSEL_MIN_SLIDES, CAROUSEL_MAX_SLIDES } from "../_lib/carousel";
 
@@ -259,6 +261,7 @@ async function runReply(
     imageOutputFormat: ImageOutputFormat | null;
     useLogo: boolean;
     slideCount: number;
+    imageSource?: ResolvedDialogueImageSource;
   },
 ) {
   try {
@@ -269,7 +272,7 @@ async function runReply(
     const last = data.messages.at(-1)!.text;
     const useBrandContext = data.messages.at(-1)!.useBrandContext === true;
     let saveRequested = false;
-    let carouselMaterial: typeof generations.$inferInsert | undefined;
+    let pendingMaterial: typeof generations.$inferInsert | undefined;
     if (mode === "carousel") {
       const slides = await generateCarouselSlides(row.requestId, {
         text: last, slideCount: settings.slideCount, brandId: row.brandId || undefined,
@@ -288,7 +291,7 @@ async function runReply(
         savedId: crypto.randomUUID(), versions: [],
       };
       card.savedSnapshot = cardSnapshot(card);
-      carouselMaterial = {
+      pendingMaterial = {
         id: card.savedId!, ownerEmail: row.ownerEmail, brandId: row.brandId,
         format: "external", origin: "generator", topic: "Карусель",
         ...cardSnapshot(card), slidesJson: JSON.stringify(slides),
@@ -296,11 +299,11 @@ async function runReply(
       data.cards.push(card);
       data.messages.push({ id: crypto.randomUUID(), role: "assistant", text: `Карусель из ${slides.length} слайдов сохранена в материалы.`, cardIds: [card.id] });
     } else if (mode === "image") {
-      const previousRequests = !selected ? data.messages.slice(0, -1).filter((message) => message.role === "user" && message.mode === "image").slice(-3).map((message) => message.text).join("\n").slice(-6000) : "";
+      const previousRequests = !selected && !settings.imageSource ? data.messages.slice(0, -1).filter((message) => message.role === "user" && message.mode === "image").slice(-3).map((message) => message.text).join("\n").slice(-6000) : "";
       const imageRequest = previousRequests
         ? `Предыдущие задания на изображения (контекст для просьбы «ещё вариант»):\n${previousRequests}\n\nТекущий запрос имеет приоритет. Если задана новая тема, используй только её:\n${last}`
         : last;
-      let prompt = buildDialogueImagePrompt({ request: imageRequest, selected, brand, useBrandContext });
+      let prompt = buildDialogueImagePrompt({ request: imageRequest, selected, brand, useBrandContext, sourcePurpose: settings.imageSource?.purpose });
       // The shared image relay accepts 12,000 characters, including logo
       // guidance. Read long profiles in full before producing a bounded brief;
       // never let the image transport truncate the user's request at the end.
@@ -326,7 +329,10 @@ async function runReply(
         const profile = JSON.parse(brand.profileJson) as { logoKey?: unknown };
         if (typeof profile.logoKey === "string") logoKey = profile.logoKey;
       }
-      const imageUrl = logoKey
+      const imageUrl = settings.imageSource
+        ? await createImageFromSource(prompt, await downloadPublicationImage(settings.imageSource.key), settings.imageSource.purpose,
+          logoKey ? await downloadBrandLogo(logoKey) : undefined, row.ownerEmail, baseUrl, row.requestId, imageOptions)
+        : logoKey
         ? await createImageFromLogo(prompt, await downloadBrandLogo(logoKey), row.ownerEmail, baseUrl, row.requestId, imageOptions)
         : await createImage(prompt, row.ownerEmail, baseUrl, row.requestId, imageOptions);
       const materialId = crypto.randomUUID();
@@ -334,7 +340,7 @@ async function runReply(
       // Materials and the dialogue must agree: an image prompt is metadata,
       // not publication text. Preserve the entire body of an illustrated post.
       const body = selected?.body || "";
-      await db.insert(generations).values({
+      pendingMaterial = {
         id: materialId,
         ownerEmail: row.ownerEmail,
         brandId: row.brandId,
@@ -351,7 +357,7 @@ async function runReply(
         tone: "",
         targetLength: 0,
         imageUrl,
-      });
+      };
       let cardId = selectedId;
       if (selected) {
         data.cards = data.cards.map((card) =>
@@ -560,7 +566,7 @@ async function runReply(
     await db.transaction(async tx => {
       const [active] = await tx.select().from(dialogueThreads).where(and(owned(row.id, row.ownerEmail), eq(dialogueThreads.status, "processing"), eq(dialogueThreads.requestId, row.requestId))).for("update").limit(1);
       if (!active) return;
-      if (carouselMaterial) await tx.insert(generations).values(carouselMaterial);
+      if (pendingMaterial) await tx.insert(generations).values(pendingMaterial);
       if (saveRequested && selected) {
         await saveCard(tx, row.ownerEmail, active.brandId, selected);
         data.messages.at(-1)!.text = "Материал сохранён. Он доступен в разделе «Материалы».";
@@ -765,7 +771,7 @@ export async function POST(request: Request) {
       typeof settingsRaw.imageOutputFormat === "string" && (IMAGE_OUTPUT_FORMATS as readonly string[]).includes(settingsRaw.imageOutputFormat)
         ? settingsRaw.imageOutputFormat as ImageOutputFormat
         : null;
-    const useLogo = settingsRaw.useLogo === true;
+    const useLogo = (mode === "image" ? requestedLogoChange(clean(p.text, 8000)) : null) ?? (settingsRaw.useLogo === true);
     const slideCount = Number(settingsRaw.slideCount ?? 5);
     if (mode === "carousel" && (!Number.isInteger(slideCount) || slideCount < CAROUSEL_MIN_SLIDES || slideCount > CAROUSEL_MAX_SLIDES))
       throw new WorkspaceAccessError(`Выберите от ${CAROUSEL_MIN_SLIDES} до ${CAROUSEL_MAX_SLIDES} слайдов.`, 400);
@@ -784,6 +790,7 @@ export async function POST(request: Request) {
       imageOutputFormat,
       useLogo,
       slideCount,
+      imageSource: undefined as ResolvedDialogueImageSource | undefined,
     };
     if (action === "send") {
       if (!aiConfigured(mode === "carousel" ? "generate_carousel_slides" : "dialogue") && mode !== "image")
@@ -857,6 +864,15 @@ export async function POST(request: Request) {
         if (!title) throw new WorkspaceAccessError("Введите название диалога.", 400);
         renameTitle = title;
       } else if (action === "send") {
+        if (mode === "image") {
+          genSettings.imageSource = resolveDialogueImageSource(p.imageSource, data, selectedId ? "" : clean(p.text, 8000), user.email, resolveBaseUrl(request));
+          if (useLogo) {
+            const brand = await verifyBrand(tx, row.brandId, user.email);
+            let logoKey = "";
+            try { logoKey = brand ? JSON.parse(brand.profileJson).logoKey : ""; } catch { /* No usable logo. */ }
+            if (!logoKey) throw new WorkspaceAccessError("Добавьте логотип в «Мой бизнес» и повторите запрос. Без файла КЛИО не будет придумывать ваш знак.", 400);
+          }
+        }
         if (data.messages.length >= 160 || data.cards.length >= 100)
           throw new WorkspaceAccessError(
             "Этот диалог заполнен. Начните новый; материалы останутся доступны.",
@@ -925,6 +941,7 @@ export async function POST(request: Request) {
           text: clean(p.text, 8000),
           useBrandContext: p.useBrandContext === true,
           mode,
+          ...(genSettings.imageSource ? { imageSource: { url: genSettings.imageSource.url, purpose: genSettings.imageSource.purpose } } : {}),
         });
         [row] = await tx
           .update(dialogueThreads)
@@ -1210,6 +1227,7 @@ export async function POST(request: Request) {
       headers: { "Cache-Control": "private, no-store" },
     });
   } catch (error) {
+    if (error instanceof DialogueImageSourceError) return Response.json({ error: error.message }, { status: 400 });
     if (error instanceof RequestBodyError)
       return Response.json({ error: error.message }, { status: error.status });
     return workspaceErrorResponse(error);

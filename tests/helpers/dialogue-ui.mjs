@@ -46,6 +46,12 @@ export async function mountDialogue(t, { threads = [], selected = null, override
     return exports;
   }
   t.mock.method(globalThis, "fetch", async (url, init = {}) => {
+    if (url === "/api/uploads") {
+      calls.push({ upload: true });
+      const response = fetchOverride && await fetchOverride(url, init, null, records);
+      assert.ok(response, "Unexpected upload without a test handler");
+      return response;
+    }
     assert.ok(typeof url === "string" && url.startsWith("/api/dialogue"), `Unexpected external request: ${url}`);
     const body = init.body ? JSON.parse(init.body) : null;
     calls.push(body || url);

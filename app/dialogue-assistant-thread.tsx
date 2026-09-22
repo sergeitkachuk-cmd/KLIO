@@ -79,6 +79,7 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
           </button>
           <figcaption>{index + 1}. {slide.headline}</figcaption>
           <a href={imageDownloadUrl(slide.imageUrl)} download>Скачать слайд</a>
+          <button type="button" disabled={busy || running} onClick={() => onAction("klio.refine_image", card.id, index)}>Доработать слайд {index + 1}</button>
         </figure>)}
       </div> : card.imageUrl && <button className="klio-aui-image" type="button" aria-label="Увеличить изображение" onClick={() => onAction("klio.open_image", card.id)}>
         {/* User images retain their actual aspect ratio without a square crop. */}
@@ -98,6 +99,10 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
             const original = thread?.data.messages.find((item) => item.id === message.id);
             const cards = thread?.data.cards.filter((card) => cardOwners.get(card.id) === message.id) || [];
             return <MessagePrimitive.Root className={`klio-aui-message is-${message.role}`}>
+              {original?.imageSource && <div className="klio-aui-message-source">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={original.imageSource.url} alt={original.imageSource.purpose === "edit" ? "Исходник для доработки" : "Референс"} />
+              </div>}
               <div className="klio-aui-message-text"><MessagePrimitive.Parts components={{ Text: Markdown }} /></div>
               {message.role === "assistant" && !cards.length && <button type="button" className="klio-aui-icon klio-aui-copy" aria-label="Копировать ответ" onClick={() => {
                 if (!navigator.clipboard?.writeText) { setCopyNotice("Выделите ответ и скопируйте его вручную"); return; }
@@ -111,7 +116,10 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
           {running && <div className="klio-aui-status" role="status"><span className="klio-aui-pulse" />Готовим ответ…</div>}
           {thread?.error && !running && <div className="klio-aui-error" role="alert"><p>{thread.error}</p><button type="button" onClick={() => {
             const last = thread.data.messages.findLast((message) => message.role === "user");
-            if (last) { session.setDraft(last.text); runtime.thread.composer.setText(last.text); }
+            if (last) {
+              session.setDraft(last.text); runtime.thread.composer.setText(last.text);
+              if (last.imageSource) { onTool("image"); session.setImageSource({ uploadUrl: last.imageSource.url, purpose: last.imageSource.purpose }); }
+            }
           }}>Вернуть сообщение в поле ввода</button></div>}
         </div>
         <ThreadPrimitive.ViewportFooter className="klio-aui-footer">
