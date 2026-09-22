@@ -6,6 +6,7 @@ import { ChatKit, useChatKit } from "@openai/chatkit-react";
 import type { DialogueCard, DialogueThread } from "./dialogue-model";
 import { ModuleSelect } from "./module-select";
 import { DialogueRecentThreads } from "./dialogue-recent-threads";
+import { DialogueThreadDialog, type ThreadAction } from "./dialogue-thread-actions";
 import { DialogueSettingsPopover } from "./dialogue-settings-popover";
 import { DialogueResultsMenu } from "./dialogue-results-menu";
 import { ImageLightbox } from "./image-lightbox";
@@ -84,6 +85,7 @@ function ChatKitWorkspace(
   const [editTitle, setEditTitle] = useState("");
   const [editBody, setEditBody] = useState("");
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [threadAction, setThreadAction] = useState<{ action: ThreadAction; thread: DialogueThread } | null>(null);
   const storageKey = `klio-chatkit:${props.userKey}:${props.brandId || "personal"}`;
   // Let the element restore its own thread after loading. Its imperative
   // methods do not exist while the external script is still downloading.
@@ -112,6 +114,11 @@ function ChatKitWorkspace(
     const outgoing = new Request(target, { ...init, credentials: "same-origin" });
     if (outgoing.method !== "POST") return fetch(outgoing);
     const body = await outgoing.clone().json().catch(() => null);
+    if (body?.type === "threads.delete" || body?.type === "threads.update") {
+      const response = await fetch(outgoing);
+      if (response.ok) setHistoryRevision((value) => value + 1);
+      return response;
+    }
     if (body?.type !== "threads.create" && body?.type !== "threads.add_user_message") return fetch(outgoing);
     const messageInput = body.params?.input;
     const text = (messageInput?.content || []).filter((part: { type: string }) => part.type === "input_text")
@@ -214,7 +221,7 @@ function ChatKitWorkspace(
     header: { enabled: false },
     history: {
       enabled: true,
-      showDelete: false,
+      showDelete: true,
       showRename: true,
     },
     startScreen: {
@@ -425,6 +432,45 @@ function ChatKitWorkspace(
     }
   }
 
+  async function prepareThreadAction(action: ThreadAction, id: string) {
+    if (actionBusy) return;
+    setActionBusy(true); setError("");
+    setRailOpen(false);
+    try {
+      // Capture the version shown in the confirmation. A later change in
+      // another tab must not be silently overwritten or deleted.
+      const thread = await loadThread(id);
+      if (thread.status === "processing") throw new Error("Дождитесь ответа КЛИО, затем измените диалог.");
+      setThreadAction({ action, thread });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Не удалось открыть диалог.");
+    } finally { setActionBusy(false); }
+  }
+
+  async function submitThreadAction(title: string) {
+    if (!threadAction) return;
+    const { action, thread } = threadAction;
+    if (action === "rename") await mutate(thread, "rename", { title });
+    else await readJson<{ deletedId: string }>(await fetch("/api/dialogue", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete", id: thread.id, revision: thread.revision }),
+    }));
+    setThreadAction(null);
+    setHistoryRevision((value) => value + 1);
+    setNotice(action === "rename" ? "Название диалога сохранено" : "Диалог удалён. Сохранённые материалы остались доступны.");
+    try {
+      if (activeThreadRef.current === thread.id) {
+        if (action === "delete") {
+          activeThreadRef.current = null; setActiveThreadId(null);
+          try { localStorage.removeItem(storageKey); } catch { /* Storage can be disabled. */ }
+          await chatkit.setThreadId(null);
+        } else await chatkit.fetchUpdates();
+      }
+    } catch {
+      setError("Изменения сохранены. Обновите страницу, чтобы обновить ленту диалога.");
+    }
+  }
+
   async function saveEdit() {
     if (!editCard || !editThreadId) return;
     if (!editTitle.trim() || !editBody.trim()) {
@@ -500,6 +546,7 @@ function ChatKitWorkspace(
           revision={historyRevision}
           onOpen={(id) => void openRecentThread(id)}
           onHistory={() => void openRecentThread()}
+          onAction={(action, id) => void prepareThreadAction(action, id)}
         />
         <div className="klio-chatkit-brand">
           <span>Ваш бизнес</span>
@@ -667,6 +714,7 @@ function ChatKitWorkspace(
         </div>
       )}
       {previewImage && <ImageLightbox src={previewImage} alt="Изображение из диалога" onClose={() => setPreviewImage(null)} />}
+      {threadAction && props.visible && <DialogueThreadDialog key={`${threadAction.action}:${threadAction.thread.id}`} thread={threadAction.thread} action={threadAction.action} onClose={() => setThreadAction(null)} onSubmit={submitThreadAction} />}
     </div>
   );
 }

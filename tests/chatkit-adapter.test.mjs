@@ -45,6 +45,27 @@ async function request(route, body, suffix = "") {
   );
 }
 
+test("native ChatKit history supports rename and delete without access to other owners", async (t) => {
+  const h = await createDialogueHarness();
+  t.after(() => h.close());
+  const route = chatKitRoute(h.route);
+  const thread = await h.create();
+  const renamed = await request(route, { type: "threads.update", params: { thread_id: thread.id, title: "Название из истории" } });
+  assert.equal(renamed.status, 200);
+  assert.equal((await renamed.json()).title, "Название из истории");
+  h.setUser({ email: "stranger@example.com" });
+  assert.equal((await request(route, { type: "threads.delete", params: { thread_id: thread.id } })).status, 404);
+  h.setUser({ email: h.owner });
+  assert.equal((await request(route, { type: "threads.delete", params: {} })).status, 400);
+  const deleted = await request(route, { type: "threads.delete", params: { thread_id: thread.id } });
+  assert.equal(deleted.status, 200);
+  assert.deepEqual(await deleted.json(), {});
+  assert.match(deleted.headers.get("cache-control"), /no-store/);
+  assert.equal((await h.read(thread.id)).status, 404);
+  const listed = await request(route, { type: "threads.list", params: {} });
+  assert.equal((await listed.json()).data.length, 0);
+});
+
 test("ChatKit creates a real KLIO thread and returns assistant widgets", async (t) => {
   const harness = await createDialogueHarness();
   t.after(() => harness.close());

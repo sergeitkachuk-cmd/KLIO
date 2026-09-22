@@ -26,7 +26,7 @@ const generationSettings = loadComponent("app/dialogue-generation-settings.ts", 
 
 // Exercise the real React SDK with its element initially undefined, just as
 // it is while the external ChatKit script is still downloading or blocked.
-async function mountWorkspace(t, { savedThread = "thread-saved", storageBlocked = false, historyFetch = async () => Response.json({ threads: [] }), threadFetch = async (id) => Response.json({ thread: { id, data: { cards: [], messages: [] } } }) } = {}) {
+async function mountWorkspace(t, { savedThread = "thread-saved", storageBlocked = false, historyFetch = async () => Response.json({ threads: [] }), threadFetch = async (id) => Response.json({ thread: { id, data: { cards: [], messages: [] } } }), mutationFetch = async () => { throw new Error("Unexpected mutation"); } } = {}) {
   const window = new Window({ url: "https://preview.example.invalid" });
   const previous = new Map();
   for (const name of ["window", "document", "customElements", "localStorage"]) {
@@ -46,6 +46,7 @@ async function mountWorkspace(t, { savedThread = "thread-saved", storageBlocked 
   const calls = [];
   const historyCalls = [];
   t.mock.method(globalThis, "fetch", async (input, init) => {
+    if (input === "/api/dialogue" && init?.method === "POST") return mutationFetch(JSON.parse(init.body));
     if (typeof input === "string" && input.startsWith("/api/dialogue?")) {
       const id = new URL(input, "https://preview.example.invalid").searchParams.get("id");
       if (id) return threadFetch(id, init);
@@ -89,8 +90,14 @@ async function mountWorkspace(t, { savedThread = "thread-saved", storageBlocked 
     "@openai/chatkit-react": sdk,
     "next/script": { default: (options) => { scriptProps = options; return null; } },
     "./dialogue-chatkit.css": {},
+    "./dialogue-thread-actions": loadComponent("app/dialogue-thread-actions.tsx", {
+      react: React, "react/jsx-runtime": jsx, "react-dom": ReactDOM,
+    }),
     "./dialogue-recent-threads": loadComponent("app/dialogue-recent-threads.tsx", {
       react: React, "react/jsx-runtime": jsx,
+      "./dialogue-thread-actions": loadComponent("app/dialogue-thread-actions.tsx", {
+        react: React, "react/jsx-runtime": jsx, "react-dom": ReactDOM,
+      }),
     }),
     "./dialogue-settings-popover": loadComponent("app/dialogue-settings-popover.tsx", {
       react: React, "react/jsx-runtime": jsx, "react-dom": ReactDOM,
@@ -145,6 +152,7 @@ async function mountWorkspace(t, { savedThread = "thread-saved", storageBlocked 
       }
       async showHistory() { this.historyOpened = true; }
       async sendUserMessage(message) { this.sentMessage = message; }
+      async fetchUpdates() { this.updated = true; }
     }
     window.customElements.define("openai-chatkit", TestChatKit);
   }
@@ -545,6 +553,76 @@ test("a failed history refresh preserves existing chats and can be retried", asy
   await React.act(async () => h.container.querySelector(".klio-chatkit-recent-error button").click());
   assert.equal(h.container.querySelector(".klio-chatkit-recent-error"), null);
   assert.deepEqual(h.uncaught, []);
+});
+
+test("sidebar rename and confirmed deletion update history and clear only the deleted active selection", async (t) => {
+  let threads = [{ id: "thread-saved", title: "Первый диалог", status: "idle", revision: 7 }, { id: "other", title: "Второй диалог", status: "idle", revision: 2 }];
+  const changes = [];
+  const h = await mountWorkspace(t, {
+    historyFetch: async () => Response.json({ threads }),
+    threadFetch: async (id) => Response.json({ thread: { ...threads.find((thread) => thread.id === id), data: { cards: [], messages: [] } } }),
+    mutationFetch: async (body) => {
+      changes.push(body);
+      const thread = threads.find((thread) => thread.id === body.id);
+      assert.equal(body.revision, thread.revision);
+      if (body.action === "delete") { threads = threads.filter((thread) => thread.id !== body.id); return Response.json({ deletedId: body.id }); }
+      thread.title = body.title; thread.revision++;
+      return Response.json({ thread: { ...thread, data: { cards: [], messages: [] } } });
+    },
+  });
+  await h.define(); await h.ready();
+  assert.equal(h.element().options.history.showDelete, true);
+  const dialog = () => h.window.document.querySelector(".klio-chatkit-thread-dialog");
+  const open = async (index, action) => {
+    await React.act(async () => h.container.querySelectorAll(".klio-chatkit-thread-more")[index].click());
+    assert.equal(h.window.document.querySelector(".klio-chatkit-thread-menu").parentElement, h.window.document.body);
+    await React.act(async () => h.window.document.querySelector(`.klio-chatkit-thread-menu [data-action="${action}"]`).click());
+  };
+  await open(0, "rename");
+  const input = dialog().querySelector("input");
+  assert.equal(h.window.document.activeElement, input);
+  await React.act(async () => {
+    Object.getOwnPropertyDescriptor(h.window.HTMLInputElement.prototype, "value").set.call(input, "  Новый заголовок  ");
+    input.dispatchEvent(new h.window.Event("input", { bubbles: true }));
+  });
+  await React.act(async () => dialog().querySelector('button[type="submit"]').click());
+  assert.equal(dialog(), null);
+  assert.equal(changes[0].title, "Новый заголовок");
+  assert.ok(h.container.querySelector('[aria-current="page"]').textContent.includes("Новый заголовок"));
+  assert.equal(h.element().updated, true);
+  await open(1, "delete");
+  assert.match(dialog().textContent, /Материалах/);
+  assert.equal(h.window.document.activeElement.textContent, "Отмена");
+  await React.act(async () => dialog().querySelector('button[type="button"]').click());
+  assert.equal(changes.length, 1, "cancelling must not send a deletion");
+  await open(1, "delete");
+  await React.act(async () => dialog().querySelector('button[type="submit"]').click());
+  assert.equal(h.window.localStorage.getItem(h.storageKey), "thread-saved");
+  assert.equal(h.container.querySelectorAll(".klio-chatkit-recent li").length, 1);
+  await open(0, "delete");
+  await React.act(async () => dialog().querySelector('button[type="submit"]').click());
+  assert.equal(h.window.localStorage.getItem(h.storageKey), null);
+  assert.equal(h.calls.at(-1), null);
+  assert.equal(h.container.querySelector('[aria-current="page"]'), null);
+  assert.equal(h.container.querySelectorAll(".klio-chatkit-recent li").length, 0);
+  assert.deepEqual(h.uncaught, []);
+});
+
+test("failed deletion keeps the confirmation and selected thread intact", async (t) => {
+  const thread = { id: "thread-saved", title: "Важный диалог", status: "idle", revision: 5, data: { cards: [], messages: [] } };
+  const h = await mountWorkspace(t, {
+    historyFetch: async () => Response.json({ threads: [thread] }), threadFetch: async () => Response.json({ thread }),
+    mutationFetch: async () => Response.json({ error: "Диалог изменён в другой вкладке" }, { status: 409 }),
+  });
+  await h.define(); await h.ready();
+  await React.act(async () => h.container.querySelector(".klio-chatkit-thread-more").click());
+  await React.act(async () => h.window.document.querySelector('.klio-chatkit-thread-menu [data-action="delete"]').click());
+  await React.act(async () => h.window.document.querySelector('.klio-chatkit-thread-dialog button[type="submit"]').click());
+  assert.match(h.window.document.querySelector('.klio-chatkit-thread-dialog [role="alert"]').textContent, /другой вкладке/);
+  assert.equal(h.window.localStorage.getItem(h.storageKey), "thread-saved");
+  assert.equal(h.container.querySelectorAll(".klio-chatkit-recent li").length, 1);
+  await React.act(async () => h.window.document.dispatchEvent(new h.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+  assert.equal(h.window.document.querySelector(".klio-chatkit-thread-dialog"), null);
 });
 
 test("late history from the previous brand cannot replace the selected brand's chats", async (t) => {

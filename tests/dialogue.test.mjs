@@ -4,6 +4,39 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { createDialogueHarness, model } from "./helpers/dialogue-harness.mjs";
 
+test("rename and delete protect ownership, revisions and shared materials", async (t) => {
+  const h = await createDialogueHarness();
+  t.after(() => h.close());
+  let thread = await h.create();
+  const other = await h.create();
+  const initialRevision = thread.revision;
+  const empty = await h.request({ action: "rename", id: thread.id, revision: thread.revision, title: "   " });
+  assert.equal(empty.status, 400);
+  thread = (await h.post({ action: "rename", id: thread.id, revision: thread.revision, title: "  Рабочий диалог  " })).thread;
+  assert.equal(thread.title, "Рабочий диалог");
+  assert.equal(thread.revision, initialRevision + 1);
+  assert.equal((await h.request({ action: "delete", id: thread.id, revision: initialRevision })).status, 409);
+  h.setUser({ email: "another@example.com" });
+  for (const action of ["rename", "delete"]) assert.equal((await h.request({ action, id: thread.id, revision: thread.revision, title: "Чужой" })).status, 404);
+  h.setUser({ email: h.owner });
+  assert.equal((await h.request({ action: "delete", id: thread.id, revision: thread.revision }, { origin: "https://evil.invalid" })).status, 403);
+  await h.db.update(h.schema.dialogueThreads).set({ status: "processing" }).where(eq(h.schema.dialogueThreads.id, thread.id));
+  assert.equal((await h.request({ action: "delete", id: thread.id, revision: thread.revision })).status, 409);
+  await h.db.update(h.schema.dialogueThreads).set({ status: "idle" }).where(eq(h.schema.dialogueThreads.id, thread.id));
+  await h.post({ action: "send", id: thread.id, revision: thread.revision, requestId: randomUUID(), text: "Нарисуй лес", mode: "image" });
+  thread = await h.settled(thread.id);
+  const materials = await h.db.select().from(h.schema.generations);
+  assert.equal(materials.length, 1);
+  assert.ok(materials[0].imageUrl);
+  const account = await h.account();
+  assert.equal((await h.post({ action: "delete", id: thread.id, revision: thread.revision })).deletedId, thread.id);
+  assert.equal((await h.read(thread.id)).status, 404);
+  assert.equal((await h.read(other.id)).status, 200);
+  assert.deepEqual(await h.db.select().from(h.schema.generations), materials);
+  assert.deepEqual(await h.account(), account);
+  assert.equal((await h.request({ action: "delete", id: thread.id, revision: thread.revision })).status, 404);
+});
+
 test("brand context is off by default even when a business is selected", async (t) => {
   const h = await createDialogueHarness();
   t.after(() => h.close());

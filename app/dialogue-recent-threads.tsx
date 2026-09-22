@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import type { DialogueThread } from "./dialogue-model";
+import { DialogueThreadMenu, type ThreadAction } from "./dialogue-thread-actions";
 
 type RecentThread = Pick<DialogueThread, "id" | "title" | "status">;
 
-export function DialogueRecentThreads({ brandId, activeThreadId, ready, visible, revision, onOpen, onHistory }: {
+export function DialogueRecentThreads({ brandId, activeThreadId, ready, visible, revision, onOpen, onHistory, onAction }: {
   brandId: string | null;
   activeThreadId: string | null;
   ready: boolean;
@@ -13,6 +14,7 @@ export function DialogueRecentThreads({ brandId, activeThreadId, ready, visible,
   revision: number;
   onOpen: (id: string) => void;
   onHistory: () => void;
+  onAction: (action: ThreadAction, id: string) => void;
 }) {
   const [threads, setThreads] = useState<RecentThread[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,10 +53,11 @@ export function DialogueRecentThreads({ brandId, activeThreadId, ready, visible,
     <h2>Диалоги</h2>
     {threads.length > 0 && <ul>
       {threads.map((thread) => <li key={thread.id}>
-        <button type="button" title={thread.title || "Новый диалог"} aria-current={thread.id === activeThreadId ? "page" : undefined} disabled={!ready} onClick={() => onOpen(thread.id)}>
+        <button className="klio-chatkit-thread-open" type="button" title={thread.title || "Новый диалог"} aria-current={thread.id === activeThreadId ? "page" : undefined} disabled={!ready} onClick={() => onOpen(thread.id)}>
           <span>{thread.title || "Новый диалог"}</span>
           {thread.status === "processing" && <span className="klio-chatkit-recent-busy" aria-label="Готовится ответ">···</span>}
         </button>
+        <DialogueThreadMenu title={thread.title || "Новый диалог"} disabled={!ready} onAction={(action) => onAction(action, thread.id)} />
       </li>)}
     </ul>}
     {!threads.length && !failed && <p>{loading ? "Загружаем диалоги…" : "Ваши диалоги появятся здесь"}</p>}

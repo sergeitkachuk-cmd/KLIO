@@ -788,6 +788,12 @@ export async function POST(request: Request) {
           409,
         );
       await verifyBrand(tx, row.brandId, user.email);
+      if (action === "delete") {
+        // Only the conversation is removed. Shared Materials, publications,
+        // stored images and quota accounting have an independent lifetime.
+        await tx.delete(dialogueThreads).where(owned(id, user.email));
+        return { deletedId: id };
+      }
       const data = dataOf(row);
       await refreshSavedCards(tx, data, user.email);
       let card = data.cards.find((c) => c.id === selectedId);

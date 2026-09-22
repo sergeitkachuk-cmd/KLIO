@@ -566,6 +566,14 @@ async function nonStreamingResponse(
       { headers: { "cache-control": "private, no-store" } },
     );
   }
+  if (request.type === "threads.delete") {
+    const id = clean(params.thread_id, 100);
+    if (!id) throw new AdapterError("Диалог не выбран.", 400);
+    const loaded = await getDialogue(source, { id });
+    if (!loaded.thread) throw new AdapterError("Диалог не найден.", 404);
+    await postDialogue(source, { action: "delete", id, revision: loaded.thread.revision });
+    return Response.json({}, { headers: { "cache-control": "private, no-store" } });
+  }
   if (request.type === "threads.update") {
     const id = clean(params.thread_id, 100);
     const loaded = await getDialogue(source, { id });
