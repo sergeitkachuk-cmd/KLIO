@@ -54,6 +54,9 @@ test("image from text can be cancelled or confirmed with its own orientation, lo
   await ui.click(ui.findButton("Портретная", dialog));
   await ui.click(ui.findButton("WEBP", dialog));
   await ui.click(dialog.querySelectorAll('input[type="checkbox"]')[1]);
+  await ui.click(ui.findButton("Наложить поверх", dialog));
+  await ui.click(ui.findButton("Слева вверху", dialog));
+  await ui.click(ui.findButton("Заголовок статьи", dialog));
   await ui.click(ui.findButton("Создать изображение", dialog));
   const sent = sends(ui)[0];
   assert.equal(sent.mode, "image");
@@ -62,10 +65,28 @@ test("image from text can be cancelled or confirmed with its own orientation, lo
   assert.equal(sent.settings.imageAspectRatio, "9:16");
   assert.equal(sent.settings.imageOutputFormat, "webp");
   assert.equal(sent.settings.useLogo, true);
+  assert.equal(sent.settings.logoPlacement, "overlay");
+  assert.equal(sent.settings.logoPosition, "top-left");
+  assert.equal(sent.settings.imageTextMode, "title");
   assert.equal(sent.useBrandContext, false);
   assert.equal(sent.settings.length, undefined);
   assert.equal(sends(ui).length, 1);
   assert.deepEqual(ui.errors, []);
+});
+
+test("custom image text is required before sending and survives the confirmation flow", async t => {
+  const ui = await mountDialogue(t, { threads: [thread()], selected: "saved", overrides: props });
+  await ui.click(ui.findButton("Создать картинку"));
+  const dialog = ui.document.querySelector('[role="dialog"]');
+  assert.equal(ui.findButton("Без текста", dialog).getAttribute("aria-pressed"), "true");
+  await ui.click(ui.findButton("Свой текст", dialog));
+  await ui.click(ui.findButton("Создать изображение", dialog));
+  assert.equal(sends(ui).length, 0);
+  assert.match(dialog.querySelector('[role="alert"]').textContent, /Введите текст/);
+  await ui.type("Закулисье съёмки", dialog.querySelector("textarea"));
+  await ui.click(ui.findButton("Создать изображение", dialog));
+  assert.equal(sends(ui)[0].settings.imageTextMode, "custom");
+  assert.equal(sends(ui)[0].settings.imageText, "Закулисье съёмки");
 });
 
 test("failed profile save keeps confirmation choices and does not spend a generation", async t => {

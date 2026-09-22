@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { brands, generations } from "../../../db/schema";
 import { imageConfigured, createImage, createImageFromLogo, parseImageGenerationOptions } from "../_lib/image-generation";
 import { downloadBrandLogo, StorageError } from "../_lib/storage";
+import { dialogueImageTextInstruction } from "../_lib/dialogue-image-prompt";
 import { readBoundedJson, RequestBodyError } from "../_lib/request-body";
 import { hasUnsafeRequestOrigin } from "../_lib/request-origin";
 import { isRateLimited } from "../_lib/rate-limit";
@@ -17,16 +18,27 @@ export async function POST(request: Request) {
     const user = await workspaceIdentity();
     const input = await readBoundedJson(request, 8192);
     const prompt = typeof input.prompt === "string" ? input.prompt.trim().slice(0, 1800) : "";
-    const sourceTitle = typeof input.sourceTitle === "string" ? input.sourceTitle.trim().slice(0, 200) : "";
+    let sourceTitle = typeof input.sourceTitle === "string" ? input.sourceTitle.trim().slice(0, 500) : "";
     const brandId = typeof input.brandId === "string" ? input.brandId.trim() : "";
     const requestId = typeof input.requestId === "string" ? input.requestId.trim() : "";
     const imageOptions = parseImageGenerationOptions(input);
     const useLogo = input.useLogo === true;
+    const imageTextMode = input.imageTextMode === "none" || input.imageTextMode === "title" || input.imageTextMode === "custom" ? input.imageTextMode : "auto";
+    const imageText = typeof input.imageText === "string" ? input.imageText.trim() : "";
+    if (imageTextMode === "custom" && (!imageText || imageText.length > 200)) return Response.json({ error: "Введите текст для изображения: от 1 до 200 символов." }, { status: 400 });
     if (!prompt || prompt.length < 8) return Response.json({ error: "Опишите изображение подробнее." }, { status: 400 });
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) return Response.json({ error: "Некорректный запрос." }, { status: 400 });
     const db = await getWorkspaceDb();
     const [existing] = await db.select().from(generations).where(and(eq(generations.id, requestId), eq(generations.ownerEmail, user.email))).limit(1);
     if (existing) return Response.json({ generation: existing });
+    if (typeof input.sourceGenerationId === "string" && input.sourceGenerationId) {
+      const [source] = await db.select({ title: generations.title }).from(generations).where(and(eq(generations.id, input.sourceGenerationId), eq(generations.ownerEmail, user.email))).limit(1);
+      if (!source) throw new WorkspaceAccessError("Исходный материал не найден.", 404);
+      // The review can contain a manually edited title not yet saved to Materials.
+      // Verify ownership, but keep the exact title the person saw and confirmed.
+      sourceTitle = sourceTitle || source.title.slice(0, 500);
+    }
+    if (imageTextMode === "title" && !sourceTitle) return Response.json({ error: "Выберите материал с заголовком или режим «Свой текст»." }, { status: 400 });
     if (!imageConfigured()) return Response.json({ error: "Генерация изображений пока недоступна." }, { status: 503 });
     if (isRateLimited(`images:${user.email}`, 4, 60_000)) return Response.json({ error: "Слишком много запросов. Подождите минуту." }, { status: 429 });
     await assertGenerationQuotaAvailable(brandId || undefined);
@@ -50,9 +62,11 @@ export async function POST(request: Request) {
       }
     }
     const baseUrl = new URL(resolveBaseUrl(request)).origin;
+    if (useLogo && !logoKey) throw new WorkspaceAccessError("Добавьте логотип в профиль бренда или отключите его использование.", 400);
+    const finalPrompt = `${prompt}${brandContext}\n\n${dialogueImageTextInstruction(imageTextMode, imageTextMode === "title" ? sourceTitle : imageText, false, useLogo)}`;
     const imageUrl = useLogo && logoKey
-      ? await createImageFromLogo(`${prompt}${brandContext}`, await downloadBrandLogo(logoKey), user.email, baseUrl, requestId, imageOptions)
-      : await createImage(`${prompt}${brandContext}`, user.email, baseUrl, requestId, imageOptions);
+      ? await createImageFromLogo(finalPrompt, await downloadBrandLogo(logoKey), user.email, baseUrl, requestId, imageOptions)
+      : await createImage(finalPrompt, user.email, baseUrl, requestId, imageOptions);
     // When this call is a cover image for an existing article/material
     // (textora-experience.tsx's buildArticleImagePrompt), prompt is that
     // whole title+subtitle+body concatenated - fine as an image prompt,

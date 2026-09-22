@@ -118,6 +118,10 @@ html[data-theme="light"] .klio-card-generation-tone select { color-scheme: light
 .klio-card-generation .klio-card-generation-error { margin: 0; color: #ffafb7; }
 html[data-theme="light"] .klio-card-generation .klio-card-generation-error { color: #b42332; }
 .klio-card-generation footer { margin-top: 0; }
+.klio-card-generation-tone textarea { width: 100%; min-height: 72px; resize: vertical; padding: 10px 12px; border: 1px solid var(--ck-line); border-radius: 10px; background: var(--ck-panel); color: var(--ck-text); font: inherit; font-size: 16px; }
+.klio-card-generation > small { color: var(--ck-muted); overflow-wrap: anywhere; }
+.klio-image-text-setting { display: grid; gap: 6px; font-size: 13px; }
+.klio-image-text-setting textarea { min-width: 0; width: 100%; min-height: 64px; padding: 8px 10px; border: 1px solid var(--ck-line); border-radius: 10px; background: var(--ck-panel); color: var(--ck-text); font: inherit; font-size: 16px; resize: vertical; }
 .klio-card-generation :is(button,select,input):focus-visible { outline: 2px solid var(--ck-muted); outline-offset: 3px; }
 .klio-aui-message-source img { width:88px; max-height:88px; object-fit:contain; border-radius:12px; }
 .klio-aui-carousel figure > button:not(.klio-aui-image) { display:block; margin-top:6px; border:1px solid var(--ck-line); border-radius:16px; padding:6px 10px; background:var(--ck-panel); color:var(--ck-text); font-size:12px; cursor:pointer; }

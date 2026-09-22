@@ -21,7 +21,7 @@ import { DialogueCardGenerationDialog } from "./dialogue-card-generation-dialog"
 import { cardGenerationDefaults, cardGenerationRequest, type CardGenerationChoices, type CardGenerationKind } from "./dialogue-card-generation";
 import {
   DEFAULT_GENERATION_SETTINGS, FORMAT_OPTIONS, TONE_OPTIONS, LENGTH_OPTIONS,
-  TOPIC_COUNT_OPTIONS, IMAGE_ASPECT_OPTIONS, IMAGE_FORMAT_OPTIONS, IMAGE_KIND_OPTIONS, CAROUSEL_COUNT_OPTIONS, settingsForTool,
+  TOPIC_COUNT_OPTIONS, IMAGE_ASPECT_OPTIONS, IMAGE_FORMAT_OPTIONS, IMAGE_KIND_OPTIONS, CAROUSEL_COUNT_OPTIONS, IMAGE_TEXT_OPTIONS, LOGO_PLACEMENT_OPTIONS, LOGO_POSITION_OPTIONS, settingsForTool,
   type GenerationSettings,
 } from "./dialogue-generation-settings";
 import type { DialogueWorkspaceProps } from "./dialogue-workspace-types";
@@ -177,6 +177,10 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
     if (logoChange !== null) changeSetting("useLogo", logoChange);
     const context = Boolean(props.brandId) && useBrandContext;
     const prompt = text.trim() || (tool === "topics" ? TOPICS_STARTER : "");
+    if (tool === "image" && generationSettingsRef.current.imageTextMode === "custom" && !generationSettingsRef.current.imageText?.trim()) {
+      setError("Введите текст для изображения в настройках или выберите «Без текста».");
+      setSettingsExpanded(true); return false;
+    }
     const sent = await session.send(prompt, {
       mode: tool === "carousel" ? "carousel" : tool.startsWith("image-card:") || tool === "image" ? "image" : tool === "topics" ? "topics" : ["text", "topic-post", "topic-article"].includes(tool) ? "text" : "chat",
       ...(tool.startsWith("image-card:") ? { cardId: tool.slice("image-card:".length) } : {}),
@@ -339,8 +343,10 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
       const sent = await session.send(request.text, request.options, request.options.useBrandContext ? beforeProfile : undefined);
       if (!sent) throw new Error(session.getSnapshot().error || "Не удалось начать генерацию. Попробуйте ещё раз.");
       if (!mounted.current) return true;
-      generationSettingsRef.current = choices.settings;
-      setGenerationSettings(choices.settings);
+      // A material title is scoped to this card, never silently reused for a new scene.
+      const nextSettings = choices.settings.imageTextMode === "title" ? { ...choices.settings, imageTextMode: "auto" } : choices.settings;
+      generationSettingsRef.current = nextSettings;
+      setGenerationSettings(nextSettings);
       setUseBrandContext(request.options.useBrandContext);
       setSelectedTool(cardGeneration.kind);
       setCardGeneration(null);
@@ -593,6 +599,14 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
                 <ModuleSelect variant="chatkit" label="Ориентация" value={generationSettings.imageAspectRatio} options={IMAGE_ASPECT_OPTIONS} onChange={(value) => changeSetting("imageAspectRatio", value)} />
                 <ModuleSelect variant="chatkit" label="Формат файла" value={generationSettings.imageOutputFormat} options={IMAGE_FORMAT_OPTIONS} onChange={(value) => changeSetting("imageOutputFormat", value)} />
                 {props.hasLogo ? <label className="klio-chatkit-settings-logo"><input type="checkbox" checked={generationSettings.useLogo} onChange={(event) => changeSetting("useLogo", event.target.checked)} />Логотип на изображении</label> : <button type="button" className="klio-chatkit-settings-logo" onClick={() => props.onNavigate("brand")}>＋ Добавить логотип</button>}
+                {generationSettings.imageKind !== "carousel" && <>
+                  <ModuleSelect variant="chatkit" label="Текст на изображении" value={generationSettings.imageTextMode || "auto"} options={IMAGE_TEXT_OPTIONS.filter(option => option.value !== "title")} onChange={value => changeSetting("imageTextMode", value)} />
+                  {generationSettings.imageTextMode === "custom" && <label className="klio-image-text-setting">Текст для изображения<textarea rows={2} maxLength={200} value={generationSettings.imageText || ""} onChange={event => changeSetting("imageText", event.target.value)} /></label>}
+                  {props.hasLogo && generationSettings.useLogo && <>
+                    <ModuleSelect variant="chatkit" label="Как разместить логотип" value={generationSettings.logoPlacement || "scene"} options={LOGO_PLACEMENT_OPTIONS} onChange={value => changeSetting("logoPlacement", value)} />
+                    {generationSettings.logoPlacement === "overlay" && <ModuleSelect variant="chatkit" label="Положение логотипа" value={generationSettings.logoPosition || "bottom-right"} options={LOGO_POSITION_OPTIONS} onChange={value => changeSetting("logoPosition", value)} />}
+                  </>}
+                </>}
               </>}
           </DialogueSettingsPopover>
         )}

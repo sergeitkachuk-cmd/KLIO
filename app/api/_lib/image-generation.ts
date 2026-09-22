@@ -5,6 +5,7 @@ import { ImageRelayUpgradeRequiredError } from "./image-generation-errors";
 export type ImageAspectRatio = "1:1" | "4:3" | "4:5" | "16:9" | "9:16";
 export type ImageOutputFormat = "png" | "jpeg" | "webp";
 export type ImageQuality = "low" | "medium" | "high";
+export type LogoPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 export type ImageInput = { bytes: Uint8Array<ArrayBuffer>; contentType: string };
 export type ImageGenerationOptions = {
   size?: string;
@@ -12,6 +13,8 @@ export type ImageGenerationOptions = {
   quality?: ImageQuality;
   outputFormat?: ImageOutputFormat;
   background?: "auto" | "transparent" | "opaque";
+  logoPlacement?: "scene" | "overlay";
+  logoPosition?: LogoPosition;
 };
 
 // gpt-image-1 only accepts three literal size values - "1024x1024",
@@ -50,6 +53,8 @@ export function parseImageGenerationOptions(input: Record<string, unknown>): Ima
     quality,
     outputFormat,
     background,
+    logoPlacement: input.logoPlacement === "overlay" ? "overlay" : "scene",
+    logoPosition: input.logoPosition === "top-left" || input.logoPosition === "top-right" || input.logoPosition === "bottom-left" ? input.logoPosition : "bottom-right",
   };
 }
 
@@ -95,11 +100,19 @@ export function resolveImageGenerationOptions(options: ImageGenerationOptions = 
 // explicit, unambiguous "reproduce this exact logo, don't invent one"
 // instruction first, before the additive framing, is meant to keep both
 // requirements mandatory instead of trading one off against the other.
-const LOGO_REFERENCE_INSTRUCTION = "Дополнительно на изображении должен точно повторяться логотип бренда с приложенного референса: те же цвета, форма и текст, максимально близко к оригиналу - не сочиняй новый логотип и не изменяй его. Впиши его в сцену органично, как её часть (например, на вывеске или упаковке), а не отдельным слоем поверх готовой картинки. Это дополнение к сцене, заголовку и тексту из задания выше, а не замена им - сохрани их полностью и не вводи ради логотипа то, чего не просили (ноутбук, телефон, экран устройства).";
+const LOGO_REFERENCE_INSTRUCTION = "Дополнительно на изображении должен точно повторяться логотип бренда с приложенного референса: те же цвета, форма и текст, максимально близко к оригиналу - не сочиняй новый логотип и не изменяй его. Впиши его в сцену органично, как её часть (например, на вывеске или упаковке), а не отдельным слоем поверх готовой картинки. Это дополнение к сцене и только тем надписям, которые разрешены выбранными параметрами, а не замена им. Не переноси текст статьи на картинку, если выбран режим без текста. Надпись внутри самого логотипа сохрани. Не вводи ради логотипа то, чего не просили (ноутбук, телефон, экран устройства).";
 
 export const imageConfigured = () =>
   Boolean(storageConfigured() && (process.env.OPENAI_API_KEY?.trim() ||
     (process.env.KLIO_IMAGE_SERVICE_URL?.trim() && process.env.KLIO_IMAGE_SERVICE_TOKEN?.trim())));
+
+const LOGO_OVERLAY_INSTRUCTION = "Логотип будет наложен приложением из настоящего файла после генерации. Не рисуй дополнительный логотип или его имитацию сам, даже если это упоминается в запросе. Это не отменяет явно выбранную надпись или заголовок: их изобрази по параметрам выше. Создай полноценную сцену по всей площади; не освобождай угол, не удаляй фон и не добавляй прозрачность, рамку или подложку под знак.";
+
+async function finishLogoOverlay(image: { bytes: Uint8Array<ArrayBuffer>; contentType: string }, logo: ImageInput, options: ImageGenerationOptions) {
+  const { overlayImageLogo } = await import("./image-logo-overlay");
+  const format = options.outputFormat || (image.contentType === "image/jpeg" ? "jpeg" : image.contentType === "image/webp" ? "webp" : "png");
+  return overlayImageLogo(image.bytes, logo, options.logoPosition, format);
+}
 
 // The actual provider call, split out of createImage below so
 // createImageWithLogo can reuse it for the background image instead of
@@ -266,15 +279,8 @@ export async function createImage(prompt: string, email: string, baseUrl: string
   );
 }
 
-// Agreed design (after two rejected attempts - a maskless edit that let
-// the model redraw/ignore the logo, then a sharp-composited corner
-// overlay that the site owner didn't want at any fidelity): pass the real
-// logo file to OpenAI's edit endpoint as a reference, with the prompt
-// explicitly asking for a close likeness woven into the scene, not a
-// preserved fixed region and not a watermark. This trades exact-pixel
-// fidelity for a natural-looking result - the model still redraws the
-// logo, just deliberately steered to match it closely instead of treating
-// it as a loose stylistic cue.
+// The explicit placement choice separates a natural scene reference (AI may
+// redraw its details) from compositing the original file after generation.
 export async function createImageFromLogo(
   prompt: string,
   logo: { bytes: Uint8Array<ArrayBuffer>; contentType: string },
@@ -284,8 +290,10 @@ export async function createImageFromLogo(
   options: ImageGenerationOptions = {},
   model?: string,
 ) {
-  const guidedPrompt = `${prompt}\n\n${LOGO_REFERENCE_INSTRUCTION}`;
-  const { bytes, contentType } = await generateImageBytes(guidedPrompt, requestId, options, logo, model);
+  const overlay = options.logoPlacement === "overlay";
+  const guidedPrompt = `${prompt}\n\n${overlay ? LOGO_OVERLAY_INSTRUCTION : LOGO_REFERENCE_INSTRUCTION}`;
+  const generated = await generateImageBytes(guidedPrompt, requestId, overlay ? { ...options, background: options.background ?? "opaque" } : options, overlay ? undefined : logo, model);
+  const { bytes, contentType } = overlay ? await finishLogoOverlay(generated, logo, options) : generated;
   const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
   return uploadPublicationImage(
     new File([bytes], fileName, { type: contentType }),
@@ -309,7 +317,8 @@ export async function createImageFromSource(
   const instruction = purpose === "edit"
     ? "Первое изображение — исходник для редактирования. Измени именно его по запросу пользователя. Сохрани композицию, людей, предметы, ракурс, освещение и все детали, которых правка не касается. Сохрани изображение по всей площади, включая края и углы. Не стирай участки исходника и не освобождай место под логотип. Не создавай новую сцену по старому описанию."
     : "Первое изображение — визуальный референс. Учитывай его реальные детали, композицию и стиль при выполнении запроса пользователя.";
-  const logoInstruction = logo
+  const overlay = Boolean(logo) && options.logoPlacement === "overlay";
+  const logoInstruction = overlay ? LOGO_OVERLAY_INSTRUCTION : logo
     ? "Второе изображение — настоящий логотип бренда. Используй именно этот знак и его надпись; не выдумывай другой бренд. Размести его на первом изображении в соответствии с запросом. Прозрачность вокруг знака относится только к файлу логотипа: не переноси её на фотографию и не удаляй под ним или вокруг него исходное изображение."
     : "Логотип бренда не приложен. Не выдумывай фирменные знаки.";
   // With an RGBA logo, automatic background selection can make the entire
@@ -321,9 +330,10 @@ export async function createImageFromSource(
   const backgroundInstruction = editOptions.background === "opaque"
     ? "Результат — цельное непрозрачное изображение. Не добавляй прозрачные участки, полупрозрачные края, виньетку, рамку или подложку под логотип."
     : "";
-  const { bytes, contentType } = await generateImageBytes(`${instruction}\n${logoInstruction}\n${backgroundInstruction}\n\n${prompt}`, requestId,
+  const generated = await generateImageBytes(`${instruction}\n${backgroundInstruction}\n\n${prompt}\n\n${logoInstruction}${logo && !overlay && options.logoPlacement === "scene" ? `\n${LOGO_REFERENCE_INSTRUCTION}` : ""}`, requestId,
     editOptions,
-    logo ? [source, logo] : source);
+    logo && !overlay ? [source, logo] : source);
+  const { bytes, contentType } = overlay && logo ? await finishLogoOverlay(generated, logo, options) : generated;
   return uploadPublicationImage(new File([bytes], "klio-edit", { type: contentType }), email, baseUrl);
 }
 

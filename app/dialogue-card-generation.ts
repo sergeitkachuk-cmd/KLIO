@@ -13,7 +13,7 @@ export const CARD_IMAGE_STYLES = [
 // Card buttons propose defaults; the confirmed choices are the request contract.
 // Do not run them through topic-post/article shortcuts that force a hidden size.
 export function cardGenerationDefaults(action: string, current: GenerationSettings): GenerationSettings {
-  if (action === "klio.image") return { ...current, imageKind: "single" };
+  if (action === "klio.image") return { ...current, imageKind: "single", imageTextMode: !current.imageTextMode || current.imageTextMode === "auto" ? "none" : current.imageTextMode };
   return {
     ...current,
     format: action === "klio.topic_article" ? "seo" : "social",
@@ -34,7 +34,7 @@ export function cardGenerationRequest(
     ? `\nИспользуй полный профиль выбранного бренда «${brand.name.slice(0, 250)}»: его сферу, аудиторию, факты и голос. Не выдумывай отсутствующие сведения.`
     : "\nПрофиль бренда не использовать.";
   const text = kind === "image"
-    ? `Создай изображение для этого материала: ${source}${brandInstruction}${imageStyle ? `\nСтиль изображения: ${imageStyle}` : ""}\nИсходный текст сохрани без изменений.`
+    ? `Создай изображение для этого материала: ${source}${brandInstruction}${imageStyle ? `\nСтиль изображения: ${imageStyle}` : ""}\nИсходную карточку материала сохрани без изменений. Надписи на изображении определяются выбранными параметрами.`
     : `Создай отдельный готовый материал. Формат: ${FORMAT_OPTIONS.find(option => option.value === choices.settings.format)?.label || "по смыслу темы"}. Тема: ${source}${brandInstruction}\nИсходную карточку темы сохрани без изменений. Создай новую карточку с полным текстом.`;
   return {
     text,

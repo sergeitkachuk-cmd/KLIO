@@ -9,6 +9,7 @@ import { ProfileField } from "./profile-field";
 import { createWorkspaceSaveQueue } from "./workspace-save-queue";
 import { HelpTip } from "./help-tip";
 import { ModuleSelect } from "./module-select";
+import { IMAGE_TEXT_OPTIONS, LOGO_PLACEMENT_OPTIONS, LOGO_POSITION_OPTIONS } from "./dialogue-generation-settings";
 import { PublicationImagePicker } from "./publication-image-picker";
 import { ImageLightbox } from "./image-lightbox";
 import { FOUNDATION_FIELDS, VOICE_FIELDS, mergeProfileFill, missingVoiceFoundation } from "./brand-profile-fill";
@@ -2318,6 +2319,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [imageSourceTitle, setImageSourceTitle] = useState("");
   const [imageAspectRatio, setImageAspectRatio] = useState<"1:1" | "4:3" | "4:5" | "16:9" | "9:16">("4:3");
   const [imageOutputFormat, setImageOutputFormat] = useState<"png" | "jpeg" | "webp">("png");
+  const [imageTextMode, setImageTextMode] = useState("auto");
+  const [imageText, setImageText] = useState("");
+  const [logoPlacement, setLogoPlacement] = useState("scene");
+  const [logoPosition, setLogoPosition] = useState("bottom-right");
   const [useLogoInImage, setUseLogoInImage] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
   const [imageError, setImageError] = useState("");
@@ -5268,6 +5273,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   function prepareImageGeneration(carouselSource: { generationId: string } | { text: string }, promptText: string, sourceTitle: string) {
     setImagePrompt(promptText);
     setImageSourceTitle(sourceTitle);
+    setImageTextMode(current => current === "auto" ? "none" : current);
     setPendingCarouselSource(carouselSource);
     setImageError("");
     setCarouselError("");
@@ -5279,6 +5285,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   async function generateProfessionalImage() {
     const prompt = imagePrompt.trim();
     if (prompt.length < 8 || imageBusy) return;
+    if (imageTextMode === "custom" && !imageText.trim()) { setImageError("Введите текст для изображения или выберите «Без текста»."); return; }
     setImageBusy(true);
     setImageError("");
     setImageResult(null);
@@ -5290,11 +5297,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         body: JSON.stringify({
           prompt,
           sourceTitle: imageSourceTitle,
+          sourceGenerationId: pendingCarouselSource && "generationId" in pendingCarouselSource ? pendingCarouselSource.generationId : undefined,
           brandId: useBrand ? activeBrandId || undefined : undefined,
           requestId: crypto.randomUUID(),
           aspectRatio: imageAspectRatio,
           outputFormat: imageOutputFormat,
           useLogo: useBrand && Boolean(brand.logoKey) && useLogoInImage,
+          logoPlacement, logoPosition, imageTextMode, imageText: imageTextMode === "custom" ? imageText.trim() : undefined,
         }),
       });
       const payload = await safeJson(response) as { error?: string; generation?: GenerationArchiveItem; account?: WorkspaceAccount };
@@ -6555,7 +6564,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <div className="image-generator-layout">
               <div className="image-generator-form">
                 <label htmlFor="image-prompt">Что изобразить</label>
-                <textarea id="image-prompt" value={imagePrompt} onChange={event => { setImagePrompt(event.target.value); setImageSourceTitle(""); setPendingCarouselSource(null); }} placeholder="Например: чашка кофе на деревянном столе у окна, мягкий утренний свет, без надписей" rows={6} maxLength={1800}/>
+                <textarea id="image-prompt" value={imagePrompt} onChange={event => { setImagePrompt(event.target.value); setImageSourceTitle(""); setPendingCarouselSource(null); if (imageTextMode === "title") setImageTextMode("auto"); }} placeholder="Например: чашка кофе на деревянном столе у окна, мягкий утренний свет, без надписей" rows={6} maxLength={1800}/>
                 <div className="image-generator-settings">
                   {/* gpt-image-1 only renders three real sizes (square/
                       landscape/portrait, see _lib/image-generation.ts) -
@@ -6593,6 +6602,17 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <button type="button" className="image-generator-logo-suggest" onClick={() => openModule("brand")}>Загрузить логотип бренда →</button>
                 ))}
                 <p>Профиль бренда {useBrand && activeBrandId ? "учитывается" : "не используется"}. Один запуск расходует одну генерацию.</p>
+                <fieldset className="image-generator-extra-settings" disabled={imageBusy || carouselBusy}>
+                  <legend>Параметры одного изображения</legend>
+                  <div className="image-generator-settings">
+                    <ModuleSelect label="Текст на изображении" value={imageTextMode} onChange={setImageTextMode} options={IMAGE_TEXT_OPTIONS.filter(option => option.value !== "title" || Boolean(imageSourceTitle))} />
+                    {useBrand && brand.logoKey && useLogoInImage && <ModuleSelect label="Как разместить логотип" value={logoPlacement} onChange={setLogoPlacement} options={LOGO_PLACEMENT_OPTIONS} />}
+                    {useBrand && brand.logoKey && useLogoInImage && logoPlacement === "overlay" && <ModuleSelect label="Положение логотипа" value={logoPosition} onChange={setLogoPosition} options={LOGO_POSITION_OPTIONS} />}
+                  </div>
+                  {imageTextMode === "title" && <p>На изображении: {imageSourceTitle}</p>}
+                  {imageTextMode === "custom" && <><label htmlFor="professional-image-text">Текст для изображения</label><textarea id="professional-image-text" rows={2} maxLength={200} value={imageText} onChange={event => setImageText(event.target.value)} placeholder="Например: Закулисье нашей студии" /></>}
+                  {useBrand && brand.logoKey && useLogoInImage && <small>{logoPlacement === "overlay" ? "Наложим файл логотипа, сохранив его цвета и пропорции. Его собственная надпись останется и в режиме «Без текста»." : "Логотип станет частью сцены. Модель может немного изменить его детали."}</small>}
+                </fieldset>
                 {imageError && <p className="generation-error" role="alert">{imageError}</p>}
                 <button className="button primary large" type="button" onClick={() => void generateProfessionalImage()} disabled={imageBusy || carouselBusy || !workspaceReady || imagePrompt.trim().length < 8 || workspaceAccount.generationsRemaining <= 0}><Icon name="image"/>{imageBusy ? "Создаём изображение…" : workspaceAccount.generationsRemaining <= 0 ? "Лимит генераций исчерпан" : "Создать изображение"}</button>
                 <div className="image-generator-carousel">

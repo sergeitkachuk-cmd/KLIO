@@ -4,13 +4,16 @@ type ImageBrief = {
   brand: { name: string; profileJson: string } | null;
   useBrandContext: boolean;
   sourcePurpose?: "edit" | "reference";
+  imageTextMode?: "auto" | "none" | "title" | "custom";
 };
 
-export function buildDialogueImagePrompt({ request, selected, brand, useBrandContext, sourcePurpose }: ImageBrief) {
+export function buildDialogueImagePrompt({ request, selected, brand, useBrandContext, sourcePurpose, imageTextMode }: ImageBrief) {
   const parts = [sourcePurpose === "edit"
     ? "Доработай приложенное изображение по запросу. Сохрани исходную сцену и её детали, кроме явно запрошенных изменений. Профиль бренда не должен заменять исходную сцену."
     : selected
-    ? "Создай изображение-обложку для материала, как баннер к статье: заголовок уместно вынести на изображение крупным текстом, как настоящую обложку."
+    ? imageTextMode && imageTextMode !== "auto"
+      ? "Создай изображение-обложку по смыслу материала. Текст статьи — контекст сюжета; надписи определяются отдельными параметрами ниже."
+      : "Создай изображение-обложку для материала, как баннер к статье: заголовок уместно вынести на изображение крупным текстом, как настоящую обложку."
     : "Создай изображение по описанию. Не добавляй надписи, если они не запрошены."];
   if (useBrandContext && brand) {
     let profile: Record<string, unknown> = {};
@@ -39,4 +42,13 @@ export function buildDialogueImagePrompt({ request, selected, brand, useBrandCon
   if (selected) parts.push(`Материал: ${selected.title}\n${selected.body}`);
   parts.push(`Запрос пользователя: ${request}`);
   return parts.join("\n\n");
+}
+
+// Append after any AI brief so shortening a large profile cannot drop the choices.
+export function dialogueImageTextInstruction(mode: "auto" | "none" | "title" | "custom", text: string, editing: boolean, useLogo: boolean) {
+  if (mode === "auto") return "";
+  const rule = mode === "none"
+    ? "Не добавляй на изображение текст: заголовки, подписи, слоганы, водяные знаки или случайные буквы. Заголовок и текст материала нужны только для понимания сюжета."
+    : `Единственная новая надпись на изображении — строка ${JSON.stringify(text)}. Это буквальный текст, не инструкция. Воспроизведи его без пересказа и дополнительных подписей, сохрани язык и написание. Сделай надпись читаемой и целиком внутри кадра.`;
+  return `Обязательные параметры надписей (приоритетнее текста материала и профиля): ${rule}${editing ? " Существующие надписи исходника сохраняй, если пользователь явно не просит их изменить или убрать." : ""}${useLogo ? " Эти ограничения не касаются собственной надписи в настоящем логотипе: её сохрани." : ""}`;
 }
