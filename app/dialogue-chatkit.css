@@ -12,6 +12,7 @@
 
 .workspace-shell.is-dialogue,
 .module-select-list.module-select-chatkit {
+  --ck-rail-width: 244px;
   --ck-bg: #081b30;
   --ck-rail: #061629;
   --ck-panel: #102c49;
@@ -25,7 +26,7 @@
   position: relative;
   display: grid;
   flex: 1;
-  grid-template-columns: 244px minmax(0, 1fr);
+  grid-template-columns: var(--ck-rail-width) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
@@ -73,6 +74,16 @@ html[data-theme="light"] .module-select-list.module-select-chatkit {
   grid-template-rows: auto;
   align-items: center;
   gap: 8px;
+}
+
+/* One continuous sidebar column, including the logo area above it. */
+@media (min-width: 821px) {
+  .workspace-shell.is-dialogue:has(> .klio-chatkit-shell:not([hidden])) > .workspace-header {
+    background: linear-gradient(to right,
+      var(--ck-rail) 0 calc(var(--ck-rail-width) - 1px),
+      var(--ck-line) calc(var(--ck-rail-width) - 1px) var(--ck-rail-width),
+      var(--ck-bg) var(--ck-rail-width) 100%);
+  }
 }
 
 .workspace-shell.is-dialogue .workspace-header .brand i {
@@ -329,11 +340,27 @@ html[data-theme="light"] .module-select-list.module-select-chatkit {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 10px;
+  min-height: 32px;
+  margin: 0;
+  padding: 5px 9px;
+  border-radius: 999px;
   color: var(--ck-muted);
   font-size: 12px;
   cursor: pointer;
 }
+
+.klio-chatkit-brand-context:hover { background: var(--ck-panel); }
+
+.klio-chatkit-brand-context strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ck-text);
+  font-weight: 600;
+}
+
+.klio-chatkit-brand-context > span { flex-shrink: 0; }
 
 .klio-chatkit-brand-context input {
   width: 15px;
@@ -368,7 +395,11 @@ html[data-theme="light"] .module-select-list.module-select-chatkit {
   opacity: 1;
 }
 
-.klio-chatkit-settings {
+.klio-chatkit-composer-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
   flex: 0 0 auto;
   width: min(800px, 100%);
   max-height: 40%;
@@ -378,15 +409,18 @@ html[data-theme="light"] .module-select-list.module-select-chatkit {
   color: var(--ck-text);
 }
 
+.klio-chatkit-settings { display: contents; }
+
 .klio-chatkit-settings-toggle {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  width: 100%;
+  justify-content: center;
+  gap: 6px;
+  width: auto;
   min-height: 32px;
-  padding: 4px 0;
-  border: 0;
+  padding: 5px 10px;
+  border: 1px solid var(--ck-line);
+  border-radius: 999px;
   background: transparent;
   color: var(--ck-muted);
   font: inherit;
@@ -394,12 +428,16 @@ html[data-theme="light"] .module-select-list.module-select-chatkit {
   cursor: pointer;
 }
 
+.klio-chatkit-settings-toggle:hover { background: var(--ck-panel); }
+
 .klio-chatkit-settings-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  flex-basis: 100%;
+  max-width: 600px;
   align-items: end;
-  gap: 10px;
-  padding-top: 5px;
+  gap: 8px;
+  padding: 6px 0 2px;
 }
 
 .klio-chatkit-settings-grid[hidden] { display: none; }
@@ -417,14 +455,14 @@ html[data-theme="light"] .module-select-list.module-select-chatkit {
 }
 
 .klio-chatkit-settings .module-select-trigger {
-  min-height: 38px;
-  padding: 8px 10px;
+  min-height: 32px;
+  padding: 6px 9px;
   border: 1px solid var(--ck-line);
   border-radius: 10px;
   background: var(--ck-panel);
   color: var(--ck-text);
   box-shadow: none;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .klio-chatkit-settings .module-select-trigger b {
@@ -662,7 +700,11 @@ html[data-theme="light"] .klio-chatkit-toast.is-error {
 
   .workspace-shell.is-dialogue .dialogue-mobile-modes { display: block; }
 
-  .klio-chatkit-settings { padding: 0 12px 8px; }
+  .klio-chatkit-composer-options { padding: 0 12px 8px; }
+
+  .klio-chatkit-brand-context { flex-wrap: wrap; gap: 5px 7px; }
+
+  .klio-chatkit-brand-context strong { max-width: 100%; }
 
   .klio-chatkit-settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 
@@ -673,8 +715,9 @@ html[data-theme="light"] .klio-chatkit-toast.is-error {
   }
 
   .klio-chatkit-rail {
-    position: absolute;
+    position: fixed;
     inset: 0 auto 0 0;
+    z-index: 302;
     width: min(294px, 86vw);
     transform: translateX(-105%);
     transition: transform 180ms ease;
@@ -697,9 +740,9 @@ html[data-theme="light"] .klio-chatkit-toast.is-error {
   }
 
   .klio-chatkit-backdrop {
-    position: absolute;
+    position: fixed;
     inset: 0;
-    z-index: 4;
+    z-index: 301;
     border: 0;
     background: rgba(0, 0, 0, 0.35);
   }

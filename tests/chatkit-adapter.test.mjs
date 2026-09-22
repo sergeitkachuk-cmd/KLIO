@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { eq } from "drizzle-orm";
 import {
   createDialogueHarness,
   load,
@@ -198,4 +199,71 @@ test("ChatKit forwards image options to the image service and rejects invalid en
   assert.equal(harness.imageCalls.length, 2);
   assert.deepEqual(JSON.parse(JSON.stringify(harness.imageCalls[0].args.at(-1))), { aspectRatio: "9:16", outputFormat: "webp" });
   assert.deepEqual(JSON.parse(JSON.stringify(harness.imageCalls[1].args.at(-1))), {});
+});
+
+test("standalone images never acquire prompt text from Materials; old duplicates stay hidden and manual edits survive", async (t) => {
+  const h = await createDialogueHarness();
+  t.after(() => h.close());
+  const route = chatKitRoute(h.route);
+  const prompt = "Картинку к статье на тему: Творческий рабочий процесс в студии.";
+  const response = await request(route, { type: "threads.create", params: { input: {
+    content: [{ type: "input_text", text: prompt }], inference_options: { tool_choice: { id: "image" } },
+  } } });
+  const events = parseEvents(await response.text());
+  assert.equal(events.some((event) => event.type === "error"), false, JSON.stringify(events));
+  const threadId = events.find((event) => event.type === "thread.created").thread.id;
+  const widget = events.find((event) => event.type === "thread.item.done" && event.item?.type === "widget").item.widget;
+  assert.equal(widget.children.some((node) => ["Title", "Markdown"].includes(node.type)), false);
+  assert.equal(widget.children.find((node) => node.type === "Image").radius, "2xl");
+  const material = (await h.db.select().from(h.schema.generations))[0];
+  assert.equal(material.body, "");
+  assert.equal((await h.read(threadId)).thread.data.cards[0].body, "");
+  const getWidget = async () => {
+    const response = await request(route, { type: "items.list", params: { thread_id: threadId, limit: 20 } });
+    return (await response.json()).data.find((item) => item.type === "widget").widget;
+  };
+  assert.equal((await getWidget()).children.some((node) => node.type === "Markdown"), false);
+
+  // Reproduce the previous persisted mismatch, without a database migration.
+  const row = (await h.db.select().from(h.schema.dialogueThreads).where(eq(h.schema.dialogueThreads.id, threadId)))[0];
+  const data = JSON.parse(row.dataJson);
+  data.messages.at(-1).text = "Изображение готово и сохранено в материалы. Можно сразу подготовить публикацию или доработать карточку.";
+  await h.db.update(h.schema.dialogueThreads).set({ dataJson: JSON.stringify(data) }).where(eq(h.schema.dialogueThreads.id, threadId));
+  await h.db.update(h.schema.generations).set({ body: prompt }).where(eq(h.schema.generations.id, material.id));
+  assert.equal((await getWidget()).children.some((node) => ["Title", "Markdown"].includes(node.type)), false);
+  await h.db.update(h.schema.generations).set({ body: "Наш настоящий текст, добавленный вручную в материалах." }).where(eq(h.schema.generations.id, material.id));
+  assert.equal((await getWidget()).children.find((node) => node.type === "Markdown").value, "Наш настоящий текст, добавленный вручную в материалах.");
+});
+
+test("ChatKit uses the explicit brand checkbox and passes every filled profile section to image generation", async (t) => {
+  const h = await createDialogueHarness();
+  t.after(() => h.close());
+  const profile = {
+    name: "Кинокоманда", description: "Съёмочная компания, видеопродакшн.",
+    positioning: "Создаём документальные фильмы.", services: "Видеосъёмка и монтаж. Камеры, свет, микрофоны.",
+    products: "Рекламные ролики", audience: "Компании", advantages: "Опытная команда",
+    proof: "Фестивальные работы", geography: "Петрозаводск", vocabulary: "Съёмочная площадка",
+    cta: "Обсудить съёмку", voice: "Спокойный", restrictions: "Без чужих логотипов",
+    signature: "Команда студии", prohibited: "Не изображать мольберты и художников",
+    logoKey: "private/storage/logo.png",
+  };
+  await h.db.insert(h.schema.brands).values({ id: "film", ownerEmail: h.owner, name: profile.name, profileJson: JSON.stringify(profile) });
+  const route = chatKitRoute(h.route);
+  const thread = await h.create("film");
+  for (const enabled of [true, false]) {
+    const response = await request(route, { type: "threads.add_user_message", params: {
+      thread_id: thread.id, klio_brand_context: enabled,
+      input: { content: [{ type: "input_text", text: "Творческий рабочий процесс в студии" }], inference_options: { tool_choice: { id: "image" } } },
+    } }, enabled ? "?brandId=film" : "?brandId=film&brandContext=1");
+    const events = parseEvents(await response.text());
+    assert.equal(events.some((event) => event.type === "error"), false, JSON.stringify(events));
+  }
+  const branded = h.imageCalls[0].args[0];
+  for (const [key, value] of Object.entries(profile)) if (key !== "logoKey") assert.ok(branded.includes(value), `Missing ${key}`);
+  assert.equal(branded.includes(profile.logoKey), false);
+  assert.match(branded, /предметный контекст/);
+  assert.match(branded, /Запрос пользователя: Творческий рабочий процесс в студии/);
+  assert.equal(h.imageCalls[1].args[0].includes(profile.services), false);
+  assert.equal(h.imageCalls[1].args[0].includes(profile.name), false);
+  assert.equal(h.calls(), 0, "normal sized profiles need no extra AI call");
 });

@@ -61,7 +61,7 @@ function ChatKitWorkspace(
     onUnavailable: () => void;
   },
 ) {
-  const { onUnavailable } = props;
+  const { onUnavailable, beforeProfile } = props;
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [chatReady, setChatReady] = useState(false);
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
@@ -71,7 +71,7 @@ function ChatKitWorkspace(
   const [error, setError] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
-  const [settingsExpanded, setSettingsExpanded] = useState(true);
+  const [settingsExpanded, setSettingsExpanded] = useState(false);
   const [generationSettings, setGenerationSettings] = useState(DEFAULT_GENERATION_SETTINGS);
   const generationSettingsRef = useRef(generationSettings);
   const [editCard, setEditCard] = useState<DialogueCard | null>(null);
@@ -110,12 +110,21 @@ function ChatKitWorkspace(
     body.params = {
       ...body.params,
       klio_settings: settingsForTool(tool, generationSettingsRef.current, Boolean(props.hasLogo)),
+      klio_brand_context: Boolean(props.brandId) && useBrandContext,
     };
+    // Flush the same pending profile edits used by the professional workspace
+    // before the server reads the profile for this message.
+    if (body.params.klio_brand_context && !await beforeProfile()) {
+      const message = "Не удалось сохранить профиль бренда. Проверьте изменения в «Мой бизнес» и повторите запрос.";
+      setError(message);
+      throw new Error(message);
+    }
+    outgoing.signal.throwIfAborted();
     const headers = new Headers(outgoing.headers);
     headers.delete("content-length");
     headers.set("content-type", "application/json");
     return fetch(new Request(outgoing, { headers, body: JSON.stringify(body) }));
-  }, [props.hasLogo]);
+  }, [props.hasLogo, props.brandId, beforeProfile, useBrandContext]);
 
   const loadThread = useCallback(async (threadId: string) => {
     return readJson<{ thread: DialogueThread }>(
@@ -169,7 +178,7 @@ function ChatKitWorkspace(
     locale: "ru-RU",
     theme: {
       colorScheme: props.theme,
-      radius: "round",
+      radius: "pill",
       density: "normal",
       typography: {
         baseSize: 16,
@@ -268,7 +277,7 @@ function ChatKitWorkspace(
     },
     onToolChange: ({ toolId }) => {
       setSelectedTool(toolId);
-      setSettingsExpanded(true);
+      setSettingsExpanded(false);
     },
     onResponseEnd: () => {
       props.onUsage();
@@ -283,7 +292,7 @@ function ChatKitWorkspace(
         onUnavailable();
         return;
       }
-      setError("Не удалось открыть ответ. Диалог сохранён — попробуйте ещё раз.");
+      setError((current) => current || "Не удалось открыть ответ. Диалог сохранён — попробуйте ещё раз.");
     },
   });
 
@@ -476,15 +485,6 @@ function ChatKitWorkspace(
             </div>}
           </div>
         </div>
-        <label className="klio-chatkit-brand-context">
-          <input
-            type="checkbox"
-            checked={useBrandContext}
-            disabled={!props.brandId}
-            onChange={(event) => setUseBrandContext(event.target.checked)}
-          />
-          <span>Учитывать профиль бренда</span>
-        </label>
         <a className="klio-chatkit-account" href="/account">
           Тариф и аккаунт
         </a>
@@ -517,11 +517,17 @@ function ChatKitWorkspace(
           className={`klio-chatkit-frame ${chatReady ? "is-ready" : ""}`}
           aria-hidden={!chatReady}
         />
-        {chatReady && selectedTool && ["topics", "text", "image"].includes(selectedTool) && (
+        {chatReady && <div className="klio-chatkit-composer-options">
+          <label className="klio-chatkit-brand-context">
+            <input type="checkbox" checked={useBrandContext} disabled={!props.brandId} onChange={(event) => setUseBrandContext(event.target.checked)} />
+            <span>Профиль бренда</span>
+            {useBrandContext && props.brandName && <strong title={props.brandName}>{props.brandName}</strong>}
+          </label>
+        {selectedTool && ["topics", "text", "image"].includes(selectedTool) && (
           <section className="klio-chatkit-settings" aria-label="Параметры генерации">
             <button type="button" className="klio-chatkit-settings-toggle" aria-expanded={settingsExpanded} aria-controls="chatkit-generation-settings" onClick={() => setSettingsExpanded((value) => !value)}>
-              <span>{selectedTool === "image" ? "Параметры изображения" : selectedTool === "topics" ? "Параметры тем" : "Параметры текста"}</span>
-              <span>{settingsExpanded ? "Свернуть" : "Настроить"} <span aria-hidden="true">{settingsExpanded ? "⌄" : "⌃"}</span></span>
+              <svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 5h14M3 15h14" /><circle cx="7" cy="5" r="2" fill="var(--ck-bg)" /><circle cx="13" cy="15" r="2" fill="var(--ck-bg)" /></svg>
+              <span>Настройки</span><span aria-hidden="true">{settingsExpanded ? "⌄" : "⌃"}</span>
             </button>
             <div id="chatkit-generation-settings" className="klio-chatkit-settings-grid" hidden={!settingsExpanded}>
               {(selectedTool === "topics" || selectedTool === "text") && <ModuleSelect variant="chatkit" label="Формат" value={generationSettings.format} options={FORMAT_OPTIONS} onChange={(value) => changeSetting("format", value)} />}
@@ -533,11 +539,12 @@ function ChatKitWorkspace(
               {selectedTool === "image" && <>
                 <ModuleSelect variant="chatkit" label="Ориентация" value={generationSettings.imageAspectRatio} options={IMAGE_ASPECT_OPTIONS} onChange={(value) => changeSetting("imageAspectRatio", value)} />
                 <ModuleSelect variant="chatkit" label="Формат файла" value={generationSettings.imageOutputFormat} options={IMAGE_FORMAT_OPTIONS} onChange={(value) => changeSetting("imageOutputFormat", value)} />
-                {props.hasLogo ? <label className="klio-chatkit-settings-logo"><input type="checkbox" checked={generationSettings.useLogo} onChange={(event) => changeSetting("useLogo", event.target.checked)} />Использовать логотип бренда</label> : <button type="button" className="klio-chatkit-settings-logo" onClick={() => props.onNavigate("brand")}>Загрузить логотип бренда →</button>}
+                {props.hasLogo ? <label className="klio-chatkit-settings-logo"><input type="checkbox" checked={generationSettings.useLogo} onChange={(event) => changeSetting("useLogo", event.target.checked)} />Логотип на изображении</label> : <button type="button" className="klio-chatkit-settings-logo" onClick={() => props.onNavigate("brand")}>＋ Добавить логотип</button>}
               </>}
             </div>
           </section>
         )}
+        </div>}
         {!chatReady && (
           <div className="klio-chatkit-loading" role="status" aria-live="polite">
             <span aria-hidden="true" />

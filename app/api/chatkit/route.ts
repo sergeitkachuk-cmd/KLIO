@@ -205,12 +205,29 @@ function clientAction(type: string, threadId: string, cardId: string) {
   };
 }
 
+function isStandaloneImage(thread: DialogueThread, card: DialogueCard) {
+  if (!card.imageUrl) return false;
+  if (!card.body.trim()) return true;
+  // Old standalone images were saved with their prompt as material body,
+  // then refreshed into the chat. Hide only that exact, unedited duplicate;
+  // never hide a real post or text subsequently edited in Materials.
+  if (card.versions.length) return false;
+  const index = thread.data.messages.findIndex((message) =>
+    message.role === "assistant"
+    && message.text === "Изображение готово и сохранено в материалы. Можно сразу подготовить публикацию или доработать карточку."
+    && message.cardIds?.includes(card.id));
+  const request = thread.data.messages[index - 1];
+  return request?.role === "user"
+    && card.title === request.text.slice(0, 100)
+    && card.body === request.text.slice(0, 4000);
+}
+
 function cardWidget(
   thread: DialogueThread,
   card: DialogueCard,
   createdAt: string,
 ) {
-  const pureImage = Boolean(card.imageUrl) && !card.body.trim();
+  const pureImage = isStandaloneImage(thread, card);
   const children: Array<Record<string, unknown>> = [];
   if (!pureImage) {
     children.push({
@@ -227,7 +244,7 @@ function cardWidget(
       src: card.imageUrl,
       alt: card.title || "Изображение КЛИО",
       fit: "contain",
-      radius: "md",
+      radius: "2xl",
       width: "100%",
     });
 
@@ -379,7 +396,9 @@ async function streamMessage(
   const params = request.params || {};
   const url = new URL(source.url);
   const brandId = clean(url.searchParams.get("brandId"), 100);
-  const useBrandContext = url.searchParams.get("brandContext") === "1";
+  const useBrandContext = typeof params.klio_brand_context === "boolean"
+    ? params.klio_brand_context
+    : url.searchParams.get("brandContext") === "1";
   const text = inputText(params);
   if (!text) throw new AdapterError("Напишите сообщение.", 400);
 

@@ -65,7 +65,7 @@ test("image generation from dialogue saves the result into materials", async (t)
       return {
         reply: "Пост готов.",
         action: "create",
-        cards: [{ kind: "post", title: "Пост для соцсетей", body: "Основной текст поста." }],
+        cards: [{ kind: "post", title: "Полное название ".repeat(10), body: "Основной текст поста. ".repeat(250) }],
         profile: [],
       };
     }
@@ -96,6 +96,36 @@ test("image generation from dialogue saves the result into materials", async (t)
   const materials = await h.db.select().from(h.schema.generations);
   assert.equal(materials.some((item) => item.topic === "Изображение" && item.imageUrl.includes("generated.png")), true);
   assert.equal(saved.data.cards.some((item) => item.id === card.id && item.imageUrl.includes("generated.png")), true);
+  assert.equal(materials[0].title, card.title);
+  assert.equal(materials[0].body, card.body);
+  assert.equal(saved.data.cards[0].body, card.body);
+});
+
+test("large image profiles are read in full before a bounded brief; invalid briefs refund quota without generating", async (t) => {
+  const h = await createDialogueHarness();
+  t.after(() => h.close());
+  const profile = { description: "Видеопроизводство. ".repeat(160), services: "Съёмка документальных фильмов. ".repeat(100), advantages: "Опыт в сложных проектах. ".repeat(140), products: "Видеоролики и видеоподкасты. ".repeat(100), prohibited: "Последнее ограничение: без кистей и мольбертов." };
+  await h.db.insert(h.schema.brands).values({ id: "large", ownerEmail: h.owner, name: "Кинокоманда", profileJson: JSON.stringify(profile) });
+  let seen;
+  h.setAi(async (input) => { seen = input; return { raw: "Творческая работа съёмочной группы в студии видеопроизводства: камера, свет, режиссёр. Без кистей и мольбертов." }; });
+  let thread = await h.create("large");
+  const send = async () => {
+    await h.post({ action: "send", id: thread.id, revision: thread.revision, requestId: randomUUID(), text: "Процесс в студии", mode: "image", useBrandContext: true });
+    thread = await h.settled(thread.id);
+  };
+  await send();
+  assert.equal(thread.status, "idle");
+  assert.equal(seen.operation, "dialogue_plain");
+  for (const value of Object.values(profile)) assert.ok(seen.input.includes(value.trim()));
+  assert.match(seen.input, /Запрос пользователя: Процесс в студии$/);
+  assert.ok(h.imageCalls[0].args[0].length <= 11000);
+  assert.match(h.imageCalls[0].args[0], /видеопроизводства/);
+  const used = (await h.account()).generationsUsed;
+  h.setAi(async () => ({ raw: "x".repeat(12000) }));
+  await send();
+  assert.equal(thread.status, "failed");
+  assert.equal(h.imageCalls.length, 1);
+  assert.equal((await h.account()).generationsUsed, used);
 });
 
 test("card revisions preserve manual text and allow undo; context keeps the selected artifact", () => {

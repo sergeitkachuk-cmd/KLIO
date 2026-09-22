@@ -220,6 +220,7 @@ export async function createDialogueHarness() {
       "../_lib/storage": {
         downloadBrandLogo: async () => ({ bytes: new Uint8Array(), contentType: "image/png" }),
       },
+      "../_lib/dialogue-image-prompt": load("app/api/_lib/dialogue-image-prompt.ts"),
     },
     {
       fetch: async () => {

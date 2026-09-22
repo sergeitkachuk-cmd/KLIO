@@ -63,6 +63,7 @@ async function mountWorkspace(t, { savedThread = "thread-saved", storageBlocked 
     visible: true,
     onUsage() {},
     onNavigate() {},
+    beforeProfile: async () => true,
   };
   const storageKey = "klio-chatkit:test-user:personal";
   if (savedThread) window.localStorage.setItem(storageKey, savedThread);
@@ -141,6 +142,8 @@ async function mountWorkspace(t, { savedThread = "thread-saved", storageBlocked 
     clickNew: () => React.act(async () => container.querySelector(".klio-chatkit-new").click()),
     chooseTool: (toolId) => React.act(async () => element().dispatchEvent(new window.CustomEvent("chatkit.tool.change", { detail: { toolId } }))),
     chooseOption: async (label, text) => {
+      if (container.querySelector(".klio-chatkit-settings-grid")?.hidden)
+        await React.act(async () => container.querySelector(".klio-chatkit-settings-toggle").click());
       const field = [...container.querySelectorAll(".module-select")].find((node) => node.querySelector(".field-label-help")?.textContent === label);
       assert.ok(field, `Missing setting: ${label}`);
       await React.act(async () => field.querySelector("button").click());
@@ -323,9 +326,66 @@ test("business switcher works without enabling brand context", async (t) => {
   const h = await mountWorkspace(t);
   const changed = [];
   await h.render({ brandId: "one", brandName: "Первый бизнес", brands: [{ id: "one", name: "Первый бизнес" }, { id: "two", name: "Второй бизнес" }], onBrandChange: (id) => changed.push(id) });
+  await h.define();
+  await h.ready();
   await React.act(async () => h.container.querySelector('[aria-label="Выбрать бизнес"]').click());
   await React.act(async () => h.container.querySelector('[role="option"][aria-selected="false"]').click());
   assert.deepEqual(changed, ["two"]);
   assert.equal(h.container.querySelector(".klio-chatkit-brand-context input").checked, false);
   assert.equal(h.container.querySelector(".klio-chatkit-brand-options"), null);
+});
+
+test("brand checkbox stays beside the composer and submits only after profile changes are saved", async (t) => {
+  const h = await mountWorkspace(t);
+  let resolveSave;
+  let saving = false;
+  await h.render({ brandId: "film", brandName: "Съёмочная компания", beforeProfile: () => {
+    saving = true;
+    return new Promise((resolve) => { resolveSave = resolve; });
+  } });
+  await h.define();
+  await h.ready();
+  const checkbox = h.container.querySelector(".klio-chatkit-composer-options input");
+  assert.ok(checkbox);
+  assert.equal(checkbox.checked, false);
+  assert.equal(h.container.querySelector(".klio-chatkit-rail input"), null);
+  const sent = [];
+  t.mock.method(globalThis, "fetch", async (request) => { sent.push(await request.json()); return new Response("{}"); });
+  const submit = () => h.element().options.api.fetch("/api/chatkit?brandContext=1", {
+    method: "POST", body: JSON.stringify({ type: "threads.create", params: { input: { content: [{ type: "input_text", text: "Процесс в студии" }] } } }),
+  });
+  await submit();
+  assert.equal(sent[0].params.klio_brand_context, false);
+  assert.equal(saving, false);
+  await React.act(async () => checkbox.click());
+  assert.ok(h.container.querySelector(".klio-chatkit-brand-context").textContent.includes("Съёмочная компания"));
+  const pending = submit();
+  for (let n = 0; n < 20 && !resolveSave; n++) await new Promise((resolve) => setTimeout(resolve, 5));
+  assert.equal(saving, true);
+  assert.equal(sent.length, 1, "generation must wait for the profile save");
+  resolveSave(true);
+  await pending;
+  assert.equal(sent[1].params.klio_brand_context, true);
+  await h.render({ beforeProfile: async () => false });
+  await React.act(async () => assert.rejects(submit(), /Не удалось сохранить профиль/));
+  assert.equal(sent.length, 2, "no generation with an unsaved profile");
+  assert.match(h.container.querySelector('[role="alert"]').textContent, /Не удалось сохранить профиль/);
+});
+
+test("settings open on demand while the profile toggle remains separate from adding a logo", async (t) => {
+  const h = await mountWorkspace(t);
+  await h.define();
+  await h.ready();
+  const navigation = [];
+  await h.render({ onNavigate: (module) => navigation.push(module) });
+  await h.chooseTool("image");
+  assert.equal(h.container.querySelector(".klio-chatkit-settings-grid").hidden, true);
+  assert.ok(h.container.querySelector(".klio-chatkit-brand-context input"));
+  await React.act(async () => h.container.querySelector(".klio-chatkit-settings-toggle").click());
+  assert.match(h.container.querySelector("button.klio-chatkit-settings-logo").textContent, /Добавить логотип/);
+  await React.act(async () => h.container.querySelector("button.klio-chatkit-settings-logo").click());
+  assert.deepEqual(navigation, ["brand"]);
+  await h.render({ hasLogo: true });
+  assert.equal(h.container.querySelector("button.klio-chatkit-settings-logo"), null);
+  assert.ok(h.container.querySelector(".klio-chatkit-settings-logo input"));
 });
