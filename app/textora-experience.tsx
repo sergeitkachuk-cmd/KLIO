@@ -4951,6 +4951,27 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     showToast("Исходная тема сохранена");
   }
 
+  async function sendDialogueTopicToGenerator(source: { title: string; body: string; useBrandContext: boolean }) {
+    if (!await changeWorkspaceMode("professional")) return;
+    setGeneratorMode("advanced");
+    setTopic(source.title);
+    setAccent(source.body);
+    setKeywords("");
+    setEditorialBrief(null);
+    setFormat("seo");
+    setTone("Экспертный");
+    setAuthorPosition(source.useBrandContext ? "brand" : "expert");
+    setLength(defaultLengthByFormat.seo);
+    setCustomLength(false);
+    setGeneratorUseBrand(source.useBrandContext);
+    if (source.useBrandContext) setUseBrand(true);
+    setGeneratorUseSemantics(false);
+    setGeneratorUseCompetitors(false);
+    setGenerationError("");
+    openModule("generator");
+    showToast("Тема и описание переданы в генератор. Проверьте параметры перед созданием текста.");
+  }
+
   function sendPlanItemToGenerator(item: ContentPlanItem) {
     const cleanTitle = cleanContentPlanTitle(item.title);
     const structureLines = item.structure.map((section) => `• ${section}: раскрыть применительно к теме материала и опереться только на подтверждённые факты`);
@@ -5769,6 +5790,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         onNavigate={openModule} onBrandChange={id => void switchWorkspaceBrand(id)}
         onSaved={generation => setWorkspaceHistory(list => [{ ...list.find(item => item.id === generation.id), ...generation } as GenerationArchiveItem, ...list.filter(item => item.id !== generation.id)])}
         onProfessional={generation => void (async () => { if (await changeWorkspaceMode("professional")) { openModule("history"); openArchiveItem(generation as GenerationArchiveItem); } })()}
+        onGenerateTopic={sendDialogueTopicToGenerator}
         onProfile={value => { const record = normalizeWorkspaceBrand(value); if (record) { setWorkspaceBrands(list => [record, ...list.filter(item => item.id !== record.id)]); applyWorkspaceBrand(record); } void refreshDialogueUsage(); }}
         onUsage={() => void refreshDialogueUsage()}
         beforeProfile={() => activeBrandId ? saveActiveWorkspaceBrand(false) : Promise.resolve(true)}

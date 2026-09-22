@@ -19,6 +19,7 @@ function chatKitRoute(dialogueRoute) {
     "app/api/chatkit/route.ts",
     {
       "../../dialogue-model": model,
+      "../../dialogue-starters": load("app/dialogue-starters.ts"),
       "../dialogue/route": dialogueRoute,
       "../../dialogue-generation-settings": load("app/dialogue-generation-settings.ts", {
         "./content-plans": load("app/content-plans.ts"),
@@ -97,6 +98,72 @@ test("ChatKit creates a real KLIO thread and returns assistant widgets", async (
   assert.equal(stored.thread.data.messages[0].useBrandContext, false);
 });
 
+test("native topics starter returns actionable cards while unselected conversation stays plain chat", async (t) => {
+  const harness = await createDialogueHarness();
+  t.after(() => harness.close());
+  const route = chatKitRoute(harness.route);
+  const { TOPICS_STARTER } = load("app/dialogue-starters.ts");
+  const response = await request(route, { type: "threads.create", params: {
+    klio_settings: { topicCount: "8" },
+    input: { content: [{ type: "input_text", text: TOPICS_STARTER }] },
+  } });
+  const events = parseEvents(await response.text());
+  const widgets = events.filter((event) => event.type === "thread.item.done" && event.item?.type === "widget");
+  assert.equal(widgets.length, 2);
+  const threadId = events.find((event) => event.type === "thread.created").thread.id;
+  const originalCards = (await harness.read(threadId)).thread.data.cards;
+  for (const widget of widgets) {
+    const actions = widget.item.widget.children.find((child) => child.type === "Row").children.map((child) => child.onClickAction);
+    assert.deepEqual(actions.map((action) => action.type).sort(), ["klio.edit", "klio.save", "klio.topic_post", "klio.topic_article", "klio.topic_generator", "klio.image"].sort());
+    for (const action of actions) {
+      assert.equal(action.payload.threadId, threadId);
+      assert.equal(action.payload.cardId, widget.item.id.slice("widget_".length));
+      assert.equal(action.handler, "client");
+    }
+  }
+  const ordinary = await request(route, { type: "threads.add_user_message", params: {
+    thread_id: threadId, input: { content: [{ type: "input_text", text: "Давай просто поговорим" }] },
+  } });
+  const plainEvents = parseEvents(await ordinary.text());
+  assert.equal(plainEvents.some((event) => event.item?.type === "widget"), false);
+  assert.equal(plainEvents.some((event) => event.item?.type === "assistant_message"), true);
+  const stored = (await harness.read(threadId)).thread;
+  assert.deepEqual(stored.data.cards, originalCards);
+  assert.equal((await harness.account()).dialogueActionsUsed, 1);
+  assert.equal((await harness.account()).researchUsed, 1);
+});
+
+test("post and article topic actions enforce their format and preserve the source topic", async (t) => {
+  const harness = await createDialogueHarness();
+  t.after(() => harness.close());
+  const route = chatKitRoute(harness.route);
+  const response = await request(route, { type: "threads.create", params: {
+    input: { content: [{ type: "input_text", text: "Предложи темы" }], inference_options: { tool_choice: { id: "topics" } } },
+  } });
+  const events = parseEvents(await response.text());
+  const threadId = events.find((event) => event.type === "thread.created").thread.id;
+  const original = (await harness.read(threadId)).thread.data.cards[0];
+  const contexts = [];
+  harness.setAi(async (input) => {
+    contexts.push(JSON.parse(input.input));
+    return { reply: "Готово", action: "create", cards: [{ kind: "post", title: "Новый текст", body: "Отдельный материал по теме" }], profile: [] };
+  });
+  for (const tool of ["topic-post", "topic-article"]) {
+    const response = await request(route, { type: "threads.add_user_message", params: {
+      thread_id: threadId, klio_settings: { format: "ads", length: "medium", tone: "Экспертный" },
+      input: { content: [{ type: "input_text", text: original.title }], inference_options: { tool_choice: { id: tool } } },
+    } });
+    assert.equal(parseEvents(await response.text()).some((event) => event.type === "error"), false);
+  }
+  assert.equal(contexts[0].settings.format, "social");
+  assert.equal(contexts[1].settings.format, "seo");
+  assert.equal(contexts[0].settings.tone, "Экспертный");
+  assert.ok(contexts[0].settings.target_characters_with_spaces < contexts[1].settings.target_characters_with_spaces);
+  const cards = (await harness.read(threadId)).thread.data.cards;
+  assert.equal(cards.length, 4);
+  assert.deepEqual(cards.find((card) => card.id === original.id), original);
+});
+
 test("ChatKit history and item paging stay on the KLIO dialogue database", async (t) => {
   const harness = await createDialogueHarness();
   t.after(() => harness.close());
@@ -111,6 +178,8 @@ test("ChatKit history and item paging stay on the KLIO dialogue database", async
     mode: "chat",
   });
   await harness.settled(thread.id);
+  // Starting another conversation must not remove the first one or its data.
+  const another = await harness.create();
 
   const history = await request(route, {
     type: "threads.list",
@@ -119,6 +188,8 @@ test("ChatKit history and item paging stay on the KLIO dialogue database", async
   assert.equal(history.status, 200);
   const historyPayload = await history.json();
   assert.equal(historyPayload.data.some((item) => item.id === thread.id), true);
+  assert.equal(historyPayload.data.some((item) => item.id === another.id), true);
+  assert.equal((await harness.read(thread.id)).thread.data.messages[0].text, "Обычный вопрос");
 
   const items = await request(route, {
     type: "items.list",

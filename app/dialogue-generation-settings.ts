@@ -50,6 +50,8 @@ export const DEFAULT_GENERATION_SETTINGS: GenerationSettings = {
 export function settingsForTool(tool: string, settings: Partial<GenerationSettings>, hasLogo = true) {
   if (tool === "topics") return { format: settings.format, topicCount: settings.topicCount ?? "5" };
   if (tool === "text") return { format: settings.format, tone: settings.tone, length: settings.length };
+  if (tool === "topic-post") return { format: "social", tone: settings.tone, length: "short" };
+  if (tool === "topic-article") return { format: "seo", tone: settings.tone, length: "long" };
   if (tool === "image" || tool.startsWith("image-card:")) return {
     imageAspectRatio: settings.imageAspectRatio || "4:3",
     imageOutputFormat: settings.imageOutputFormat || "png",

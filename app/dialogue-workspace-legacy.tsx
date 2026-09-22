@@ -123,6 +123,7 @@ export type DialogueWorkspaceProps = {
   onBrandChange: (id: string) => void;
   onSaved: (generation: SharedGeneration) => void;
   onProfessional: (generation: SharedGeneration) => void;
+  onGenerateTopic?: (source: { title: string; body: string; useBrandContext: boolean }) => void | Promise<void>;
   onProfile: (brand: unknown) => void;
   beforeProfile: () => Promise<boolean>;
   onUsage: () => void;

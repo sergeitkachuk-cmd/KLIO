@@ -5,6 +5,11 @@ import Script from "next/script";
 import { ChatKit, useChatKit } from "@openai/chatkit-react";
 import type { DialogueCard, DialogueThread } from "./dialogue-model";
 import { ModuleSelect } from "./module-select";
+import { DialogueRecentThreads } from "./dialogue-recent-threads";
+import { DialogueSettingsPopover } from "./dialogue-settings-popover";
+import { DialogueResultsMenu } from "./dialogue-results-menu";
+import { ImageLightbox } from "./image-lightbox";
+import { dialogueTool, POST_STARTER, TOPICS_STARTER } from "./dialogue-starters";
 import {
   DEFAULT_GENERATION_SETTINGS, FORMAT_OPTIONS, TONE_OPTIONS, LENGTH_OPTIONS,
   TOPIC_COUNT_OPTIONS, IMAGE_ASPECT_OPTIONS, IMAGE_FORMAT_OPTIONS, settingsForTool,
@@ -62,7 +67,7 @@ function ChatKitWorkspace(
   },
 ) {
   const { onUnavailable, beforeProfile } = props;
-  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
+  const [historyRevision, setHistoryRevision] = useState(0);
   const [chatReady, setChatReady] = useState(false);
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
   const [useBrandContext, setUseBrandContext] = useState(false);
@@ -78,6 +83,7 @@ function ChatKitWorkspace(
   const [editThreadId, setEditThreadId] = useState("");
   const [editTitle, setEditTitle] = useState("");
   const [editBody, setEditBody] = useState("");
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const storageKey = `klio-chatkit:${props.userKey}:${props.brandId || "personal"}`;
   // Let the element restore its own thread after loading. Its imperative
   // methods do not exist while the external script is still downloading.
@@ -89,7 +95,8 @@ function ChatKitWorkspace(
       return null;
     }
   });
-  const activeThreadRef = useRef<string | null>(null);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(initialThread);
+  const activeThreadRef = useRef<string | null>(initialThread);
   const readyRef = useRef(false);
 
   function changeSetting<K extends keyof GenerationSettings>(key: K, value: GenerationSettings[K]) {
@@ -106,7 +113,13 @@ function ChatKitWorkspace(
     if (outgoing.method !== "POST") return fetch(outgoing);
     const body = await outgoing.clone().json().catch(() => null);
     if (body?.type !== "threads.create" && body?.type !== "threads.add_user_message") return fetch(outgoing);
-    const tool = body.params?.input?.inference_options?.tool_choice?.id || "";
+    const messageInput = body.params?.input;
+    const text = (messageInput?.content || []).filter((part: { type: string }) => part.type === "input_text")
+      .map((part: { text?: string }) => part.text || "").join("\n");
+    const tool = dialogueTool(messageInput?.inference_options?.tool_choice?.id || "", text, body.type === "threads.create");
+    if (tool && messageInput) messageInput.inference_options = {
+      ...messageInput.inference_options, tool_choice: { id: tool },
+    };
     body.params = {
       ...body.params,
       klio_settings: settingsForTool(tool, generationSettingsRef.current, Boolean(props.hasLogo)),
@@ -151,7 +164,10 @@ function ChatKitWorkspace(
             ...extra,
           }),
         }),
-      ),
+      ).then((result) => {
+        setHistoryRevision((value) => value + 1);
+        return result;
+      }),
     [],
   );
 
@@ -195,10 +211,7 @@ function ChatKitWorkspace(
           : { background: "#ffffff", foreground: "#f1f5f9" },
       },
     },
-    header: {
-      enabled: true,
-      title: { enabled: true },
-    },
+    header: { enabled: false },
     history: {
       enabled: true,
       showDelete: false,
@@ -209,12 +222,12 @@ function ChatKitWorkspace(
       prompts: [
         {
           label: "Предложить темы",
-          prompt: "Предложи пять сильных тем для контента",
+          prompt: TOPICS_STARTER,
           icon: "lightbulb",
         },
         {
           label: "Написать пост",
-          prompt: "Помоги написать пост. Сначала уточни тему, если её недостаточно.",
+          prompt: POST_STARTER,
           icon: "square-text",
         },
         {
@@ -281,7 +294,9 @@ function ChatKitWorkspace(
     },
     onResponseEnd: () => {
       props.onUsage();
+      setHistoryRevision((value) => value + 1);
     },
+    onHistoryClose: () => setHistoryRevision((value) => value + 1),
     onReady: () => {
       readyRef.current = true;
       setChatReady(true);
@@ -316,8 +331,7 @@ function ChatKitWorkspace(
           return;
         }
         if (action.type === "klio.open_image") {
-          if (card.imageUrl)
-            window.open(card.imageUrl, "_blank", "noopener,noreferrer");
+          if (card.imageUrl) setPreviewImage(card.imageUrl);
           return;
         }
         if (action.type === "klio.image") {
@@ -331,11 +345,16 @@ function ChatKitWorkspace(
           });
           return;
         }
-        if (action.type === "klio.topic_post") {
+        if (action.type === "klio.topic_post" || action.type === "klio.topic_article") {
+          const article = action.type === "klio.topic_article";
           await chatkit.sendUserMessage({
-            text: `Напиши готовый пост для соцсетей на тему «${card.title}». ${card.body}`,
-            toolChoice: { id: "text" },
+            text: `Создай отдельный ${article ? "развёрнутый материал для сайта" : "готовый пост для соцсетей"} на тему «${card.title}». ${card.body}\nИсходную карточку темы сохрани без изменений.`,
+            toolChoice: { id: article ? "topic-article" : "topic-post" },
           });
+          return;
+        }
+        if (action.type === "klio.topic_generator") {
+          await props.onGenerateTopic?.({ title: card.title, body: card.body, useBrandContext });
           return;
         }
         if (action.type === "klio.save" || action.type === "klio.publish") {
@@ -366,7 +385,7 @@ function ChatKitWorkspace(
       } finally {
         setActionBusy(false);
       }
-    }, [actionBusy, chatkit, loadThread, mutate, props]);
+    }, [actionBusy, chatkit, loadThread, mutate, props, useBrandContext]);
 
   useEffect(() => {
     onWidgetActionRef.current = handleWidgetAction;
@@ -390,6 +409,19 @@ function ChatKitWorkspace(
       setRailOpen(false);
     } catch {
       setError("Не удалось открыть новый диалог. Попробуйте ещё раз.");
+    }
+  }
+
+  async function openRecentThread(threadId?: string) {
+    if (!readyRef.current) return;
+    try {
+      if (threadId) await chatkit.setThreadId(threadId);
+      else await chatkit.showHistory();
+      setRailOpen(false);
+      setError("");
+      setNotice("");
+    } catch {
+      setError("Не удалось открыть диалог. Попробуйте ещё раз.");
     }
   }
 
@@ -460,7 +492,15 @@ function ChatKitWorkspace(
             Публикации
           </button>
         </nav>
-        <div className="klio-chatkit-rail-spacer" />
+        <DialogueRecentThreads
+          brandId={props.brandId}
+          activeThreadId={activeThreadId}
+          ready={chatReady}
+          visible={props.visible}
+          revision={historyRevision}
+          onOpen={(id) => void openRecentThread(id)}
+          onHistory={() => void openRecentThread()}
+        />
         <div className="klio-chatkit-brand">
           <span>Ваш бизнес</span>
           <div className="klio-chatkit-brand-select">
@@ -496,6 +536,7 @@ function ChatKitWorkspace(
         onClick={() => setRailOpen(false)}
       />
       <main className="klio-chatkit-main">
+        <div className="klio-chatkit-toolbar">
         <button
           type="button"
           className="klio-chatkit-mobile-menu"
@@ -504,6 +545,22 @@ function ChatKitWorkspace(
         >
           ☰
         </button>
+          <div className="klio-chatkit-toolbar-spacer" />
+          <DialogueResultsMenu
+            key={activeThreadId || "new"}
+            threadId={activeThreadId}
+            ready={chatReady}
+            visible={props.visible}
+            revision={historyRevision}
+            onOpen={(card) => {
+              if (!activeThreadId) return;
+              void handleWidgetAction({ type: card.imageUrl && !card.body.trim() ? "klio.open_image" : "klio.edit", payload: { threadId: activeThreadId, cardId: card.id } });
+            }}
+          />
+          <button className="klio-chatkit-history-button" type="button" aria-label="История диалогов" title="История диалогов" disabled={!chatReady} onClick={() => void openRecentThread()}>
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11a9 9 0 1 1 3 7M3 4v7h7M12 7v5l3 2" /></svg>
+          </button>
+        </div>
         {(notice || error) && (
           <div
             className={`klio-chatkit-toast ${error ? "is-error" : ""}`}
@@ -524,12 +581,7 @@ function ChatKitWorkspace(
             {useBrandContext && props.brandName && <strong title={props.brandName}>{props.brandName}</strong>}
           </label>
         {selectedTool && ["topics", "text", "image"].includes(selectedTool) && (
-          <section className="klio-chatkit-settings" aria-label="Параметры генерации">
-            <button type="button" className="klio-chatkit-settings-toggle" aria-expanded={settingsExpanded} aria-controls="chatkit-generation-settings" onClick={() => setSettingsExpanded((value) => !value)}>
-              <svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 5h14M3 15h14" /><circle cx="7" cy="5" r="2" fill="var(--ck-bg)" /><circle cx="13" cy="15" r="2" fill="var(--ck-bg)" /></svg>
-              <span>Настройки</span><span aria-hidden="true">{settingsExpanded ? "⌄" : "⌃"}</span>
-            </button>
-            <div id="chatkit-generation-settings" className="klio-chatkit-settings-grid" hidden={!settingsExpanded}>
+          <DialogueSettingsPopover open={settingsExpanded && props.visible} onOpenChange={setSettingsExpanded} title={selectedTool === "image" ? "Параметры изображения" : selectedTool === "topics" ? "Параметры тем" : "Параметры текста"}>
               {(selectedTool === "topics" || selectedTool === "text") && <ModuleSelect variant="chatkit" label="Формат" value={generationSettings.format} options={FORMAT_OPTIONS} onChange={(value) => changeSetting("format", value)} />}
               {selectedTool === "topics" && <ModuleSelect variant="chatkit" label="Количество тем" value={generationSettings.topicCount} options={TOPIC_COUNT_OPTIONS} onChange={(value) => changeSetting("topicCount", value)} />}
               {selectedTool === "text" && <>
@@ -541,8 +593,7 @@ function ChatKitWorkspace(
                 <ModuleSelect variant="chatkit" label="Формат файла" value={generationSettings.imageOutputFormat} options={IMAGE_FORMAT_OPTIONS} onChange={(value) => changeSetting("imageOutputFormat", value)} />
                 {props.hasLogo ? <label className="klio-chatkit-settings-logo"><input type="checkbox" checked={generationSettings.useLogo} onChange={(event) => changeSetting("useLogo", event.target.checked)} />Логотип на изображении</label> : <button type="button" className="klio-chatkit-settings-logo" onClick={() => props.onNavigate("brand")}>＋ Добавить логотип</button>}
               </>}
-            </div>
-          </section>
+          </DialogueSettingsPopover>
         )}
         </div>}
         {!chatReady && (
@@ -615,6 +666,7 @@ function ChatKitWorkspace(
           </section>
         </div>
       )}
+      {previewImage && <ImageLightbox src={previewImage} alt="Изображение из диалога" onClose={() => setPreviewImage(null)} />}
     </div>
   );
 }

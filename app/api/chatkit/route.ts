@@ -4,6 +4,7 @@ import type {
   DialogueThread,
 } from "../../dialogue-model";
 import { settingsForTool, type GenerationSettings } from "../../dialogue-generation-settings";
+import { dialogueTool } from "../../dialogue-starters";
 import {
   GET as dialogueGET,
   POST as dialoguePOST,
@@ -119,6 +120,7 @@ function inputTool(params: Record<string, unknown>) {
 }
 
 function modeAndCard(toolId: string) {
+  if (toolId === "topic-post" || toolId === "topic-article") return { mode: "text", cardId: "" };
   if (toolId.startsWith("image-card:"))
     return { mode: "image", cardId: toolId.slice("image-card:".length) };
   if (toolId === "topics" || toolId === "text" || toolId === "image")
@@ -278,12 +280,21 @@ function cardWidget(
   if (card.kind === "topic") {
     buttons.push({
       type: "Button",
-      label: "Написать пост",
+      label: "Пост",
       iconStart: "square-text",
       variant: "soft",
       onClickAction: clientAction("klio.topic_post", thread.id, card.id),
     });
-  } else if (!pureImage) {
+    buttons.push({
+      type: "Button", label: "Статья", iconStart: "document", variant: "soft",
+      onClickAction: clientAction("klio.topic_article", thread.id, card.id),
+    });
+    buttons.push({
+      type: "Button", label: "В генератор", iconStart: "external-link", variant: "outline",
+      onClickAction: clientAction("klio.topic_generator", thread.id, card.id),
+    });
+  }
+  if (!pureImage) {
     buttons.push({
       type: "Button",
       label: "Создать картинку",
@@ -291,6 +302,8 @@ function cardWidget(
       variant: "soft",
       onClickAction: clientAction("klio.image", thread.id, card.id),
     });
+  }
+  if (card.kind !== "topic" || pureImage) {
     buttons.push({
       type: "Button",
       label: "В публикацию",
@@ -426,7 +439,8 @@ async function streamMessage(
   }
 
   const requestId = crypto.randomUUID();
-  const { mode, cardId } = modeAndCard(inputTool(params));
+  const tool = dialogueTool(inputTool(params), text, request.type === "threads.create");
+  const { mode, cardId } = modeAndCard(tool);
   const incoming: DialogueMessage = {
     id: requestId,
     role: "user",
@@ -456,7 +470,7 @@ async function streamMessage(
     mode,
     cardId,
     useBrandContext,
-    settings: settingsForTool(mode, (
+    settings: settingsForTool(tool, (
       params.klio_settings && typeof params.klio_settings === "object" && !Array.isArray(params.klio_settings)
         ? params.klio_settings : {}
     ) as Partial<GenerationSettings>),
