@@ -6,6 +6,7 @@ on:
       - services/klio-images/**
       - tests/dialogue-images.test.mjs
       - tests/dialogue-combined.test.mjs
+      - tests/image-edit-relay.test.mjs
       - .github/workflows/image-relay.yml
 permissions:
   contents: read
@@ -18,7 +19,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test tests/dialogue-images.test.mjs tests/dialogue-combined.test.mjs
+      - run: node --test tests/dialogue-images.test.mjs tests/dialogue-combined.test.mjs tests/image-edit-relay.test.mjs
       - name: Build container
         run: docker build -f services/klio-images/Dockerfile.combined -t klio-relay-check .
       - name: Verify image runtimes without customer credentials

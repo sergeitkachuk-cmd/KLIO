@@ -35,7 +35,7 @@ const ALLOWED_IMAGE_TYPE = new Set(["image/png", "image/jpeg", "image/webp"]);
 // overhead. The previous 64,000-byte cap only ever needed to fit a bare
 // text prompt; this one has to fit that same prompt alongside an embedded
 // logo file.
-const MAX_REQUEST_BYTES = 16 * 1024 * 1024;
+const MAX_REQUEST_BYTES = 24 * 1024 * 1024; // Source + logo, each <= 8 MiB raw.
 
 export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", providerFetch = fetch }) {
   const jobs = new Map(); let running = 0; let textRunning = 0;
@@ -46,7 +46,7 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", pro
   };
   return createServer(async (request, response) => {
     const reply = (status, body) => { response.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" }); response.end(JSON.stringify(body)); };
-    if (request.method === "GET" && request.url === "/health") return reply(apiKey && token?.length >= 32 ? 200 : 503, { ready: Boolean(apiKey && token?.length >= 32) });
+    if (request.method === "GET" && request.url === "/health") return reply(apiKey && token?.length >= 32 ? 200 : 503, { ready: Boolean(apiKey && token?.length >= 32), maxImageInputs: 2 });
     if (request.method !== "POST" || (request.url !== "/generate" && request.url !== "/responses")) return reply(404, { error: "Not found" });
     if (!authorized(request.headers.authorization)) return reply(401, { error: "Unauthorized" });
     if (!apiKey) return reply(503, { error: "Image provider is not configured" });
@@ -111,10 +111,23 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", pro
     } catch { return reply(400, { error: "Invalid request" }); }
     finally { clearTimeout(timer); }
     if (!body || typeof body.prompt !== "string" || !body.prompt.trim() || body.prompt.length > 12000) return reply(400, { error: "Invalid prompt" });
-    const hasImage = typeof body.image_b64 === "string" && body.image_b64.length > 0;
-    if (hasImage && (!ALLOWED_IMAGE_TYPE.has(body.image_type) || body.image_b64.length > 12_000_000))
-      return reply(400, { error: "Invalid reference image" });
-    const hash = createHash("sha256").update(body.prompt).update(hasImage ? body.image_b64 : "").digest("hex");
+    if (body.images !== undefined && (!Array.isArray(body.images) || !body.images.length || body.images.length > 2 || body.image_b64 !== undefined))
+      return reply(400, { error: "Invalid images" });
+    const inputs = body.images || (body.image_b64 !== undefined ? [body] : []);
+    const images = [];
+    for (const input of inputs) {
+      if (!input || typeof input.image_b64 !== "string" || !input.image_b64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(input.image_b64)
+        || !ALLOWED_IMAGE_TYPE.has(input.image_type)) return reply(400, { error: "Invalid reference image" });
+      const bytes = Buffer.from(input.image_b64, "base64");
+      if (!bytes.length || bytes.length > 8 * 1024 * 1024) return reply(413, { error: "Image too large" });
+      images.push({ bytes, contentType: input.image_type });
+    }
+    const resolvedSize = resolveSize(body.size);
+    const quality = ALLOWED_QUALITY.has(body.quality) ? body.quality : "medium";
+    const outputFormat = ALLOWED_FORMAT.has(body.output_format) ? body.output_format : "png";
+    const background = ALLOWED_BACKGROUND.has(body.background) ? body.background : undefined;
+    const hash = createHash("sha256").update(JSON.stringify({ prompt: body.prompt, model, size: resolvedSize, quality, outputFormat, background,
+      images: images.map((image) => ({ type: image.contentType, sha256: createHash("sha256").update(image.bytes).digest("hex") })) })).digest("hex");
     const previous = jobs.get(id);
     if (previous && previous.hash !== hash) return reply(409, { error: "Request key already used" });
     if (!previous && running >= 2) return reply(429, { error: "Image service is busy" });
@@ -125,10 +138,6 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", pro
       running++;
       job.result = (async () => {
         try {
-          const resolvedSize = resolveSize(body.size);
-          const quality = ALLOWED_QUALITY.has(body.quality) ? body.quality : "medium";
-          const outputFormat = ALLOWED_FORMAT.has(body.output_format) ? body.output_format : "png";
-          const background = ALLOWED_BACKGROUND.has(body.background) ? body.background : undefined;
           // A reference image (the brand's logo) goes through OpenAI's edit
           // endpoint instead of generations - it's the only one that
           // accepts an input image at all. Deliberately no mask: a mask
@@ -139,7 +148,7 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", pro
           // приближенный [к логотипу]" - the model should treat the logo as
           // a strong likeness to reproduce and weave into the scene, not
           // an exact fixed region to leave alone).
-          const upstream = hasImage
+          const upstream = images.length
             ? await providerFetch("https://api.openai.com/v1/images/edits", {
                 method: "POST", headers: { Authorization: `Bearer ${apiKey}` },
                 body: (() => {
@@ -151,7 +160,7 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", pro
                   form.append("quality", quality);
                   form.append("output_format", outputFormat);
                   if (background) form.append("background", background);
-                  form.append("image", new Blob([Buffer.from(body.image_b64, "base64")], { type: body.image_type }), "reference");
+                  images.forEach((image, index) => form.append(images.length > 1 ? "image[]" : "image", new Blob([image.bytes], { type: image.contentType }), `reference-${index}`));
                   return form;
                 })(),
                 signal: AbortSignal.timeout(150_000),
