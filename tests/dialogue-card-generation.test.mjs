@@ -54,7 +54,7 @@ test("image from text can be cancelled or confirmed with its own orientation, lo
   await ui.click(ui.findButton("Портретная", dialog));
   await ui.click(ui.findButton("WEBP", dialog));
   await ui.click(dialog.querySelectorAll('input[type="checkbox"]')[1]);
-  await ui.click(ui.findButton("Наложить поверх", dialog));
+  await ui.click(ui.findButton("Адаптировать в углу", dialog));
   await ui.click(ui.findButton("Слева вверху", dialog));
   await ui.click(ui.findButton("Заголовок статьи", dialog));
   await ui.click(ui.findButton("Создать изображение", dialog));
@@ -65,7 +65,7 @@ test("image from text can be cancelled or confirmed with its own orientation, lo
   assert.equal(sent.settings.imageAspectRatio, "9:16");
   assert.equal(sent.settings.imageOutputFormat, "webp");
   assert.equal(sent.settings.useLogo, true);
-  assert.equal(sent.settings.logoPlacement, "overlay");
+  assert.equal(sent.settings.logoPlacement, "corner");
   assert.equal(sent.settings.logoPosition, "top-left");
   assert.equal(sent.settings.imageTextMode, "title");
   assert.equal(sent.useBrandContext, false);

@@ -6609,11 +6609,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <div className="image-generator-settings">
                     <ModuleSelect label="Текст на изображении" value={imageTextMode} onChange={setImageTextMode} options={IMAGE_TEXT_OPTIONS.filter(option => option.value !== "title" || Boolean(imageSourceTitle))} />
                     {useBrand && brand.logoKey && useLogoInImage && <ModuleSelect label="Как разместить логотип" value={logoPlacement} onChange={setLogoPlacement} options={LOGO_PLACEMENT_OPTIONS} />}
-                    {useBrand && brand.logoKey && useLogoInImage && logoPlacement === "overlay" && <ModuleSelect label="Положение логотипа" value={logoPosition} onChange={setLogoPosition} options={LOGO_POSITION_OPTIONS} />}
+                    {useBrand && brand.logoKey && useLogoInImage && logoPlacement === "corner" && <ModuleSelect label="Положение логотипа" value={logoPosition} onChange={setLogoPosition} options={LOGO_POSITION_OPTIONS} />}
                   </div>
                   {imageTextMode === "title" && <p>На изображении: {imageSourceTitle}</p>}
                   {imageTextMode === "custom" && <><label htmlFor="professional-image-text">Текст для изображения</label><textarea id="professional-image-text" rows={2} maxLength={200} value={imageText} onChange={event => setImageText(event.target.value)} placeholder="Например: Закулисье нашей студии" /></>}
-                  {useBrand && brand.logoKey && useLogoInImage && <small>{logoPlacement === "overlay" ? "Наложим файл логотипа, сохранив его цвета и пропорции. Его собственная надпись останется и в режиме «Без текста»." : "Логотип станет частью сцены. Модель может немного изменить его детали."}</small>}
+                  {useBrand && brand.logoKey && useLogoInImage && <small>{logoPlacement === "corner" ? "Адаптируем знак из PNG или JPG без лишнего фона, с учётом текста и выбранного угла. Модель может немного изменить мелкие детали. Надпись самого логотипа останется и в режиме «Без текста»." : "Логотип станет частью сцены. Модель может немного изменить его детали."}</small>}
                 </fieldset>
                 {imageError && <p className="generation-error" role="alert">{imageError}</p>}
                 <button className="button primary large" type="button" onClick={() => void generateProfessionalImage()} disabled={imageBusy || carouselBusy || !workspaceReady || imagePrompt.trim().length < 8 || workspaceAccount.generationsRemaining <= 0}><Icon name="image"/>{imageBusy ? "Создаём изображение…" : workspaceAccount.generationsRemaining <= 0 ? "Лимит генераций исчерпан" : "Создать изображение"}</button>

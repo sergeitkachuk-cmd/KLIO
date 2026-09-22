@@ -13,7 +13,8 @@ export type ImageGenerationOptions = {
   quality?: ImageQuality;
   outputFormat?: ImageOutputFormat;
   background?: "auto" | "transparent" | "opaque";
-  logoPlacement?: "scene" | "overlay";
+  // "overlay" is a legacy client value; it now means an adapted corner mark.
+  logoPlacement?: "scene" | "corner" | "overlay";
   logoPosition?: LogoPosition;
 };
 
@@ -53,7 +54,7 @@ export function parseImageGenerationOptions(input: Record<string, unknown>): Ima
     quality,
     outputFormat,
     background,
-    logoPlacement: input.logoPlacement === "overlay" ? "overlay" : "scene",
+    logoPlacement: input.logoPlacement === "corner" || input.logoPlacement === "overlay" ? "corner" : "scene",
     logoPosition: input.logoPosition === "top-left" || input.logoPosition === "top-right" || input.logoPosition === "bottom-left" ? input.logoPosition : "bottom-right",
   };
 }
@@ -106,12 +107,12 @@ export const imageConfigured = () =>
   Boolean(storageConfigured() && (process.env.OPENAI_API_KEY?.trim() ||
     (process.env.KLIO_IMAGE_SERVICE_URL?.trim() && process.env.KLIO_IMAGE_SERVICE_TOKEN?.trim())));
 
-const LOGO_OVERLAY_INSTRUCTION = "Логотип будет наложен приложением из настоящего файла после генерации. Не рисуй дополнительный логотип или его имитацию сам, даже если это упоминается в запросе. Это не отменяет явно выбранную надпись или заголовок: их изобрази по параметрам выше. Создай полноценную сцену по всей площади; не освобождай угол, не удаляй фон и не добавляй прозрачность, рамку или подложку под знак.";
-
-async function finishLogoOverlay(image: { bytes: Uint8Array<ArrayBuffer>; contentType: string }, logo: ImageInput, options: ImageGenerationOptions) {
-  const { overlayImageLogo } = await import("./image-logo-overlay");
-  const format = options.outputFormat || (image.contentType === "image/jpeg" ? "jpeg" : image.contentType === "image/webp" ? "webp" : "png");
-  return overlayImageLogo(image.bytes, logo, options.logoPosition, format);
+function cornerLogoInstruction(position: LogoPosition = "bottom-right") {
+  const corner = { "top-left": "слева вверху", "top-right": "справа вверху", "bottom-left": "слева внизу", "bottom-right": "справа внизу" }[position];
+  return `Адаптируй настоящий логотип с приложенного референса и размести его ${corner} как небольшой графический знак. Максимально точно воспроизведи форму, пропорции, цвета и собственную надпись логотипа; не придумывай другой знак или бренд. Адаптация касается масштаба и окружения, а не редизайна логотипа.
+Файл логотипа может быть JPEG, PNG или WEBP с непрозрачным фоном. Отдели сам знак и его надпись от внешнего фона файла: не копируй квадратную или прямоугольную подложку, поля и лишний фон референса. Сохрани элементы, которые действительно являются частью самого знака. Прозрачность референса относится только к логотипу, а не к итоговой картинке.
+Компонуй логотип и разрешённый заголовок одновременно. Не перекрывай логотипом текст, лица и значимые объекты; не накладывай текст на логотип. Сохрани выбранную надпись полностью и читаемо, оставь между ней и знаком свободное расстояние. Уменьши знак или немного сдвинь его внутри выбранного угла, если там тесно. Ориентир: ширина знака до 12–15% кадра, отступ от краёв 3–5%; приоритет — отсутствие пересечений и читаемость. В новой сцене заранее учти их раздельное размещение. При редактировании сохраняй существующие надписи и детали исходника, которых запрос не касается.
+Не стирай и не размывай картинку ради места под логотип. Не добавляй пустой прямоугольник, рамку, виньетку, прозрачные края или подложку. Сцена должна продолжаться по всей площади, включая углы; итоговое изображение непрозрачное. Не добавляй ради логотипа новые предметы. Режим «Без текста» запрещает новые заголовки, но собственная надпись настоящего логотипа сохраняется.`;
 }
 
 // The actual provider call, split out of createImage below so
@@ -279,8 +280,9 @@ export async function createImage(prompt: string, email: string, baseUrl: string
   );
 }
 
-// The explicit placement choice separates a natural scene reference (AI may
-// redraw its details) from compositing the original file after generation.
+// Both placements use the real logo as a model reference. Rendering the corner
+// mark together with the scene lets the model plan around captions and omit
+// the file's rectangular backdrop instead of pasting it over finished artwork.
 export async function createImageFromLogo(
   prompt: string,
   logo: { bytes: Uint8Array<ArrayBuffer>; contentType: string },
@@ -290,10 +292,9 @@ export async function createImageFromLogo(
   options: ImageGenerationOptions = {},
   model?: string,
 ) {
-  const overlay = options.logoPlacement === "overlay";
-  const guidedPrompt = `${prompt}\n\n${overlay ? LOGO_OVERLAY_INSTRUCTION : LOGO_REFERENCE_INSTRUCTION}`;
-  const generated = await generateImageBytes(guidedPrompt, requestId, overlay ? { ...options, background: options.background ?? "opaque" } : options, overlay ? undefined : logo, model);
-  const { bytes, contentType } = overlay ? await finishLogoOverlay(generated, logo, options) : generated;
+  const corner = options.logoPlacement === "corner" || options.logoPlacement === "overlay";
+  const guidedPrompt = `${prompt}\n\n${corner ? cornerLogoInstruction(options.logoPosition) : LOGO_REFERENCE_INSTRUCTION}`;
+  const { bytes, contentType } = await generateImageBytes(guidedPrompt, requestId, corner ? { ...options, background: "opaque" } : options, logo, model);
   const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
   return uploadPublicationImage(
     new File([bytes], fileName, { type: contentType }),
@@ -317,8 +318,8 @@ export async function createImageFromSource(
   const instruction = purpose === "edit"
     ? "Первое изображение — исходник для редактирования. Измени именно его по запросу пользователя. Сохрани композицию, людей, предметы, ракурс, освещение и все детали, которых правка не касается. Сохрани изображение по всей площади, включая края и углы. Не стирай участки исходника и не освобождай место под логотип. Не создавай новую сцену по старому описанию."
     : "Первое изображение — визуальный референс. Учитывай его реальные детали, композицию и стиль при выполнении запроса пользователя.";
-  const overlay = Boolean(logo) && options.logoPlacement === "overlay";
-  const logoInstruction = overlay ? LOGO_OVERLAY_INSTRUCTION : logo
+  const corner = Boolean(logo) && (options.logoPlacement === "corner" || options.logoPlacement === "overlay");
+  const logoInstruction = logo
     ? "Второе изображение — настоящий логотип бренда. Используй именно этот знак и его надпись; не выдумывай другой бренд. Размести его на первом изображении в соответствии с запросом. Прозрачность вокруг знака относится только к файлу логотипа: не переноси её на фотографию и не удаляй под ним или вокруг него исходное изображение."
     : "Логотип бренда не приложен. Не выдумывай фирменные знаки.";
   // With an RGBA logo, automatic background selection can make the entire
@@ -326,14 +327,15 @@ export async function createImageFromSource(
   // describes the file format and does not itself require transparency.
   const editOptions = purpose === "edit"
     ? { size: "auto", outputFormat: options.outputFormat, quality: options.quality, background: options.background ?? "opaque" as const }
-    : options;
+    : corner ? { ...options, background: "opaque" as const } : options;
+  if (corner) editOptions.background = "opaque";
   const backgroundInstruction = editOptions.background === "opaque"
     ? "Результат — цельное непрозрачное изображение. Не добавляй прозрачные участки, полупрозрачные края, виньетку, рамку или подложку под логотип."
     : "";
-  const generated = await generateImageBytes(`${instruction}\n${backgroundInstruction}\n\n${prompt}\n\n${logoInstruction}${logo && !overlay && options.logoPlacement === "scene" ? `\n${LOGO_REFERENCE_INSTRUCTION}` : ""}`, requestId,
+  const placementInstruction = logo ? corner ? cornerLogoInstruction(options.logoPosition) : options.logoPlacement === "scene" ? LOGO_REFERENCE_INSTRUCTION : "" : "";
+  const { bytes, contentType } = await generateImageBytes(`${instruction}\n${backgroundInstruction}\n\n${prompt}\n\n${logoInstruction}\n${placementInstruction}`, requestId,
     editOptions,
-    logo && !overlay ? [source, logo] : source);
-  const { bytes, contentType } = overlay && logo ? await finishLogoOverlay(generated, logo, options) : generated;
+    logo ? [source, logo] : source);
   return uploadPublicationImage(new File([bytes], "klio-edit", { type: contentType }), email, baseUrl);
 }
 

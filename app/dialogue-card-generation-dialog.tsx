@@ -60,9 +60,9 @@ export function DialogueCardGenerationDialog({ kind, title, initial, brandName, 
       {image && <label className="klio-card-generation-check"><input type="checkbox" checked={hasLogo && choices.settings.useLogo} disabled={busy || !hasLogo} onChange={event => update("useLogo", event.target.checked)} /><span>Добавить логотип<small>{hasLogo ? "Из профиля выбранного бренда" : "Логотип можно загрузить в «Мой бизнес»"}</small></span></label>}
       {image && hasLogo && choices.settings.useLogo && <>
         {group("Как разместить логотип", "logoPlacement", LOGO_PLACEMENT_OPTIONS)}
-        {choices.settings.logoPlacement === "overlay" ? <>
+        {choices.settings.logoPlacement === "corner" ? <>
           {group("Положение логотипа", "logoPosition", LOGO_POSITION_OPTIONS)}
-          <small>Наложим файл логотипа поверх готовой картинки, сохранив его цвета и пропорции. Надпись внутри логотипа останется и в режиме «Без текста».</small>
+          <small>Адаптируем знак из PNG или JPG без лишнего фона, с учётом текста и выбранного угла. Модель может немного изменить мелкие детали. Надпись самого логотипа останется и в режиме «Без текста».</small>
         </> : <small>Логотип станет частью сцены. Модель может немного изменить его детали.</small>}
       </>}
       <p className="klio-card-generation-quota">1 материал из лимита · осталось {remaining}</p>

@@ -604,7 +604,10 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
                   {generationSettings.imageTextMode === "custom" && <label className="klio-image-text-setting">Текст для изображения<textarea rows={2} maxLength={200} value={generationSettings.imageText || ""} onChange={event => changeSetting("imageText", event.target.value)} /></label>}
                   {props.hasLogo && generationSettings.useLogo && <>
                     <ModuleSelect variant="chatkit" label="Как разместить логотип" value={generationSettings.logoPlacement || "scene"} options={LOGO_PLACEMENT_OPTIONS} onChange={value => changeSetting("logoPlacement", value)} />
-                    {generationSettings.logoPlacement === "overlay" && <ModuleSelect variant="chatkit" label="Положение логотипа" value={generationSettings.logoPosition || "bottom-right"} options={LOGO_POSITION_OPTIONS} onChange={value => changeSetting("logoPosition", value)} />}
+                    {generationSettings.logoPlacement === "corner" && <>
+                      <ModuleSelect variant="chatkit" label="Положение логотипа" value={generationSettings.logoPosition || "bottom-right"} options={LOGO_POSITION_OPTIONS} onChange={value => changeSetting("logoPosition", value)} />
+                      <small>Знак адаптируется без лишнего фона, с учётом текста. Мелкие детали могут отличаться от оригинала.</small>
+                    </>}
                   </>}
                 </>}
               </>}

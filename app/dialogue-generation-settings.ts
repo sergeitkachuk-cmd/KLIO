@@ -42,7 +42,7 @@ export const IMAGE_TEXT_OPTIONS = [
 ];
 export const LOGO_PLACEMENT_OPTIONS = [
   { value: "scene", label: "Вписать в сцену" },
-  { value: "overlay", label: "Наложить поверх" },
+  { value: "corner", label: "Адаптировать в углу" },
 ];
 export const LOGO_POSITION_OPTIONS = [
   { value: "bottom-right", label: "Справа внизу" },

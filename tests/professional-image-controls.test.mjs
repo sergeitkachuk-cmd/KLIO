@@ -22,7 +22,7 @@ function setup(overrides = {}) {
     imageTextMode: "custom", imageText: "  За кадром  ", imageSourceTitle: "Статья",
     pendingCarouselSource: { generationId: "material-1" },
     useBrand: true, activeBrandId: "studio", brand: { logoKey: "logo" }, useLogoInImage: true,
-    imageAspectRatio: "9:16", imageOutputFormat: "png", logoPlacement: "overlay", logoPosition: "top-left",
+    imageAspectRatio: "9:16", imageOutputFormat: "png", logoPlacement: "corner", logoPosition: "top-left",
     setImageBusy: value => { state.busy = value; }, setImageError: value => { state.error = value; },
     setImageResult: value => { state.result = value; }, setCarouselResult: () => {}, setWorkspaceAccount: () => {},
     setWorkspaceHistory: updater => { state.history = updater(state.history); }, openModule: value => { state.module = value; },
@@ -40,7 +40,7 @@ test("professional submit sends visible composition choices and source identity,
   const payload = app.state.requests[0].body;
   assert.equal(payload.sourceGenerationId, "material-1");
   assert.equal(payload.imageTextMode, "custom"); assert.equal(payload.imageText, "За кадром");
-  assert.equal(payload.logoPlacement, "overlay"); assert.equal(payload.logoPosition, "top-left");
+  assert.equal(payload.logoPlacement, "corner"); assert.equal(payload.logoPosition, "top-left");
   assert.equal(payload.aspectRatio, "9:16"); assert.equal(payload.useLogo, true);
   assert.equal(app.state.result.imageUrl, "/image.png");
   assert.equal(app.state.history.length, 1); assert.equal(app.state.busy, false); assert.equal(app.state.module, "images");

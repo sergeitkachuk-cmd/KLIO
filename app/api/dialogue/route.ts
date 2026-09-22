@@ -262,7 +262,7 @@ async function runReply(
     imageAspectRatio: ImageAspectRatio | null;
     imageOutputFormat: ImageOutputFormat | null;
     useLogo: boolean;
-    logoPlacement: "scene" | "overlay";
+    logoPlacement: "scene" | "corner";
     logoPosition: "top-left" | "top-right" | "bottom-left" | "bottom-right";
     imageTextMode: "auto" | "none" | "title" | "custom";
     imageText: string;
@@ -789,7 +789,7 @@ export async function POST(request: Request) {
       throw new WorkspaceAccessError("Введите текст для изображения: от 1 до 200 символов.", 400);
     if (action === "send" && mode === "image" && imageTextMode === "title" && !selectedId)
       throw new WorkspaceAccessError("Выберите материал, заголовок которого нужен на изображении.", 400);
-    const logoPlacement = settingsRaw.logoPlacement === "overlay" ? "overlay" as const : "scene" as const;
+    const logoPlacement = settingsRaw.logoPlacement === "corner" || settingsRaw.logoPlacement === "overlay" ? "corner" as const : "scene" as const;
     const logoPosition = settingsRaw.logoPosition === "top-left" || settingsRaw.logoPosition === "top-right" || settingsRaw.logoPosition === "bottom-left" ? settingsRaw.logoPosition : "bottom-right" as const;
     const slideCount = Number(settingsRaw.slideCount ?? 5);
     if (mode === "carousel" && (!Number.isInteger(slideCount) || slideCount < CAROUSEL_MIN_SLIDES || slideCount > CAROUSEL_MAX_SLIDES))

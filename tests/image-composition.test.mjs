@@ -5,9 +5,7 @@ import { randomUUID } from "node:crypto";
 import * as orm from "drizzle-orm";
 import { createDialogueHarness, load, imageGenerationErrors } from "./helpers/dialogue-harness.mjs";
 
-const overlay = load("app/api/_lib/image-logo-overlay.ts", { sharp: { default: sharp } });
 const promptModule = load("app/api/_lib/dialogue-image-prompt.ts");
-const pixels = buffer => sharp(Buffer.from(buffer)).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
 async function fixtures() {
   const base = await sharp({ create: { width: 200, height: 120, channels: 4, background: { r: 31, g: 82, b: 146, alpha: 1 } } }).png().toBuffer();
   const logo = await sharp({ create: { width: 40, height: 20, channels: 4, background: { r: 240, g: 30, b: 60, alpha: 1 } } })
@@ -15,57 +13,86 @@ async function fixtures() {
   return { base, logo: { bytes: new Uint8Array(logo), contentType: "image/png" } };
 }
 
-test("transparent logo overlay preserves every pixel outside its corner, dimensions, colours and opacity", async () => {
+test("corner mode sends PNG and JPEG logos to AI with the caption and placement; saved pixels are never overlaid", async () => {
   const { base, logo } = await fixtures();
-  for (const position of ["top-left", "top-right", "bottom-left", "bottom-right"]) {
-    const result = await overlay.overlayImageLogo(base, logo, position, "png");
-    const { data, info } = await pixels(result.bytes);
-    assert.equal(info.width, 200); assert.equal(info.height, 120);
-    let changed = 0, realColour = 0;
-    for (let y = 0; y < 120; y++) for (let x = 0; x < 200; x++) {
-      const at = (y * 200 + x) * 4;
-      assert.equal(data[at + 3], 255, "the photograph must not become transparent");
-      if (data[at] !== 31 || data[at + 1] !== 82 || data[at + 2] !== 146) {
-        changed++;
-        assert.ok(position.endsWith("left") ? x < 45 : x > 155);
-        assert.ok(position.startsWith("top") ? y < 25 : y > 95);
-      }
-      if (data[at] === 240 && data[at + 1] === 30 && data[at + 2] === 60) realColour++;
-    }
-    assert.ok(changed > 20); assert.ok(realColour > 20);
-  }
-  for (const outputFormat of ["jpeg", "webp"]) {
-    const result = await overlay.overlayImageLogo(base, logo, "bottom-right", outputFormat);
-    assert.equal(result.contentType, `image/${outputFormat}`);
-    const metadata = await sharp(Buffer.from(result.bytes)).metadata();
-    assert.equal(metadata.format, outputFormat); assert.equal(metadata.width, 200); assert.equal(metadata.height, 120);
-  }
-});
-
-test("overlay does not send the logo to AI; embedded mode does; both save exactly one image", async () => {
-  const { base, logo } = await fixtures();
+  const jpegLogo = { bytes: new Uint8Array(await sharp(Buffer.from(logo.bytes)).flatten({ background: "#132c52" }).jpeg().toBuffer()), contentType: "image/jpeg" };
   const calls = [], uploads = [];
   const image = load("app/api/_lib/image-generation.ts", {
     "./storage": { storageConfigured: () => true, uploadPublicationImage: async file => { uploads.push(file); return "saved"; } },
     "./image-type": load("app/api/_lib/image-type.ts"), "./image-generation-errors": imageGenerationErrors,
-    "./image-logo-overlay": overlay,
   }, { FormData, fetch: async (url, options) => { calls.push({ url: String(url), body: options.body }); return Response.json({ data: [{ b64_json: base.toString("base64") }] }); } });
-  await image.createImageFromLogo("Новая сцена с логотипом", logo, "owner", "https://klio.example", "overlay-test", { logoPlacement: "overlay", logoPosition: "top-left" });
-  assert.match(calls[0].url, /generations$/);
-  assert.match(JSON.parse(calls[0].body).prompt, /Не рисуй дополнительный логотип/);
-  assert.equal(JSON.parse(calls[0].body).background, "opaque");
-  assert.equal(uploads.length, 1);
-  assert.notDeepEqual(Buffer.from(await uploads[0].arrayBuffer()), base);
+  for (const [position, label] of Object.entries({ "top-left": "слева вверху", "top-right": "справа вверху", "bottom-left": "слева внизу", "bottom-right": "справа внизу" })) {
+    for (const reference of [logo, jpegLogo]) {
+      await image.createImageFromLogo('Новая сцена. Заголовок: «Один голос бренда».', reference, "owner", "https://klio.example", randomUUID(), { logoPlacement: "corner", logoPosition: position });
+      const call = calls.at(-1), prompt = call.body.get("prompt");
+      assert.match(call.url, /edits$/);
+      assert.deepEqual(Buffer.from(await call.body.get("image").arrayBuffer()), Buffer.from(reference.bytes));
+      assert.equal(call.body.get("image").type, reference.contentType);
+      assert.match(prompt, /Один голос бренда/); assert.ok(prompt.includes(`размести его ${label}`));
+      assert.match(prompt, /не копируй квадратную или прямоугольную подложку/);
+      assert.match(prompt, /Компонуй логотип и разрешённый заголовок одновременно/);
+      assert.match(prompt, /Не перекрывай логотипом текст/);
+      assert.match(prompt, /форму, пропорции, цвета и собственную надпись/);
+      assert.match(prompt, /Не стирай и не размывай картинку/);
+      assert.equal(call.body.get("background"), "opaque");
+      assert.doesNotMatch(prompt, /Логотип будет наложен приложением/);
+      assert.deepEqual(Buffer.from(await uploads.at(-1).arrayBuffer()), base, "upload the composed model result without pasting the square file over it");
+    }
+  }
+  assert.equal(calls.length, 8); assert.equal(uploads.length, 8);
   await image.createImageFromLogo("Новая сцена с логотипом", logo, "owner", "https://klio.example", "scene-test", { logoPlacement: "scene" });
-  assert.match(calls[1].url, /edits$/);
-  assert.deepEqual(Buffer.from(await calls[1].body.get("image").arrayBuffer()), Buffer.from(logo.bytes));
-  assert.match(calls[1].body.get("prompt"), /Впиши его в сцену/);
-  await image.createImageFromSource("Измени свет и добавь логотип", { bytes: new Uint8Array(base), contentType: "image/png" }, "edit", logo, "owner", "https://klio.example", "source-test", { logoPlacement: "overlay" });
-  assert.match(calls[2].url, /edits$/);
-  assert.equal(calls[2].body.getAll("image[]").length, 0);
-  assert.deepEqual(Buffer.from(await calls[2].body.get("image").arrayBuffer()), base);
-  assert.equal(calls[2].body.get("background"), "opaque");
-  assert.equal(uploads.length, 3);
+  assert.match(calls.at(-1).url, /edits$/);
+  assert.deepEqual(Buffer.from(await calls.at(-1).body.get("image").arrayBuffer()), Buffer.from(logo.bytes));
+  assert.match(calls.at(-1).body.get("prompt"), /Впиши его в сцену/);
+  assert.doesNotMatch(calls.at(-1).body.get("prompt"), /Компонуй логотип/);
+  // Already-open clients may still submit the old overlay choice.
+  for (const placement of ["corner", "overlay"]) {
+    assert.equal(image.parseImageGenerationOptions({ logoPlacement: placement }).logoPlacement, "corner");
+    await image.createImageFromSource("Добавь логотип к готовому изображению", { bytes: new Uint8Array(base), contentType: "image/png" }, "edit", jpegLogo, "owner", "https://klio.example", randomUUID(), { logoPlacement: placement, logoPosition: "top-left", background: "transparent" });
+    const call = calls.at(-1), inputs = call.body.getAll("image[]");
+    assert.match(call.url, /edits$/); assert.equal(inputs.length, 2);
+    assert.deepEqual(Buffer.from(await inputs[0].arrayBuffer()), base);
+    assert.deepEqual(Buffer.from(await inputs[1].arrayBuffer()), Buffer.from(jpegLogo.bytes));
+    assert.equal(call.body.get("background"), "opaque"); assert.equal(call.body.get("size"), "auto");
+    assert.match(call.body.get("prompt"), /Сохрани композицию/);
+    assert.match(call.body.get("prompt"), /включая края и углы/);
+    assert.match(call.body.get("prompt"), /Второе изображение — настоящий логотип/);
+    assert.match(call.body.get("prompt"), /размести его слева вверху/);
+    assert.match(call.body.get("prompt"), /При редактировании сохраняй существующие надписи/);
+    assert.deepEqual(Buffer.from(await uploads.at(-1).arrayBuffer()), base);
+  }
+  assert.equal(uploads.length, 11);
+});
+
+test("relay receives the actual source and JPEG logo, while the largest dialogue brief keeps all composition rules", async () => {
+  const { base, logo } = await fixtures();
+  const jpeg = await sharp(Buffer.from(logo.bytes)).flatten({ background: "#132c52" }).jpeg().toBuffer();
+  const requests = [], uploads = [];
+  const image = load("app/api/_lib/image-generation.ts", {
+    "./storage": { uploadPublicationImage: async file => { uploads.push(file); return "saved"; } },
+    "./image-type": load("app/api/_lib/image-type.ts"), "./image-generation-errors": imageGenerationErrors,
+  }, { process: { env: { KLIO_IMAGE_SERVICE_URL: "https://relay.example" } }, fetch: async (url, options) => {
+    if (new URL(url).pathname === "/health") return Response.json({ maxImageInputs: 2 });
+    requests.push(JSON.parse(options.body));
+    return Response.json({ data: [{ b64_json: base.toString("base64") }] });
+  } });
+  const prompt = "Контекст ".repeat(1000).slice(0, 8000) + "\n\n" + promptModule.dialogueImageTextInstruction("title", "З".repeat(500), true, true);
+  const reference = { bytes: new Uint8Array(jpeg), contentType: "image/jpeg" };
+  await image.createImageFromLogo(prompt, reference, "owner", "https://klio.example", "relay-new", { logoPlacement: "overlay", logoPosition: "top-right" });
+  assert.equal(requests[0].image_b64, jpeg.toString("base64")); assert.equal(requests[0].image_type, "image/jpeg");
+  await image.createImageFromSource(prompt, { bytes: new Uint8Array(base), contentType: "image/png" }, "edit", reference, "owner", "https://klio.example", "relay-edit", { logoPlacement: "corner", logoPosition: "top-right" });
+  assert.deepEqual(requests[1].images.map(input => input.image_b64), [base.toString("base64"), jpeg.toString("base64")]);
+  assert.deepEqual(requests[1].images.map(input => input.image_type), ["image/png", "image/jpeg"]);
+  for (const request of requests) {
+    assert.equal(request.background, "opaque");
+    assert.match(request.prompt, /Единственная новая надпись/);
+    assert.ok(request.prompt.includes("З".repeat(500)));
+    assert.match(request.prompt, /размести его справа вверху/);
+    assert.match(request.prompt, /не копируй квадратную или прямоугольную подложку/);
+    assert.match(request.prompt, /собственная надпись настоящего логотипа сохраняется\.$/);
+    assert.ok(request.prompt.length <= 12000);
+  }
+  assert.equal(requests.length, 2); assert.equal(uploads.length, 2);
 });
 
 test("dialogue validates text before billing and preserves choices after a long brand brief", async t => {
@@ -79,14 +106,14 @@ test("dialogue validates text before billing and preserves choices after a long 
   assert.equal((await h.account()).generationsUsed, 0); assert.equal(h.imageCalls.length, 0);
   h.setAi(async () => ({ raw: "Съёмка в студии, камера и команда." }));
   for (const imageTextMode of ["none", "custom"]) {
-    await h.post(send({ imageTextMode, imageText: "Внутри студии", useLogo: true, logoPlacement: "overlay", logoPosition: "top-left" }));
+    await h.post(send({ imageTextMode, imageText: "Внутри студии", useLogo: true, logoPlacement: imageTextMode === "none" ? "overlay" : "corner", logoPosition: "top-left" }));
     thread = await h.settled(thread.id);
     assert.equal(thread.status, "idle");
     const args = h.imageCalls.at(-1).args;
     assert.match(args[0], /Съёмка в студии, камера и команда/);
     assert.match(args[0], imageTextMode === "none" ? /Не добавляй на изображение текст/ : /Единственная новая надпись.*Внутри студии/);
     assert.match(args[0], /собственной надписи в настоящем логотипе/);
-    assert.equal(args[5].logoPlacement, "overlay"); assert.equal(args[5].logoPosition, "top-left");
+    assert.equal(args[5].logoPlacement, "corner"); assert.equal(args[5].logoPosition, "top-left");
   }
   assert.equal((await h.account()).generationsUsed, 2);
 });
@@ -113,12 +140,12 @@ test("professional images use owned material titles and the same text and logo c
   assert.equal((await post({ imageTextMode: "title", sourceGenerationId: "foreign", sourceTitle: "Подмена" })).status, 404);
   assert.equal(calls.length, 0);
   for (const mode of ["none", "title", "custom"]) {
-    const response = await post({ imageTextMode: mode, imageText: "Своя надпись", sourceGenerationId: "article", useLogo: true, logoPlacement: "overlay", logoPosition: "bottom-left", outputFormat: "webp" });
+    const response = await post({ imageTextMode: mode, imageText: "Своя надпись", sourceGenerationId: "article", useLogo: true, logoPlacement: mode === "none" ? "overlay" : "corner", logoPosition: "bottom-left", outputFormat: "webp" });
     assert.equal(response.status, 200);
     const { args, logo } = calls.at(-1); assert.equal(logo, true);
     assert.match(args[0], mode === "none" ? /Не добавляй на изображение текст/ : mode === "title" ? /Единственная новая надпись.*Настоящий заголовок/ : /Единственная новая надпись.*Своя надпись/);
     assert.ok(!args[0].includes("Подмена"));
-    assert.equal(args[5].logoPlacement, "overlay"); assert.equal(args[5].logoPosition, "bottom-left"); assert.equal(args[5].outputFormat, "webp");
+    assert.equal(args[5].logoPlacement, "corner"); assert.equal(args[5].logoPosition, "bottom-left"); assert.equal(args[5].outputFormat, "webp");
     assert.equal(recorded.at(-1).title, "Обложка: Настоящий заголовок");
   }
   assert.equal(recorded.length, 3);
