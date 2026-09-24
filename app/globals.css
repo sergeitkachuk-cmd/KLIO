@@ -16457,8 +16457,9 @@ input[type="radio"] {
   min-height: 100svh;
   padding: 30px;
   background:
-    radial-gradient(900px 620px at 91% 8%, rgba(91, 107, 130, 0.12), transparent 68%),
-    linear-gradient(180deg, #f5f4f8 0%, #ececf2 100%);
+    radial-gradient(900px 620px at 92% 6%, rgba(69, 124, 191, 0.22), transparent 68%),
+    radial-gradient(760px 520px at 6% 92%, rgba(117, 83, 196, 0.16), transparent 72%),
+    linear-gradient(145deg, #06182b 0%, #0a2340 52%, #071426 100%);
 }
 
 .auth-card {
@@ -16470,10 +16471,10 @@ input[type="radio"] {
   border-radius: 26px;
   color: #fff;
   background:
-    radial-gradient(circle at 15% 5%, rgba(91, 107, 130, 0.48), transparent 34%),
-    radial-gradient(circle at 100% 82%, rgba(109, 125, 148, 0.3), transparent 36%),
-    linear-gradient(145deg, #0b0b14 0%, #171b20 58%, #0d1013 100%);
-  box-shadow: 0 44px 110px rgba(30, 36, 44, 0.22);
+    radial-gradient(circle at 12% 4%, rgba(73, 157, 218, 0.24), transparent 34%),
+    radial-gradient(circle at 100% 86%, rgba(128, 91, 220, 0.24), transparent 40%),
+    linear-gradient(145deg, #0a2541 0%, #102f50 56%, #081a31 100%);
+  box-shadow: 0 44px 110px rgba(1, 12, 27, 0.46);
   isolation: isolate;
 }
 

@@ -10,7 +10,7 @@
   gap: 3px;
   padding: 4px;
   border: 1px solid var(--mode-line);
-  border-radius: 12px;
+  border-radius: 999px;
   background: var(--mode-bg);
   color: var(--mode-text);
 }
@@ -19,7 +19,7 @@
   background: transparent;
   color: var(--mode-text);
   padding: 7px 11px;
-  border-radius: 8px;
+  border-radius: 999px;
   font: inherit;
   font-size: 12px;
   cursor: pointer;

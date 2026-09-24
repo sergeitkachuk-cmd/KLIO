@@ -171,7 +171,7 @@ export async function GET(request?: Request) {
     const materialRows = await db.select().from(materials).where(eq(materials.ownerEmail, user.email)).orderBy(desc(materials.createdAt)).limit(120);
     return Response.json({
       user,
-      workspaceMode: account.workspaceMode || (brandCount > 0 || archiveRows.length > 0 ? "professional" : "dialogue"),
+      workspaceMode: account.workspaceMode || "professional",
       account: accountSummary(account, brandCount),
       brands: brandRows.map((item) => ({
         id: item.id,

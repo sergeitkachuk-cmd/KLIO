@@ -85,7 +85,7 @@ export async function ensureAccount(user: ChatGPTUser, signupMethod: "email" | "
     [account] = await db.insert(accounts).values({
       email: user.email,
       displayName: user.displayName,
-      workspaceMode: "dialogue",
+      workspaceMode: "professional",
       planId: isTestAccount(user.email) ? "agency" : "trial",
       signupMethod,
       generationMonth: currentMonth,
