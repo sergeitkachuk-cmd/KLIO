@@ -2004,10 +2004,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }
 
   function handlePublicationPointerDown(event: ReactPointerEvent<HTMLButtonElement>, item: PubItem) {
-    if (item.status !== "scheduled" || pubMovingId) return;
+    if (event.pointerType === "mouse" || item.status !== "scheduled" || pubMovingId) return;
     const target = event.currentTarget;
     target.setPointerCapture?.(event.pointerId);
-    const activationDelay = event.pointerType === "mouse" ? 180 : 320;
     const timer = window.setTimeout(() => {
       const drag = pubPointerDragRef.current;
       if (!drag || drag.pointerId !== event.pointerId) return;
@@ -2015,7 +2014,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       suppressPublicationClick();
       setPubDraggingId(item.id);
       target.setPointerCapture?.(event.pointerId);
-    }, activationDelay);
+    }, 320);
     pubPointerDragRef.current = {
       item,
       pointerId: event.pointerId,
@@ -7158,10 +7157,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   const items = pubByDay.get(key) || [];
                   const isToday = key === localDayKey(new Date());
                   const inMonth = pubView === "week" || day.getMonth() === pubCursor.getMonth();
-                  return <div data-publication-day={key} className={`publications-day ${isToday ? "is-today" : ""} ${inMonth ? "" : "is-outside"} ${pubSelectedDayKey === key ? "is-selected" : ""} ${pubDropDayKey === key ? "is-drop-target" : ""}`} onClick={() => setPubSelectedDayKey(key)} onDragEnter={(event) => { if (pubDraggingId) { event.preventDefault(); setPubDropDayKey(key); } }} onDragOver={(event) => { if (pubDraggingId) { event.preventDefault(); event.dataTransfer.dropEffect = "move"; setPubDropDayKey(key); } }} onDragLeave={() => { if (pubDropDayKey === key) setPubDropDayKey(null); }} onDrop={(event) => handlePublicationDrop(event, day)} key={key}>
+                  return <div data-publication-day={key} className={`publications-day ${isToday ? "is-today" : ""} ${inMonth ? "" : "is-outside"} ${pubSelectedDayKey === key ? "is-selected" : ""} ${pubDropDayKey === key ? "is-drop-target" : ""}`} onClick={() => setPubSelectedDayKey(key)} onDragEnter={(event) => { if (pubDraggingId || event.dataTransfer.types.includes("text/plain")) { event.preventDefault(); setPubDropDayKey(key); } }} onDragOver={(event) => { if (pubDraggingId || event.dataTransfer.types.includes("text/plain")) { event.preventDefault(); event.dataTransfer.dropEffect = "move"; setPubDropDayKey(key); } }} onDragLeave={() => { if (pubDropDayKey === key) setPubDropDayKey(null); }} onDrop={(event) => handlePublicationDrop(event, day)} key={key}>
                     <div className="publications-day-head"><span>{day.getDate()}</span><button type="button" onClick={(event) => { event.stopPropagation(); openPubEditor(day); }} aria-label="Добавить публикацию на этот день">+</button></div>
                     <div className="publications-day-items">
-                      {items.slice(0, 3).map((item) => <button type="button" className={`publications-chip publications-chip-${item.status} publications-chip-${item.channel?.platform || "unknown"} ${pubDraggingId === item.id ? "is-dragging" : ""}`} onPointerDown={(event) => handlePublicationPointerDown(event, item)} onClick={(event) => { event.stopPropagation(); if (pubSuppressClickRef.current) { event.preventDefault(); return; } setPubSelectedDayKey(key); }} key={item.id}>
+                      {items.slice(0, 3).map((item) => <button type="button" className={`publications-chip publications-chip-${item.status} publications-chip-${item.channel?.platform || "unknown"} ${pubDraggingId === item.id ? "is-dragging" : ""}`} draggable={item.status === "scheduled" && pubMovingId !== item.id} onPointerDown={(event) => handlePublicationPointerDown(event, item)} onDragStart={(event) => { event.stopPropagation(); handlePublicationDragStart(event, item); }} onDragEnd={() => { setPubDraggingId(null); setPubDropDayKey(null); }} onClick={(event) => { event.stopPropagation(); if (pubSuppressClickRef.current) { event.preventDefault(); return; } setPubSelectedDayKey(key); }} key={item.id}>
                         <i className={`publications-chip-platform publications-chip-platform-${item.channel?.platform || "unknown"}`} aria-label={item.channel?.platform === "telegram" ? "Telegram" : item.channel?.platform === "vk" ? "VK" : "Канал отключён"}>{item.channel?.platform === "telegram" ? "TG" : item.channel?.platform === "vk" ? "VK" : "—"}</i>
                         <b>{new Date(item.scheduledAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</b>
                         <span>{item.title || "Без названия"}</span>
