@@ -10,15 +10,16 @@ import { isRateLimited } from "../_lib/rate-limit";
 import { resolveBaseUrl } from "../_lib/base-url";
 import { assertGenerationQuotaAvailable, getWorkspaceDb, recordGeneration, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 import { IMAGE_STYLE_OPTIONS } from "../../dialogue-generation-settings";
+import { imageContentType } from "../_lib/image-type";
 
 export const runtime = "nodejs";
 export const maxDuration = 240;
 
-export async function POST(request: Request) {
+async function handleImageRequest(request: Request, onPartial?: (image: string) => void) {
   try {
     if (hasUnsafeRequestOrigin(request)) return Response.json({ error: "Недопустимый источник запроса." }, { status: 403 });
     const user = await workspaceIdentity();
-    const input = await readBoundedJson(request, 8192);
+    const input = await readBoundedJson(request, 5 * 1024 * 1024);
     const prompt = typeof input.prompt === "string" ? input.prompt.trim().slice(0, 1800) : "";
     let sourceTitle = typeof input.sourceTitle === "string" ? input.sourceTitle.trim().slice(0, 500) : "";
     const brandId = typeof input.brandId === "string" ? input.brandId.trim() : "";
@@ -31,6 +32,16 @@ export async function POST(request: Request) {
       ? IMAGE_STYLE_OPTIONS.find(option => option.value === input.imageStyle)?.instruction || ""
       : "";
     const useLogo = input.useLogo === true;
+    let editMask: { bytes: Uint8Array<ArrayBuffer>; contentType: string } | undefined;
+    if (typeof input.imageEditMask === "string" && input.imageEditMask) {
+      const encoded = input.imageEditMask;
+      if (encoded.length > 4_800_000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) return Response.json({ error: "Маска слишком большая или повреждена. Сбросьте выделение и попробуйте ещё раз." }, { status: 413 });
+      const bytes = new Uint8Array(Buffer.from(encoded, "base64"));
+      const contentType = imageContentType(bytes);
+      if (contentType !== "image/png") return Response.json({ error: "Маска области должна быть PNG." }, { status: 400 });
+      editMask = { bytes, contentType };
+    }
+    if (editMask && (!sourceImageGenerationId && !sourceImageUrl || sourceImagePurpose !== "edit" || useLogo)) return Response.json({ error: "Кисть работает только при редактировании выбранного изображения без логотипа." }, { status: 400 });
     const imageTextMode = input.imageTextMode === "none" || input.imageTextMode === "title" || input.imageTextMode === "custom" ? input.imageTextMode : "auto";
     const imageText = typeof input.imageText === "string" ? input.imageText.trim() : "";
     if (imageTextMode === "custom" && (!imageText || imageText.length > 200)) return Response.json({ error: "Введите текст для изображения: от 1 до 200 символов." }, { status: 400 });
@@ -97,10 +108,10 @@ export async function POST(request: Request) {
     const imageUrl = sourceImage
       ? await createImageFromSource(finalPrompt, sourceImage, sourceImagePurpose,
         useLogo && logoKey ? await downloadBrandLogo(logoKey) : undefined,
-        user.email, baseUrl, requestId, imageOptions)
+        user.email, baseUrl, requestId, imageOptions, editMask, onPartial)
       : useLogo && logoKey
-      ? await createImageFromLogo(finalPrompt, await downloadBrandLogo(logoKey), user.email, baseUrl, requestId, imageOptions)
-      : await createImage(finalPrompt, user.email, baseUrl, requestId, imageOptions);
+      ? await createImageFromLogo(finalPrompt, await downloadBrandLogo(logoKey), user.email, baseUrl, requestId, imageOptions, undefined, onPartial)
+      : await createImage(finalPrompt, user.email, baseUrl, requestId, imageOptions, undefined, onPartial);
     // When this call is a cover image for an existing article/material
     // (textora-experience.tsx's buildArticleImagePrompt), prompt is that
     // whole title+subtitle+body concatenated - fine as an image prompt,
@@ -134,4 +145,19 @@ export async function POST(request: Request) {
     console.error("Image generation failed", error instanceof Error ? error.message : "unknown");
     return Response.json({ error: "Не удалось создать изображение. Попробуйте ещё раз." }, { status: 502 });
   }
+}
+
+export async function POST(request: Request) {
+  if (!request.headers.get("accept")?.includes("text/event-stream")) return handleImageRequest(request);
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const emit = (event: string, data: unknown) => controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+      void handleImageRequest(request, image => emit("partial", { image })).then(async response => {
+        const payload = await response.json().catch(() => ({}));
+        emit(response.ok ? "result" : "error", payload);
+      }).catch(error => emit("error", { error: error instanceof Error ? error.message : "Image generation failed" })).finally(() => controller.close());
+    },
+  });
+  return new Response(stream, { headers: { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no" } });
 }

@@ -13,6 +13,7 @@ import { IMAGE_STYLE_OPTIONS, IMAGE_TEXT_OPTIONS, LOGO_PLACEMENT_OPTIONS, LOGO_P
 import { CAROUSEL_TEMPLATE_OPTIONS, DEFAULT_CAROUSEL_TEMPLATE, type CarouselTemplateId } from "./carousel-templates";
 import { PublicationImagePicker } from "./publication-image-picker";
 import { ImageLightbox } from "./image-lightbox";
+import ImageMaskEditor from "./image-mask-editor";
 import { FOUNDATION_FIELDS, VOICE_FIELDS, mergeProfileFill, missingVoiceFoundation } from "./brand-profile-fill";
 import { russianGeoTree } from "./geo-data";
 import { ADAPTATION_PLANS, FORMAT_PLANS, TONE_PLANS } from "./content-plans";
@@ -2517,6 +2518,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [imageReferenceUrl, setImageReferenceUrl] = useState("");
   const [imageReferenceSourceId, setImageReferenceSourceId] = useState("");
   const [imageReferencePurpose, setImageReferencePurpose] = useState<"edit" | "reference">("edit");
+  const [imageEditMask, setImageEditMask] = useState("");
+  const [imageStreamPreview, setImageStreamPreview] = useState("");
   const [imageReferenceBusy, setImageReferenceBusy] = useState(false);
   const [imageReferenceError, setImageReferenceError] = useState("");
   const imageReferenceInputRef = useRef<HTMLInputElement | null>(null);
@@ -5526,6 +5529,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setImageBusy(true);
     setImageError("");
     setImageResult(null);
+    setImageStreamPreview("");
     setCarouselResult(null);
     try {
       const response = await fetch("/api/images", {
@@ -5538,6 +5542,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           sourceImageGenerationId: imageEditSourceId || imageReferenceSourceId || undefined,
           sourceImageUrl: imageReferenceSourceId || imageEditSourceId ? undefined : imageReferenceUrl || undefined,
           sourceImagePurpose: imageEditSourceId || imageReferenceSourceId || imageReferenceUrl ? imageReferencePurpose : undefined,
+          imageEditMask: imageEditMask || undefined,
           brandId: useBrand ? activeBrandId || undefined : undefined,
           requestId: crypto.randomUUID(),
           aspectRatio: imageAspectRatio,
@@ -5547,15 +5552,45 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           logoPlacement, logoPosition, imageTextMode, imageText: imageTextMode === "custom" ? imageText.trim() : undefined,
         }),
       });
-      const payload = await safeJson(response) as { error?: string; generation?: GenerationArchiveItem; account?: WorkspaceAccount };
+      let payload: { error?: string; generation?: GenerationArchiveItem; account?: WorkspaceAccount };
+      if (response.headers.get("content-type")?.includes("text/event-stream") && response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let finalPayload: typeof payload | null = null;
+        const handleFrame = (frame: string) => {
+          const eventName = frame.match(/^event:\s*(.+)$/m)?.[1]?.trim();
+          const dataLine = frame.split(/\r?\n/).find(line => line.startsWith("data:"));
+          if (!dataLine) return;
+          let data: { image?: unknown; error?: string; generation?: GenerationArchiveItem; account?: WorkspaceAccount };
+          try { data = JSON.parse(dataLine.slice(5).trim()); } catch { return; }
+          if (eventName === "partial" && typeof data.image === "string") setImageStreamPreview(data.image);
+          if (eventName === "result") finalPayload = data;
+          if (eventName === "error") throw new Error(data.error || "Не удалось создать изображение.");
+        };
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            buffer += decoder.decode(value, { stream: !done });
+            const frames = buffer.split(/\r?\n\r?\n/);
+            buffer = frames.pop() || "";
+            frames.forEach(handleFrame);
+            if (done) break;
+          }
+          if (buffer.trim()) handleFrame(buffer);
+        } finally { reader.releaseLock(); }
+        payload = finalPayload || {};
+      } else payload = await safeJson(response) as typeof payload;
       if (!response.ok || !payload.generation) throw new Error(payload.error || "Не удалось создать изображение.");
       setImageResult(payload.generation);
+      setImageStreamPreview("");
       setWorkspaceHistory(current => [payload.generation!, ...current.filter(item => item.id !== payload.generation!.id)].slice(0, 60));
       if (payload.account) setWorkspaceAccount(payload.account);
       setImageEditSourceId(null);
       setImageReferenceUrl("");
       setImageReferenceSourceId("");
       setImageReferenceError("");
+      setImageEditMask("");
       openModule("images");
     } catch (error) {
       setImageError(error instanceof Error ? error.message : "Не удалось создать изображение.");
@@ -5622,7 +5657,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     try {
       const startResponse = await fetch("/api/carousel/slide", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
         body: JSON.stringify({ generationId: carouselResult.archive.id, slideIndex }),
       });
       const startPayload = await safeJson(startResponse) as { error?: string; jobId?: string };
@@ -6904,11 +6939,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
           <section className="workspace-module image-generator-module" id="images" style={{ display: activeModule === "images" ? undefined : "none" }}>
             <div className="workspace-module-heading tool-heading workspace-module-banner"><div><span>Визуальные материалы</span><h2>Генерация изображений<span className="klio-mark-dot">.</span></h2></div><p>Опишите, что должно быть на картинке. КЛИО создаст её и сохранит в «Материалы».</p></div>
-            <div className="image-generator-studio-steps" aria-label="Этапы создания изображения">
-              <div className={imageGeneratorMode === "create" ? "is-active" : ""}><span>01</span><b>Бриф</b><small>Опишите задачу и исходник</small></div>
-              <div className={imageGeneratorMode === "edit" ? "is-active" : ""}><span>02</span><b>Настройки</b><small>Стиль, формат и текст</small></div>
-              <div className={imageGeneratorMode === "carousel" ? "is-active" : ""}><span>03</span><b>Результат</b><small>Проверьте и отправьте в публикацию</small></div>
-            </div>
             <div className="image-generator-mode-switch" role="tablist" aria-label="Режим генератора изображений">
               <button type="button" role="tab" aria-selected={imageGeneratorMode === "create"} className={imageGeneratorMode === "create" ? "is-active" : ""} onClick={() => { setImageGeneratorMode("create"); setImageEditSourceId(null); setImageReferenceUrl(""); setImageReferenceSourceId(""); setPendingCarouselSource(null); }}>
                 <span className="image-generator-mode-index">01</span><span><strong>Изображение</strong><small>Создать с нуля</small></span>
@@ -6953,6 +6983,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     {(imageReferenceUrl || (imageEditSourceId ? imageResult?.imageUrl : "")) && <Image src={(imageReferenceUrl || imageResult?.imageUrl) as string} alt="Выбранное исходное изображение" width={96} height={72} unoptimized/>}
                     <ModuleSelect label="Как использовать" value={imageReferencePurpose} onChange={value => setImageReferencePurpose(value as "edit" | "reference")} options={[{ value: "edit", label: "Редактировать по описанию" }, { value: "reference", label: "Взять как визуальный референс" }]}/>
                   </div>}
+                  {(imageReferencePurpose === "edit") && (imageReferenceUrl || imageEditSourceId) && (imageReferenceUrl || imageResult?.imageUrl) && <ImageMaskEditor key={imageReferenceUrl || imageEditSourceId || "image-edit"} src={(imageReferenceUrl || imageResult?.imageUrl) as string} onMaskChange={mask => { setImageEditMask(mask); if (mask) setUseLogoInImage(false); }}/>}
                   {imageReferenceError && <small className="generation-error" role="alert">{imageReferenceError}</small>}
                 </div>
                 <div className="image-generator-settings">
@@ -6993,7 +7024,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   />
                 </div>
                 {useBrand && activeBrandId && (brand.logoKey ? (
-                  <label className="image-generator-logo-toggle"><input type="checkbox" checked={useLogoInImage} onChange={(event) => setUseLogoInImage(event.target.checked)}/> Использовать логотип бренда на картинке</label>
+                  <label className="image-generator-logo-toggle"><input type="checkbox" checked={useLogoInImage} disabled={Boolean(imageEditMask)} onChange={(event) => setUseLogoInImage(event.target.checked)}/> Использовать логотип бренда на картинке</label>
                 ) : (
                   <button type="button" className="image-generator-logo-suggest" onClick={() => openModule("brand")}>Загрузить логотип бренда →</button>
                 ))}
@@ -7035,6 +7066,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <button className={`button ghost large generation-action ${carouselBusy ? "is-busy" : ""}`} type="button" onClick={() => void generateCarousel(pendingCarouselSource ?? { text: imagePrompt })} disabled={imageBusy || carouselBusy || !workspaceReady || imagePrompt.trim().length < 20 || workspaceAccount.generationsRemaining < Number(carouselSlideCount)}><Icon name="image"/>{carouselBusy ? "Создаём карусель…" : workspaceAccount.generationsRemaining < Number(carouselSlideCount) ? "Не хватает генераций" : `Создать карусель (${carouselSlideCount})`}</button>
                 </div>
               </div>
+              {imageBusy && imageStreamPreview && <div className="image-generator-stream-preview" aria-live="polite"><Image src={imageStreamPreview} alt="Промежуточный вариант изображения" width={1024} height={1024} unoptimized/><span>КЛИО уже рисует — это промежуточный кадр</span></div>}
               <div className="image-generator-preview" aria-live="polite">
                 {carouselResult ? <>
                   <div className="image-generator-carousel-slides">

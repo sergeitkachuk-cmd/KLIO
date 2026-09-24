@@ -19,13 +19,14 @@ function setup(overrides = {}) {
   const state = { requests: [], error: "", busy: false, result: null, module: "", history: [] };
   const context = vm.createContext({
     imageEditSourceId: null, imageReferenceSourceId: "", imageReferenceUrl: "", imageReferencePurpose: "edit", imageStyle: "",
+    imageEditMask: "",
     imagePrompt: "Съёмочная команда в студии", imageBusy: false,
     imageTextMode: "custom", imageText: "  За кадром  ", imageSourceTitle: "Статья",
     pendingCarouselSource: { generationId: "material-1" },
     useBrand: true, activeBrandId: "studio", brand: { logoKey: "logo" }, useLogoInImage: true,
     imageAspectRatio: "9:16", imageOutputFormat: "png", logoPlacement: "corner", logoPosition: "top-left",
-    setImageBusy: value => { state.busy = value; }, setImageError: value => { state.error = value; },
-    setImageResult: value => { state.result = value; }, setImageEditSourceId: () => {}, setImageReferenceUrl: () => {}, setImageReferenceSourceId: () => {}, setImageReferenceError: () => {}, setCarouselResult: () => {}, setWorkspaceAccount: () => {},
+    setImageBusy: value => { state.busy = value; }, setImageError: value => { state.error = value; }, setImageStreamPreview: () => {},
+    setImageResult: value => { state.result = value; }, setImageEditSourceId: () => {}, setImageEditMask: () => {}, setImageReferenceUrl: () => {}, setImageReferenceSourceId: () => {}, setImageReferenceError: () => {}, setCarouselResult: () => {}, setWorkspaceAccount: () => {},
     setWorkspaceHistory: updater => { state.history = updater(state.history); }, openModule: value => { state.module = value; },
     crypto: { randomUUID }, safeJson: response => response.json(),
     fetch: async (url, init) => { state.requests.push({ url, body: JSON.parse(init.body) }); return Response.json({ generation: { id: "new-image", imageUrl: "/image.png" }, account: {} }); },

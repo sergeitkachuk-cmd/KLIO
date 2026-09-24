@@ -6,9 +6,10 @@ import { carouselTemplateInstruction } from "../../carousel-templates";
 
 export type ImageAspectRatio = "1:1" | "4:3" | "4:5" | "16:9" | "9:16";
 export type ImageOutputFormat = "png" | "jpeg" | "webp";
-export type ImageQuality = "low" | "medium" | "high";
+export type ImageQuality = "low" | "medium" | "high" | "xhigh" | "max";
 export type LogoPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 export type ImageInput = { bytes: Uint8Array<ArrayBuffer>; contentType: string };
+type ImagePartialHandler = (dataUrl: string) => void;
 export type ImageGenerationOptions = {
   size?: string;
   aspectRatio?: ImageAspectRatio;
@@ -44,7 +45,7 @@ const IMAGE_SIZE_BY_RATIO: Record<ImageAspectRatio, string> = {
 export function parseImageGenerationOptions(input: Record<string, unknown>): ImageGenerationOptions {
   const aspectRatio = typeof input.aspectRatio === "string" && (["1:1", "4:3", "4:5", "16:9", "9:16"] as const).includes(input.aspectRatio as ImageAspectRatio)
     ? (input.aspectRatio as ImageAspectRatio) : undefined;
-  const quality = typeof input.quality === "string" && (["low", "medium", "high"] as const).includes(input.quality as ImageQuality)
+  const quality = typeof input.quality === "string" && (["low", "medium", "high", "xhigh", "max"] as const).includes(input.quality as ImageQuality)
     ? (input.quality as ImageQuality) : undefined;
   const outputFormat = typeof input.outputFormat === "string" && (["png", "jpeg", "webp"] as const).includes(input.outputFormat as ImageOutputFormat)
     ? (input.outputFormat as ImageOutputFormat) : undefined;
@@ -72,7 +73,7 @@ export function resolveImageGenerationOptions(options: ImageGenerationOptions = 
   // defaults to "auto" specifically, not "high" (site owner: "качество
   // как будто низкое"). Defaulting to "high" and always sending it
   // (below) removes that ambiguity instead of hoping "auto" picks well.
-  const quality = options.quality && ["low", "medium", "high"].includes(options.quality) ? options.quality : "high";
+  const quality = options.quality && ["low", "medium", "high", "xhigh", "max"].includes(options.quality) ? options.quality : "max";
   const outputFormat = options.outputFormat && ["png", "jpeg", "webp"].includes(options.outputFormat) ? options.outputFormat : "png";
   const background = options.background && ["auto", "transparent", "opaque"].includes(options.background) ? options.background : "auto";
 
@@ -135,6 +136,8 @@ async function generateImageBytes(
   options: ImageGenerationOptions = {},
   logo?: ImageInput | ImageInput[],
   model?: string,
+  mask?: ImageInput,
+  onPartial?: ImagePartialHandler,
 ) {
   // Browser requests only KLIO. Provider credentials and calls stay on the server;
   // image bytes are copied to our existing object store, never hotlinked to OpenAI.
@@ -147,6 +150,8 @@ async function generateImageBytes(
     : new URL(logo ? "https://api.openai.com/v1/images/edits" : "https://api.openai.com/v1/images/generations");
   if (endpoint.protocol !== "https:") throw new Error("Сервер изображений должен использовать HTTPS.");
   const resolved = resolveImageGenerationOptions(options);
+  let relayStreaming = false;
+  let relayMaskEditing = false;
   const apiKey = serviceUrl ? process.env.KLIO_IMAGE_SERVICE_TOKEN : process.env.OPENAI_API_KEY;
   // "gpt-image-2.5-flare" briefly wasn't a real OpenAI model at all - every
   // request without an explicit KLIO_IMAGE_MODEL override failed outright
@@ -167,14 +172,17 @@ async function generateImageBytes(
   let requestBody: string | FormData;
   let contentTypeHeader: string | undefined;
   if (serviceUrl) {
-    if (images.length > 1) {
+    if (images.length > 1 || mask || onPartial) {
       // An older relay silently ignores unknown fields. Fail before a paid
       // request rather than generate a different scene without the source.
       const health = await fetch(new URL("/health", serviceUrl), { cache: "no-store", signal: AbortSignal.timeout(10_000) });
       if (!health.ok) throw new Error("Не удалось проверить доступность сервера изображений.");
       const capabilities = await health.json().catch(() => null);
-      if (!Number.isInteger(capabilities?.maxImageInputs) || capabilities.maxImageInputs < images.length)
+      relayStreaming = capabilities?.streaming === true;
+      relayMaskEditing = capabilities?.editMasks === true;
+      if (images.length > 1 && (!Number.isInteger(capabilities?.maxImageInputs) || capabilities.maxImageInputs < images.length))
         throw new ImageRelayUpgradeRequiredError();
+      if (mask && !relayMaskEditing) throw new Error("Для редактирования кистью требуется обновить сервер изображений. Обычная генерация доступна.");
     }
     const imageRequest = {
       model: resolvedModel,
@@ -189,6 +197,8 @@ async function generateImageBytes(
       // sees the already-correct, already-resolved size.
       ...(options.size || options.aspectRatio ? { size: resolved.size } : {}),
       quality: resolved.quality,
+      ...(onPartial && (!serviceUrl || relayStreaming) ? { stream: true, partial_images: 2 } : {}),
+      ...(mask ? { mask_b64: Buffer.from(mask.bytes).toString("base64"), mask_type: mask.contentType } : {}),
       ...(options.outputFormat ? { output_format: resolved.outputFormat } : {}),
       ...(options.background ? { background: resolved.background } : {}),
       ...(images.length > 1 ? { images: images.map((item) => ({ image_b64: Buffer.from(item.bytes).toString("base64"), image_type: item.contentType })) }
@@ -203,9 +213,11 @@ async function generateImageBytes(
     form.append("n", "1");
     if (options.size || options.aspectRatio) form.append("size", resolved.size);
     form.append("quality", resolved.quality);
+    if (onPartial && (!serviceUrl || relayStreaming)) { form.append("stream", "true"); form.append("partial_images", "2"); }
     if (options.outputFormat) form.append("output_format", resolved.outputFormat);
     if (options.background) form.append("background", resolved.background);
     images.forEach((item, index) => form.append(images.length > 1 ? "image[]" : "image", new File([item.bytes], `reference-${index}`, { type: item.contentType })));
+    if (mask) form.append("mask", new File([mask.bytes], "mask.png", { type: mask.contentType }));
     requestBody = form;
   } else {
     requestBody = JSON.stringify({
@@ -214,6 +226,7 @@ async function generateImageBytes(
       n: 1,
       ...(options.size || options.aspectRatio ? { size: resolved.size } : {}),
       quality: resolved.quality,
+      ...(onPartial && (!serviceUrl || relayStreaming) ? { stream: true, partial_images: 2 } : {}),
       ...(options.outputFormat ? { output_format: resolved.outputFormat } : {}),
       ...(options.background ? { background: resolved.background } : {}),
     });
@@ -243,10 +256,9 @@ async function generateImageBytes(
       "Сервис изображений не выполнил запрос. Попробуйте другое описание или загрузите свою картинку.",
     );
   }
-  const payload = (await response.json()) as {
+  const encoded = onPartial && (!serviceUrl || relayStreaming) ? await readPartialImages(response, onPartial) : ((await response.json()) as {
     data?: Array<{ b64_json?: string }>;
-  };
-  const encoded = payload.data?.[0]?.b64_json;
+  }).data?.[0]?.b64_json;
   if (!encoded || encoded.length > 12_000_000)
     throw new Error("Сервис изображений вернул некорректный файл.");
   const bytes = new Uint8Array(Buffer.from(encoded, "base64"));
@@ -272,8 +284,41 @@ async function generateImageBytes(
   return { bytes, contentType: detectedType, resolved };
 }
 
-export async function createImage(prompt: string, email: string, baseUrl: string, requestId: string, options: ImageGenerationOptions = {}, model?: string) {
-  const { bytes, contentType } = await generateImageBytes(prompt, requestId, options, undefined, model);
+async function readPartialImages(response: Response, onPartial: ImagePartialHandler) {
+  if (!response.body) throw new Error("Поток генерации изображений не был открыт.");
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finalImage = "";
+  const handleData = (line: string) => {
+    if (!line.startsWith("data:")) return;
+    const raw = line.slice(5).trim();
+    if (!raw || raw === "[DONE]") return;
+    let event: { type?: string; b64_json?: string; output_format?: string };
+    try { event = JSON.parse(raw); } catch { return; }
+    if (!event.b64_json) return;
+    if (event.type === "partial" || event.type?.includes("partial_image")) {
+      const type = event.output_format === "jpeg" ? "image/jpeg" : event.output_format === "webp" ? "image/webp" : "image/png";
+      onPartial(`data:${type};base64,${event.b64_json}`);
+    } else if (event.type === "complete" || event.type?.endsWith(".completed")) finalImage = event.b64_json;
+  };
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      buffer += decoder.decode(value, { stream: !done });
+      const lines = buffer.split(/\r?\n/);
+      buffer = lines.pop() || "";
+      lines.forEach(handleData);
+      if (done) break;
+    }
+  } finally { reader.releaseLock(); }
+  if (buffer) handleData(buffer);
+  if (!finalImage || finalImage.length > 12_000_000) throw new Error("Поток завершился без итогового изображения.");
+  return finalImage;
+}
+
+export async function createImage(prompt: string, email: string, baseUrl: string, requestId: string, options: ImageGenerationOptions = {}, model?: string, onPartial?: ImagePartialHandler) {
+  const { bytes, contentType } = await generateImageBytes(prompt, requestId, options, undefined, model, undefined, onPartial);
   const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
   return uploadPublicationImage(
     new File([bytes], fileName, { type: contentType }),
@@ -293,10 +338,11 @@ export async function createImageFromLogo(
   requestId: string,
   options: ImageGenerationOptions = {},
   model?: string,
+  onPartial?: ImagePartialHandler,
 ) {
   const corner = options.logoPlacement === "corner" || options.logoPlacement === "overlay";
   const guidedPrompt = `${prompt}\n\n${corner ? cornerLogoInstruction(options.logoPosition) : LOGO_REFERENCE_INSTRUCTION}`;
-  const { bytes, contentType } = await generateImageBytes(guidedPrompt, requestId, corner ? { ...options, background: "opaque" } : options, logo, model);
+  const { bytes, contentType } = await generateImageBytes(guidedPrompt, requestId, corner ? { ...options, background: "opaque" } : options, logo, model, undefined, onPartial);
   const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
   return uploadPublicationImage(
     new File([bytes], fileName, { type: contentType }),
@@ -309,7 +355,7 @@ export async function createImageFromLogo(
 // the logo; it must never replace the scene as the sole provider input.
 export async function createImageFromSource(
   prompt: string, source: ImageInput, purpose: "edit" | "reference", logo: ImageInput | undefined,
-  email: string, baseUrl: string, requestId: string, options: ImageGenerationOptions = {},
+  email: string, baseUrl: string, requestId: string, options: ImageGenerationOptions = {}, mask?: ImageInput, onPartial?: ImagePartialHandler,
 ) {
   for (const image of [source, ...(logo ? [logo] : [])]) {
     const detected = imageContentType(image.bytes);
@@ -317,6 +363,8 @@ export async function createImageFromSource(
       throw new Error("Не удалось прочитать исходное изображение. Загрузите PNG, JPEG или WEBP до 8 МБ.");
     image.contentType = detected;
   }
+  if (mask && (purpose !== "edit" || logo)) throw new Error("РљРёСЃС‚СЊ РґРѕСЃС‚СѓРїРЅР° РґР»СЏ СЂРµР¶РёРјР° В«Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊВ» Р±РµР· РЅР°Р»РѕР¶РµРЅРёСЏ Р»РѕРіРѕС‚РёРїР°.");
+  if (mask && (mask.contentType !== "image/png" || mask.bytes.byteLength > 8 * 1024 * 1024)) throw new Error("РњР°СЃРєР° РґРѕР»Р¶РЅР° Р±С‹С‚СЊ PNG РґРѕ 8 РњР‘.");
   const instruction = purpose === "edit"
     ? "Первое изображение — исходник для редактирования. Измени именно его по запросу пользователя. Сохрани композицию, людей, предметы, ракурс, освещение и все детали, которых правка не касается. Сохрани изображение по всей площади, включая края и углы. Не стирай участки исходника и не освобождай место под логотип. Не создавай новую сцену по старому описанию."
     : "Первое изображение — визуальный референс. Учитывай его реальные детали, композицию и стиль при выполнении запроса пользователя.";
@@ -337,7 +385,7 @@ export async function createImageFromSource(
   const placementInstruction = logo ? corner ? cornerLogoInstruction(options.logoPosition) : options.logoPlacement === "scene" ? LOGO_REFERENCE_INSTRUCTION : "" : "";
   const { bytes, contentType } = await generateImageBytes(`${instruction}\n${backgroundInstruction}\n\n${prompt}\n\n${logoInstruction}\n${placementInstruction}`, requestId,
     editOptions,
-    logo ? [source, logo] : source);
+    logo ? [source, logo] : source, undefined, mask, onPartial);
   return uploadPublicationImage(new File([bytes], "klio-edit", { type: contentType }), email, baseUrl);
 }
 
@@ -371,16 +419,15 @@ export async function createCarouselSlideImage(
       : `${prompt}\n\nЭто один слайд карусели из серии. Сохрани ту же визуальную стилистику, палитру, шрифт и композицию, что и на приложенном референсном изображении - слайды должны выглядеть частью одного набора, но с текстом именно этого слайда, не референсного.`;
   const imagePrompt = textOverlay
     ? [
-        `Создай выразительный фон и тематическую иллюстрацию для слайда карусели. Смысловой сюжет: ${textOverlay.headline}. ${textOverlay.subtext}`,
-        `Визуальное направление: ${carouselTemplateInstruction(textOverlay.templateId)}`,
-        "Не рисуй буквы, слова, логотипы, подписи, цифры и псевдотекст. Оставь нижнюю половину кадра спокойной, без важных объектов и деталей: поверх неё будет добавлена точная текстовая панель. Соблюдай палитру и визуальный характер предыдущего слайда.",
+        guidedPrompt,
+        `Создай готовый дизайнерский слайд карусели и органично впиши в композицию этот текст на русском языке. Заголовок напиши точно, без замены букв, сокращений и дополнительных слов: «${textOverlay.headline}». Основной текст напиши точно и полностью: «${textOverlay.subtext}».`,
+        `Выбранный стиль «${textOverlay.templateId}»: ${carouselTemplateInstruction(textOverlay.templateId)}`,
+        "Текст — часть журнальной композиции: крупный ясный заголовок, под ним читаемый основной текст; не помещай весь текст в одну массивную отдельную плашку. Кириллица должна быть настоящими аккуратными буквами, без псевдотекста. Не добавляй другого текста, подписей, цифр и случайных символов.",
         reference?.kind === "logo" ? LOGO_REFERENCE_INSTRUCTION : "",
       ].filter(Boolean).join("\n\n")
     : guidedPrompt;
   const generated = await generateImageBytes(imagePrompt, requestId, options, reference, model);
-  const { bytes, contentType } = textOverlay
-    ? await (await import("./carousel-render")).renderCarouselSlide(generated.bytes, textOverlay.headline, textOverlay.subtext, textOverlay.templateId)
-    : generated;
+  const { bytes, contentType } = generated;
   const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
   const url = await uploadPublicationImage(
     new File([bytes], fileName, { type: contentType }),

@@ -16,7 +16,7 @@ const IMAGE_SIZE_BY_RATIO = {
   "4:5": "1024x1536",
   "9:16": "1024x1536",
 };
-const IMAGE_QUALITY_VALUES = new Set(["low", "medium", "high"]);
+const IMAGE_QUALITY_VALUES = new Set(["low", "medium", "high", "xhigh", "max"]);
 const IMAGE_FORMAT_VALUES = new Set(["png", "jpeg", "webp"]);
 const IMAGE_BACKGROUND_VALUES = new Set(["auto", "transparent", "opaque"]);
 // A prompt-only body is a few KB; a base64-encoded brand logo (uploads allow
@@ -53,7 +53,7 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare-2026-
   };
   return createServer(async (request, response) => {
     const reply = (status, body) => { response.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" }); response.end(JSON.stringify(body)); };
-    if (request.method === "GET" && request.url === "/health") return reply(apiKey && token?.length >= 32 ? 200 : 503, { ready: Boolean(apiKey && token?.length >= 32), maxImageInputs: 2 });
+    if (request.method === "GET" && request.url === "/health") return reply(apiKey && token?.length >= 32 ? 200 : 503, { ready: Boolean(apiKey && token?.length >= 32), maxImageInputs: 2, streaming: true, editMasks: true });
     if (request.method !== "POST" || request.url !== "/generate") return reply(404, { error: "Not found" });
     if (!authorized(request.headers.authorization)) return reply(401, { error: "Unauthorized" });
     if (!apiKey) return reply(503, { error: "Image provider is not configured" });
@@ -79,6 +79,13 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare-2026-
       if (!bytes.length || bytes.length > 8 * 1024 * 1024) return reply(413, { error: "Image too large" });
       images.push({ bytes, contentType: input.image_type });
     }
+    let mask;
+    if (body.mask_b64 !== undefined) {
+      if (images.length !== 1 || typeof body.mask_b64 !== "string" || !/^[A-Za-z0-9+/]+={0,2}$/.test(body.mask_b64) || body.mask_type !== "image/png")
+        return reply(400, { error: "Invalid edit mask" });
+      mask = Buffer.from(body.mask_b64, "base64");
+      if (!mask.length || mask.length > 8 * 1024 * 1024) return reply(413, { error: "Mask too large" });
+    }
     // Lets one caller ask for a different model than this service's own
     // startup default, without redeploying the relay for every app that
     // uses it. Falls back silently rather than rejecting, same as quality/
@@ -93,13 +100,73 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare-2026-
     // "auto" specifically, not "high" (site owner: "качество как будто
     // низкое"). Defaulting to "high" and always sending it (below) removes
     // that ambiguity.
-    const quality = IMAGE_QUALITY_VALUES.has(body.quality) ? body.quality : "high";
+    const quality = IMAGE_QUALITY_VALUES.has(body.quality) ? body.quality : "max";
     const outputFormat = IMAGE_FORMAT_VALUES.has(body.output_format) ? body.output_format : "png";
     const background = IMAGE_BACKGROUND_VALUES.has(body.background) ? body.background : "auto";
     const hash = createHash("sha256").update(JSON.stringify({ prompt: body.prompt, model: requestedModel, size: body.size || body.aspectRatio ? imageSize : null, quality, outputFormat, background,
-      images: images.map((image) => ({ type: image.contentType, sha256: createHash("sha256").update(image.bytes).digest("hex") })) })).digest("hex");
+      images: images.map((image) => ({ type: image.contentType, sha256: createHash("sha256").update(image.bytes).digest("hex") })),
+      mask: mask ? createHash("sha256").update(mask).digest("hex") : null })).digest("hex");
     const previous = jobs.get(id);
     if (previous && previous.hash !== hash) return reply(409, { error: "Request key already used" });
+    if (body.stream === true) {
+      if (previous?.done) {
+        if (previous.result?.status !== 200) return reply(previous.result?.status || 502, previous.result?.body || { error: "Image request failed" });
+        response.writeHead(200, { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no" });
+        response.write(`data: ${JSON.stringify({ type: "complete", b64_json: previous.result.body.data[0].b64_json })}\n\n`);
+        return response.end();
+      }
+      if (previous) return reply(409, { error: "This image request is already running" });
+      if (running >= 2) return reply(429, { error: "Image service is busy" });
+      for (const [key, job] of jobs) if (jobs.size >= 8 && job.done) jobs.delete(key);
+      const job = { hash, done: false, result: null };
+      jobs.set(id, job);
+      running++;
+      response.writeHead(200, { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no" });
+      const emit = value => response.write(`data: ${JSON.stringify(value)}\n\n`);
+      try {
+        let upstream;
+        if (images.length) {
+          const form = new FormData();
+          form.append("model", requestedModel); form.append("prompt", body.prompt); form.append("n", "1");
+          if (body.size || body.aspectRatio) form.append("size", imageSize);
+          form.append("quality", quality); form.append("stream", "true"); form.append("partial_images", "2");
+          if (body.output_format) form.append("output_format", outputFormat);
+          if (body.background) form.append("background", background);
+          images.forEach((image, index) => form.append(images.length > 1 ? "image[]" : "image", new Blob([image.bytes], { type: image.contentType }), `reference-${index}`));
+          if (mask) form.append("mask", new Blob([mask], { type: "image/png" }), "mask.png");
+          upstream = await providerFetch("https://api.openai.com/v1/images/edits", { method: "POST", headers: { Authorization: `Bearer ${apiKey}` }, body: form, signal: AbortSignal.timeout(150_000) });
+        } else {
+          const payload = { model: requestedModel, prompt: body.prompt, n: 1, ...(body.size || body.aspectRatio ? { size: imageSize } : {}), quality, stream: true, partial_images: 2,
+            ...(body.output_format ? { output_format: outputFormat } : {}), ...(body.background ? { background } : {}) };
+          upstream = await providerFetch("https://api.openai.com/v1/images/generations", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify(payload), signal: AbortSignal.timeout(150_000) });
+        }
+        if (!upstream.ok || !upstream.body) throw new Error("Image provider did not complete the streaming request");
+        const reader = upstream.body.getReader(); const decoder = new TextDecoder(); let buffer = ""; let finalImage = "";
+        const handleLine = line => {
+          if (!line.startsWith("data:")) return;
+          const raw = line.slice(5).trim(); if (!raw || raw === "[DONE]") return;
+          let event; try { event = JSON.parse(raw); } catch { return; }
+          if (event.type?.includes("partial_image") && typeof event.b64_json === "string") emit({ type: "partial", b64_json: event.b64_json, output_format: event.output_format || outputFormat });
+          if (event.type?.endsWith(".completed") && typeof event.b64_json === "string") finalImage = event.b64_json;
+          if (event.type === "error") throw new Error("Image provider stream failed");
+        };
+        while (true) {
+          const part = await reader.read(); buffer += decoder.decode(part.value, { stream: !part.done });
+          const lines = buffer.split(/\r?\n/); buffer = lines.pop() || ""; lines.forEach(handleLine);
+          if (part.done) break;
+        }
+        if (buffer) handleLine(buffer);
+        if (!finalImage || finalImage.length > 12_000_000) throw new Error("Image stream ended without a final image");
+        job.result = { status: 200, body: { data: [{ b64_json: finalImage }] } };
+        emit({ type: "complete", b64_json: finalImage, output_format: outputFormat });
+      } catch {
+        job.result = { status: 502, body: { error: "Image request failed" } };
+        emit({ type: "error", message: "Image request failed" });
+      } finally {
+        running--; job.done = true; response.end();
+      }
+      return;
+    }
     if (!previous && running >= 2) return reply(429, { error: "Image service is busy" });
     if (!previous) {
       // Small, bounded cache; the main application owns durable request state.
@@ -119,6 +186,7 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare-2026-
             if (body.output_format) form.append("output_format", outputFormat);
             if (body.background) form.append("background", background);
             images.forEach((image, index) => form.append(images.length > 1 ? "image[]" : "image", new Blob([image.bytes], { type: image.contentType }), `reference-${index}`));
+            if (mask) form.append("mask", new Blob([mask], { type: "image/png" }), "mask.png");
             upstream = await providerFetch("https://api.openai.com/v1/images/edits", {
               method: "POST", headers: { Authorization: `Bearer ${apiKey}` },
               body: form,

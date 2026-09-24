@@ -24254,6 +24254,23 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
    process row looked like a second, paired set of tabs. */
 .image-generator-studio-steps { display: none !important; }
 .image-generator-mode-index { display: none; }
+.image-mask-editor{display:grid;gap:10px;width:100%;min-width:0;padding:12px;border:1px solid #34425a;border-radius:14px;background:#0b1b31}
+.image-mask-editor-tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px;color:#c8d5e6;font-size:12px}
+.image-mask-editor-tools>span{flex:1 1 100%;font-weight:700}
+.image-mask-editor-tools label{display:flex;align-items:center;gap:8px;font-size:12px}
+.image-mask-editor-tools input{width:130px;accent-color:#69a4ff}
+.image-mask-editor-canvas{position:relative;isolation:isolate;display:grid;width:100%;overflow:hidden;border-radius:10px;background:#071426;touch-action:none}
+.image-mask-editor-canvas>img{display:block;width:100%;height:auto;max-height:420px;object-fit:contain;grid-area:1/1}
+.image-mask-editor-canvas>canvas{grid-area:1/1;z-index:1;width:100%;height:100%;object-fit:contain;touch-action:none;cursor:crosshair}
+.image-mask-editor-canvas>.image-mask-editor-mask{display:none}
+.image-mask-editor>small{color:#91a4bd;font-size:11px;line-height:1.45}
+[data-theme="light"] .image-mask-editor{border-color:#d5deea;background:#f5f8fc}
+[data-theme="light"] .image-mask-editor-tools{color:#304661}
+[data-theme="light"] .image-mask-editor>small{color:#60738c}
+.image-generator-stream-preview{position:relative;display:grid;place-items:center;gap:10px;margin:0 0 16px;overflow:hidden;border:1px solid rgba(105,164,255,.32);border-radius:18px;background:rgba(13,36,63,.75);color:#c9dcf4;font-size:13px}
+.image-generator-stream-preview img{display:block;width:100%;height:auto;max-height:520px;object-fit:contain}
+.image-generator-stream-preview span{padding:0 12px 12px;text-align:center}
+[data-theme="light"] .image-generator-stream-preview{border-color:#cbd8e8;background:#f3f7fc;color:#304661}
 @media (max-width: 750px) {
   .image-generator-mode-switch { display: grid; grid-template-columns: 1fr; overflow: visible; }
   .image-generator-mode-switch button { width: 100%; flex-basis: auto; }
