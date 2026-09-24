@@ -23617,3 +23617,89 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
     transition-duration: 0ms;
   }
 }
+
+/* Mobile dialogue forms: a help icon is an informational control, not a
+   raised action button. Keep it in its label row and out of the way of the
+   field below, including when the site-wide tactile button treatment is on. */
+.help-tip-trigger,
+.help-tip-trigger:hover,
+.help-tip-trigger:active,
+.help-tip-trigger[aria-expanded="true"] {
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+/* The publication editor also opens in the professional workspace. Its base
+   palette is intentionally dark, but the light theme must not inherit white
+   labels and white controls on a white modal. */
+[data-theme="light"] :is(.publications-editor-modal, .publications-channel-modal) {
+  color-scheme: light;
+  color: #14253f;
+  border-color: #d5deea;
+  background:
+    radial-gradient(circle at 96% 0%, rgba(53, 104, 212, 0.12), transparent 32%),
+    linear-gradient(145deg, #f5f8fc 0%, #edf3fb 58%, #ffffff 100%);
+  box-shadow: 0 26px 70px rgba(20, 40, 80, 0.18), inset 0 1px rgba(255, 255, 255, 0.9);
+}
+[data-theme="light"] :is(.publications-editor-modal, .publications-channel-modal) .archive-editor-head {
+  border-color: #d5deea;
+  background: transparent;
+}
+[data-theme="light"] :is(.publications-editor-modal, .publications-channel-modal) :is(.archive-editor-head h2, .archive-editor-head span, .archive-editor-head button, .publications-editor-row label > span) {
+  color: #14253f;
+}
+[data-theme="light"] :is(.publications-editor-modal, .publications-channel-modal) .archive-editor-head p {
+  color: rgba(20, 37, 63, 0.62);
+}
+[data-theme="light"] .publications-editor-field > span { color: rgba(20, 37, 63, 0.76); }
+[data-theme="light"] .publications-editor-field > span > small { color: rgba(20, 37, 63, 0.52); }
+[data-theme="light"] .publications-editor-field :is(input, textarea),
+[data-theme="light"] .publications-editor-row input {
+  border-color: #b8c8dc;
+  color: #14253f;
+  background: rgba(255, 255, 255, 0.78);
+}
+[data-theme="light"] .publications-editor-field :is(input, textarea)::placeholder { color: rgba(20, 37, 63, 0.42); }
+[data-theme="light"] .publications-signature-control {
+  border-color: #d5deea;
+  background: rgba(255, 255, 255, 0.56);
+}
+[data-theme="light"] .publications-signature-toggle { color: #14253f; }
+[data-theme="light"] .publications-signature-control > small { color: rgba(20, 37, 63, 0.58); }
+[data-theme="light"] :is(.publications-upload-button, .publications-image-remove, .publications-editor-channels button, .publications-platform-switch button) {
+  border-color: #b8c8dc;
+  color: #14253f;
+  background: rgba(255, 255, 255, 0.72);
+}
+[data-theme="light"] .publications-editor-channels button.active,
+[data-theme="light"] .publications-platform-switch button.active {
+  color: #fff;
+  background: #376fd0;
+  border-color: #376fd0;
+}
+
+@media (max-width: 700px) {
+  /* Full-bleed on a phone, but with compact inner spacing so the editor does
+     not turn a single image choice into a long empty scroll. */
+  :is(.publications-editor-modal, .publications-channel-modal) {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-height: 100svh;
+    max-height: 100svh;
+    padding: 16px;
+    border-radius: 0;
+    gap: 10px;
+  }
+  :is(.publications-editor-modal, .publications-channel-modal) .archive-editor-head {
+    margin: -16px -16px 0;
+    padding: 16px;
+  }
+  .publications-editor-field { gap: 5px; }
+  .publications-editor-field :is(input, textarea),
+  .publications-editor-row input { padding: 9px 11px; }
+  .publications-image-row { align-items: stretch; gap: 6px; }
+  .publications-upload-button,
+  .publications-image-remove { min-height: 40px; padding: 0 11px; }
+  .publications-editor-preview { max-height: 180px; }
+}

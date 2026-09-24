@@ -20,13 +20,14 @@ import { HelpTip } from "./help-tip";
 // selector like ".workspace-shell.is-dialogue .module-select-list" can
 // never reach it; this lets a caller in a differently-themed surface
 // (dialogue mode's own --chat-* palette) restyle both pieces directly.
-export function ModuleSelect({ label, value, options, onChange, help, variant }: {
+export function ModuleSelect({ label, value, options, onChange, help, variant, disabled }: {
   label: string;
   value: string;
   options: { value: string; label: string }[];
   onChange: (value: string) => void;
   help?: string;
   variant?: string;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [menuRect, setMenuRect] = useState<{ top?: number; bottom?: number; left: number; width: number; maxHeight: number } | null>(null);
@@ -88,6 +89,7 @@ export function ModuleSelect({ label, value, options, onChange, help, variant }:
   }, [open]);
 
   function toggleOpen() {
+    if (disabled) return;
     if (!open && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
       const edgeGap = 12;
@@ -109,7 +111,7 @@ export function ModuleSelect({ label, value, options, onChange, help, variant }:
 
   return <div className={`field module-select ${variantClass} ${open ? "is-open" : ""}`} ref={containerRef}>
     <span className="field-label-help">{label}{help && <HelpTip label={label} text={help}/>}</span>
-    <button type="button" ref={triggerRef} className="module-select-trigger" onClick={toggleOpen} aria-haspopup="listbox" aria-expanded={open}>
+    <button type="button" ref={triggerRef} className="module-select-trigger" onClick={toggleOpen} disabled={disabled} aria-haspopup="listbox" aria-expanded={open}>
       <b>{activeOption?.label || value}</b>
       <em className="ui-chevron" aria-hidden="true" />
     </button>

@@ -44,7 +44,8 @@
   backdrop-filter: blur(12px);
   transform: translateX(50%);
 }
-.klio-aui-footer > * { position: relative; z-index: 1; }
+.klio-aui-footer > :not(.klio-aui-to-bottom) { position: relative; z-index: 1; }
+.klio-aui-footer > .klio-aui-to-bottom { position: absolute; z-index: 2; pointer-events: auto; }
 .klio-aui-composer { display:grid; grid-template-columns:36px minmax(0,1fr) 36px; align-items:end; gap:4px; border:1px solid var(--ck-line); border-radius:28px; padding:8px; background:var(--ck-panel); box-shadow:0 2px 8px #00102006; }
 .klio-aui-root .klio-aui-input { display:block; resize:none; width:100%; min-height:28px; max-height:180px; padding:4px 6px; border:0; border-radius:0; background:transparent; color:var(--ck-text); font:inherit; font-size:16px; line-height:1.6; box-shadow:none; outline:0; }
 .klio-aui-input::placeholder { color:var(--ck-muted); }
@@ -106,6 +107,7 @@
   .klio-aui-viewport { padding:0 14px; }
   .klio-aui-footer { padding-top:24px; }
   .klio-aui-footer::before { top:-112px; }
+  .klio-aui-footer > .klio-aui-to-bottom { top:-48px; right:10px; left:auto; width:40px; height:40px; }
   .klio-aui-welcome h1 { font-size:25px; }
   .klio-aui-message { font-size:15px; margin-bottom:24px; }
   .klio-aui-message.is-user .klio-aui-message-text { max-width:92%; }
@@ -157,3 +159,13 @@ html[data-theme="light"] .klio-card-generation .klio-card-generation-error { col
 .klio-card-generation :is(button,select,input):focus-visible { outline: 2px solid var(--ck-muted); outline-offset: 3px; }
 .klio-aui-message-source img { width:88px; max-height:88px; object-fit:contain; border-radius:12px; }
 .klio-aui-carousel figure > button:not(.klio-aui-image) { display:block; margin-top:6px; border:1px solid var(--ck-line); border-radius:16px; padding:6px 10px; background:var(--ck-panel); color:var(--ck-text); font-size:12px; cursor:pointer; }
+
+@media(max-width:600px) {
+  .klio-card-generation { gap:12px; }
+  .klio-card-generation legend { margin-bottom:6px; font-size:14px; }
+  .klio-card-generation-choices { gap:6px; }
+  .klio-card-generation .klio-card-generation-choices button { flex:1 1 calc(50% - 6px); min-height:40px; padding:8px 9px; font-size:13px; }
+  .klio-card-generation .klio-card-generation-check { gap:8px; font-size:14px; }
+  .klio-card-generation footer { gap:6px; }
+  .klio-card-generation footer button { min-height:40px; padding:8px 12px; font-size:13px; }
+}

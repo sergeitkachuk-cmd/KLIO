@@ -51,12 +51,8 @@ export function DialogueCardGenerationDialog({ kind, title, initial, brandName, 
       </> : <>
         {group("Формат", "format", FORMAT_OPTIONS.filter(option => option.value))}
         {group("Объём", "length", LENGTH_OPTIONS.filter(option => option.value).map(option => ({ ...option, label: `${option.label} · ≈ ${TEXT_LENGTH_TARGETS[option.value]} зн.` })))}
-        <ModuleSelect label="Авторская позиция" value={choices.useBrandContext && hasBrand ? choices.settings.authorPosition || "brand" : choices.settings.authorPosition === "brand" ? "neutral" : choices.settings.authorPosition || "neutral"} options={AUTHOR_POSITION_OPTIONS.filter(option => choices.useBrandContext && hasBrand || option.value !== "brand")} onChange={value => update("authorPosition", value)} help="Определяет, от чьего лица написан текст. При профиле бренда по умолчанию КЛИО пишет от имени компании." />
-        <label className="klio-card-generation-tone">Стиль
-          <select value={choices.settings.tone} disabled={busy} onChange={event => update("tone", event.target.value)}>
-            {TONE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.value ? option.label : choices.useBrandContext && hasBrand ? "По голосу бренда" : "Нейтральный"}</option>)}
-          </select>
-        </label>
+        <ModuleSelect variant="chatkit" disabled={busy} label="Авторская позиция" value={choices.useBrandContext && hasBrand ? choices.settings.authorPosition || "brand" : choices.settings.authorPosition === "brand" ? "neutral" : choices.settings.authorPosition || "neutral"} options={AUTHOR_POSITION_OPTIONS.filter(option => choices.useBrandContext && hasBrand || option.value !== "brand")} onChange={value => update("authorPosition", value)} help="Определяет, от чьего лица написан текст. При профиле бренда по умолчанию КЛИО пишет от имени компании." />
+        <ModuleSelect variant="chatkit" disabled={busy} label="Стиль" value={choices.settings.tone} options={TONE_OPTIONS.map(option => ({ ...option, label: option.value ? option.label : choices.useBrandContext && hasBrand ? "По голосу бренда" : "Нейтральный" }))} onChange={value => update("tone", value)} />
       </>}
       <label className="klio-card-generation-check"><input type="checkbox" disabled={busy || !hasBrand} checked={hasBrand && choices.useBrandContext} onChange={event => setChoices(current => ({ ...current, useBrandContext: event.target.checked }))} /><span>Использовать профиль бренда<small>{hasBrand ? brandName : "Бренд не выбран — можно создать без него"}</small></span></label>
       {image && <label className="klio-card-generation-check"><input type="checkbox" checked={hasLogo && choices.settings.useLogo} disabled={busy || !hasLogo} onChange={event => update("useLogo", event.target.checked)} /><span>Добавить логотип<small>{hasLogo ? "Из профиля выбранного бренда" : "Логотип можно загрузить в «Мой бизнес»"}</small></span></label>}

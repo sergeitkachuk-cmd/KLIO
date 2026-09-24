@@ -327,6 +327,52 @@ html[data-theme="light"] .module-select-list.module-select-chatkit {
 .klio-chatkit-thread-dialog button:disabled { opacity: .5; cursor: wait; }
 .klio-chatkit-thread-dialog .klio-chatkit-thread-error { margin-top: 12px; color: #cc4b55; }
 
+/* Generation dialogs use the same custom dropdown as the rest of KLIO.
+   Keep the trigger compact and theme-aware; the option list is portaled to
+   body and gets the matching --ck tokens from .module-select-chatkit. */
+.klio-chatkit-thread-dialog .module-select-chatkit {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  color: var(--ck-text);
+}
+.klio-chatkit-thread-dialog .module-select-chatkit .field-label-help {
+  justify-content: space-between;
+  color: var(--ck-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.klio-chatkit-thread-dialog .module-select-chatkit .help-tip { margin-left: auto; }
+.klio-chatkit-thread-dialog .module-select-chatkit .module-select-trigger {
+  min-height: 42px;
+  margin-top: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--ck-line);
+  border-radius: 12px;
+  background: var(--ck-panel);
+  color: var(--ck-text);
+  box-shadow: none;
+  font: inherit;
+}
+.klio-chatkit-thread-dialog .module-select-chatkit .module-select-trigger:hover,
+.klio-chatkit-thread-dialog .module-select-chatkit.is-open .module-select-trigger {
+  border-color: var(--ck-muted);
+  background: var(--ck-hover);
+}
+.klio-chatkit-thread-dialog .module-select-chatkit .module-select-trigger b {
+  color: var(--ck-text);
+  font: inherit;
+  font-weight: 500;
+}
+.klio-chatkit-thread-dialog .module-select-chatkit .module-select-trigger > em { color: var(--ck-muted); }
+.klio-chatkit-thread-dialog .help-tip-trigger,
+.klio-chatkit-thread-dialog .help-tip-trigger:hover,
+.klio-chatkit-thread-dialog .help-tip-trigger:active {
+  box-shadow: none !important;
+  transform: none !important;
+}
+
 .klio-chatkit-brand {
   position: relative;
   display: grid;
@@ -1005,4 +1051,17 @@ html[data-theme="light"] .klio-result-actions .klio-result-action-error { color:
     max-height: 92dvh;
     border-radius: 20px 20px 0 0;
   }
+}
+
+@media (max-width: 600px) {
+  .klio-chatkit-thread-dialog-layer { padding: 8px; }
+  .klio-chatkit-thread-dialog {
+    width: 100%;
+    max-height: calc(100dvh - 16px);
+    padding: 16px 14px;
+    border-radius: 16px;
+  }
+  .klio-chatkit-thread-dialog h2 { margin-bottom: 10px; font-size: 17px; }
+  .klio-chatkit-thread-dialog footer { gap: 6px; margin-top: 12px; }
+  .klio-chatkit-thread-dialog footer button { min-height: 40px; padding: 8px 12px; font-size: 13px; }
 }
