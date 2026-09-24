@@ -415,14 +415,35 @@
 }
 
 /* The module rail should read like a deliberate section navigation, not like
-   the smaller utility labels used inside the conversation. */
-.workspace-shell.is-dialogue .dialogue-module-rail nav button {
+   the smaller utility labels used inside the conversation. Keep the same
+   treatment in the actual dialogue rail so switching between chat and a
+   module does not change the navigation language. */
+.workspace-shell.is-dialogue :is(.klio-chatkit-shell, .workspace-layout.is-dialogue-module-layout) .klio-chatkit-rail {
+  color: var(--ck-text);
+}
+
+.workspace-shell.is-dialogue .klio-chatkit-rail :is(.klio-chatkit-new, nav button, .klio-chatkit-account, .klio-chatkit-brand-select > button) {
+  color: var(--ck-text) !important;
+}
+
+.workspace-shell.is-dialogue .klio-chatkit-rail :is(.klio-chatkit-new, nav button) {
   min-height: 46px;
   padding: 10px 12px;
   font-size: 15px;
   font-weight: 650;
   letter-spacing: 0.045em;
   text-transform: uppercase;
+}
+
+.workspace-shell.is-dialogue .klio-chatkit-rail :is(.klio-chatkit-new, nav button):hover,
+.workspace-shell.is-dialogue .klio-chatkit-rail .klio-chatkit-account:hover,
+.workspace-shell.is-dialogue .klio-chatkit-rail .klio-chatkit-brand-select > button:hover {
+  color: var(--ck-text) !important;
+}
+
+.workspace-shell.is-dialogue .klio-chatkit-recent h2 {
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
 }
 
 /* A few legacy module rules set their foreground directly to a dark
