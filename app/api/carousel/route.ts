@@ -10,6 +10,7 @@ import { readBoundedJson, RequestBodyError } from "../_lib/request-body";
 import { resolveBaseUrl } from "../_lib/base-url";
 import { ensureAccount, getWorkspaceDb, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 import { planRule } from "../../plans";
+import { IMAGE_STYLE_OPTIONS } from "../../dialogue-generation-settings";
 
 // Same shape as app/api/generate/route.ts (see its own comment on
 // runMaterialGenerationJob): a request this long-running (one LLM call
@@ -25,6 +26,7 @@ type CarouselPayload = {
   slideCount?: unknown;
   brandId?: unknown;
   useLogo?: unknown;
+  imageStyle?: unknown;
 };
 
 export async function POST(request: Request) {
@@ -49,6 +51,9 @@ export async function POST(request: Request) {
     }
     const brandId = typeof raw.brandId === "string" && raw.brandId.trim() ? raw.brandId.trim() : undefined;
     const useLogo = raw.useLogo === true;
+    const imageStyleInstruction = typeof raw.imageStyle === "string"
+      ? IMAGE_STYLE_OPTIONS.find(option => option.value === raw.imageStyle)?.instruction || ""
+      : "";
 
     let text = "";
     const generationId = typeof raw.generationId === "string" ? raw.generationId.trim() : "";
@@ -81,7 +86,7 @@ export async function POST(request: Request) {
       return Response.json({ error: `Недостаточно квоты: нужно ${slideCount}, доступно ${Math.max(0, rule.generationLimit - account.generationsUsed)} из ${rule.generationLimit} материалов ${rule.periodLabel}.` }, { status: 429 });
     }
 
-    const input = { text, slideCount, brandId, useLogo, imageOptions, baseUrl: resolveBaseUrl(request) };
+    const input = { text, slideCount, brandId, useLogo, imageStyleInstruction, imageOptions, baseUrl: resolveBaseUrl(request) };
     const job = await claimAsyncJob("carousel_generation", identity.email, input, CAROUSEL_TIMEOUT_MS + 10_000);
     if (job.reused) return Response.json({ jobId: job.id, reused: true });
 

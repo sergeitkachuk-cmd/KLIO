@@ -37,6 +37,21 @@ export const IMAGE_FORMAT_OPTIONS = [
   { value: "jpeg", label: "JPEG" },
   { value: "webp", label: "WEBP" },
 ];
+// Shared visual language for every image entry point. Keep the instruction
+// close to the label so the professional generator and dialogue send the same
+// unambiguous direction to the image model.
+export const IMAGE_STYLE_OPTIONS = [
+  { value: "", label: "Авто", instruction: "Выбери визуальный подход, который лучше всего раскрывает тему." },
+  { value: "photo", label: "Фотореализм", instruction: "Фотореалистичная фотография с естественным светом и правдоподобными деталями." },
+  { value: "editorial", label: "Редакционная съёмка", instruction: "Премиальная редакционная съёмка: продуманная композиция, выразительный свет, журнальная подача и живой сюжет." },
+  { value: "cinematic", label: "Кинематографичный", instruction: "Кинематографичный визуальный стиль: драматичный свет, выразительная глубина, цельная цветокоррекция и ощущение кадра из фильма." },
+  { value: "illustration", label: "Иллюстрация", instruction: "Современная рисованная иллюстрация с ясной композицией, аккуратными формами и выразительными деталями." },
+  { value: "3d", label: "3D", instruction: "Объёмная 3D-иллюстрация с аккуратными материалами, мягким освещением и чистой современной сценой." },
+  { value: "minimal", label: "Минимализм", instruction: "Минималистичный визуальный стиль: много воздуха, простые формы, ограниченная палитра и один сильный смысловой акцент." },
+  { value: "collage", label: "Коллаж", instruction: "Современный редакционный коллаж из фотографических и графических элементов с выразительной, но аккуратной композицией." },
+  { value: "watercolor", label: "Акварель", instruction: "Лёгкая художественная акварельная иллюстрация с естественными мазками, мягкими переходами и бумажной фактурой." },
+  { value: "flat", label: "Плоский дизайн", instruction: "Чистый плоский графический дизайн: простые цветовые блоки, понятные формы, аккуратная типографическая композиция." },
+];
 export const IMAGE_KIND_OPTIONS = [
   { value: "single", label: "Одно изображение" },
   { value: "carousel", label: "Карусель" },
@@ -66,6 +81,7 @@ export type GenerationSettings = {
   topicCount: string;
   imageAspectRatio: string;
   imageOutputFormat: string;
+  imageStyle?: string;
   useLogo: boolean;
   imageKind: string;
   carouselSlideCount: string;
@@ -78,7 +94,7 @@ export type GenerationSettings = {
 
 export const DEFAULT_GENERATION_SETTINGS: GenerationSettings = {
   format: "", tone: "", length: "", topicCount: "5",
-  imageAspectRatio: "4:3", imageOutputFormat: "png", useLogo: false,
+  imageAspectRatio: "4:3", imageOutputFormat: "png", imageStyle: "", useLogo: false,
   imageKind: "single", carouselSlideCount: "5",
   imageTextMode: "auto", imageText: "", logoPlacement: "scene", logoPosition: "bottom-right", authorPosition: "brand",
 };
@@ -93,6 +109,7 @@ export function settingsForTool(tool: string, settings: Partial<GenerationSettin
   if (tool === "carousel" || tool === "image" || tool.startsWith("image-card:")) return {
     imageAspectRatio: settings.imageAspectRatio || "4:3",
     imageOutputFormat: settings.imageOutputFormat || "png",
+    imageStyle: settings.imageStyle || "",
     useLogo: hasLogo && settings.useLogo === true,
     ...(tool !== "carousel" ? {
       imageTextMode: settings.imageTextMode || "auto",

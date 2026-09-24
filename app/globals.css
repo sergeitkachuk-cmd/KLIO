@@ -23691,12 +23691,29 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
    only needs about 16-18px, padding out every field it touches (Стиль,
    Ключевые слова, Контекст КЛИО, ...). Left at the same 28px as desktop. */
 /* Professional image studio and saved image previews. */
+.image-generator-studio-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:24px 24px 0;color:#c8d5e6}
+.image-generator-studio-steps>div{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:10px;padding:12px 14px;border:1px solid #34425a;border-radius:14px;background:rgba(16,31,55,.66)}
+.image-generator-studio-steps>div.is-active{border-color:#6e8fb6;background:linear-gradient(135deg,rgba(42,76,116,.9),rgba(22,42,71,.9));box-shadow:inset 0 1px rgba(255,255,255,.12)}
+.image-generator-studio-steps span{grid-row:1 / span 2;align-self:center;color:#94b5e6;font-size:12px;font-weight:800;letter-spacing:.08em}
+.image-generator-studio-steps b{font-size:13px;line-height:1.2}
+.image-generator-studio-steps small{color:#91a4bd;font-size:11px;line-height:1.35}
 .image-generator-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,1fr);gap:22px;padding:24px;color:#eef2fa}
 .image-generator-form,.image-generator-preview{min-width:0;padding:24px;border:1px solid #34425a;border-radius:18px;background:#0d1c33}
 .image-generator-form{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
 .image-generator-form label{font-size:16px;font-weight:750;color:inherit}
 .image-generator-form textarea{width:100%;min-height:180px;resize:vertical;padding:16px;border:1px solid #586782;border-radius:12px;background:#101f37;color:#fff;font:inherit;line-height:1.5}
 .image-generator-form textarea::placeholder{color:#aab8cb}
+.image-generator-reference{display:grid;gap:12px;width:100%;padding:14px 0 2px;border-top:1px solid #34425a}
+.image-generator-reference-heading{display:grid;gap:4px}
+.image-generator-reference-heading strong{font-size:14px;color:#eef2fa}
+.image-generator-reference-heading small{max-width:680px;color:#aebdd0;font-size:13px;line-height:1.45}
+.image-generator-reference-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.image-generator-reference-actions .button,.image-generator-reference-upload{min-height:38px;padding:0 14px;font-size:13px;white-space:nowrap}
+.image-generator-reference-upload{cursor:pointer}
+.image-generator-reference-selected{display:flex;align-items:flex-end;gap:12px;padding:10px;border:1px solid #34425a;border-radius:12px;background:#101f37}
+.image-generator-reference-selected>img{width:96px;height:72px;flex:0 0 auto;object-fit:cover;border-radius:8px}
+.image-generator-reference-selected .module-select{min-width:240px;flex:1 1 260px}
+.image-generator-reference .generation-error{font-size:13px}
 /* Was two bare <select> elements - their own dropdown option list can't be
    restyled to match the app's dark theme in most browsers (site owner: a
    screenshot of the stock white/blue browser popup). Same ModuleSelect used
@@ -23732,13 +23749,22 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 .image-generator-carousel-slide b{font-size:13px;font-weight:700;line-height:1.35;color:#eef2fa}
 .material-card-image{display:block;width:100%;max-height:280px;height:auto;object-fit:contain;margin:14px 0;border-radius:10px;background:rgba(0,0,0,.06)}
 [data-theme="light"] .image-generator-layout{color:#14253f}
+[data-theme="light"] .image-generator-studio-steps{color:#14253f}
+[data-theme="light"] .image-generator-studio-steps>div{border-color:#d5deea;background:#f5f8fc}
+[data-theme="light"] .image-generator-studio-steps>div.is-active{border-color:#9eb8da;background:linear-gradient(135deg,#e6effd,#f6f9fd)}
+[data-theme="light"] .image-generator-studio-steps span{color:#456fa8}
+[data-theme="light"] .image-generator-studio-steps small{color:#60738c}
 [data-theme="light"] .image-generator-form,[data-theme="light"] .image-generator-preview{border-color:#d5deea;background:#fff}
 [data-theme="light"] .image-generator-form textarea{border-color:#aebdd0;background:#fff;color:#14253f}
 [data-theme="light"] .image-generator-form textarea::placeholder,[data-theme="light"] .image-generator-form p,[data-theme="light"] .image-generator-preview p,[data-theme="light"] .image-generator-empty{color:#4e6078}
+[data-theme="light"] .image-generator-reference{border-color:#d5deea}
+[data-theme="light"] .image-generator-reference-heading strong{color:#14253f}
+[data-theme="light"] .image-generator-reference-heading small{color:#4e6078}
+[data-theme="light"] .image-generator-reference-selected{border-color:#d5deea;background:#f5f8fc}
 [data-theme="light"] .image-generator-carousel{border-color:#d5deea}
 [data-theme="light"] .image-generator-carousel-slide{border-color:#d5deea;background:#fff}
 [data-theme="light"] .image-generator-carousel-slide b{color:#14253f}
-@media(max-width:750px){.image-generator-layout{grid-template-columns:1fr;padding:16px}.image-generator-form,.image-generator-preview{padding:18px}.image-generator-empty{min-height:220px}}
+@media(max-width:750px){.image-generator-studio-steps{grid-template-columns:1fr;padding:16px 16px 0}.image-generator-layout{grid-template-columns:1fr;padding:16px}.image-generator-form,.image-generator-preview{padding:18px}.image-generator-empty{min-height:220px}.image-generator-reference-actions{align-items:stretch;flex-direction:column}.image-generator-reference-actions .button,.image-generator-reference-upload{justify-content:center;width:100%}.image-generator-reference-selected{align-items:stretch;flex-direction:column}.image-generator-reference-selected>img{width:100%;height:160px}.image-generator-reference-selected .module-select{min-width:0}}
 
 /* Publication calendar additions: keep the established calendar surface and
    add only the compact agenda and safe drag target affordances. */

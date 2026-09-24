@@ -9,7 +9,7 @@ import { ProfileField } from "./profile-field";
 import { createWorkspaceSaveQueue } from "./workspace-save-queue";
 import { HelpTip } from "./help-tip";
 import { ModuleSelect } from "./module-select";
-import { IMAGE_TEXT_OPTIONS, LOGO_PLACEMENT_OPTIONS, LOGO_POSITION_OPTIONS } from "./dialogue-generation-settings";
+import { IMAGE_STYLE_OPTIONS, IMAGE_TEXT_OPTIONS, LOGO_PLACEMENT_OPTIONS, LOGO_POSITION_OPTIONS } from "./dialogue-generation-settings";
 import { PublicationImagePicker } from "./publication-image-picker";
 import { ImageLightbox } from "./image-lightbox";
 import { FOUNDATION_FIELDS, VOICE_FIELDS, mergeProfileFill, missingVoiceFoundation } from "./brand-profile-fill";
@@ -2501,6 +2501,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [imageSourceTitle, setImageSourceTitle] = useState("");
   const [imageAspectRatio, setImageAspectRatio] = useState<"1:1" | "4:3" | "4:5" | "16:9" | "9:16">("4:3");
   const [imageOutputFormat, setImageOutputFormat] = useState<"png" | "jpeg" | "webp">("png");
+  const [imageStyle, setImageStyle] = useState("");
   const [imageTextMode, setImageTextMode] = useState("auto");
   const [imageText, setImageText] = useState("");
   const [logoPlacement, setLogoPlacement] = useState("scene");
@@ -2509,11 +2510,31 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [imageBusy, setImageBusy] = useState(false);
   const [imageError, setImageError] = useState("");
   const [imageResult, setImageResult] = useState<GenerationArchiveItem | null>(null);
+  const [imageEditSourceId, setImageEditSourceId] = useState<string | null>(null);
+  const [imageReferenceUrl, setImageReferenceUrl] = useState("");
+  const [imageReferenceSourceId, setImageReferenceSourceId] = useState("");
+  const [imageReferencePurpose, setImageReferencePurpose] = useState<"edit" | "reference">("edit");
+  const [imageReferenceBusy, setImageReferenceBusy] = useState(false);
+  const [imageReferenceError, setImageReferenceError] = useState("");
+  const imageReferenceInputRef = useRef<HTMLInputElement | null>(null);
   const [carouselSlideCount, setCarouselSlideCount] = useState("5");
   const [carouselBusy, setCarouselBusy] = useState(false);
   const [carouselError, setCarouselError] = useState("");
   const [carouselResult, setCarouselResult] = useState<{ slides: CarouselSlide[]; archive: GenerationArchiveItem } | null>(null);
   const [pendingCarouselSource, setPendingCarouselSource] = useState<{ generationId: string } | { text: string } | null>(null);
+  const imageSourceMaterial = useMemo(() => {
+    const sourceId = pendingCarouselSource && "generationId" in pendingCarouselSource
+      ? pendingCarouselSource.generationId
+      : "";
+    if (!sourceId || !imageResult?.imageUrl) return null;
+    const source = workspaceHistory.find(item => item.id === sourceId);
+    if (!source || source.topic === "Изображение" || source.topic === "Карусель" || !source.body.trim()) return null;
+    return source;
+  }, [imageResult?.imageUrl, pendingCarouselSource, workspaceHistory]);
+  const imageReferenceMaterials = useMemo(
+    () => workspaceHistory.filter(item => Boolean(item.imageUrl)).slice(0, 30),
+    [workspaceHistory],
+  );
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [workspaceMaterials, setWorkspaceMaterials] = useState<SavedWorkspaceMaterial[]>([]);
   const [workspaceUserName, setWorkspaceUserName] = useState("Сергей");
@@ -5459,6 +5480,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   function prepareImageGeneration(carouselSource: { generationId: string } | { text: string }, promptText: string, sourceTitle: string) {
     setImagePrompt(promptText);
     setImageSourceTitle(sourceTitle);
+    setImageEditSourceId(null);
+    setImageReferenceUrl("");
+    setImageReferenceSourceId("");
+    setImageReferenceError("");
     setImageTextMode(current => current === "auto" ? "none" : current);
     setPendingCarouselSource(carouselSource);
     setImageError("");
@@ -5466,6 +5491,26 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setImageResult(null);
     setCarouselResult(null);
     openModule("images");
+  }
+
+  async function uploadProfessionalImageReference(file: File) {
+    setImageReferenceBusy(true);
+    setImageReferenceError("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch("/api/uploads", { method: "POST", body: form, signal: AbortSignal.timeout(60_000) });
+      const payload = await safeJson(response) as { error?: string; url?: string };
+      if (!response.ok || !payload.url) throw new Error(payload.error || "Не удалось загрузить исходное изображение.");
+      setImageReferenceUrl(payload.url);
+      setImageReferenceSourceId("");
+      setImageEditSourceId(null);
+      setImageReferencePurpose("edit");
+    } catch (error) {
+      setImageReferenceError(error instanceof Error ? error.message : "Не удалось загрузить исходное изображение.");
+    } finally {
+      setImageReferenceBusy(false);
+    }
   }
 
   async function generateProfessionalImage() {
@@ -5484,10 +5529,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           prompt,
           sourceTitle: imageSourceTitle,
           sourceGenerationId: pendingCarouselSource && "generationId" in pendingCarouselSource ? pendingCarouselSource.generationId : undefined,
+          sourceImageGenerationId: imageEditSourceId || imageReferenceSourceId || undefined,
+          sourceImageUrl: imageReferenceSourceId || imageEditSourceId ? undefined : imageReferenceUrl || undefined,
+          sourceImagePurpose: imageEditSourceId || imageReferenceSourceId || imageReferenceUrl ? imageReferencePurpose : undefined,
           brandId: useBrand ? activeBrandId || undefined : undefined,
           requestId: crypto.randomUUID(),
           aspectRatio: imageAspectRatio,
           outputFormat: imageOutputFormat,
+          imageStyle,
           useLogo: useBrand && Boolean(brand.logoKey) && useLogoInImage,
           logoPlacement, logoPosition, imageTextMode, imageText: imageTextMode === "custom" ? imageText.trim() : undefined,
         }),
@@ -5497,6 +5546,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setImageResult(payload.generation);
       setWorkspaceHistory(current => [payload.generation!, ...current.filter(item => item.id !== payload.generation!.id)].slice(0, 60));
       if (payload.account) setWorkspaceAccount(payload.account);
+      setImageEditSourceId(null);
+      setImageReferenceUrl("");
+      setImageReferenceSourceId("");
+      setImageReferenceError("");
       openModule("images");
     } catch (error) {
       setImageError(error instanceof Error ? error.message : "Не удалось создать изображение.");
@@ -5533,6 +5586,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           useLogo: useBrand && Boolean(brand.logoKey) && useLogoInImage,
           aspectRatio: imageAspectRatio,
           outputFormat: imageOutputFormat,
+          imageStyle,
         }),
       });
       const startPayload = await safeJson(startResponse) as { error?: string; jobId?: string };
@@ -5603,6 +5657,35 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       generationId: standaloneImage ? null : item.id,
       imageUrl: item.imageUrl,
     });
+  }
+
+  function openImagePublicationDraft(withSourceText: boolean) {
+    if (!imageResult?.imageUrl) return;
+    if (withSourceText && imageSourceMaterial) {
+      void openPublicationDraft({
+        title: imageSourceMaterial.title,
+        body: [imageSourceMaterial.subtitle, imageSourceMaterial.body].filter(Boolean).join("\n\n"),
+        generationId: imageSourceMaterial.id,
+        imageUrl: imageResult.imageUrl,
+      });
+      return;
+    }
+    void openPublicationDraft({ title: "", body: "", generationId: null, imageUrl: imageResult.imageUrl });
+  }
+
+  function startImageEdit() {
+    if (!imageResult?.imageUrl) return;
+    setImageEditSourceId(imageResult.id);
+    setImageReferenceUrl("");
+    setImageReferenceSourceId("");
+    setImageReferencePurpose("edit");
+    setImageReferenceError("");
+    setImagePrompt("");
+    setImageSourceTitle(imageResult.title);
+    setPendingCarouselSource(null);
+    setImageError("");
+    setCarouselError("");
+    openModule("images");
   }
 
   async function openPublicationDraft(source: { title: string; body: string; generationId?: string | null; imageUrl?: string }) {
@@ -6785,11 +6868,53 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
           <section className="workspace-module image-generator-module" id="images" style={{ display: activeModule === "images" ? undefined : "none" }}>
             <div className="workspace-module-heading tool-heading workspace-module-banner"><div><span>Визуальные материалы</span><h2>Генерация изображений<span className="klio-mark-dot">.</span></h2></div><p>Опишите, что должно быть на картинке. КЛИО создаст её и сохранит в «Материалы».</p></div>
+            <div className="image-generator-studio-steps" aria-label="Этапы создания изображения">
+              <div className="is-active"><span>01</span><b>Бриф</b><small>Опишите задачу и исходник</small></div>
+              <div><span>02</span><b>Настройки</b><small>Стиль, формат и текст</small></div>
+              <div><span>03</span><b>Результат</b><small>Проверьте и отправьте в публикацию</small></div>
+            </div>
             <div className="image-generator-layout">
               <div className="image-generator-form">
-                <label htmlFor="image-prompt">Что изобразить</label>
-                <textarea id="image-prompt" value={imagePrompt} onChange={event => { setImagePrompt(event.target.value); setImageSourceTitle(""); setPendingCarouselSource(null); if (imageTextMode === "title") setImageTextMode("auto"); }} placeholder="Например: чашка кофе на деревянном столе у окна, мягкий утренний свет, без надписей" rows={6} maxLength={1800}/>
+                <label htmlFor="image-prompt">{imageEditSourceId ? "Что изменить в изображении" : "Что изобразить"}</label>
+                <textarea id="image-prompt" value={imagePrompt} onChange={event => { setImagePrompt(event.target.value); setImageSourceTitle(""); setPendingCarouselSource(null); if (imageTextMode === "title") setImageTextMode("auto"); }} placeholder={imageEditSourceId ? "Например: добавь мягкий вечерний свет и убери кружку справа" : "Например: чашка кофе на деревянном столе у окна, мягкий утренний свет, без надписей"} rows={6} maxLength={1800}/>
+                <div className="image-generator-reference">
+                  <div className="image-generator-reference-heading"><strong>Исходное изображение</strong><small>Загрузите свою картинку или выберите сохранённую. КЛИО сможет изменить её по описанию или взять как визуальный референс.</small></div>
+                  <div className="image-generator-reference-actions">
+                    <label className={`button ghost image-generator-reference-upload ${imageReferenceBusy ? "is-busy" : ""}`}>
+                      {imageReferenceBusy ? "Загрузка…" : imageReferenceUrl ? "Заменить свою картинку" : "Загрузить свою картинку"}
+                      <input ref={imageReferenceInputRef} type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={imageReferenceBusy || imageBusy || carouselBusy} onChange={event => {
+                        const file = event.target.files?.[0];
+                        event.target.value = "";
+                        if (file) void uploadProfessionalImageReference(file);
+                      }}/>
+                    </label>
+                    {imageReferenceMaterials.length > 0 && <PublicationImagePicker
+                      label="Выбрать сохранённую картинку"
+                      items={imageReferenceMaterials.filter(item => item.imageUrl).map(item => ({ id: item.id, title: item.title, imageUrl: item.imageUrl as string }))}
+                      activeUrl={imageReferenceUrl}
+                      onSelect={item => {
+                        setImageReferenceUrl(item.imageUrl);
+                        setImageReferenceSourceId(item.id);
+                        setImageEditSourceId(null);
+                        setImageReferencePurpose("edit");
+                        setImageReferenceError("");
+                      }}
+                    />}
+                    {(imageReferenceUrl || imageEditSourceId) && <button type="button" className="button ghost" onClick={() => { setImageReferenceUrl(""); setImageReferenceSourceId(""); setImageEditSourceId(null); setImageReferenceError(""); }}>Убрать исходник</button>}
+                  </div>
+                  {(imageReferenceUrl || imageEditSourceId) && <div className="image-generator-reference-selected">
+                    {(imageReferenceUrl || (imageEditSourceId ? imageResult?.imageUrl : "")) && <Image src={(imageReferenceUrl || imageResult?.imageUrl) as string} alt="Выбранное исходное изображение" width={96} height={72} unoptimized/>}
+                    <ModuleSelect label="Как использовать" value={imageReferencePurpose} onChange={value => setImageReferencePurpose(value as "edit" | "reference")} options={[{ value: "edit", label: "Редактировать по описанию" }, { value: "reference", label: "Взять как визуальный референс" }]}/>
+                  </div>}
+                  {imageReferenceError && <small className="generation-error" role="alert">{imageReferenceError}</small>}
+                </div>
                 <div className="image-generator-settings">
+                  <ModuleSelect
+                    label="Стиль изображения"
+                    value={imageStyle}
+                    onChange={setImageStyle}
+                    options={IMAGE_STYLE_OPTIONS.map(({ value, label }) => ({ value, label }))}
+                  />
                   {/* gpt-image-1 only renders three real sizes (square/
                       landscape/portrait, see _lib/image-generation.ts) -
                       offering 5 distinctly-labelled ratios that collapse
@@ -6864,7 +6989,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   </div>
                   <p>Карусель из {carouselResult.slides.length} слайдов сохранена в «Материалы».</p>
                   <div><button className="button ghost" type="button" onClick={() => { setMaterialsFilter("all"); openModule("history"); }}>Открыть материалы</button><button className="button ghost" type="button" onClick={() => void openPublicationDraft(carouselPublicationDraft(carouselResult.slides, carouselResult.archive))}>В публикацию</button></div>
-                </> : imageResult?.imageUrl ? <><button type="button" className="image-generator-result-trigger" aria-label="Открыть изображение крупнее" onClick={() => setLightboxUrl(imageResult.imageUrl)}><Image src={imageResult.imageUrl} alt={imageResult.title} width={1024} height={1024} unoptimized/></button><p>Изображение сохранено в «Материалы».</p><div><a className="button ghost" href={imageResult.imageUrl} download>Скачать {imageFormatLabel(imageResult.imageUrl)}</a><button className="button ghost" type="button" onClick={() => { setMaterialsFilter("image"); openModule("history"); }}>Открыть материалы</button><button className="button ghost" type="button" onClick={() => void openPublicationDraft({ title: "", body: "", generationId: null, imageUrl: imageResult.imageUrl })}>В публикацию</button></div></> : <div className="image-generator-empty"><Icon name="image"/><span>{imageBusy ? "КЛИО рисует. Обычно это занимает до минуты." : carouselBusy ? "КЛИО собирает карусель. Это может занять пару минут." : "Готовое изображение появится здесь"}</span></div>}
+                </> : imageResult?.imageUrl ? <><button type="button" className="image-generator-result-trigger" aria-label="Открыть изображение крупнее" onClick={() => setLightboxUrl(imageResult.imageUrl)}><Image src={imageResult.imageUrl} alt={imageResult.title} width={1024} height={1024} unoptimized/></button><p>Изображение сохранено в «Материалы».</p><div className="image-generator-result-actions"><a className="button ghost" href={imageResult.imageUrl} download>Скачать {imageFormatLabel(imageResult.imageUrl)}</a><button className="button ghost" type="button" onClick={startImageEdit}>Доработать изображение</button><button className="button ghost" type="button" onClick={() => { setMaterialsFilter("image"); openModule("history"); }}>Открыть материалы</button></div>{imageSourceMaterial ? <><p className="image-generator-publication-note">Изображение создано для статьи «{imageSourceMaterial.title}». Выберите, что поставить в публикацию:</p><div className="image-generator-publication-actions"><button className="button primary" type="button" onClick={() => openImagePublicationDraft(true)}>Картинка + текст статьи</button><button className="button ghost" type="button" onClick={() => openImagePublicationDraft(false)}>Только картинка</button></div></> : <div className="image-generator-result-actions"><button className="button ghost" type="button" onClick={() => openImagePublicationDraft(false)}>В публикацию</button></div>}</> : <div className="image-generator-empty"><Icon name="image"/><span>{imageBusy ? "КЛИО рисует. Обычно это занимает до минуты." : carouselBusy ? "КЛИО собирает карусель. Это может занять пару минут." : "Готовое изображение появится здесь"}</span></div>}
               </div>
             </div>
           </section>

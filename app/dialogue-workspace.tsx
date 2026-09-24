@@ -21,7 +21,7 @@ import { DialogueCardGenerationDialog } from "./dialogue-card-generation-dialog"
 import { cardGenerationDefaults, cardGenerationRequest, type CardGenerationChoices, type CardGenerationKind } from "./dialogue-card-generation";
 import {
   DEFAULT_GENERATION_SETTINGS, FORMAT_OPTIONS, TONE_OPTIONS, LENGTH_OPTIONS,
-  TOPIC_COUNT_OPTIONS, IMAGE_ASPECT_OPTIONS, IMAGE_FORMAT_OPTIONS, IMAGE_KIND_OPTIONS, CAROUSEL_COUNT_OPTIONS, IMAGE_TEXT_OPTIONS, LOGO_PLACEMENT_OPTIONS, LOGO_POSITION_OPTIONS, AUTHOR_POSITION_OPTIONS, settingsForTool,
+  TOPIC_COUNT_OPTIONS, IMAGE_ASPECT_OPTIONS, IMAGE_FORMAT_OPTIONS, IMAGE_STYLE_OPTIONS, IMAGE_KIND_OPTIONS, CAROUSEL_COUNT_OPTIONS, IMAGE_TEXT_OPTIONS, LOGO_PLACEMENT_OPTIONS, LOGO_POSITION_OPTIONS, AUTHOR_POSITION_OPTIONS, settingsForTool,
   type GenerationSettings,
 } from "./dialogue-generation-settings";
 import type { DialogueWorkspaceProps } from "./dialogue-workspace-types";
@@ -597,6 +597,7 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
                   <ModuleSelect variant="chatkit" label="Количество слайдов" value={generationSettings.carouselSlideCount} options={CAROUSEL_COUNT_OPTIONS} onChange={(value) => changeSetting("carouselSlideCount", value)} />
                   <small>Первый слайд — обложка, дальше текстовые слайды. Один слайд — один материал из лимита.</small>
                 </>}
+                <ModuleSelect variant="chatkit" label="Стиль изображения" value={generationSettings.imageStyle || ""} options={IMAGE_STYLE_OPTIONS.map(({ value, label }) => ({ value, label }))} onChange={(value) => changeSetting("imageStyle", value)} />
                 <ModuleSelect variant="chatkit" label="Ориентация" value={generationSettings.imageAspectRatio} options={IMAGE_ASPECT_OPTIONS} onChange={(value) => changeSetting("imageAspectRatio", value)} />
                 <ModuleSelect variant="chatkit" label="Формат файла" value={generationSettings.imageOutputFormat} options={IMAGE_FORMAT_OPTIONS} onChange={(value) => changeSetting("imageOutputFormat", value)} />
                 {props.hasLogo ? <label className="klio-chatkit-settings-logo"><input type="checkbox" checked={generationSettings.useLogo} onChange={(event) => changeSetting("useLogo", event.target.checked)} />Логотип на изображении</label> : <button type="button" className="klio-chatkit-settings-logo" onClick={() => props.onNavigate("brand")}>＋ Добавить логотип</button>}

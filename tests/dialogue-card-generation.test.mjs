@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import * as React from "react";
 import { randomUUID } from "node:crypto";
 import { mountDialogue, sampleThread } from "./helpers/dialogue-ui.mjs";
 import { createDialogueHarness, load } from "./helpers/dialogue-harness.mjs";
@@ -25,7 +24,8 @@ test("topic generation waits for confirmation and uses visible size, tone and br
   assert.equal(dialog.querySelector('input[type="checkbox"]').checked, true);
   assert.ok(dialog.textContent.includes(props.brandName));
   await ui.click(ui.findButton("Длинный · ≈ 4000 зн.", dialog));
-  await React.act(async () => { const select = dialog.querySelector("select"); select.value = "Дружелюбный"; select.dispatchEvent(new ui.window.Event("change", { bubbles: true })); });
+  await ui.click(dialog.querySelectorAll(".module-select-trigger")[1]);
+  await ui.click(ui.findButton("Дружелюбный"));
   await ui.click(ui.findButton("Создать текст", dialog));
   assert.equal(sends(ui).length, 1);
   const sent = sends(ui)[0];

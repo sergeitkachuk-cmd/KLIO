@@ -1,14 +1,9 @@
 import type { DialogueCard } from "./dialogue-model";
-import { FORMAT_OPTIONS, settingsForTool, type GenerationSettings } from "./dialogue-generation-settings";
+import { FORMAT_OPTIONS, IMAGE_STYLE_OPTIONS, settingsForTool, type GenerationSettings } from "./dialogue-generation-settings";
 
 export type CardGenerationKind = "text" | "image";
 export type CardGenerationChoices = { settings: GenerationSettings; useBrandContext: boolean; imageStyle?: string };
-export const CARD_IMAGE_STYLES = [
-  { value: "", label: "Авто", instruction: "" },
-  { value: "photo", label: "Фотореализм", instruction: "Фотореалистичная фотография с естественным светом и правдоподобными деталями." },
-  { value: "illustration", label: "Иллюстрация", instruction: "Современная рисованная иллюстрация с ясной композицией." },
-  { value: "3d", label: "3D", instruction: "Объёмная 3D-иллюстрация с аккуратными материалами и освещением." },
-];
+export const CARD_IMAGE_STYLES = IMAGE_STYLE_OPTIONS;
 
 // Card buttons propose defaults; the confirmed choices are the request contract.
 // Do not run them through topic-post/article shortcuts that force a hidden size.

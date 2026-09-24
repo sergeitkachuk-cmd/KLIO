@@ -41,7 +41,7 @@ import { createImage, createImageFromLogo, createImageFromSource, imageConfigure
 import { downloadBrandLogo, downloadPublicationImage } from "../_lib/storage";
 import { DialogueImageSourceError, resolveDialogueImageSource, type ResolvedDialogueImageSource } from "../_lib/dialogue-image-source";
 import { requestedLogoChange } from "../../dialogue-starters";
-import { TEXT_LENGTH_TARGETS } from "../../dialogue-generation-settings";
+import { IMAGE_STYLE_OPTIONS, TEXT_LENGTH_TARGETS } from "../../dialogue-generation-settings";
 import { buildDialogueImagePrompt, dialogueImageTextInstruction } from "../_lib/dialogue-image-prompt";
 import { generateCarouselSlides, CAROUSEL_MIN_SLIDES, CAROUSEL_MAX_SLIDES } from "../_lib/carousel";
 
@@ -262,6 +262,7 @@ async function runReply(
     topic_count: number;
     imageAspectRatio: ImageAspectRatio | null;
     imageOutputFormat: ImageOutputFormat | null;
+    imageStyle: string;
     useLogo: boolean;
     logoPlacement: "scene" | "corner";
     logoPosition: "top-left" | "top-right" | "bottom-left" | "bottom-right";
@@ -299,6 +300,7 @@ async function runReply(
       const slides = await generateCarouselSlides(row.requestId, {
         text: last, slideCount: settings.slideCount, brandId: row.brandId || undefined,
         useBrandContext, useLogo: settings.useLogo, baseUrl,
+        imageStyleInstruction: settings.imageStyle,
         imageOptions: {
           ...(settings.imageAspectRatio ? { aspectRatio: settings.imageAspectRatio } : {}),
           ...(settings.imageOutputFormat ? { outputFormat: settings.imageOutputFormat } : {}),
@@ -343,6 +345,7 @@ async function runReply(
           throw new Error("Не удалось подготовить описание изображения. Попробуйте ещё раз — лимит возвращён.");
       }
       const imageText = settings.imageTextMode === "title" ? selected?.title.slice(0, 500) || "" : settings.imageText;
+      if (settings.imageStyle) prompt += `\n\nСтиль изображения: ${settings.imageStyle}`;
       prompt += `\n\n${dialogueImageTextInstruction(settings.imageTextMode, imageText, settings.imageSource?.purpose === "edit", settings.useLogo)}`;
       const imageOptions = {
         ...(settings.imageAspectRatio ? { aspectRatio: settings.imageAspectRatio } : {}),
@@ -814,6 +817,9 @@ export async function POST(request: Request) {
       typeof settingsRaw.imageOutputFormat === "string" && (IMAGE_OUTPUT_FORMATS as readonly string[]).includes(settingsRaw.imageOutputFormat)
         ? settingsRaw.imageOutputFormat as ImageOutputFormat
         : null;
+    const imageStyle = typeof settingsRaw.imageStyle === "string"
+      ? IMAGE_STYLE_OPTIONS.find(option => option.value === settingsRaw.imageStyle)?.instruction || ""
+      : "";
     const useLogo = (mode === "image" ? requestedLogoChange(clean(p.text, 8000)) : null) ?? (settingsRaw.useLogo === true);
     const imageTextMode = settingsRaw.imageTextMode === "none" || settingsRaw.imageTextMode === "title" || settingsRaw.imageTextMode === "custom" ? settingsRaw.imageTextMode : "auto";
     const imageText = clean(settingsRaw.imageText, 201);
@@ -840,6 +846,7 @@ export async function POST(request: Request) {
       topic_count: topicCount,
       imageAspectRatio,
       imageOutputFormat,
+      imageStyle,
       useLogo,
       logoPlacement, logoPosition, imageTextMode, imageText,
       slideCount,
