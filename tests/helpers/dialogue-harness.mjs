@@ -92,6 +92,7 @@ export async function createDialogueHarness() {
   }
   const plans = load("app/plans.ts");
   const contentPlans = load("app/content-plans.ts");
+  const carouselTemplates = load("app/carousel-templates.ts");
   const account = async () =>
     (
       await db
@@ -188,7 +189,7 @@ export async function createDialogueHarness() {
     "./ai-router": { callAiModel: async (input) => { calls++; return { result: await ai(input) }; } },
     "./image-generation": { createCarouselSlideImage: async (...args) => { carouselCalls.push(args); return carouselImage(...args); } },
     "./storage": { downloadBrandLogo: async () => ({ bytes: new Uint8Array([2]), contentType: "image/png" }) },
-    "./workspace-account": workspace, "./async-jobs": {},
+    "./workspace-account": workspace, "./async-jobs": {}, "../../carousel-templates": carouselTemplates,
   });
   const route = load(
     "app/api/dialogue/route.ts",
@@ -202,7 +203,7 @@ export async function createDialogueHarness() {
       }),
       "../../plans": plans,
       "../../content-plans": contentPlans,
-      "../../dialogue-generation-settings": load("app/dialogue-generation-settings.ts", { "./content-plans": contentPlans }),
+      "../../dialogue-generation-settings": load("app/dialogue-generation-settings.ts", { "./content-plans": contentPlans, "./carousel-templates": carouselTemplates }),
       "../_lib/ai-config": {
         aiConfigured: () => true,
         OPERATION_CONFIG: { dialogue_plain: { model: "gpt-5.6-luna" }, dialogue_deepseek_plain: { model: "deepseek-flash" } },
@@ -242,6 +243,7 @@ export async function createDialogueHarness() {
       },
       "../_lib/dialogue-image-prompt": load("app/api/_lib/dialogue-image-prompt.ts"),
       "../_lib/carousel": carousel,
+      "../../carousel-templates": carouselTemplates,
     },
     {
       fetch: async () => {

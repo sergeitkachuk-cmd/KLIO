@@ -1,6 +1,9 @@
 import { storageConfigured, uploadPublicationImage } from "./storage";
 import { imageContentType } from "./image-type";
 import { ImageRelayUpgradeRequiredError } from "./image-generation-errors";
+import { renderCarouselSlide } from "./carousel-render";
+import type { CarouselTemplateId } from "../../carousel-templates";
+import { carouselTemplateInstruction } from "../../carousel-templates";
 
 export type ImageAspectRatio = "1:1" | "4:3" | "4:5" | "16:9" | "9:16";
 export type ImageOutputFormat = "png" | "jpeg" | "webp";
@@ -360,13 +363,25 @@ export async function createCarouselSlideImage(
   requestId: string,
   options: ImageGenerationOptions,
   model: string,
+  textOverlay?: { headline: string; subtext: string; templateId: CarouselTemplateId },
 ) {
   const guidedPrompt = !reference
     ? prompt
     : reference.kind === "logo"
       ? `${prompt}\n\n${LOGO_REFERENCE_INSTRUCTION}`
       : `${prompt}\n\nЭто один слайд карусели из серии. Сохрани ту же визуальную стилистику, палитру, шрифт и композицию, что и на приложенном референсном изображении - слайды должны выглядеть частью одного набора, но с текстом именно этого слайда, не референсного.`;
-  const { bytes, contentType } = await generateImageBytes(guidedPrompt, requestId, options, reference, model);
+  const imagePrompt = textOverlay
+    ? [
+        `Создай выразительный фон и тематическую иллюстрацию для слайда карусели. Смысловой сюжет: ${textOverlay.headline}. ${textOverlay.subtext}`,
+        `Визуальное направление: ${carouselTemplateInstruction(textOverlay.templateId)}`,
+        "Не рисуй буквы, слова, логотипы, подписи, цифры и псевдотекст. Оставь нижнюю половину кадра спокойной, без важных объектов и деталей: поверх неё будет добавлена точная текстовая панель. Соблюдай палитру и визуальный характер предыдущего слайда.",
+        reference?.kind === "logo" ? LOGO_REFERENCE_INSTRUCTION : "",
+      ].filter(Boolean).join("\n\n")
+    : guidedPrompt;
+  const generated = await generateImageBytes(imagePrompt, requestId, options, reference, model);
+  const { bytes, contentType } = textOverlay
+    ? await renderCarouselSlide(generated.bytes, textOverlay.headline, textOverlay.subtext, textOverlay.templateId)
+    : generated;
   const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
   const url = await uploadPublicationImage(
     new File([bytes], fileName, { type: contentType }),
@@ -376,6 +391,6 @@ export async function createCarouselSlideImage(
   // Bytes returned alongside the URL (unlike createImage/createImageFromLogo)
   // so the caller can pass THIS slide's own bytes as the reference for the
   // next one, without an extra round-trip fetch of the just-uploaded file.
-  return { url, bytes, contentType };
+  return { url, bytes, contentType, referenceBytes: generated.bytes };
 }
 

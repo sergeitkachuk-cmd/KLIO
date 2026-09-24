@@ -5,7 +5,8 @@ import { mountDialogue, sampleThread } from "./helpers/dialogue-ui.mjs";
 import { createDialogueHarness, load } from "./helpers/dialogue-harness.mjs";
 
 const plans = load("app/content-plans.ts");
-const generation = load("app/dialogue-generation-settings.ts", { "./content-plans": plans });
+const carouselTemplates = load("app/carousel-templates.ts");
+const generation = load("app/dialogue-generation-settings.ts", { "./content-plans": plans, "./carousel-templates": carouselTemplates });
 const { cardGenerationRequest } = load("app/dialogue-card-generation.ts", { "./dialogue-generation-settings": generation });
 const card = { id: "topic", kind: "topic", title: "Работа в студии", body: "Как готовится съёмочная группа", imageUrl: "", versions: [] };
 const thread = () => sampleThread("saved", { brandId: "studio", data: { messages: [{ id: "a", role: "assistant", text: "Темы готовы", cardIds: [card.id] }], cards: [card] } });

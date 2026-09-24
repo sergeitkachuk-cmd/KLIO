@@ -438,6 +438,56 @@ export async function recordGeneration(material: ArchiveMaterial, job?: { id: st
   });
 }
 
+// A one-slide re-render updates the existing carousel material and consumes
+// exactly one generation. The quota debit, material update, and job result
+// commit together so a failed/stale job cannot charge without saving.
+export async function recordCarouselSlideRegeneration(input: {
+  generationId: string;
+  slidesJson: string;
+  firstImageUrl: string;
+  jobId: string;
+  slides: unknown[];
+}) {
+  if (!await workspaceDatabaseAvailable()) return null;
+  const user = await workspaceIdentity();
+  const current = await ensureAccount(user);
+  assertPlanActive(current);
+  const rule = planRule(current.planId);
+  const db = await getWorkspaceDb();
+  return db.transaction(async (tx) => {
+    const [active] = await tx.update(asyncJobs).set({ updatedAt: sql`CURRENT_TIMESTAMP` }).where(and(
+      eq(asyncJobs.id, input.jobId), eq(asyncJobs.ownerEmail, user.email), eq(asyncJobs.status, "processing"),
+    )).returning({ id: asyncJobs.id });
+    if (!active) throw new WorkspaceAccessError("Задание завершено или закрыто. Результат не сохранён.", 409);
+
+    const [updatedAccount] = await tx.update(accounts).set({
+      generationsUsed: sql`${accounts.generationsUsed} + 1`,
+      lifetimeGenerationsUsed: sql`${accounts.lifetimeGenerationsUsed} + 1`,
+      updatedAt: sql`CURRENT_TIMESTAMP`,
+    }).where(and(
+      eq(accounts.email, user.email),
+      sql`${accounts.generationsUsed} + 1 <= ${rule.generationLimit}`,
+    )).returning();
+    if (!updatedAccount) throw new WorkspaceAccessError(`Лимит тарифа «${rule.name}» исчерпан.`, 429);
+
+    const [archive] = await tx.update(generations).set({
+      slidesJson: input.slidesJson,
+      imageUrl: input.firstImageUrl,
+    }).where(and(
+      eq(generations.id, input.generationId),
+      eq(generations.ownerEmail, user.email),
+      sql`${generations.slidesJson} <> ''`,
+    )).returning();
+    if (!archive) throw new WorkspaceAccessError("Карусель не найдена или уже недоступна.", 404);
+
+    const [{ count: brandCount = 0 } = { count: 0 }] = await tx.select({ count: sql<number>`count(*)` }).from(brands).where(eq(brands.ownerEmail, user.email));
+    const result = { slides: input.slides, usage: { account: accountSummary(updatedAccount, Number(brandCount)), archive } };
+    await tx.update(asyncJobs).set({ status: "done", resultJson: JSON.stringify(result), updatedAt: sql`CURRENT_TIMESTAMP` })
+      .where(and(eq(asyncJobs.id, input.jobId), eq(asyncJobs.ownerEmail, user.email), eq(asyncJobs.status, "processing")));
+    return result;
+  });
+}
+
 export function workspaceErrorResponse(error: unknown) {
   if (error instanceof WorkspaceAccessError) {
     return Response.json({ error: error.message }, { status: error.status });

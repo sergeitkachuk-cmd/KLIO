@@ -15,6 +15,7 @@ function parseEvents(body) {
 }
 
 function chatKitRoute(dialogueRoute, imagePreviewSizes = async () => new Map()) {
+  const carouselTemplates = load("app/carousel-templates.ts");
   return load(
     "app/api/chatkit/route.ts",
     {
@@ -24,6 +25,7 @@ function chatKitRoute(dialogueRoute, imagePreviewSizes = async () => new Map()) 
       "../dialogue/route": dialogueRoute,
       "../../dialogue-generation-settings": load("app/dialogue-generation-settings.ts", {
         "./content-plans": load("app/content-plans.ts"),
+        "./carousel-templates": carouselTemplates,
       }),
     },
     {

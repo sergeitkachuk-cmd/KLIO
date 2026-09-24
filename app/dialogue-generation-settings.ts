@@ -1,4 +1,8 @@
 import { TONE_PLANS } from "./content-plans";
+import { DEFAULT_CAROUSEL_TEMPLATE, type CarouselTemplateId } from "./carousel-templates";
+
+export { CAROUSEL_TEMPLATE_OPTIONS } from "./carousel-templates";
+export type { CarouselTemplateId } from "./carousel-templates";
 
 export const FORMAT_OPTIONS = [
   { value: "", label: "Авто" },
@@ -85,6 +89,7 @@ export type GenerationSettings = {
   useLogo: boolean;
   imageKind: string;
   carouselSlideCount: string;
+  carouselTemplate?: CarouselTemplateId;
   imageTextMode?: string;
   imageText?: string;
   logoPlacement?: string;
@@ -96,6 +101,7 @@ export const DEFAULT_GENERATION_SETTINGS: GenerationSettings = {
   format: "", tone: "", length: "", topicCount: "5",
   imageAspectRatio: "4:3", imageOutputFormat: "png", imageStyle: "", useLogo: false,
   imageKind: "single", carouselSlideCount: "5",
+  carouselTemplate: DEFAULT_CAROUSEL_TEMPLATE,
   imageTextMode: "auto", imageText: "", logoPlacement: "scene", logoPosition: "bottom-right", authorPosition: "brand",
 };
 
@@ -116,7 +122,10 @@ export function settingsForTool(tool: string, settings: Partial<GenerationSettin
       ...(settings.imageTextMode === "custom" ? { imageText: settings.imageText?.trim() || "" } : {}),
       ...(hasLogo && settings.useLogo ? { logoPlacement: settings.logoPlacement || "scene", logoPosition: settings.logoPosition || "bottom-right" } : {}),
     } : {}),
-    ...(tool === "carousel" ? { slideCount: settings.carouselSlideCount || "5" } : {}),
+    ...(tool === "carousel" ? {
+      slideCount: settings.carouselSlideCount || "5",
+      templateId: settings.carouselTemplate || DEFAULT_CAROUSEL_TEMPLATE,
+    } : {}),
   };
   return {};
 }

@@ -12,7 +12,7 @@ export async function GET(request: Request) {
 
     const identity = await workspaceIdentity();
     const job = await getAsyncJob(id, identity.email);
-    if (!job || job.kind !== "carousel_generation") {
+    if (!job || !["carousel_generation", "carousel_slide_regeneration"].includes(job.kind)) {
       return Response.json({ error: "Задание не найдено." }, { status: 404 });
     }
 

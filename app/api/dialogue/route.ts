@@ -42,6 +42,7 @@ import { downloadBrandLogo, downloadPublicationImage } from "../_lib/storage";
 import { DialogueImageSourceError, resolveDialogueImageSource, type ResolvedDialogueImageSource } from "../_lib/dialogue-image-source";
 import { requestedLogoChange } from "../../dialogue-starters";
 import { IMAGE_STYLE_OPTIONS, TEXT_LENGTH_TARGETS } from "../../dialogue-generation-settings";
+import { DEFAULT_CAROUSEL_TEMPLATE, isCarouselTemplateId, type CarouselTemplateId } from "../../carousel-templates";
 import { buildDialogueImagePrompt, dialogueImageTextInstruction } from "../_lib/dialogue-image-prompt";
 import { generateCarouselSlides, CAROUSEL_MIN_SLIDES, CAROUSEL_MAX_SLIDES } from "../_lib/carousel";
 
@@ -269,6 +270,7 @@ async function runReply(
     imageTextMode: "auto" | "none" | "title" | "custom";
     imageText: string;
     slideCount: number;
+    carouselTemplate: CarouselTemplateId;
     imageSource?: ResolvedDialogueImageSource;
   },
 ) {
@@ -301,6 +303,7 @@ async function runReply(
         text: last, slideCount: settings.slideCount, brandId: row.brandId || undefined,
         useBrandContext, useLogo: settings.useLogo, baseUrl,
         imageStyleInstruction: settings.imageStyle,
+        templateId: settings.carouselTemplate,
         imageOptions: {
           ...(settings.imageAspectRatio ? { aspectRatio: settings.imageAspectRatio } : {}),
           ...(settings.imageOutputFormat ? { outputFormat: settings.imageOutputFormat } : {}),
@@ -820,6 +823,7 @@ export async function POST(request: Request) {
     const imageStyle = typeof settingsRaw.imageStyle === "string"
       ? IMAGE_STYLE_OPTIONS.find(option => option.value === settingsRaw.imageStyle)?.instruction || ""
       : "";
+    const carouselTemplate = isCarouselTemplateId(settingsRaw.templateId) ? settingsRaw.templateId : DEFAULT_CAROUSEL_TEMPLATE;
     const useLogo = (mode === "image" ? requestedLogoChange(clean(p.text, 8000)) : null) ?? (settingsRaw.useLogo === true);
     const imageTextMode = settingsRaw.imageTextMode === "none" || settingsRaw.imageTextMode === "title" || settingsRaw.imageTextMode === "custom" ? settingsRaw.imageTextMode : "auto";
     const imageText = clean(settingsRaw.imageText, 201);
@@ -850,6 +854,7 @@ export async function POST(request: Request) {
       useLogo,
       logoPlacement, logoPosition, imageTextMode, imageText,
       slideCount,
+      carouselTemplate,
       imageSource: undefined as ResolvedDialogueImageSource | undefined,
     };
     if (action === "send") {

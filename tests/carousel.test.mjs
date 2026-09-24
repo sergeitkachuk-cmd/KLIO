@@ -55,6 +55,7 @@ async function createCarouselHarness() {
   const db = drizzle(client, { schema });
   const owner = "carousel-test@example.invalid";
   const plans = load("app/plans.ts");
+  const carouselTemplates = load("app/carousel-templates.ts");
 
   const workspaceAccount = load("app/api/_lib/workspace-account.ts", {
     "drizzle-orm": orm,
@@ -87,6 +88,7 @@ async function createCarouselHarness() {
     "./storage": { downloadBrandLogo: (...args) => downloadLogo(...args) },
     "./workspace-account": workspaceAccount,
     "./async-jobs": asyncJobs,
+    "../../carousel-templates": carouselTemplates,
   });
 
   async function seedAccount(overrides = {}) {
