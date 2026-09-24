@@ -19,6 +19,7 @@
     "@assistant-ui/react": "0.15.21",
     "@assistant-ui/react-markdown": "0.14.16",
     "@aws-sdk/client-s3": "^3.1125.0",
+    "@fullcalendar/react": "^7.1.0",
     "ajv": "8.20.0",
     "drizzle-orm": "0.45.2",
     "lucide-react": "1.47.0",

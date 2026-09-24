@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@import "@fullcalendar/react/skeleton.css";
+@import "@fullcalendar/react/themes/classic/theme.css";
+@import "@fullcalendar/react/themes/classic/palette.css";
 
 * {
   box-sizing: border-box;
@@ -23420,4 +23423,202 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
   .publications-list-item > em { grid-column: 3; overflow: hidden; margin-top: -2px; text-align: left; text-overflow: ellipsis; }
   .publications-list-item > span b { font-size: 12px; }
   .publications-list-item > span small { font-size: 10px; }
+}
+/* Modern FullCalendar surface for Публикации. The calendar owns a quiet,
+   light canvas so event text remains readable in both workspace themes. */
+.klio-publications-calendar {
+  --klio-calendar-ink: #28243f;
+  --klio-calendar-muted: #77718e;
+  --klio-calendar-border: #e8e4f2;
+  --klio-calendar-purple: #7862cf;
+  --klio-calendar-purple-soft: #f1edfc;
+  margin-top: 18px;
+  color: var(--klio-calendar-ink);
+}
+.klio-publications-calendar-toolbar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px 18px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--klio-calendar-border);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(79, 61, 139, .07);
+}
+.klio-publications-view-switch { display: inline-flex; flex: 0 0 auto; padding: 3px; border: 1px solid #e3def0; border-radius: 12px; background: #faf9fd; }
+.klio-publications-view-switch button { min-width: 78px; padding: 8px 12px; border: 0; border-radius: 9px; color: #79738e; background: transparent; font: inherit; font-size: 13px; font-weight: 750; cursor: pointer; transition: color .16s ease, background .16s ease, box-shadow .16s ease; }
+.klio-publications-view-switch button:hover { color: var(--klio-calendar-purple); }
+.klio-publications-view-switch button.active { color: #fff; background: var(--klio-calendar-purple); box-shadow: 0 5px 12px rgba(120, 98, 207, .25); }
+.klio-publications-filters { display: flex; align-items: end; justify-content: flex-end; gap: 10px; min-width: 0; flex-wrap: wrap; }
+.klio-publications-filters label { display: grid; gap: 4px; min-width: 128px; }
+.klio-publications-filters label > span { color: var(--klio-calendar-muted); font-size: 10px; font-weight: 750; letter-spacing: .02em; text-transform: uppercase; }
+.klio-publications-filters select { min-width: 128px; max-width: 190px; padding: 8px 27px 8px 10px; border: 1px solid #e3def0; border-radius: 9px; color: var(--klio-calendar-ink); background: #fff; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+.klio-publications-filters select:focus-visible, .klio-publications-view-switch button:focus-visible, .klio-publications-calendar-error button:focus-visible { outline: 3px solid rgba(120, 98, 207, .2); outline-offset: 2px; }
+.klio-publications-filter-count { align-self: center; color: var(--klio-calendar-muted); font-size: 12px; white-space: nowrap; }
+.klio-publications-calendar-frame { position: relative; overflow: hidden; min-width: 0; border: 1px solid var(--klio-calendar-border); border-radius: 18px; background: #fff; box-shadow: 0 12px 34px rgba(48, 37, 88, .08); }
+.klio-publications-calendar-frame > [class*="fc-"] { --fc-border-color: #ece9f4; --fc-button-text-color: #514b6b; --fc-button-bg-color: #fff; --fc-button-border-color: #e1dced; --fc-button-hover-bg-color: #f2eefb; --fc-button-hover-border-color: #c9bced; --fc-button-active-bg-color: var(--klio-calendar-purple); --fc-button-active-border-color: var(--klio-calendar-purple); --fc-today-bg-color: rgba(120, 98, 207, .07); --fc-neutral-bg-color: #faf9fd; --fc-list-event-hover-bg-color: #faf8ff; --fc-page-bg-color: #fff; width: 100%; color: var(--klio-calendar-ink); font-family: inherit; }
+.klio-publications-calendar-frame > [class*="fc-"] > [class*="fc-"]:first-child { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0; padding: 13px 16px; border-bottom: 1px solid var(--klio-calendar-border); }
+.klio-publications-calendar-frame > [class*="fc-"] > [class*="fc-"]:first-child > [class*="fc-"] { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.klio-publications-calendar-frame > [class*="fc-"] button { min-height: 34px; border-radius: 9px; box-shadow: none; font: inherit; font-size: 12px; font-weight: 750; }
+.klio-publications-calendar-frame > [class*="fc-"] button:focus-visible { outline: 3px solid rgba(120, 98, 207, .2); outline-offset: 2px; }
+.klio-publications-calendar-frame [role="heading"] { overflow: hidden; color: var(--klio-calendar-ink); font-size: 18px; font-weight: 800; letter-spacing: -.02em; text-overflow: ellipsis; white-space: nowrap; }
+.klio-publications-calendar-frame [role="grid"] { min-height: 420px; background: #fff; }
+.klio-publications-calendar-frame [role="columnheader"] { color: #7c7691; font-weight: 700; }
+.klio-publications-calendar-frame [role="columnheader"] > div { padding: 10px 4px; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+.klio-publications-calendar-frame [role="gridcell"] { min-width: 0; background: #fff; }
+.klio-publications-calendar-frame [role="gridcell"] > div:first-child { color: #706a85; font-size: 12px; font-weight: 750; }
+.klio-publications-calendar-frame [role="gridcell"][aria-current="date"] > div:first-child > div { display: inline-grid; min-width: 26px; min-height: 26px; place-items: center; margin: 3px 0 0 4px; padding: 0 5px; border-radius: 50%; color: #fff; background: var(--klio-calendar-purple); }
+.klio-publications-calendar-frame [role="gridcell"]:has([class*="taq"]) { background: #fcfbfe; }
+.klio-publications-calendar-frame .klio-publication-event { display: block; height: auto !important; max-height: 78px; align-self: flex-start; margin: 2px 4px; overflow: hidden; border: 1px solid #ddd5f3; border-left: 3px solid var(--klio-event-accent, var(--klio-calendar-purple)); border-radius: 8px; color: var(--klio-calendar-ink); background: var(--klio-event-bg, #f5f1ff); cursor: pointer; transition: transform .14s ease, box-shadow .14s ease; }
+.klio-publications-calendar-frame .klio-publication-event-scheduled { --klio-event-accent: #7862cf; --klio-event-bg: #f3effd; cursor: grab; }
+.klio-publications-calendar-frame .klio-publication-event-scheduled:active { cursor: grabbing; }
+.klio-publications-calendar-frame .klio-publication-event-publishing { --klio-event-accent: #c58a35; --klio-event-bg: #fff7e8; }
+.klio-publications-calendar-frame .klio-publication-event-published { --klio-event-accent: #4a9b79; --klio-event-bg: #edf8f2; }
+.klio-publications-calendar-frame .klio-publication-event-failed { --klio-event-accent: #c66378; --klio-event-bg: #fff0f3; }
+.klio-publications-calendar-frame .klio-publication-event:hover { z-index: 2; transform: translateY(-1px); box-shadow: 0 5px 13px rgba(62, 43, 124, .13); }
+.klio-publications-calendar-frame .klio-publication-event-content { display: flex; min-width: 0; max-height: 78px; flex-direction: column; gap: 3px; overflow: hidden; padding: 5px 7px 6px; line-height: 1.18; }
+.klio-publication-event-topline { display: flex; align-items: center; justify-content: space-between; gap: 5px; }
+.klio-publication-event-time { color: #625b7b; font-size: 10px; font-weight: 800; }
+.klio-publications-calendar-frame .klio-publication-event-content strong { display: block; overflow: hidden; color: #2f2a48; font-size: 11px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.klio-publication-event-meta { display: flex; align-items: center; min-width: 0; gap: 5px; }
+.klio-publication-event-channel { overflow: hidden; color: #756e89; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.klio-publication-event-status { flex: 0 0 auto; max-width: 45%; overflow: hidden; padding: 2px 5px; border-radius: 999px; color: var(--klio-event-accent, var(--klio-calendar-purple)); background: rgba(255, 255, 255, .66); font-size: 9px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.klio-publication-platform-mark { display: inline-grid; flex: 0 0 auto; width: 19px; height: 19px; place-items: center; border-radius: 6px; color: #fff; font-size: 7px; font-style: normal; font-weight: 900; }
+.klio-publication-platform-mark-telegram { background: #229ed9; }
+.klio-publication-platform-mark-vk { background: #0077ff; }
+.klio-publication-platform-mark-unknown { background: #8d879c; }
+.klio-publications-calendar-frame [role="grid"] [role="row"] { min-width: 0; }
+.klio-publications-calendar-frame [role="list"] { color: var(--klio-calendar-ink); }
+.klio-publications-calendar-frame [role="list"] .klio-publication-event-content { min-width: 180px; }
+.klio-publications-calendar-loading { position: absolute; inset: 58px 0 0; z-index: 3; display: grid; place-items: start center; padding-top: 28px; color: #675e83; background: rgba(255, 255, 255, .66); font-size: 13px; font-weight: 750; backdrop-filter: blur(2px); }
+.klio-publications-calendar-empty, .klio-publications-calendar-error { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; padding: 12px 14px; border: 1px solid #e6e0f2; border-radius: 14px; color: #625b7b; background: #fbfaff; font-size: 13px; }
+.klio-publications-calendar-empty { justify-content: flex-start; flex-wrap: wrap; }
+.klio-publications-calendar-empty strong { color: #393252; }
+.klio-publications-calendar-empty span { color: #77718e; }
+.klio-publications-calendar-error { color: #9b4054; background: #fff4f6; border-color: #f0ccd5; }
+.klio-publications-calendar-error button { flex: 0 0 auto; padding: 7px 11px; border: 1px solid #dca9b5; border-radius: 8px; color: #963c50; background: #fff; font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; }
+.klio-publications-calendar-hint { margin: 9px 2px 0; color: #817a94; font-size: 11px; }
+@media (max-width: 780px) {
+  .klio-publications-calendar-frame > [class*="fc-"] { aspect-ratio: 1.08 !important; }
+  .klio-publications-calendar-toolbar { grid-template-columns: 1fr; padding: 10px; }
+  .klio-publications-view-switch { width: 100%; }
+  .klio-publications-view-switch button { flex: 1 1 0; min-width: 0; }
+  .klio-publications-filters { justify-content: flex-start; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 2px; }
+  .klio-publications-filters label { min-width: 136px; }
+  .klio-publications-filter-count { display: none; }
+  .klio-publications-calendar-frame { border-radius: 14px; }
+  .klio-publications-calendar-frame > [class*="fc-"] > [class*="fc-"]:first-child { align-items: center; padding: 11px 10px; }
+  .klio-publications-calendar-frame [role="heading"] { font-size: 16px; }
+  .klio-publications-calendar-frame > [class*="fc-"] button { min-height: 32px; padding: 6px 8px; }
+  .klio-publications-calendar-frame [role="grid"] { min-height: 420px; }
+  .klio-publications-calendar-frame [role="gridcell"] > div:first-child { padding: 6px; }
+  .klio-publications-calendar-frame .klio-publication-event { margin: 1px 2px; border-radius: 6px; }
+  .klio-publications-calendar-frame .klio-publication-event-content { max-height: 68px; gap: 2px; padding: 4px; }
+  .klio-publication-event-time { font-size: 9px; }
+  .klio-publications-calendar-frame .klio-publication-event-content strong { font-size: 10px; }
+  .klio-publication-event-channel { font-size: 9px; }
+  .klio-publication-event-status { font-size: 8px; }
+  .klio-publication-platform-mark { width: 17px; height: 17px; font-size: 6px; }
+  .klio-publications-calendar-hint { line-height: 1.45; }
+}
+@media (max-width: 480px) {
+  .klio-publications-calendar-frame > [class*="fc-"] > [class*="fc-"]:first-child { flex-wrap: wrap; }
+  .klio-publications-calendar-frame > [class*="fc-"] > [class*="fc-"]:first-child > [class*="fc-"]:nth-child(2) { order: -1; width: 100%; text-align: left; }
+  .klio-publications-calendar-frame [role="heading"] { font-size: 15px; }
+  .klio-publications-calendar-frame [role="grid"] { min-height: 360px; }
+  .klio-publications-calendar-frame [role="gridcell"] > div:first-child { font-size: 11px; }
+  .klio-publications-calendar-error { align-items: flex-start; flex-direction: column; }
+}
+
+/* Dark workspace: keep the calendar in the same navy / violet language as
+   the rest of КЛИО instead of leaving the third-party light palette visible. */
+[data-theme="dark"] .klio-publications-calendar {
+  --klio-calendar-ink: #f2efff;
+  --klio-calendar-muted: #aaa3c1;
+  --klio-calendar-border: rgba(194, 178, 255, .18);
+  --klio-calendar-purple: #9278e7;
+  --klio-calendar-purple-soft: rgba(146, 120, 231, .16);
+}
+[data-theme="dark"] .klio-publications-calendar-toolbar {
+  border-color: rgba(194, 178, 255, .18);
+  background: linear-gradient(135deg, rgba(16, 39, 67, .94), rgba(10, 29, 51, .96));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .2);
+}
+[data-theme="dark"] .klio-publications-view-switch,
+[data-theme="dark"] .klio-publications-filters select {
+  border-color: rgba(194, 178, 255, .22);
+  background: rgba(4, 19, 36, .54);
+}
+[data-theme="dark"] .klio-publications-view-switch button { color: #b9b1cf; }
+[data-theme="dark"] .klio-publications-view-switch button:hover { color: #e9e3ff; }
+[data-theme="dark"] .klio-publications-filters select { color: #f2efff; }
+[data-theme="dark"] .klio-publications-calendar-frame {
+  border-color: rgba(194, 178, 255, .2);
+  background: #091c31;
+  box-shadow: 0 16px 42px rgba(0, 0, 0, .28);
+}
+[data-theme="dark"] .klio-publications-calendar-frame > [class*="fc-"] {
+  --fc-border-color: rgba(194, 178, 255, .16);
+  --fc-button-text-color: #eeeaff;
+  --fc-button-bg-color: #102945;
+  --fc-button-border-color: rgba(194, 178, 255, .24);
+  --fc-button-hover-bg-color: #1b385c;
+  --fc-button-hover-border-color: rgba(194, 178, 255, .4);
+  --fc-button-active-bg-color: #8066d5;
+  --fc-button-active-border-color: #8066d5;
+  --fc-today-bg-color: rgba(146, 120, 231, .13);
+  --fc-neutral-bg-color: #0d243e;
+  --fc-list-event-hover-bg-color: #122d4b;
+  --fc-page-bg-color: #091c31;
+  --fc-classic-background: #091c31;
+  --fc-classic-faint: rgba(255, 255, 255, .04);
+  --fc-classic-muted: rgba(255, 255, 255, .09);
+  --fc-classic-strong: rgba(255, 255, 255, .16);
+  --fc-classic-foreground: #f2efff;
+  --fc-classic-faint-foreground: #77728b;
+  --fc-classic-muted-foreground: #aaa3c1;
+  --fc-classic-border: rgba(194, 178, 255, .16);
+  --fc-classic-strong-border: rgba(194, 178, 255, .3);
+  --fc-classic-button: #102945;
+  --fc-classic-button-border: rgba(194, 178, 255, .24);
+  --fc-classic-button-strong: #1c385b;
+  --fc-classic-button-strong-border: rgba(194, 178, 255, .38);
+  --fc-classic-button-outline: rgba(194, 178, 255, .35);
+  --fc-classic-primary: #9278e7;
+  --fc-classic-primary-foreground: #fff;
+  --fc-classic-event: #7d64d0;
+  --fc-classic-event-contrast: #fff;
+  --fc-classic-background-event: #58c99b;
+  --fc-classic-background-event-opacity: 22%;
+  --fc-classic-background-event-foreground-opacity: 75%;
+  --fc-classic-highlight: rgba(146, 120, 231, .18);
+  --fc-classic-now: #ef8198;
+  --fc-classic-today: rgba(146, 120, 231, .13);
+}
+[data-theme="dark"] .klio-publications-calendar-frame > [class*="fc-"] > [class*="fc-"]:first-child { border-bottom-color: rgba(194, 178, 255, .16); }
+[data-theme="dark"] .klio-publications-calendar-frame [role="grid"],
+[data-theme="dark"] .klio-publications-calendar-frame [role="gridcell"] { background: #091c31; }
+[data-theme="dark"] .klio-publications-calendar-frame [role="gridcell"]:has([class*="taq"]) { background: #07172a; }
+[data-theme="dark"] .klio-publications-calendar-frame [role="columnheader"],
+[data-theme="dark"] .klio-publications-calendar-frame [role="gridcell"] > div:first-child { color: #b9b1cf; }
+[data-theme="dark"] .klio-publications-calendar-frame .klio-publication-event-scheduled { --klio-event-accent: #a68cf4; --klio-event-bg: rgba(126, 100, 208, .2); }
+[data-theme="dark"] .klio-publications-calendar-frame .klio-publication-event-publishing { --klio-event-accent: #e0a94d; --klio-event-bg: rgba(174, 117, 36, .2); }
+[data-theme="dark"] .klio-publications-calendar-frame .klio-publication-event-published { --klio-event-accent: #68c49b; --klio-event-bg: rgba(60, 139, 104, .2); }
+[data-theme="dark"] .klio-publications-calendar-frame .klio-publication-event-failed { --klio-event-accent: #ee8198; --klio-event-bg: rgba(179, 70, 94, .2); }
+[data-theme="dark"] .klio-publications-calendar-frame .klio-publication-event { border-color: rgba(194, 178, 255, .2); color: #f2efff; }
+[data-theme="dark"] .klio-publications-calendar-frame .klio-publication-event-content strong { color: #f4f0ff; }
+[data-theme="dark"] .klio-publication-event-time { color: #d1c9e8; }
+[data-theme="dark"] .klio-publication-event-channel { color: #b3abc7; }
+[data-theme="dark"] .klio-publication-event-status { background: rgba(5, 19, 35, .72); }
+[data-theme="dark"] .klio-publications-calendar-empty,
+[data-theme="dark"] .klio-publications-calendar-error { border-color: rgba(194, 178, 255, .18); color: #d5cee7; background: rgba(10, 29, 51, .88); }
+[data-theme="dark"] .klio-publications-calendar-empty strong { color: #f2efff; }
+[data-theme="dark"] .klio-publications-calendar-empty span,
+[data-theme="dark"] .klio-publications-calendar-hint { color: #aaa3c1; }
+[data-theme="dark"] .klio-publications-calendar-loading { color: #d6cdf2; background: rgba(7, 23, 42, .74); }
+
+@media (max-width: 780px) {
+  .klio-publications-calendar-frame [role="grid"] { min-height: 390px; }
 }
