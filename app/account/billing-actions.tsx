@@ -6,15 +6,16 @@ import {
   applyLaunchDiscount,
   LAUNCH_DISCOUNT_PERCENT,
   LAUNCH_DISCOUNT_BILLING,
+  PLAN_PRICES,
   type BillingPeriod,
 } from "@/app/billing-pricing";
 import { trackMetricaGoal } from "@/app/analytics-consent";
 import { waitForPaymentConfirmation } from "../payment-confirmation";
 
 const plans = [
-  { id: "start", name: "Старт", monthly: 1190, yearly: 950 },
-  { id: "pro", name: "Профи", monthly: 2750, yearly: 2200 },
-  { id: "agency", name: "Агентство", monthly: 6590, yearly: 5290 },
+  { id: "start", ...PLAN_PRICES.start },
+  { id: "pro", ...PLAN_PRICES.pro },
+  { id: "agency", ...PLAN_PRICES.agency },
 ] as const;
 type SelectOption = { value: string; label: string };
 

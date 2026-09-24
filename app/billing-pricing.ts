@@ -3,9 +3,11 @@ export type BillingPeriod = "monthly" | "quarterly" | "halfyear" | "annual";
 /** Public subscription prices in rubles. Keep this as the single source of truth
  * for the invoice form and the server-side payment endpoints. */
 export const PLAN_PRICES = {
-  start: { monthly: 1190, yearly: 950, name: "Старт" },
-  pro: { monthly: 2750, yearly: 2200, name: "Профи" },
-  agency: { monthly: 6590, yearly: 5290, name: "Агентство" },
+  // `yearly` is the effective monthly price when the whole year is paid at
+  // the standard 20% annual discount; periodAmount multiplies it by 12.
+  start: { monthly: 990, yearly: 792, name: "Старт" },
+  pro: { monthly: 2250, yearly: 1800, name: "Профи" },
+  agency: { monthly: 5000, yearly: 4000, name: "Агентство" },
 } as const;
 
 // PlanId (app/plans.ts) has grown admin-only, non-purchasable members

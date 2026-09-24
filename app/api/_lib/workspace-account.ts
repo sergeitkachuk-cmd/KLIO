@@ -59,12 +59,12 @@ function quotaPeriodElapsed(account: typeof accounts.$inferSelect, now: Date) {
   return account.generationMonth !== monthKey(now);
 }
 
-// Product-owner test account. Kept narrowly scoped so production limits and
-// the trial window remain unchanged for every other user.
-const TEST_ACCOUNT_EMAIL = "sergeitkachuk@gmail.com";
+// Product-owner administrative grant. It is intentionally narrow so the
+// perpetual Agency entitlement cannot affect ordinary customer accounts.
+const OWNER_ADMIN_GRANT_EMAIL = "sergeitkachuk@gmail.com";
 
-function isTestAccount(email: string) {
-  return email.trim().toLocaleLowerCase("en-US") === TEST_ACCOUNT_EMAIL;
+function hasOwnerAdminGrant(email: string) {
+  return email.trim().toLocaleLowerCase("en-US") === OWNER_ADMIN_GRANT_EMAIL;
 }
 
 // signupMethod only matters the first time this creates a row (the insert
@@ -86,7 +86,7 @@ export async function ensureAccount(user: ChatGPTUser, signupMethod: "email" | "
       email: user.email,
       displayName: user.displayName,
       workspaceMode: "professional",
-      planId: isTestAccount(user.email) ? "agency" : "trial",
+      planId: hasOwnerAdminGrant(user.email) ? "agency" : "trial",
       signupMethod,
       generationMonth: currentMonth,
       generationsUsed: 0,
@@ -129,9 +129,15 @@ export async function ensureAccount(user: ChatGPTUser, signupMethod: "email" | "
     }).where(eq(accounts.email, user.email)).returning();
   }
 
-  if (isTestAccount(user.email) && account.planId !== "agency") {
+  // Keep the owner's administrative entitlement perpetual even after a
+  // temporary checkout/refund cycle. The previous implementation restored
+  // only planId, leaving the paid checkout's expiry date behind; that produced
+  // "Агентство — срок истёк" with zero limits.
+  if (hasOwnerAdminGrant(user.email) && (account.planId !== "agency" || account.planExpiresAt !== null || account.quotaPeriodEndsAt !== null)) {
     [account] = await db.update(accounts).set({
       planId: "agency",
+      planExpiresAt: null,
+      quotaPeriodEndsAt: null,
       updatedAt: sql`CURRENT_TIMESTAMP`,
     }).where(eq(accounts.email, user.email)).returning();
   }

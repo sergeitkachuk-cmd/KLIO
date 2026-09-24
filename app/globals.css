@@ -3606,10 +3606,14 @@ textarea[data-autosize="true"] {
 }
 
 .billing-toggle span {
-  color: #6e809a;
+  /* The toggle has a light translucent surface even in the dark theme;
+     the former muted blue disappeared against that grey background. */
+  color: #1d3554;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 760;
 }
+
+.billing-toggle button.active span { color: #c9d8eb; }
 
 .price-grid {
   display: grid;

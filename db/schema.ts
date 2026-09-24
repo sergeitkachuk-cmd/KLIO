@@ -92,6 +92,17 @@ export const payments = pgTable("payments", {
   status: text("status").notNull().default("pending"),
   operationId: text("operation_id"),
   paidAt: text("paid_at"),
+  // Snapshot of the entitlement active immediately before this payment was
+  // confirmed. A refund must restore that entitlement instead of expiring the
+  // purchased plan and silently destroying an earlier one.
+  previousPlanId: text("previous_plan_id"),
+  previousPlanExpiresAt: text("previous_plan_expires_at"),
+  previousQuotaPeriodEndsAt: text("previous_quota_period_ends_at"),
+  previousGenerationMonth: text("previous_generation_month"),
+  previousGenerationsUsed: integer("previous_generations_used"),
+  previousResearchUsed: integer("previous_research_used"),
+  previousEditorActionsUsed: integer("previous_editor_actions_used"),
+  previousDialogueActionsUsed: integer("previous_dialogue_actions_used"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [

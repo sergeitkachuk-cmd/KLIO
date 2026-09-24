@@ -48,16 +48,24 @@ export async function POST(request: Request) {
       if (payment.status === "paid" || payment.status === "refunded") { outcome = "already_processed"; return; }
       if (payment.status !== "pending" || payment.amountKopecks !== amountKopecks) throw new Error("Payment verification failed.");
       if (payment.operationId && payment.operationId !== operationId) throw new Error("Payment operation mismatch.");
-      const [confirmedPayment] = await tx.update(payments).set({
-        status: "paid",
-        operationId,
-        paidAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }).where(and(eq(payments.id, paymentLinkId), eq(payments.status, "pending"))).returning();
-      if (!confirmedPayment) { outcome = "already_processed"; return; }
       const [account] = await tx.select().from(accounts).where(eq(accounts.email, payment.ownerEmail)).limit(1).for("update");
       if (!account) throw new Error("Payment account is missing.");
       const paidAt = new Date();
+      const [confirmedPayment] = await tx.update(payments).set({
+        status: "paid",
+        operationId,
+        paidAt: paidAt.toISOString(),
+        previousPlanId: account.planId,
+        previousPlanExpiresAt: account.planExpiresAt,
+        previousQuotaPeriodEndsAt: account.quotaPeriodEndsAt,
+        previousGenerationMonth: account.generationMonth,
+        previousGenerationsUsed: account.generationsUsed,
+        previousResearchUsed: account.researchUsed,
+        previousEditorActionsUsed: account.editorActionsUsed,
+        previousDialogueActionsUsed: account.dialogueActionsUsed,
+        updatedAt: paidAt.toISOString(),
+      }).where(and(eq(payments.id, paymentLinkId), eq(payments.status, "pending"))).returning();
+      if (!confirmedPayment) { outcome = "already_processed"; return; }
       await tx.update(accounts).set({
         planId: confirmedPayment.planId,
         planExpiresAt: subscriptionExpiry(account?.planExpiresAt, confirmedPayment.billing as BillingPeriod, paidAt),

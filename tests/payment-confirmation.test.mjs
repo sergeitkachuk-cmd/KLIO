@@ -8,14 +8,14 @@ test("reconcile and webhook confirm once, consume the discount and preserve late
   t.after(() => h.close());
   const paymentId = "test-confirmation-payment";
   await h.db.update(h.schema.accounts).set({ planId: "trial", planExpiresAt: null }).where(orm.eq(h.schema.accounts.email, h.owner));
-  await h.db.insert(h.schema.payments).values({ id: paymentId, ownerEmail: h.owner, planId: "start", billing: "monthly", mode: "card", amountKopecks: 95200, discountApplied: true, operationId: "operation-test" });
+  await h.db.insert(h.schema.payments).values({ id: paymentId, ownerEmail: h.owner, planId: "start", billing: "monthly", mode: "card", amountKopecks: 79200, discountApplied: true, operationId: "operation-test" });
   const body = load("app/api/_lib/request-body.ts");
   class WorkspaceAccessError extends Error {}
   const dependencies = {
     "drizzle-orm": orm,
     "../../../../../db/schema": h.schema,
     "../../../_lib/workspace-account": { getWorkspaceDb: async () => h.db, workspaceIdentity: async () => ({ email: h.owner }), WorkspaceAccessError },
-    "../../../_lib/tochka": { TochkaConfigError: class extends Error {}, tochkaRequest: async () => ({ Data: { status: "APPROVED" } }), verifyTochkaWebhook: async () => ({ webhookType: "acquiringInternetPayment", status: "APPROVED", paymentLinkId: paymentId, operationId: "operation-test", amount: 952 }) },
+    "../../../_lib/tochka": { TochkaConfigError: class extends Error {}, tochkaRequest: async () => ({ Data: { status: "APPROVED" } }), verifyTochkaWebhook: async () => ({ webhookType: "acquiringInternetPayment", status: "APPROVED", paymentLinkId: paymentId, operationId: "operation-test", amount: 792 }) },
     "../../../_lib/subscription": load("app/api/_lib/subscription.ts"),
     "../../../_lib/request-body": body,
   };
@@ -39,6 +39,50 @@ test("reconcile and webhook confirm once, consume the discount and preserve late
     return { Data: { status: "APPROVED" } };
   } } });
   assert.equal((await (await raced.POST(request())).json()).status, "refunded");
+});
+
+test("a refund restores the active plan that existed before the purchase", async t => {
+  const h = await createDialogueHarness();
+  t.after(() => h.close());
+  const paymentId = "restore-previous-plan-payment";
+  const previousExpiry = new Date(Date.now() + 18 * 86400000).toISOString();
+  const previousQuotaReset = new Date(Date.now() + 12 * 86400000).toISOString();
+  await h.db.update(h.schema.accounts).set({
+    planId: "pro",
+    planExpiresAt: previousExpiry,
+    quotaPeriodEndsAt: previousQuotaReset,
+    generationMonth: "2026-09",
+    generationsUsed: 4,
+    researchUsed: 2,
+    editorActionsUsed: 7,
+    dialogueActionsUsed: 3,
+  }).where(orm.eq(h.schema.accounts.email, h.owner));
+  await h.db.insert(h.schema.payments).values({ id: paymentId, ownerEmail: h.owner, planId: "start", billing: "monthly", mode: "card", amountKopecks: 119000, operationId: "restore-operation" });
+  let providerStatus = "APPROVED";
+  const route = load("app/api/payments/tochka/reconcile/route.ts", {
+    "drizzle-orm": orm,
+    "../../../../../db/schema": h.schema,
+    "../../../_lib/workspace-account": { getWorkspaceDb: async () => h.db, workspaceIdentity: async () => ({ email: h.owner }), WorkspaceAccessError: class extends Error {} },
+    "../../../_lib/tochka": { TochkaConfigError: class extends Error {}, tochkaRequest: async () => ({ status: providerStatus }) },
+    "../../../_lib/subscription": load("app/api/_lib/subscription.ts"),
+    "../../../_lib/request-body": load("app/api/_lib/request-body.ts"),
+  });
+  const request = () => new Request("https://example.invalid", { method: "POST", body: JSON.stringify({ paymentLinkId: paymentId }) });
+  assert.equal((await (await route.POST(request())).json()).status, "paid");
+  const [paid] = await h.db.select().from(h.schema.accounts).where(orm.eq(h.schema.accounts.email, h.owner));
+  assert.equal(paid.planId, "start");
+  const [snapshot] = await h.db.select().from(h.schema.payments).where(orm.eq(h.schema.payments.id, paymentId));
+  assert.equal(snapshot.previousPlanId, "pro");
+  providerStatus = "REFUNDED";
+  assert.equal((await (await route.POST(request())).json()).status, "refunded");
+  const [restored] = await h.db.select().from(h.schema.accounts).where(orm.eq(h.schema.accounts.email, h.owner));
+  assert.equal(restored.planId, "pro");
+  assert.equal(restored.planExpiresAt, previousExpiry);
+  assert.equal(restored.quotaPeriodEndsAt, previousQuotaReset);
+  assert.equal(restored.generationsUsed, 4);
+  assert.equal(restored.researchUsed, 2);
+  assert.equal(restored.editorActionsUsed, 7);
+  assert.equal(restored.dialogueActionsUsed, 3);
 });
 
 test("payment confirmation waits for bank completion and cancels on navigation", async () => {
@@ -83,7 +127,7 @@ test("monthly discount and quarterly checkout send consistent bank and receipt a
     },
   });
   const request = billing => new Request("https://example.invalid", { method: "POST", body: JSON.stringify({ planId: "start", billing, mode: "card" }) });
-  for (const [billing, amount] of [["monthly", 952], ["quarterly", 3392]]) {
+  for (const [billing, amount] of [["monthly", 792], ["quarterly", 2822]]) {
     const response = await route.POST(request(billing));
     assert.equal(response.status, 200);
     assert.equal((await response.json()).amount, amount);

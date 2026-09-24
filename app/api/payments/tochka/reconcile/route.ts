@@ -45,11 +45,24 @@ export async function POST(request: Request) {
           .where(and(eq(payments.ownerEmail, updatedPayment.ownerEmail), eq(payments.status, "paid")));
         const refundedAt = new Date(updatedPayment.paidAt || updatedPayment.createdAt).getTime();
         const hasNewerPayment = successful.some((item) => new Date(item.paidAt || 0).getTime() > refundedAt);
-        // A refund, whether full or partial, closes the subscription period
-        // attached to this purchase. Keep the plan id but expire it now: this
-        // blocks access without incorrectly granting a fresh trial allowance.
+        // Restore the entitlement that was active before this purchase. This
+        // covers both an ordinary customer's previous paid plan and a
+        // perpetual plan granted by an administrator. Legacy payments made
+        // before the snapshot columns existed keep the old safe fallback.
         if (!hasNewerPayment) {
-          await tx.update(accounts).set({ planId: updatedPayment.planId, planExpiresAt: now.toISOString(), updatedAt: now.toISOString() })
+          const restoredEntitlement = updatedPayment.previousPlanId
+            ? {
+              planId: updatedPayment.previousPlanId,
+              planExpiresAt: updatedPayment.previousPlanExpiresAt,
+              quotaPeriodEndsAt: updatedPayment.previousQuotaPeriodEndsAt,
+              generationMonth: updatedPayment.previousGenerationMonth ?? `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`,
+              generationsUsed: updatedPayment.previousGenerationsUsed ?? 0,
+              researchUsed: updatedPayment.previousResearchUsed ?? 0,
+              editorActionsUsed: updatedPayment.previousEditorActionsUsed ?? 0,
+              dialogueActionsUsed: updatedPayment.previousDialogueActionsUsed ?? 0,
+            }
+            : { planId: updatedPayment.planId, planExpiresAt: now.toISOString() };
+          await tx.update(accounts).set({ ...restoredEntitlement, updatedAt: now.toISOString() })
             .where(eq(accounts.email, updatedPayment.ownerEmail));
           revoked = true;
         }
@@ -67,7 +80,19 @@ export async function POST(request: Request) {
       if (current.status !== "pending") return current.status;
       const [account] = await tx.select().from(accounts).where(eq(accounts.email, current.ownerEmail)).limit(1).for("update");
       if (!account) throw new Error("Payment account is missing.");
-      const [confirmedPayment] = await tx.update(payments).set({ status: "paid", paidAt: now.toISOString(), updatedAt: now.toISOString() }).where(and(eq(payments.id, paymentLinkId), eq(payments.status, "pending"))).returning();
+      const [confirmedPayment] = await tx.update(payments).set({
+        status: "paid",
+        paidAt: now.toISOString(),
+        previousPlanId: account.planId,
+        previousPlanExpiresAt: account.planExpiresAt,
+        previousQuotaPeriodEndsAt: account.quotaPeriodEndsAt,
+        previousGenerationMonth: account.generationMonth,
+        previousGenerationsUsed: account.generationsUsed,
+        previousResearchUsed: account.researchUsed,
+        previousEditorActionsUsed: account.editorActionsUsed,
+        previousDialogueActionsUsed: account.dialogueActionsUsed,
+        updatedAt: now.toISOString(),
+      }).where(and(eq(payments.id, paymentLinkId), eq(payments.status, "pending"))).returning();
       if (!confirmedPayment) return current.status;
       if (confirmedPayment.discountApplied) await tx.update(accounts).set({ launchDiscountUsedAt: now.toISOString() }).where(eq(accounts.email, confirmedPayment.ownerEmail));
       await tx.update(accounts).set({ planId: confirmedPayment.planId, planExpiresAt: subscriptionExpiry(account?.planExpiresAt, confirmedPayment.billing as BillingPeriod, now), generationsUsed: 0, researchUsed: 0, editorActionsUsed: 0, dialogueActionsUsed: 0, generationMonth: `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`, quotaPeriodEndsAt: nextQuotaPeriodEnd(now), updatedAt: now.toISOString() }).where(eq(accounts.email, confirmedPayment.ownerEmail));
