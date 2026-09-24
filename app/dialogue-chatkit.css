@@ -123,6 +123,18 @@ html[data-theme="light"] .module-select-list.module-select-chatkit {
   gap: 12px;
 }
 
+/* In the conversational header the mode switch belongs to the page-level
+   navigation, not to the right-side account actions. Center it like the
+   professional workspace does, while leaving the compact mobile row intact
+   so it cannot collide with the theme and account buttons. */
+@media (min-width: 821px) {
+  .workspace-shell.is-dialogue .workspace-header .workspace-mode-switch {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
 .workspace-shell.is-dialogue .workspace-account {
   display: flex;
   min-width: 0;

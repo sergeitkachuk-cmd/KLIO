@@ -5911,7 +5911,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   убрать в меню выпадающее профиля?"; restored to the
                   header on web later, this one kept for mobile). */}
               <button type="button" role="menuitem" className="account-menu-theme-toggle" onClick={() => { toggleTheme(); setAccountMenuOpen(false); }}>
-                <Icon name={theme === "dark" ? "sun" : "moon"}/> {theme === "dark" ? "Светлая тема" : "Тёмная тема"}
+                <span>{theme === "dark" ? "Светлая тема" : "Тёмная тема"}</span><Icon name={theme === "dark" ? "sun" : "moon"}/>
               </button>
               <button type="button" role="menuitem" onClick={() => {
                 setAccountMenuOpen(false);

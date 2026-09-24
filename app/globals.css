@@ -4613,6 +4613,11 @@ footer nav a {
   flex-shrink: 0;
 }
 
+.account-menu-theme-toggle svg {
+  order: 2;
+  margin-left: auto;
+}
+
 .account-menu-list button:hover,
 .account-menu-list a:hover {
   background: rgba(167, 178, 194, 0.09);
