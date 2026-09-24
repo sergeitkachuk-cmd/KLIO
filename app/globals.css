@@ -3903,10 +3903,10 @@ textarea[data-autosize="true"] {
   justify-self: end;
   width: min(100%, 460px);
   padding: 5px;
-  border: 1px solid rgba(169, 224, 255, 0.54);
+  border: 1px solid rgba(153, 194, 222, 0.46);
   border-radius: 16px;
-  background: linear-gradient(135deg, rgba(42, 111, 180, 0.62), rgba(104, 79, 184, 0.58) 55%, rgba(22, 158, 157, 0.48));
-  box-shadow: inset 0 1px rgba(224, 248, 255, 0.32), 0 12px 30px rgba(15, 61, 112, 0.2);
+  background: linear-gradient(135deg, rgba(35, 78, 119, 0.74), rgba(62, 67, 119, 0.66) 55%, rgba(35, 91, 105, 0.58));
+  box-shadow: inset 0 1px rgba(224, 248, 255, 0.22), 0 10px 26px rgba(15, 48, 84, 0.18);
   backdrop-filter: blur(9px);
 }
 
@@ -3918,8 +3918,8 @@ textarea[data-autosize="true"] {
   padding: 4px 2px;
   border: 0;
   border-radius: 12px;
-  color: rgba(241, 248, 255, 0.92);
-  background: linear-gradient(145deg, rgba(57, 130, 193, 0.42), rgba(91, 77, 170, 0.3));
+  color: rgba(239, 247, 255, 0.88);
+  background: linear-gradient(145deg, rgba(58, 94, 139, 0.58), rgba(76, 78, 133, 0.42));
   font-size: 14px;
   font-weight: 620;
   line-height: 1.2;
@@ -3928,17 +3928,17 @@ textarea[data-autosize="true"] {
 
 .billing-toggle button.active {
   color: #fff;
-  background: linear-gradient(120deg, #263f91, #7050bd 58%, #178f99);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.22), 0 7px 18px rgba(19, 42, 104, 0.3);
+  background: linear-gradient(120deg, #354a83, #5f6590 58%, #39727c);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.18), 0 6px 16px rgba(19, 42, 104, 0.22);
 }
 
 .billing-toggle button:not(.active):hover {
   color: #fff;
-  background: linear-gradient(145deg, rgba(89, 178, 216, 0.58), rgba(128, 91, 209, 0.46));
+  background: linear-gradient(145deg, rgba(77, 126, 166, 0.64), rgba(101, 94, 157, 0.5));
 }
 
 .billing-toggle span {
-  color: #bcecff;
+  color: #c4e5f4;
   font-size: 11px;
   font-weight: 760;
 }
@@ -23986,25 +23986,25 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 }
 
 [data-theme="light"] .billing-toggle {
-  border-color: rgba(53, 104, 212, 0.3);
-  background: linear-gradient(135deg, #d9eaff, #e9e1ff 55%, #d9f6f3);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.94), 0 12px 30px rgba(53, 104, 212, 0.12);
+  border-color: rgba(79, 119, 174, 0.3);
+  background: linear-gradient(135deg, #dce8f5, #e4e5f2 55%, #dcecee);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.94), 0 10px 26px rgba(53, 104, 212, 0.1);
 }
 
 [data-theme="light"] .billing-toggle button {
-  color: #27466f;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.5), rgba(189, 213, 250, 0.38));
+  color: #2f4a6e;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.46), rgba(190, 210, 238, 0.42));
 }
 
 [data-theme="light"] .billing-toggle button.active {
   color: #fff;
-  background: linear-gradient(120deg, #3157bb, #7050bd 58%, #168f94);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.3), 0 7px 18px rgba(53, 104, 212, 0.2);
+  background: linear-gradient(120deg, #3e619d, #68709a 58%, #4d8790);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.24), 0 6px 16px rgba(53, 104, 212, 0.16);
 }
 
 [data-theme="light"] .billing-toggle button:not(.active):hover {
   color: #163d70;
-  background: linear-gradient(145deg, rgba(181, 224, 255, 0.82), rgba(215, 194, 255, 0.76));
+  background: linear-gradient(145deg, rgba(184, 215, 242, 0.78), rgba(211, 211, 236, 0.72));
 }
 
 [data-theme="light"] .billing-toggle span { color: #315f94; }
