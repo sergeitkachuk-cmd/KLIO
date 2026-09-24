@@ -607,3 +607,34 @@ html[data-theme="light"] .workspace-shell.is-dialogue .klio-chatkit-rail :is(.kl
 html[data-theme="light"] .workspace-shell.is-dialogue .klio-chatkit-brand-select > button {
   background: linear-gradient(135deg, rgba(53, 104, 212, 0.14), rgba(220, 229, 243, 0.84));
 }
+
+/* Keep the logo area as the first part of the same continuous sidebar.
+   The desktop header still carries the centered controls, but its left rail
+   must use the exact sidebar gradient and must not introduce a horizontal
+   divider below the logo. */
+.workspace-shell.is-dialogue > .workspace-header {
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+}
+
+@media (min-width: 821px) {
+  .workspace-shell.is-dialogue > .workspace-header,
+  .workspace-shell.is-dialogue:has(> .klio-chatkit-shell:not([hidden])) > .workspace-header {
+    background:
+      radial-gradient(circle at 15% 5%, rgba(91, 107, 130, 0.25), transparent 28%) 0 0 / var(--ck-rail-width) 100% no-repeat,
+      linear-gradient(165deg, #041326 0%, #082947 60%, #051b31 100%) 0 0 / var(--ck-rail-width) 100% no-repeat,
+      radial-gradient(circle at 78% -60%, rgba(91, 107, 130, 0.52), transparent 42%),
+      linear-gradient(115deg, rgba(4, 17, 34, 0.985), rgba(8, 29, 53, 0.975));
+    border-bottom: 0 !important;
+  }
+
+  html[data-theme="light"] .workspace-shell.is-dialogue > .workspace-header,
+  html[data-theme="light"] .workspace-shell.is-dialogue:has(> .klio-chatkit-shell:not([hidden])) > .workspace-header {
+    background:
+      radial-gradient(circle at 15% 5%, rgba(53, 104, 212, 0.16), transparent 30%) 0 0 / var(--ck-rail-width) 100% no-repeat,
+      linear-gradient(165deg, #e3eaf6 0%, #f0f4fa 55%, #ffffff 100%) 0 0 / var(--ck-rail-width) 100% no-repeat,
+      radial-gradient(circle at 78% -60%, rgba(53, 104, 212, 0.14), transparent 42%),
+      linear-gradient(115deg, #f7f9fc, #eef3f9);
+    border-bottom: 0 !important;
+  }
+}
