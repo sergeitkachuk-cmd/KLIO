@@ -7274,6 +7274,35 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       </div>
     </section>
 
+    <section className="social-content section" id="social-content">
+      <div className="section-heading social-content-heading">
+        <div><p className="kicker">КЛИО / Контент для соцсетей</p><h2>Две кнопки.<br/><em>И пост готов<span className="klio-mark-dot">.</span></em></h2></div>
+        <p>Нужно просто регулярно публиковаться? КЛИО придумает тему, напишет пост, сгенерирует картинку и поставит публикацию в очередь — без долгих брифов и лишней рутины.</p>
+      </div>
+      <div className="social-content-showcase">
+        <div className="social-content-copy">
+          <p className="social-content-lead">Минимум времени на контент — максимум свободы для бизнеса и других задач.</p>
+          <ol className="social-content-steps">
+            <li><b>01</b><div><strong>Задайте направление</strong><span>Одной фразой расскажите, о чём хотите поговорить с аудиторией.</span></div></li>
+            <li><b>02</b><div><strong>КЛИО соберёт выпуск</strong><span>Тема, текст и визуал будут готовы в одном рабочем сценарии.</span></div></li>
+            <li><b>03</b><div><strong>Нажмите «Опубликовать»</strong><span>Поставьте пост в календарь Telegram или VK на удобное время.</span></div></li>
+          </ol>
+          <div className="social-content-actions"><Link className="button primary" href="/workspace#generator">Создать пост <Icon name="arrow"/></Link><Link className="button social-content-secondary" href="/workspace#publications">Открыть календарь <Icon name="arrow"/></Link></div>
+        </div>
+        <div className="social-content-board" aria-label="Пример подготовки публикации для соцсетей">
+          <div className="social-content-board-head"><span><i/>Соцсети / новый выпуск</span><b>готово к публикации</b></div>
+          <div className="social-post-card">
+            <div className="social-post-card-top"><span className="social-post-platform">TG</span><span>Сегодня · 10:00</span><i>✓</i></div>
+            <h3>Как оставаться на виду, когда у бизнеса много задач</h3>
+            <p>КЛИО превращает одну идею в понятный пост, который можно сразу отправить аудитории.</p>
+            <div className="social-post-image"><span>Визуал<br/>готов</span><i>✦</i></div>
+            <div className="social-post-tags"><span>Текст</span><span>Картинка</span><span>Публикация</span></div>
+          </div>
+          <div className="social-content-board-foot"><span>1 задача</span><b>→</b><span>готовый пост</span><b>→</b><span>в календаре</span></div>
+        </div>
+      </div>
+    </section>
+
     <section className="audience section" id="audience">
       <div className="section-heading audience-heading"><div><p className="kicker">КЛИО / Для кого</p><h2>Одна редакция.<br/><em>Разные задачи роста<span className="klio-mark-dot">.</span></em></h2></div><p>Площадка подстраивается под ваш рабочий процесс: от первого экспертного материала до поточного производства контента для нескольких клиентов.</p></div>
       <div className="audience-grid">{audiences.map((item) => <article key={item.number}><span className="audience-number">{item.number}</span><div><h3>{item.title}</h3><p>{item.text}</p></div><strong>{item.result}</strong></article>)}</div>

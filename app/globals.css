@@ -559,9 +559,10 @@ select:focus-visible {
      two radial highlights above were already the right slate-blue tone,
      so only this base linear-gradient needed to change. */
   background:
-    radial-gradient(circle at 79% 27%, rgba(91, 107, 130, 0.82), transparent 24%),
-    radial-gradient(circle at 14% 87%, rgba(88, 104, 127, 0.58), transparent 29%),
-    linear-gradient(126deg, #041426 0%, #08233f 50%, #06182e 100%);
+    radial-gradient(circle at 80% 20%, rgba(89, 108, 255, 0.42), transparent 26%),
+    radial-gradient(circle at 58% 78%, rgba(27, 190, 194, 0.24), transparent 31%),
+    radial-gradient(circle at 12% 88%, rgba(166, 90, 244, 0.24), transparent 29%),
+    linear-gradient(126deg, #041426 0%, #082d50 48%, #07162e 100%);
   isolation: isolate;
 }
 
@@ -570,7 +571,7 @@ select:focus-visible {
   inset: -35%;
   z-index: -2;
   content: "";
-  background: conic-gradient(from 210deg at 66% 45%, transparent, rgba(210, 216, 224, 0.2), transparent 17%, rgba(109, 125, 148, 0.17), transparent 42%);
+  background: conic-gradient(from 210deg at 66% 45%, transparent, rgba(96, 224, 231, 0.24), transparent 17%, rgba(155, 111, 255, 0.22), transparent 42%);
   animation: aurora 18s linear infinite;
 }
 
@@ -650,7 +651,7 @@ select:focus-visible {
   margin: 0.12em 0 0 0.36em;
   padding-bottom: 0.08em;
   color: transparent;
-  background: linear-gradient(92deg, #fff 0%, #a8bde1 42%, #6d88a5 100%);
+  background: linear-gradient(92deg, #fff 0%, #b7d8ff 38%, #b494ff 74%, #73e2dc 100%);
   background-clip: text;
   font-style: normal;
 }
@@ -693,7 +694,7 @@ select:focus-visible {
   aspect-ratio: 1;
   border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: 50%;
-  box-shadow: 0 0 90px rgba(154, 166, 184, 0.15);
+  box-shadow: 0 0 90px rgba(77, 224, 223, 0.16), 0 0 150px rgba(137, 103, 255, 0.13);
 }
 
 .cover-story {
@@ -704,8 +705,8 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.34);
   border-radius: 48px;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.21), rgba(255, 255, 255, 0.055));
-  box-shadow: 0 42px 96px rgba(0, 0, 0, 0.27), inset 0 1px rgba(255, 255, 255, 0.42);
+  background: linear-gradient(145deg, rgba(91, 196, 230, 0.36), rgba(137, 92, 241, 0.22) 52%, rgba(255, 255, 255, 0.07));
+  box-shadow: 0 42px 96px rgba(0, 0, 0, 0.27), 0 0 70px rgba(68, 200, 210, 0.12), inset 0 1px rgba(255, 255, 255, 0.48);
   backdrop-filter: blur(12px) saturate(155%);
   transform: rotate(2deg);
   animation: coverFloat 7s ease-in-out infinite;
@@ -781,7 +782,7 @@ select:focus-visible {
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.48);
   color: #14131b;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(241, 243, 246, 0.7));
+  background: linear-gradient(135deg, rgba(235, 252, 251, 0.96), rgba(201, 227, 255, 0.78));
   box-shadow: 0 24px 65px rgba(0, 0, 0, 0.22), inset 0 1px rgba(255, 255, 255, 0.78);
   backdrop-filter: blur(10px) saturate(150%);
 }
@@ -818,6 +819,7 @@ select:focus-visible {
   border-radius: 22px;
   transform: rotate(4deg);
   animation: leafFloat 5s -2s ease-in-out infinite;
+  background: linear-gradient(135deg, rgba(246, 239, 255, 0.96), rgba(212, 194, 255, 0.78));
 }
 
 .leaf-two b {
@@ -853,7 +855,7 @@ select:focus-visible {
   overflow: hidden;
   border-block: 1px solid rgba(255, 255, 255, 0.26);
   color: #fff;
-  background: linear-gradient(100deg, #6a7d97, #6d88a5 58%, #5c7591);
+  background: linear-gradient(100deg, #236c9a, #5654aa 52%, #0b8f91);
 }
 
 .marquee-track {
@@ -961,6 +963,302 @@ select:focus-visible {
 .legend-body strong {
   color: var(--cobalt);
   font-weight: 640;
+}
+
+/* Social content — a practical, low-friction use case placed immediately
+   after the brand story. It explains the everyday value of KLIO before the
+   page moves into the broader audience and research workflow. */
+.social-content {
+  position: relative;
+  overflow: hidden;
+  width: min(calc(100% - 76px), 1450px);
+  padding: clamp(38px, 6vw, 82px);
+  border: 1px solid rgba(135, 218, 235, 0.28);
+  border-radius: 34px;
+  color: #f7fbff;
+  background:
+    radial-gradient(520px 360px at 86% 12%, rgba(111, 94, 255, 0.38), transparent 70%),
+    radial-gradient(460px 340px at 10% 92%, rgba(31, 205, 198, 0.24), transparent 72%),
+    linear-gradient(135deg, #0b2949 0%, #112d59 53%, #123c4b 100%);
+  box-shadow: 0 32px 90px rgba(2, 14, 31, 0.22), inset 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.social-content::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  opacity: 0.2;
+  pointer-events: none;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 58px 58px;
+  mask-image: linear-gradient(135deg, black, transparent 80%);
+}
+
+.social-content > * {
+  position: relative;
+  z-index: 1;
+}
+
+.social-content-heading {
+  grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.7fr);
+  margin-bottom: 58px;
+}
+
+.social-content .kicker {
+  color: #9be9ee;
+}
+
+.social-content-heading h2 {
+  color: #fff;
+}
+
+.social-content-heading h2 em {
+  color: #c0a8ff;
+}
+
+.social-content-heading > p {
+  color: rgba(241, 249, 255, 0.78);
+}
+
+.social-content-showcase {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(390px, 1.18fr);
+  align-items: stretch;
+  gap: clamp(28px, 5vw, 78px);
+}
+
+.social-content-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.social-content-lead {
+  max-width: 510px;
+  margin: 0 0 30px;
+  color: #fff;
+  font-size: clamp(21px, 2.1vw, 30px);
+  line-height: 1.18;
+  letter-spacing: -0.04em;
+}
+
+.social-content-steps {
+  display: grid;
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.social-content-steps li {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.social-content-steps li > b {
+  display: grid;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid rgba(161, 239, 237, 0.4);
+  border-radius: 50%;
+  color: #08304b;
+  background: #a6eeea;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.social-content-steps strong,
+.social-content-steps span {
+  display: block;
+}
+
+.social-content-steps strong {
+  margin: 2px 0 4px;
+  color: #fff;
+  font-size: 15px;
+}
+
+.social-content-steps span {
+  color: rgba(235, 247, 255, 0.68);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.social-content-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 34px;
+}
+
+.social-content-actions .button.primary {
+  box-shadow: 0 14px 32px rgba(85, 222, 218, 0.2);
+}
+
+.social-content-secondary {
+  border-color: rgba(210, 231, 255, 0.36);
+  color: #f6fbff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.social-content-board {
+  min-width: 0;
+  padding: 21px;
+  border: 1px solid rgba(209, 233, 255, 0.3);
+  border-radius: 26px;
+  background: linear-gradient(145deg, rgba(8, 24, 51, 0.82), rgba(26, 55, 91, 0.62));
+  box-shadow: 0 24px 60px rgba(4, 13, 34, 0.28), inset 0 1px rgba(255, 255, 255, 0.14);
+}
+
+.social-content-board-head,
+.social-content-board-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.social-content-board-head {
+  padding: 0 4px 17px;
+  border-bottom: 1px solid rgba(209, 233, 255, 0.16);
+}
+
+.social-content-board-head span,
+.social-content-board-head b {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.social-content-board-head span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(240, 248, 255, 0.78);
+}
+
+.social-content-board-head span i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #70e2d4;
+  box-shadow: 0 0 0 5px rgba(112, 226, 212, 0.12);
+}
+
+.social-content-board-head b {
+  color: #9be9ee;
+  font-weight: 700;
+}
+
+.social-post-card {
+  margin: 20px 0;
+  padding: clamp(21px, 3vw, 31px);
+  border: 1px solid rgba(213, 235, 255, 0.24);
+  border-radius: 21px;
+  background: linear-gradient(150deg, rgba(45, 86, 133, 0.88), rgba(24, 53, 93, 0.74));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.social-post-card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(231, 242, 255, 0.66);
+  font-size: 12px;
+}
+
+.social-post-card-top i {
+  margin-left: auto;
+  color: #91f1dc;
+  font-style: normal;
+}
+
+.social-post-platform {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #229ed9;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.social-post-card h3 {
+  max-width: 530px;
+  margin: 24px 0 10px;
+  color: #fff;
+  font-size: clamp(26px, 3vw, 42px);
+  line-height: 1.02;
+  letter-spacing: -0.055em;
+}
+
+.social-post-card p {
+  max-width: 520px;
+  margin: 0;
+  color: rgba(239, 247, 255, 0.72);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.social-post-image {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  min-height: 116px;
+  margin-top: 22px;
+  padding: 17px;
+  overflow: hidden;
+  border-radius: 15px;
+  color: #0a2744;
+  background: radial-gradient(circle at 75% 20%, rgba(255, 255, 255, 0.7), transparent 25%), linear-gradient(135deg, #7ee6d8, #b8a1ff 55%, #ffcb9b);
+}
+
+.social-post-image span {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.social-post-image i {
+  font-size: 32px;
+  font-style: normal;
+}
+
+.social-post-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 17px;
+}
+
+.social-post-tags span {
+  padding: 7px 10px;
+  border: 1px solid rgba(215, 235, 255, 0.2);
+  border-radius: 999px;
+  color: rgba(236, 248, 255, 0.82);
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 11px;
+}
+
+.social-content-board-foot {
+  justify-content: flex-start;
+  padding: 0 4px;
+  color: rgba(233, 245, 255, 0.68);
+  font-size: 12px;
+}
+
+.social-content-board-foot b {
+  color: #9be9ee;
+  font-size: 17px;
+  font-weight: 500;
 }
 
 /* Audience */
@@ -1329,6 +1627,7 @@ select:focus-visible {
   font-weight: 520;
   line-height: 1.03;
   letter-spacing: -0.052em;
+  color: #10243c;
 }
 
 .showcase-paper p {
@@ -23702,4 +24001,91 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
   .publications-upload-button,
   .publications-image-remove { min-height: 40px; padding: 0 11px; }
   .publications-editor-preview { max-height: 180px; }
+}
+
+/* Landing hero and the social-content story are deliberately more colourful
+   than the neutral editorial surfaces below them. Keep the same contrast in
+   the light theme instead of falling back to grey-on-grey. */
+[data-theme="light"] .hero {
+  background:
+    radial-gradient(circle at 80% 18%, rgba(109, 108, 255, 0.22), transparent 28%),
+    radial-gradient(circle at 54% 80%, rgba(35, 191, 190, 0.16), transparent 32%),
+    radial-gradient(circle at 10% 88%, rgba(171, 116, 255, 0.16), transparent 30%),
+    linear-gradient(126deg, #e4efff 0%, #f3f7ff 48%, #ecfbfa 100%);
+}
+
+[data-theme="light"] .hero::before {
+  background: conic-gradient(from 210deg at 66% 45%, transparent, rgba(53, 104, 212, 0.14), transparent 17%, rgba(142, 91, 238, 0.14), transparent 42%);
+}
+
+[data-theme="light"] .hero h1 em {
+  background: linear-gradient(92deg, #3157bb 0%, #6d55bd 48%, #078f94 100%);
+  background-clip: text;
+}
+
+[data-theme="light"] .cover-story {
+  border-color: rgba(53, 104, 212, 0.3);
+  background: linear-gradient(145deg, rgba(174, 226, 240, 0.84), rgba(194, 174, 255, 0.68) 56%, rgba(255, 255, 255, 0.82));
+  box-shadow: 0 42px 96px rgba(53, 104, 212, 0.16), 0 0 70px rgba(25, 183, 184, 0.12), inset 0 1px rgba(255, 255, 255, 0.86);
+}
+
+[data-theme="light"] .floating-leaf {
+  background: linear-gradient(135deg, rgba(229, 255, 251, 0.98), rgba(205, 224, 255, 0.9));
+}
+
+[data-theme="light"] .leaf-two {
+  background: linear-gradient(135deg, rgba(247, 240, 255, 0.98), rgba(220, 205, 255, 0.9));
+}
+
+[data-theme="light"] .marquee {
+  color: #fff;
+  background: linear-gradient(100deg, #2c74a6, #6558bc 52%, #119799);
+}
+
+[data-theme="light"] .social-content {
+  border-color: rgba(53, 104, 212, 0.24);
+  color: #10243c;
+  background:
+    radial-gradient(520px 360px at 86% 12%, rgba(126, 104, 242, 0.28), transparent 70%),
+    radial-gradient(460px 340px at 10% 92%, rgba(36, 191, 190, 0.2), transparent 72%),
+    linear-gradient(135deg, #e6f0ff 0%, #f5f7ff 53%, #e8fbfa 100%);
+  box-shadow: 0 32px 90px rgba(31, 61, 110, 0.13), inset 0 1px rgba(255, 255, 255, 0.9);
+}
+
+[data-theme="light"] .social-content::before {
+  opacity: 0.14;
+  background-image: linear-gradient(rgba(53, 104, 212, 0.16) 1px, transparent 1px), linear-gradient(90deg, rgba(53, 104, 212, 0.16) 1px, transparent 1px);
+}
+
+[data-theme="light"] .social-content .kicker { color: #276ab6; }
+[data-theme="light"] .social-content-heading h2 { color: #10243c; }
+[data-theme="light"] .social-content-heading h2 em { color: #6650b8; }
+[data-theme="light"] .social-content-heading > p { color: rgba(16, 36, 60, 0.72); }
+[data-theme="light"] .social-content-lead { color: #10243c; }
+[data-theme="light"] .social-content-steps strong { color: #10243c; }
+[data-theme="light"] .social-content-steps span { color: rgba(16, 36, 60, 0.68); }
+[data-theme="light"] .social-content-steps li > b { color: #fff; background: #347bc5; }
+[data-theme="light"] .social-content-secondary { border-color: rgba(53, 104, 212, 0.3); color: #183b70; background: rgba(255, 255, 255, 0.45); }
+
+@media (max-width: 940px) {
+  .social-content-showcase { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+  .social-content {
+    width: calc(100% - 28px);
+    padding: 32px 20px;
+    border-radius: 25px;
+  }
+
+  .social-content-heading { gap: 22px; margin-bottom: 36px; }
+  .social-content-heading h2 { font-size: clamp(45px, 14vw, 66px); }
+  .social-content-lead { font-size: 23px; }
+  .social-content-actions { align-items: stretch; flex-direction: column; }
+  .social-content-actions .button { width: 100%; }
+  .social-content-board { padding: 13px; border-radius: 20px; }
+  .social-content-board-head { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .social-post-card { padding: 19px; }
+  .social-post-card h3 { font-size: 29px; }
+  .social-content-board-foot { flex-wrap: wrap; gap: 7px; }
 }
