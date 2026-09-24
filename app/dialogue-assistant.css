@@ -14,7 +14,23 @@
 .klio-aui-markdown a { color:var(--ck-text); text-decoration:underline; text-underline-offset:3px; }
 .klio-aui-markdown table { display:block; max-width:100%; overflow:auto; border-collapse:collapse; }
 .klio-aui-markdown :is(th,td) { border:1px solid var(--ck-line); padding:6px 10px; }
-.klio-aui-footer { position:sticky; bottom:0; padding:12px 0 max(6px,env(safe-area-inset-bottom)); background:var(--ck-bg); z-index:2; }
+.klio-aui-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding: 30px 0 max(8px, env(safe-area-inset-bottom));
+  background:
+    linear-gradient(
+      180deg,
+      transparent 0%,
+      color-mix(in srgb, var(--ck-bg) 22%, transparent) 28%,
+      color-mix(in srgb, var(--ck-bg) 76%, transparent) 72%,
+      var(--ck-bg) 100%
+    );
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  isolation: isolate;
+}
 .klio-aui-composer { display:grid; grid-template-columns:36px minmax(0,1fr) 36px; align-items:end; gap:4px; border:1px solid var(--ck-line); border-radius:28px; padding:8px; background:var(--ck-panel); box-shadow:0 2px 8px #00102006; }
 .klio-aui-root .klio-aui-input { display:block; resize:none; width:100%; min-height:28px; max-height:180px; padding:4px 6px; border:0; border-radius:0; background:transparent; color:var(--ck-text); font:inherit; font-size:16px; line-height:1.6; box-shadow:none; outline:0; }
 .klio-aui-input::placeholder { color:var(--ck-muted); }
@@ -74,6 +90,7 @@
 .klio-chatkit-toast button { background:transparent; border:1px solid var(--ck-line); color:inherit; border-radius:16px; margin-left:10px; padding:4px 8px; }
 @media(max-width:600px) {
   .klio-aui-viewport { padding:0 14px; }
+  .klio-aui-footer { padding-top:24px; }
   .klio-aui-welcome h1 { font-size:25px; }
   .klio-aui-message { font-size:15px; margin-bottom:24px; }
   .klio-aui-message.is-user .klio-aui-message-text { max-width:92%; }
