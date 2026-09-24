@@ -23525,3 +23525,53 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
       linear-gradient(180deg, #f7f9fd 0%, #edf3fb 100%);
   }
 }
+
+/* Shared button physics: preserve each control's own colour and shape, but
+   give every button the same tactile normal / hover / pressed language. */
+:root {
+  --control-shadow-rest: 0 2px 0 rgba(0, 0, 0, 0.2), 0 7px 16px rgba(0, 0, 0, 0.16);
+  --control-shadow-hover: 0 3px 0 rgba(0, 0, 0, 0.2), 0 11px 22px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --control-shadow-pressed: inset 0 3px 7px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.12);
+  --control-shadow-selected: inset 0 2px 6px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] {
+  --control-shadow-rest: 0 2px 0 rgba(54, 77, 111, 0.13), 0 7px 16px rgba(54, 77, 111, 0.12);
+  --control-shadow-hover: 0 3px 0 rgba(54, 77, 111, 0.14), 0 11px 22px rgba(54, 77, 111, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --control-shadow-pressed: inset 0 3px 7px rgba(54, 77, 111, 0.16), inset 0 1px 0 rgba(54, 77, 111, 0.08), 0 1px 2px rgba(54, 77, 111, 0.1);
+  --control-shadow-selected: inset 0 2px 6px rgba(54, 77, 111, 0.14), inset 0 1px 0 rgba(54, 77, 111, 0.06), 0 1px 2px rgba(54, 77, 111, 0.08);
+}
+
+:where(button, .button, [role="button"]) {
+  transition: transform 170ms ease, box-shadow 170ms ease, border-color 170ms ease, background 170ms ease;
+}
+
+:is(button, .button, [role="button"]):not(:disabled):not([aria-disabled="true"]) {
+  box-shadow: var(--control-shadow-rest);
+}
+
+:is(button, .button, [role="button"]):not(:disabled):not([aria-disabled="true"]):hover {
+  transform: translateY(-1px);
+  box-shadow: var(--control-shadow-hover);
+}
+
+:is(button, .button, [role="button"]):not(:disabled):not([aria-disabled="true"]):active {
+  transform: translateY(1px) scale(0.985);
+  box-shadow: var(--control-shadow-pressed);
+}
+
+:is(button, .button, [role="button"]):is([aria-pressed="true"], [aria-selected="true"], .active, .is-active) {
+  transform: translateY(0);
+  box-shadow: var(--control-shadow-selected);
+}
+
+:is(button, .button, [role="button"]):disabled,
+:is(button, .button, [role="button"])[aria-disabled="true"] {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(button, .button, [role="button"]) {
+    transition-duration: 0ms;
+  }
+}
