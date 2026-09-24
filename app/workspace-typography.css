@@ -25,7 +25,7 @@
 
 .workspace-shell .workspace-content .button {
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 560;
   line-height: 1.45;
 }
 
@@ -35,7 +35,32 @@
   line-height: 1.45;
 }
 
-.workspace-shell .workspace-sidebar nav > a.active b { font-weight: 650; }
+.workspace-shell .workspace-sidebar nav > a.active b { font-weight: 560; }
+
+/* The workspace used to mix 650-850 weights into ordinary card titles,
+   metadata and labels. Manrope reads cleaner at a calmer hierarchy: keep
+   regular copy at 400 and reserve a moderate 550 weight for emphasis. This
+   is intentionally scoped to the product workspace, leaving the public
+   landing pages and billing documents unchanged. */
+.workspace-shell .workspace-content {
+  font-weight: 400;
+}
+
+.workspace-shell .workspace-content :is(b, strong) {
+  font-weight: 550;
+}
+
+.workspace-shell .workspace-content :is(h1, h2, h3, h4, h5, h6) {
+  font-weight: 560;
+}
+
+.workspace-shell .workspace-content :is(.publications-chip span, .publications-list-item > span b, .publications-mobile-item b) {
+  font-weight: 560;
+}
+
+.workspace-shell .workspace-content :is(.publications-chip em, .publications-list-item > em, .publications-mobile-item em) {
+  font-weight: 500;
+}
 
 /* Keep the mode choice discoverable on phones in BOTH modes. These rules
    leave room for the brand and account button down to a 320px viewport. */
