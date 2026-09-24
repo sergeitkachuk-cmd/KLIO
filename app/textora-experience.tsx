@@ -1399,7 +1399,11 @@ function addMonths(date: Date, months: number) {
 // reliable zero-dependency way to bucket an ISO instant onto a calendar day
 // without pulling in a date library for one string.
 function localDayKey(date: Date) {
-  return date.toLocaleDateString("en-CA");
+  // Do not depend on Intl's locale-specific ordering: some Windows browsers
+  // return MM/DD/YYYY for en-CA, while drag targets are parsed as YYYY-MM-DD.
+  return [date.getFullYear(), date.getMonth() + 1, date.getDate()]
+    .map((part, index) => index === 0 ? String(part) : String(part).padStart(2, "0"))
+    .join("-");
 }
 
 function publicationPeriodLabel(view: "month" | "week" | "list", cursor: Date) {
@@ -2002,6 +2006,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   function handlePublicationPointerDown(event: ReactPointerEvent<HTMLButtonElement>, item: PubItem) {
     if (item.status !== "scheduled" || pubMovingId) return;
     const target = event.currentTarget;
+    target.setPointerCapture?.(event.pointerId);
     const activationDelay = event.pointerType === "mouse" ? 180 : 320;
     const timer = window.setTimeout(() => {
       const drag = pubPointerDragRef.current;
@@ -2062,6 +2067,16 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setPubDraggingId(null);
     setPubDropDayKey(null);
     if (day) movePublicationToDay(drag.item, day);
+  }
+
+  function handlePublicationPointerCancel(event: ReactPointerEvent<HTMLElement>) {
+    const drag = pubPointerDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    window.clearTimeout(drag.timer);
+    pubPointerDragRef.current = null;
+    if (drag.active) suppressPublicationClick();
+    setPubDraggingId(null);
+    setPubDropDayKey(null);
   }
 
   function openPubEditor(day: Date, existing?: PubItem) {
@@ -7135,7 +7150,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <span><b>{item.title || item.body || "Без названия"}</b><small>{item.channel?.label || "Канал отключён"}</small></span>
                   <em>{item.status === "failed" ? "Ошибка" : item.status === "published" ? "Опубликовано" : item.status === "publishing" ? "Публикуется" : "Запланировано"}</em>
                 </button>)}
-              </div> : <div className="publications-calendar-scroll" onPointerMove={handlePublicationPointerMove} onPointerUp={handlePublicationPointerUp} onPointerCancel={handlePublicationPointerUp}>
+              </div> : <div className="publications-calendar-scroll" onPointerMove={handlePublicationPointerMove} onPointerUp={handlePublicationPointerUp} onPointerCancel={handlePublicationPointerCancel}>
                 <div className={`publications-grid publications-grid-${pubView} ${pubLoading ? "is-loading" : ""}`}>
                 {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((label) => <div className="publications-weekday" key={label}>{label}</div>)}
                 {pubGridDays.map((day) => {
