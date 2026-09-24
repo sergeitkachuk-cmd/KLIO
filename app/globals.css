@@ -23836,7 +23836,10 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 
   .workspace-shell:not(.is-dialogue) .workspace-layout > .workspace-sidebar {
     position: sticky;
-    top: 0;
+    /* The professional header is a 76px-high full-width bar. The sidebar
+       keeps the shell's continuous column background, but its content must
+       begin below that header instead of sliding underneath the logo. */
+    top: 76px;
     z-index: 1;
     background: transparent;
     border-right-color: rgba(255, 255, 255, 0.13);
