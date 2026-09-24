@@ -414,6 +414,52 @@
   color: var(--ck-text) !important;
 }
 
+/* The module rail should read like a deliberate section navigation, not like
+   the smaller utility labels used inside the conversation. */
+.workspace-shell.is-dialogue .dialogue-module-rail nav button {
+  min-height: 46px;
+  padding: 10px 12px;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+/* A few legacy module rules set their foreground directly to a dark
+   professional-workspace color. In dark dialogue mode that wins over the
+   inherited token and makes labels disappear on the navy canvas. Keep the
+   override limited to the embedded module content, then restore muted text
+   for descriptions and helper copy below. */
+html[data-theme="dark"] .workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout > .workspace-content :is(
+  h1, h2, h3, h4, h5, h6, p, label, legend, li, dt, dd, span, b, strong, a, button
+) {
+  color: var(--ck-text) !important;
+}
+
+html[data-theme="dark"] .workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout > .workspace-content :is(
+  .workspace-module-heading > p,
+  .brand-profile-head > p,
+  .workspace-history-head > p,
+  .brand-fields :is(label, .brand-profile-field) > small,
+  .brand-score small,
+  .brand-checklist small,
+  .profile-fill-replace-help,
+  .publications-channel-limit,
+  .publications-view-switch button,
+  .publications-mobile-empty,
+  .workspace-history-list article > p,
+  .workspace-history-list article > div > small
+) {
+  color: var(--ck-muted) !important;
+}
+
+html[data-theme="dark"] .workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout > .workspace-content :is(
+  input, textarea, select
+) {
+  color: var(--ck-text) !important;
+  background: var(--ck-bg) !important;
+}
+
 @media (max-width: 820px) {
   .workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout {
     display: flex;
