@@ -189,3 +189,290 @@
   color: var(--ck-text);
 }
 :root[data-theme] body:has(.workspace-shell.is-dialogue) > :is(.module-select-list, .pub-image-picker-list) > button :is(em, span) { color: var(--ck-text); }
+
+/* -------------------------------------------------------------------------
+   Shared dialogue shell for embedded modules
+
+   The conversation already has its own rail and surfaces. When a person
+   opens Business, Materials or Publications we keep that same navigation
+   language instead of showing the older professional workspace sidebar and
+   its large module cards. Data, actions and module markup stay shared; only
+   the dialogue-mode frame and visual tokens change here.
+   ------------------------------------------------------------------------- */
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout {
+  display: grid;
+  grid-template-columns: var(--ck-rail-width) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  min-height: calc(100dvh - 60px);
+  background: var(--ck-bg);
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout > .workspace-sidebar {
+  display: none;
+}
+
+.workspace-shell.is-dialogue .dialogue-module-rail {
+  grid-column: 1;
+  grid-row: 1;
+  position: sticky;
+  top: 0;
+  height: calc(100dvh - 60px);
+  max-height: calc(100dvh - 60px);
+  overflow-y: auto;
+}
+
+.workspace-shell.is-dialogue .dialogue-module-rail nav button.is-active {
+  background: var(--ck-hover);
+}
+
+.workspace-shell.is-dialogue .dialogue-module-rail-spacer {
+  flex: 1 1 auto;
+  min-height: 36px;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout > .workspace-content {
+  grid-column: 2;
+  grid-row: 1;
+  width: 100%;
+  max-width: none;
+  min-height: calc(100dvh - 60px);
+  height: calc(100dvh - 60px);
+  margin: 0;
+  overflow-y: auto;
+  background: var(--ck-bg);
+  color: var(--ck-text);
+  padding: 36px clamp(22px, 4vw, 56px) 80px;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout > .workspace-content > .workspace-heading,
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout > .workspace-content > .workspace-launch-banner {
+  display: none;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout :is(.workspace-history, .workspace-module, .brand-profile) {
+  width: min(100%, 1220px);
+  margin: 0 auto 24px;
+  padding-top: 0;
+  color: var(--ck-text);
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout :is(.workspace-history, .workspace-module) {
+  border: 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout :is(.workspace-module > .workspace-module-heading, .brand-profile-head, .workspace-history-head) {
+  min-height: 0;
+  margin: 0 0 24px !important;
+  padding: 0 0 22px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--ck-line) !important;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout :is(.workspace-module-heading span, .brand-profile-head span, .workspace-history-head span) {
+  color: var(--ck-muted) !important;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout :is(.workspace-module-heading h2, .brand-profile-head h3, .workspace-history-head h2) {
+  margin: 6px 0 0;
+  color: var(--ck-text) !important;
+  font-size: clamp(28px, 3vw, 40px);
+  font-weight: 560;
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout :is(.workspace-module-heading > p, .brand-profile-head p, .workspace-history-head > p) {
+  max-width: 620px;
+  margin: 10px 0 0;
+  color: var(--ck-muted) !important;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* Materials: a quiet panel grid that uses the same surface as dialogue cards. */
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .workspace-history {
+  padding: 0;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .workspace-history-list {
+  gap: 12px;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .workspace-history-list article {
+  padding: 16px;
+  border: 1px solid var(--ck-line) !important;
+  border-radius: 14px;
+  background: var(--ck-panel) !important;
+  color: var(--ck-text) !important;
+  box-shadow: none !important;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .workspace-history-list article :is(h3, p, small, strong) {
+  color: var(--ck-text) !important;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .workspace-history-list article > div > small,
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .workspace-history-list article > p {
+  color: var(--ck-muted) !important;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .workspace-history-list article > div > span,
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .workspace-history-list article .material-format-badge {
+  border-color: var(--ck-line) !important;
+  background: var(--ck-hover) !important;
+  color: var(--ck-text) !important;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .workspace-history-list article footer {
+  border-color: var(--ck-line) !important;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .workspace-history-toolbar {
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .workspace-history-filters > button,
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .workspace-history-toolbar .module-select-trigger {
+  background: var(--ck-panel) !important;
+  border-color: var(--ck-line) !important;
+  color: var(--ck-text) !important;
+  box-shadow: none !important;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .workspace-history-filters > button.active,
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .workspace-history-filters > button:hover,
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .workspace-history-toolbar .module-select-trigger:hover {
+  background: var(--ck-hover) !important;
+  border-color: var(--ck-muted) !important;
+}
+
+/* Business profile: preserve the existing form, but place it on the same
+   calm panel surface as the new dialogue workspace. */
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .brand-profile-body {
+  padding: 24px;
+  border: 1px solid var(--ck-line) !important;
+  border-radius: 18px;
+  background: var(--ck-panel) !important;
+  color: var(--ck-text) !important;
+  box-shadow: none !important;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .brand-profile-body :is(.profile-mode-bar, .brand-tab-shell, .brand-tabs, .brand-score, .brand-checklist) {
+  border-color: var(--ck-line) !important;
+  background: var(--ck-bg) !important;
+  color: var(--ck-text) !important;
+  box-shadow: none !important;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .brand-profile-body :is(.brand-fields input, .brand-fields textarea, .brand-fields select) {
+  border-color: var(--ck-line) !important;
+  background: var(--ck-bg) !important;
+  color: var(--ck-text) !important;
+  box-shadow: none !important;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .brand-profile-body :is(.brand-fields input, .brand-fields textarea)::placeholder {
+  color: var(--ck-muted) !important;
+}
+
+/* Publications: keep the calendar and its drag/drop behavior, only replace
+   the old professional chrome with dialogue surfaces. */
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .publications-module :is(.publications-channels-bar, .publications-vk-note, .publications-day, .publications-mobile-list) {
+  border-color: var(--ck-line) !important;
+  background: var(--ck-panel) !important;
+  color: var(--ck-text) !important;
+  box-shadow: none !important;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .publications-module :is(.publications-view-switch, .publications-nav > button, .publications-channel-chip) {
+  border-color: var(--ck-line) !important;
+  background: var(--ck-panel) !important;
+  color: var(--ck-text) !important;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .publications-module .publications-view-switch button.active,
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .publications-module .publications-day.is-today,
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .publications-module .publications-day.is-selected {
+  border-color: var(--ck-muted) !important;
+  background: var(--ck-hover) !important;
+  color: var(--ck-text) !important;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .publications-module :is(.publications-weekday, .publications-day-head > span, .publications-nav > b, .publications-channel-limit, .publications-view-switch button) {
+  color: var(--ck-muted) !important;
+}
+
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .publications-module .publications-day-head > span,
+.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .publications-module .publications-day-head > button {
+  color: var(--ck-text) !important;
+}
+
+@media (max-width: 820px) {
+  .workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .dialogue-module-rail {
+    position: static;
+    inset: auto;
+    width: auto;
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    flex: 0 0 auto;
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px 10px;
+    border-right: 0;
+    border-bottom: 1px solid var(--ck-line);
+    box-shadow: none;
+    transform: none;
+  }
+
+  .workspace-shell.is-dialogue .dialogue-module-rail .klio-chatkit-new,
+  .workspace-shell.is-dialogue .dialogue-module-rail nav,
+  .workspace-shell.is-dialogue .dialogue-module-rail nav button {
+    width: auto;
+    min-width: max-content;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .workspace-shell.is-dialogue .dialogue-module-rail nav {
+    display: flex;
+    gap: 4px;
+  }
+
+  .workspace-shell.is-dialogue .dialogue-module-rail .dialogue-module-rail-spacer,
+  .workspace-shell.is-dialogue .dialogue-module-rail .klio-chatkit-brand,
+  .workspace-shell.is-dialogue .dialogue-module-rail .klio-chatkit-account {
+    display: none;
+  }
+
+  .workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout > .workspace-content {
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+    padding: 24px 14px 72px;
+  }
+
+  .workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .workspace-history-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .brand-profile-body {
+    padding: 16px;
+  }
+}

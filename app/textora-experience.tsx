@@ -2569,6 +2569,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const resultPanelRef = useRef<HTMLDivElement>(null);
   const geoPickerRef = useRef<HTMLDivElement>(null);
   const brandPickerRef = useRef<HTMLDivElement>(null);
+  const dialogueBrandPickerRef = useRef<HTMLDivElement>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
 
   // The generator's target is the ready-to-publish text, not merely the
@@ -3292,7 +3293,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   useEffect(() => {
     if (!brandMenuOpen) return;
     const closeOnOutsideClick = (event: MouseEvent) => {
-      if (!brandPickerRef.current?.contains(event.target as Node)) setBrandMenuOpen(false);
+      const target = event.target as Node;
+      if (!brandPickerRef.current?.contains(target) && !dialogueBrandPickerRef.current?.contains(target)) setBrandMenuOpen(false);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setBrandMenuOpen(false);
@@ -5995,7 +5997,35 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         beforeProfile={() => activeBrandId ? saveActiveWorkspaceBrand(false) : Promise.resolve(true)}
         onSchedule={source => void openPublicationDraft(source)} importMaterial={dialogueImport}
       />}
-      <div className="workspace-layout" style={workspaceMode === "dialogue" && activeModule === "start" ? { display: "none" } : undefined}>
+      <div className={`workspace-layout ${workspaceMode === "dialogue" && activeModule !== "start" ? "is-dialogue-module-layout" : ""}`} style={workspaceMode === "dialogue" && activeModule === "start" ? { display: "none" } : undefined}>
+        {workspaceMode === "dialogue" && activeModule !== "start" && <aside className="klio-chatkit-rail dialogue-module-rail" aria-label="Разделы КЛИО">
+          <button type="button" className="klio-chatkit-new" onClick={() => openModule("start")}>
+            <span aria-hidden="true">＋</span> Диалоги
+          </button>
+          <nav>
+            <button type="button" className={activeModule === "brand" ? "is-active" : ""} onClick={() => openModule("brand")}>Мой бизнес</button>
+            <button type="button" className={activeModule === "history" ? "is-active" : ""} onClick={() => openModule("history")}>Материалы</button>
+            <button type="button" className={activeModule === "publications" ? "is-active" : ""} onClick={() => openModule("publications")}>Публикации</button>
+          </nav>
+          <div className="dialogue-module-rail-spacer" />
+          <div className="klio-chatkit-brand">
+            <span>Ваш бизнес</span>
+            <div className="klio-chatkit-brand-select" ref={dialogueBrandPickerRef}>
+              <button type="button" aria-label="Выбрать бизнес" aria-expanded={brandMenuOpen} disabled={brandSwitchBusy} onClick={() => workspaceBrands.length ? setBrandMenuOpen((value) => !value) : openModule("brand")}>
+                <i>{(activeWorkspaceBrand?.name || brand.name || "Л").trim().charAt(0).toLocaleUpperCase("ru-RU")}</i>
+                <span title={activeWorkspaceBrand?.name || "Личное пространство"}>{activeWorkspaceBrand?.name || "Личное пространство"}</span>
+                <em aria-hidden="true">⌄</em>
+              </button>
+              {brandMenuOpen && <div className="klio-chatkit-brand-options">
+                {workspaceBrands.length > 0 && <div role="listbox" aria-label="Выберите бизнес">
+                  {workspaceBrands.map((item) => <button type="button" role="option" aria-selected={item.id === activeBrandId} key={item.id} onClick={() => void switchWorkspaceBrand(item.id)}>{item.name}</button>)}
+                </div>}
+                <button type="button" onClick={() => { setBrandMenuOpen(false); openModule("brand"); }}>{workspaceBrands.length ? "Управление бизнесами" : "Добавить бизнес"} →</button>
+              </div>}
+            </div>
+          </div>
+          <Link className="klio-chatkit-account" href="/account">Тариф и аккаунт</Link>
+        </aside>}
         <aside className="workspace-sidebar">
           <div className={`workspace-project brand-project-switcher${brandMenuOpen ? " brand-menu-layer-open" : ""}`}>
             <span>Активный бренд</span>
