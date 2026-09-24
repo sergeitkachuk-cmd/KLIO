@@ -6838,7 +6838,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   {useBrand && brand.logoKey && useLogoInImage && <small>{logoPlacement === "corner" ? "Адаптируем знак из PNG или JPG без лишнего фона, с учётом текста и выбранного угла. Модель может немного изменить мелкие детали. Надпись самого логотипа останется и в режиме «Без текста»." : "Логотип станет частью сцены. Модель может немного изменить его детали."}</small>}
                 </fieldset>
                 {imageError && <p className="generation-error" role="alert">{imageError}</p>}
-                <button className="button primary large" type="button" onClick={() => void generateProfessionalImage()} disabled={imageBusy || carouselBusy || !workspaceReady || imagePrompt.trim().length < 8 || workspaceAccount.generationsRemaining <= 0}><Icon name="image"/>{imageBusy ? "Создаём изображение…" : workspaceAccount.generationsRemaining <= 0 ? "Лимит генераций исчерпан" : "Создать изображение"}</button>
+                <button className={`button primary large generation-action ${imageBusy ? "is-busy" : ""}`} type="button" onClick={() => void generateProfessionalImage()} disabled={imageBusy || carouselBusy || !workspaceReady || imagePrompt.trim().length < 8 || workspaceAccount.generationsRemaining <= 0}><Icon name="image"/>{imageBusy ? "Создаём изображение…" : workspaceAccount.generationsRemaining <= 0 ? "Лимит генераций исчерпан" : "Создать изображение"}</button>
                 <div className="image-generator-carousel">
                   <div><span>Карусель</span><h3>Несколько слайдов из этого текста<span className="klio-mark-dot">.</span></h3><p>КЛИО разобьёт текст выше на слайды и сделает обложку для каждого — заголовок печатается прямо на картинке. Один слайд — одна генерация.</p></div>
                   {/* 3–8 matches CAROUSEL_MIN_SLIDES/CAROUSEL_MAX_SLIDES in
@@ -6851,7 +6851,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     options={["3", "4", "5", "6", "7", "8"].map(value => ({ value, label: value }))}
                   />
                   {carouselError && <p className="generation-error" role="alert">{carouselError}</p>}
-                  <button className="button ghost large" type="button" onClick={() => void generateCarousel(pendingCarouselSource ?? { text: imagePrompt })} disabled={imageBusy || carouselBusy || !workspaceReady || imagePrompt.trim().length < 20 || workspaceAccount.generationsRemaining < Number(carouselSlideCount)}><Icon name="image"/>{carouselBusy ? "Создаём карусель…" : workspaceAccount.generationsRemaining < Number(carouselSlideCount) ? "Не хватает генераций" : `Создать карусель (${carouselSlideCount})`}</button>
+                  <button className={`button ghost large generation-action ${carouselBusy ? "is-busy" : ""}`} type="button" onClick={() => void generateCarousel(pendingCarouselSource ?? { text: imagePrompt })} disabled={imageBusy || carouselBusy || !workspaceReady || imagePrompt.trim().length < 20 || workspaceAccount.generationsRemaining < Number(carouselSlideCount)}><Icon name="image"/>{carouselBusy ? "Создаём карусель…" : workspaceAccount.generationsRemaining < Number(carouselSlideCount) ? "Не хватает генераций" : `Создать карусель (${carouselSlideCount})`}</button>
                 </div>
               </div>
               <div className="image-generator-preview" aria-live="polite">
@@ -6888,7 +6888,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                       the moment "на глаз" keyword guessing is the actual pattern,
                       not a one-off. */}
                   {workspaceAccount.lifetimeGenerationsUsed >= 3 && semanticMode === "idle" && renderAdviceTip("generator-try-semantics", <>Вижу, вы уже сделали несколько материалов на глаз, без реальных поисковых запросов. Загляните в «Семантика» — я найду формулировки, которые реально ищут по вашей теме, и материалы точнее попадут в спрос.</>)}
-                  <button className={`button primary generate ${quickBusy ? "is-busy" : ""}`} type="button" onClick={() => void generateQuick()} disabled={!workspaceReady || quickBusy || aiConnection !== "connected"}><Icon name="spark"/>{quickBusy ? "КЛИО пишет…" : !workspaceReady ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
+                  <button className={`button primary generate generation-action ${quickBusy ? "is-busy" : ""}`} type="button" onClick={() => void generateQuick()} disabled={!workspaceReady || quickBusy || aiConnection !== "connected"}><Icon name="spark"/>{quickBusy ? "КЛИО пишет…" : !workspaceReady ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
                 </div>}
                 {generatorMode === "advanced" && <>
                 <div className="field"><label>Формат</label><div className="format-tabs">{formats.map((item) => <button type="button" className={format === item.id ? "active" : ""} onClick={() => changeFormat(item.id)} key={item.id}>{item.label}</button>)}</div></div>
@@ -6941,7 +6941,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   </div>
                 </div>
                 {generationError && <p className="generation-error" role="alert">{generationError}</p>}
-                <button className={`button primary generate ${busy ? "is-busy" : ""}`} type="button" onClick={generate} disabled={!workspaceReady || busy || aiConnection !== "connected"}><Icon name="spark"/>{busy ? busySteps[busyStep] : !workspaceReady ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
+                <button className={`button primary generate generation-action ${busy ? "is-busy" : ""}`} type="button" onClick={generate} disabled={!workspaceReady || busy || aiConnection !== "connected"}><Icon name="spark"/>{busy ? busySteps[busyStep] : !workspaceReady ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
                 {busy && <>
                   {/* Once the last step lands, this stops being a real
                       progress readout (nothing after it is measured) and
@@ -7004,7 +7004,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
                 <div className="content-plan-controls">
                   <div><span>Количество тем</span><div>{[10, 15, 25].map((value) => <button type="button" className={contentPlanCount === value ? "active" : ""} onClick={() => { setContentPlanCount(value); setContentPlanNeedsRefresh(true); persistContentPlan({ count: value, needsRefresh: true }); }} key={value}>{value}</button>)}</div></div>
-                  <button className={`button primary large ${contentPlanBusy ? "is-busy" : ""}`} type="button" onClick={buildContentPlan} disabled={contentPlanBusy || aiConnection !== "connected"}><Icon name="spark"/>{contentPlanBusy ? "Собираем систему…" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.researchRemaining <= 0 ? "Лимит исследований исчерпан" : contentPlanResult.items.length ? "Обновить контент‑план" : "Собрать контент‑план"}</button>
+                  <button className={`button primary large generation-action ${contentPlanBusy ? "is-busy" : ""}`} type="button" onClick={buildContentPlan} disabled={contentPlanBusy || aiConnection !== "connected"}><Icon name="spark"/>{contentPlanBusy ? "Собираем систему…" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.researchRemaining <= 0 ? "Лимит исследований исчерпан" : contentPlanResult.items.length ? "Обновить контент‑план" : "Собрать контент‑план"}</button>
                 </div>
                 {contentPlanBusy && <small className="generation-wait-note">План собирается в фоне. Можно продолжать работу — результат появится здесь автоматически.</small>}
                 {contentPlanError && <p className="generation-error" role="alert">{contentPlanError}</p>}
