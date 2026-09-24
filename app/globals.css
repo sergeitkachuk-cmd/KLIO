@@ -23468,7 +23468,7 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
     box-shadow: none;
   }
 
-  .workspace-shell:not(.is-dialogue) > .workspace-sidebar {
+  .workspace-shell:not(.is-dialogue) .workspace-layout > .workspace-sidebar {
     position: sticky;
     top: 0;
     z-index: 1;
@@ -23488,7 +23488,7 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
     box-shadow: none;
   }
 
-  [data-theme="light"] .workspace-shell:not(.is-dialogue) > .workspace-sidebar {
+  [data-theme="light"] .workspace-shell:not(.is-dialogue) .workspace-layout > .workspace-sidebar {
     background: transparent;
     border-right-color: rgba(15, 23, 42, 0.12);
   }
