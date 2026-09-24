@@ -23,27 +23,27 @@
   isolation: isolate;
 }
 .klio-aui-footer::before {
-  display: none;
   position: absolute;
   z-index: 0;
-  top: -156px;
-  right: 50%;
+  top: 30px;
+  right: 0;
+  left: 0;
   bottom: 0;
-  width: 100vw;
+  width: 100%;
   content: "";
   pointer-events: none;
+  border-radius: 28px 28px 0 0;
+  clip-path: inset(0 round 28px 28px 0 0);
   background:
     linear-gradient(
       180deg,
-      transparent 0%,
-      color-mix(in srgb, var(--ck-bg) 8%, transparent) 22%,
-      color-mix(in srgb, var(--ck-bg) 25%, transparent) 46%,
-      color-mix(in srgb, var(--ck-bg) 72%, transparent) 78%,
+      color-mix(in srgb, var(--ck-bg) 42%, transparent) 0%,
+      color-mix(in srgb, var(--ck-bg) 62%, transparent) 28%,
+      color-mix(in srgb, var(--ck-bg) 88%, transparent) 78%,
       var(--ck-bg) 100%
     );
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  transform: translateX(50%);
+  -webkit-backdrop-filter: blur(20px) saturate(115%);
+  backdrop-filter: blur(20px) saturate(115%);
 }
 .klio-aui-footer > :not(.klio-aui-to-bottom) { position: relative; z-index: 1; }
 .klio-aui-footer > .klio-aui-to-bottom { position: absolute; z-index: 2; pointer-events: auto; }
@@ -107,7 +107,7 @@
 @media(max-width:600px) {
   .klio-aui-viewport { padding:0 14px; }
   .klio-aui-footer { padding-top:24px; }
-  .klio-aui-footer::before { top:-112px; }
+  .klio-aui-footer::before { top:24px; border-radius:24px 24px 0 0; clip-path:inset(0 round 24px 24px 0 0); }
   .klio-aui-footer > .klio-aui-to-bottom { top:-44px; right:auto; left:calc(50% - 20px); width:40px; height:40px; }
   .klio-aui-welcome h1 { font-size:25px; }
   .klio-aui-message { font-size:15px; margin-bottom:24px; }
