@@ -608,6 +608,31 @@ html[data-theme="light"] .workspace-shell.is-dialogue .klio-chatkit-brand-select
   background: linear-gradient(135deg, rgba(53, 104, 212, 0.14), rgba(220, 229, 243, 0.84));
 }
 
+/* The dialogue rail is navigation, not a collection of raised action
+   buttons. The global tactile layer must not turn every menu item and recent
+   thread into a separate card. Keep only the existing flat hover/active wash. */
+.workspace-shell.is-dialogue .klio-chatkit-rail :is(
+  .klio-chatkit-new,
+  nav button,
+  .klio-chatkit-account,
+  .klio-chatkit-recent button,
+  .klio-chatkit-thread-more
+) {
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.workspace-shell.is-dialogue .klio-chatkit-rail :is(
+  .klio-chatkit-new,
+  nav button,
+  .klio-chatkit-account,
+  .klio-chatkit-recent button,
+  .klio-chatkit-thread-more
+):is(:hover, :active, .is-active, [aria-current="page"]) {
+  box-shadow: none !important;
+  transform: none !important;
+}
+
 /* Keep the logo area as the first part of the same continuous sidebar.
    The desktop header still carries the centered controls, but its left rail
    must use the exact sidebar gradient and must not introduce a horizontal

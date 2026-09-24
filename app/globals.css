@@ -13726,15 +13726,18 @@ input[type="radio"] {
   padding: 0;
   border: 0;
   border-radius: 0;
-  background: rgba(3, 12, 28, 0.28);
-  -webkit-backdrop-filter: blur(9px) saturate(88%);
-  backdrop-filter: blur(9px) saturate(88%);
+  background: rgba(3, 12, 28, 0.16);
+  -webkit-backdrop-filter: blur(3px) saturate(96%);
+  backdrop-filter: blur(3px) saturate(96%);
   cursor: default;
   animation: brandMenuBackdropReveal 180ms ease-out both;
 }
 
 .brand-menu-layer-open {
-  z-index: 150;
+  /* The backdrop must cover the sticky header as well. The trigger and the
+     dropdown list have their own higher local z-index values, so they stay
+     crisp above the softened page. */
+  z-index: 300;
 }
 
 .brand-menu-trigger:hover,
@@ -14007,18 +14010,28 @@ input[type="radio"] {
   letter-spacing: 0;
 }
 
-.workspace-history-filters > button:hover,
-.workspace-history-filters > button.active {
-  border-color: rgba(91, 107, 130, 0.3);
+.workspace-history-filters > button:hover {
+  border-color: rgba(124, 103, 226, 0.52);
   color: #fff;
-  background: linear-gradient(135deg, rgba(42, 49, 60, 0.94), rgba(96, 113, 137, 0.86));
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.17), 0 10px 25px rgba(52, 62, 76, 0.14);
+  background: linear-gradient(135deg, rgba(57, 64, 117, 0.88), rgba(91, 76, 160, 0.9));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.17), 0 10px 25px rgba(77, 65, 155, 0.2);
 }
 
-.workspace-history-filters > button.active > b,
+.workspace-history-filters > button.active {
+  border-color: rgba(185, 169, 255, 0.72);
+  color: #fff;
+  background: linear-gradient(135deg, #5d4bb6, #8368d9);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.22), 0 10px 25px rgba(77, 61, 163, 0.3);
+}
+
 .workspace-history-filters > button:hover > b {
   color: #17131f;
   background: var(--acid);
+}
+
+.workspace-history-filters > button.active > b {
+  color: #30275a;
+  background: #d8d1ff;
 }
 
 .seo-field-label {
@@ -21646,17 +21659,46 @@ input[type="radio"] {
   background: rgba(53, 104, 212, 0.11);
 }
 
-[data-theme="light"] .workspace-history-filters > button:hover,
-[data-theme="light"] .workspace-history-filters > button.active {
-  border-color: rgba(91, 107, 130, 0.36);
-  color: #fff;
-  background: linear-gradient(135deg, #3c4756, #71839c);
+[data-theme="light"] .workspace-history-filters > button:hover {
+  border-color: rgba(102, 83, 190, 0.32);
+  color: #33285f;
+  background: linear-gradient(135deg, #f2f0ff, #e8e4ff);
 }
 
-[data-theme="light"] .workspace-history-filters > button:hover > b,
-[data-theme="light"] .workspace-history-filters > button.active > b {
+[data-theme="light"] .workspace-history-filters > button.active {
+  border-color: rgba(102, 83, 190, 0.58);
+  color: #fff;
+  background: linear-gradient(135deg, #6654be, #8c73e1);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.3), 0 10px 25px rgba(91, 71, 176, 0.2);
+}
+
+[data-theme="light"] .workspace-history-filters > button:hover > b {
   color: #17131f;
   background: var(--acid);
+}
+
+[data-theme="light"] .workspace-history-filters > button.active > b {
+  color: #30275a;
+  background: #d8d1ff;
+}
+
+/* Dropdown rows are navigation choices, not raised action buttons. Keep the
+   tactile treatment on filters and actions, but let popover options stay
+   aligned and flat inside their own panel. */
+:is(.brand-menu-list > button, .brand-menu-backdrop, .module-select-list > button, .account-menu-list :is(button, a), .klio-chatkit-brand-options button, .module-select-list.module-select-chatkit button) {
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+:is(.brand-menu-list > button, .module-select-list > button, .account-menu-list :is(button, a), .klio-chatkit-brand-options button, .module-select-list.module-select-chatkit button):is(:hover, :active) {
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+[data-theme="light"] .brand-menu-backdrop {
+  background: rgba(205, 217, 234, 0.12);
+  -webkit-backdrop-filter: blur(3px) saturate(100%);
+  backdrop-filter: blur(3px) saturate(100%);
 }
 
 [data-theme="light"] .workspace-history-list article {
