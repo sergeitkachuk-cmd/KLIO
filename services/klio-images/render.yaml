@@ -1,3 +1,8 @@
+# Optional standalone image-service Blueprint.
+#
+# Production currently uses the already-paid combined Telegram + image/GPT
+# relay described in COMBINED.md. Do not create a second Render service from
+# this file unless that architecture is explicitly chosen.
 services:
   - type: web
     name: klio-images

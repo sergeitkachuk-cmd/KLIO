@@ -1,8 +1,14 @@
-# KLIO image service
+# KLIO image service (optional)
 
-Standalone server-side image generation. The existing Telegram relay is a separate service.
+This directory contains a standalone server-side image service as an optional
+alternative. The current production setup uses the existing paid Render
+service as a combined Telegram + image/GPT relay; see `COMBINED.md` before
+creating any additional Render service.
 
-## Render setup
+## Optional Render setup
+
+The following settings are for a separate image service only. They are not the
+current production deployment.
 
 Create a Web Service from `sergeitkachuk-cmd/KLIO`:
 

@@ -1,3 +1,11 @@
+# Archived configuration.
+#
+# This file used to deploy the complete KLIO application and a Render
+# PostgreSQL database. The main application now runs on Timeweb App Platform;
+# Render is used only for the Telegram + image/GPT relay. Keep this file for
+# historical reference, but do not rename it back to render.yaml or use it as
+# a new Render Blueprint without an explicit architecture decision.
+
 services:
   - type: web
     name: klio
@@ -19,31 +27,18 @@ services:
         sync: false
       - key: DEEPSEEK_API_KEY
         sync: false
-      # "openai" or "deepseek" — switches every AI operation at once (see
-      # app/api/_lib/ai-config.ts). Leave unset/anything else and it stays
-      # on OpenAI — the DeepSeek integration is additive, not a replacement.
-      # Set to deepseek to match the value actually configured on the live
-      # Render service (this file previously said openai, which a fresh
-      # deploy from this blueprint would have silently reverted to).
       - key: AI_PROVIDER
         value: deepseek
       - key: YANDEX_SEARCH_API_KEY
         sync: false
       - key: YANDEX_FOLDER_ID
         sync: false
-      # DaData party suggestions for autofilling invoice requisites.
       - key: DADATA_API_KEY
         sync: false
-      # Bounded Tavily search for content-plan grounding. The value is set
-      # only in Render and must never be committed to this blueprint.
       - key: TAVILY_API_KEY
         sync: false
-      # Optional limit of the active Tavily tariff. This lets /admin calculate
-      # remaining credits from Tavily's usage API.
       - key: TAVILY_MONTHLY_CREDIT_LIMIT
         sync: false
-      # Optional owner-only monitoring tokens. Render API exposes service
-      # state, while GitHub's token needs the Plan: read account permission.
       - key: RENDER_API_KEY
         sync: false
       - key: GITHUB_BILLING_TOKEN
@@ -52,8 +47,6 @@ services:
         sync: false
       - key: GITHUB_BILLING_SCOPE
         sync: false
-      # Comma-separated emails allowed to open /admin (users, plan usage,
-      # AI spend). Leave unset and nobody can open it.
       - key: ADMIN_EMAILS
         sync: false
       - key: UNISENDER_GO_API_KEY
@@ -63,7 +56,7 @@ services:
       - key: UNISENDER_BACKEND_ID
         sync: false
       - key: APP_BASE_URL
-        value: https://цифроваяредакция.рф
+        sync: false
 
 databases:
   - name: klio-db
