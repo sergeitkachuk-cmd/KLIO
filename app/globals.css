@@ -24249,3 +24249,12 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
   .social-post-card h3 { font-size: 29px; }
   .social-content-board-foot { flex-wrap: wrap; gap: 7px; }
 }
+
+/* The mode choices are the only interactive selector; the old numbered
+   process row looked like a second, paired set of tabs. */
+.image-generator-studio-steps { display: none !important; }
+.image-generator-mode-index { display: none; }
+@media (max-width: 750px) {
+  .image-generator-mode-switch { display: grid; grid-template-columns: 1fr; overflow: visible; }
+  .image-generator-mode-switch button { width: 100%; flex-basis: auto; }
+}

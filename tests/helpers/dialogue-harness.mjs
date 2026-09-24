@@ -20,6 +20,7 @@ export function load(path, dependencies = {}, globals = {}) {
   vm.runInNewContext(output, {
     exports,
     require: (name) => {
+      if (name === "../../carousel-templates") return load("app/carousel-templates.ts");
       if (!(name in dependencies))
         throw new Error(`Unexpected dependency ${name}`);
       return dependencies[name];

@@ -1,7 +1,6 @@
 import { storageConfigured, uploadPublicationImage } from "./storage";
 import { imageContentType } from "./image-type";
 import { ImageRelayUpgradeRequiredError } from "./image-generation-errors";
-import { renderCarouselSlide } from "./carousel-render";
 import type { CarouselTemplateId } from "../../carousel-templates";
 import { carouselTemplateInstruction } from "../../carousel-templates";
 
@@ -380,7 +379,7 @@ export async function createCarouselSlideImage(
     : guidedPrompt;
   const generated = await generateImageBytes(imagePrompt, requestId, options, reference, model);
   const { bytes, contentType } = textOverlay
-    ? await renderCarouselSlide(generated.bytes, textOverlay.headline, textOverlay.subtext, textOverlay.templateId)
+    ? await (await import("./carousel-render")).renderCarouselSlide(generated.bytes, textOverlay.headline, textOverlay.subtext, textOverlay.templateId)
     : generated;
   const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
   const url = await uploadPublicationImage(

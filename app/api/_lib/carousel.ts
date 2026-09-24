@@ -7,7 +7,6 @@ import { getWorkspaceDb, recordCarouselSlideRegeneration, recordGeneration, Work
 import { failAsyncJob, markAsyncJobProcessing } from "./async-jobs";
 import { carouselTemplateInstruction, DEFAULT_CAROUSEL_TEMPLATE, isCarouselTemplateId, type CarouselTemplateId } from "../../carousel-templates";
 import { downloadPublicationImage } from "./storage";
-import sharp from "sharp";
 
 export const CAROUSEL_MIN_SLIDES = 3;
 export const CAROUSEL_MAX_SLIDES = 8;
@@ -141,7 +140,7 @@ export async function generateCarouselSlides(jobId: string, input: CarouselInput
       throw new Error(`Не удалось создать слайд ${index + 1} из ${count} — генерация карусели остановлена. ${error instanceof Error ? error.message : ""}`.trim());
     }
     slides.push({ headline: slide.headline, subtext: slide.subtext, imageUrl: generated.url, templateId });
-    reference = { bytes: generated.referenceBytes, contentType: generated.contentType, kind: "previous-slide" };
+    reference = { bytes: generated.referenceBytes ?? generated.bytes, contentType: generated.contentType, kind: "previous-slide" };
   }
 
   return slides;
@@ -204,6 +203,7 @@ export async function runCarouselSlideRegeneration(jobId: string, input: { gener
     const key = decodeURIComponent(referenceUrl.pathname).match(/^\/api\/uploads\/(publications\/[a-f0-9]{64}\/[a-f0-9-]{36}\.(?:png|jpg|webp|gif))$/)?.[1];
     if (!key) throw new WorkspaceAccessError("Не удалось загрузить соседний слайд для сохранения стиля.", 422);
     const reference = await downloadPublicationImage(key);
+    const sharp = (await import("sharp")).default;
     const dimensions = await sharp(reference.bytes).metadata();
     const ratio = (dimensions.width ?? 1) / (dimensions.height ?? 1);
     const aspectRatio = ratio > 1.5 ? "16:9" : ratio > 1.12 ? "4:3" : ratio < 0.68 ? "9:16" : ratio < 0.88 ? "4:5" : "1:1";
