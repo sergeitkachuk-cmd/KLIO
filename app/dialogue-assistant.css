@@ -19,18 +19,32 @@
   bottom: 0;
   z-index: 2;
   padding: 30px 0 max(8px, env(safe-area-inset-bottom));
+  background: transparent;
+  isolation: isolate;
+}
+.klio-aui-footer::before {
+  position: absolute;
+  z-index: 0;
+  top: -156px;
+  right: 50%;
+  bottom: 0;
+  width: 100vw;
+  content: "";
+  pointer-events: none;
   background:
     linear-gradient(
       180deg,
       transparent 0%,
-      color-mix(in srgb, var(--ck-bg) 22%, transparent) 28%,
-      color-mix(in srgb, var(--ck-bg) 76%, transparent) 72%,
+      color-mix(in srgb, var(--ck-bg) 8%, transparent) 22%,
+      color-mix(in srgb, var(--ck-bg) 25%, transparent) 46%,
+      color-mix(in srgb, var(--ck-bg) 72%, transparent) 78%,
       var(--ck-bg) 100%
     );
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
-  isolation: isolate;
+  transform: translateX(50%);
 }
+.klio-aui-footer > * { position: relative; z-index: 1; }
 .klio-aui-composer { display:grid; grid-template-columns:36px minmax(0,1fr) 36px; align-items:end; gap:4px; border:1px solid var(--ck-line); border-radius:28px; padding:8px; background:var(--ck-panel); box-shadow:0 2px 8px #00102006; }
 .klio-aui-root .klio-aui-input { display:block; resize:none; width:100%; min-height:28px; max-height:180px; padding:4px 6px; border:0; border-radius:0; background:transparent; color:var(--ck-text); font:inherit; font-size:16px; line-height:1.6; box-shadow:none; outline:0; }
 .klio-aui-input::placeholder { color:var(--ck-muted); }
@@ -91,6 +105,7 @@
 @media(max-width:600px) {
   .klio-aui-viewport { padding:0 14px; }
   .klio-aui-footer { padding-top:24px; }
+  .klio-aui-footer::before { top:-112px; }
   .klio-aui-welcome h1 { font-size:25px; }
   .klio-aui-message { font-size:15px; margin-bottom:24px; }
   .klio-aui-message.is-user .klio-aui-message-text { max-width:92%; }
