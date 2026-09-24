@@ -23,6 +23,7 @@
   isolation: isolate;
 }
 .klio-aui-footer::before {
+  display: none;
   position: absolute;
   z-index: 0;
   top: -156px;
@@ -107,7 +108,7 @@
   .klio-aui-viewport { padding:0 14px; }
   .klio-aui-footer { padding-top:24px; }
   .klio-aui-footer::before { top:-112px; }
-  .klio-aui-footer > .klio-aui-to-bottom { top:-48px; right:10px; left:auto; width:40px; height:40px; }
+  .klio-aui-footer > .klio-aui-to-bottom { top:-44px; right:auto; left:calc(50% - 20px); width:40px; height:40px; }
   .klio-aui-welcome h1 { font-size:25px; }
   .klio-aui-message { font-size:15px; margin-bottom:24px; }
   .klio-aui-message.is-user .klio-aui-message-text { max-width:92%; }
