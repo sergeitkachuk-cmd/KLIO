@@ -23499,3 +23499,29 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
     --workspace-sidebar-column: 220px;
   }
 }
+
+/* Use the shell background itself as the single source of truth for the
+   professional sidebar column. This keeps the logo/header and the menu on
+   one continuous gradient even when the page becomes taller than the
+   viewport. */
+@media (min-width: 821px) {
+  .workspace-shell:not(.is-dialogue) {
+    background:
+      radial-gradient(circle at 15% 5%, rgba(91, 107, 130, 0.25), transparent 28%) 0 0 / var(--workspace-sidebar-column) 100% no-repeat,
+      linear-gradient(165deg, #041326 0%, #082947 60%, #051b31 100%) 0 0 / var(--workspace-sidebar-column) 100% no-repeat,
+      radial-gradient(1100px 700px at 88% 4%, rgba(91, 107, 130, 0.16), transparent 62%),
+      linear-gradient(180deg, #0a1930 0%, #0d2542 55%, #0a1a2f 100%);
+  }
+
+  .workspace-shell:not(.is-dialogue)::before {
+    display: none;
+  }
+
+  [data-theme="light"] .workspace-shell:not(.is-dialogue) {
+    background:
+      radial-gradient(circle at 15% 5%, rgba(53, 104, 212, 0.16), transparent 30%) 0 0 / var(--workspace-sidebar-column) 100% no-repeat,
+      linear-gradient(165deg, #e3eaf6 0%, #f0f4fa 55%, #ffffff 100%) 0 0 / var(--workspace-sidebar-column) 100% no-repeat,
+      radial-gradient(900px 620px at 91% 8%, rgba(53, 104, 212, 0.1), transparent 68%),
+      linear-gradient(180deg, #f7f9fd 0%, #edf3fb 100%);
+  }
+}
