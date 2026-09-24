@@ -7277,14 +7277,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     <section className="social-content section" id="social-content">
       <div className="section-heading social-content-heading">
         <div><p className="kicker">КЛИО / Контент для соцсетей</p><h2>Две кнопки.<br/><em>И пост готов<span className="klio-mark-dot">.</span></em></h2></div>
-        <p>Нужно просто регулярно публиковаться? КЛИО придумает тему, напишет пост, сгенерирует картинку и поставит публикацию в очередь — без долгих брифов и лишней рутины.</p>
+        <p>Нужно регулярно публиковаться? КЛИО придумает тему, напишет пост, сгенерирует картинку и поставит публикацию в очередь — без долгих брифов и лишней рутины.</p>
       </div>
       <div className="social-content-showcase">
         <div className="social-content-copy">
           <p className="social-content-lead">Минимум времени на контент — максимум свободы для бизнеса и других задач.</p>
           <ol className="social-content-steps">
-            <li><b>01</b><div><strong>Задайте направление</strong><span>Одной фразой расскажите, о чём хотите поговорить с аудиторией.</span></div></li>
-            <li><b>02</b><div><strong>КЛИО соберёт выпуск</strong><span>Тема, текст и визуал будут готовы в одном рабочем сценарии.</span></div></li>
+            <li><b>01</b><div><strong>Задайте направление</strong><span>Одной фразой расскажите, о чём хотите рассказать аудитории.</span></div></li>
+            <li><b>02</b><div><strong>КЛИО соберёт контент</strong><span>Тема, текст и визуал будут готовы в одном рабочем сценарии.</span></div></li>
             <li><b>03</b><div><strong>Нажмите «Опубликовать»</strong><span>Поставьте пост в календарь Telegram или VK на удобное время.</span></div></li>
           </ol>
           <div className="social-content-actions"><Link className="button primary" href="/workspace#generator">Создать пост <Icon name="arrow"/></Link><Link className="button social-content-secondary" href="/workspace#publications">Открыть календарь <Icon name="arrow"/></Link></div>

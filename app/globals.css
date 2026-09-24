@@ -169,6 +169,31 @@ select:focus-visible {
   box-shadow: 0 17px 48px rgba(167, 178, 194, 0.16);
 }
 
+/* During a real text generation, make the action feel alive without changing
+   its size or layout. Both quick and advanced generator buttons already use
+   .generate.is-busy, so the same feedback stays consistent across modes. */
+.button.generate.is-busy {
+  color: #07172b;
+  background: linear-gradient(112deg, #7ee6d8 0%, #a8a0ff 32%, #70d8ff 64%, #d1a8ff 100%);
+  background-size: 280% 100%;
+  box-shadow: 0 17px 48px rgba(89, 216, 220, 0.24), 0 0 0 1px rgba(198, 243, 255, 0.22) inset;
+  animation: klioGenerationFlow 2.2s ease-in-out infinite;
+}
+
+.button.generate.is-busy svg {
+  animation: klioGenerationSpark 1.15s ease-in-out infinite;
+}
+
+@keyframes klioGenerationFlow {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes klioGenerationSpark {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.12) rotate(8deg); }
+}
+
 .button.ghost {
   border-color: rgba(255, 255, 255, 0.23);
   color: #fff;
