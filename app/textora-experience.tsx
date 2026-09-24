@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode, TextareaHTMLAttributes } from "react";
+import type { CSSProperties, DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent, ReactNode, TextareaHTMLAttributes } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { DialogueWorkspace } from "./dialogue-workspace";
@@ -1390,11 +1390,25 @@ function addDays(date: Date, days: number) {
   result.setDate(result.getDate() + days);
   return result;
 }
+function addMonths(date: Date, months: number) {
+  const targetMonth = date.getMonth() + months;
+  const lastDay = new Date(date.getFullYear(), targetMonth + 1, 0).getDate();
+  return new Date(date.getFullYear(), targetMonth, Math.min(date.getDate(), lastDay));
+}
 // en-CA formats as YYYY-MM-DD in the viewer's own local timezone — a
 // reliable zero-dependency way to bucket an ISO instant onto a calendar day
 // without pulling in a date library for one string.
 function localDayKey(date: Date) {
   return date.toLocaleDateString("en-CA");
+}
+
+function publicationPeriodLabel(view: "month" | "week" | "list", cursor: Date) {
+  if (view !== "week") return cursor.toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
+  const start = startOfWeek(cursor);
+  const end = addDays(start, 6);
+  const startLabel = start.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+  const endLabel = end.toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
+  return `${startLabel} – ${endLabel}`;
 }
 
 async function requestPublications(brandId: string, from: string, to: string) {
@@ -1769,7 +1783,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [pubChannelLimit, setPubChannelLimit] = useState(0);
   const [pubLoading, setPubLoading] = useState(false);
   const [pubError, setPubError] = useState("");
-  const [pubView, setPubView] = useState<"month" | "week">("month");
+  const [pubView, setPubView] = useState<"month" | "week" | "list">("month");
   // Opens with today already selected (and its post list already showing
   // below the calendar) instead of an empty "Выберите день" state the
   // person had to click through every time just to see today's posts.
@@ -1777,6 +1791,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // Any date within the visible month/week — navigation just moves this,
   // the grid itself is always derived from it (see pubGridDays below).
   const [pubCursor, setPubCursor] = useState(() => new Date());
+  const [pubDraggingId, setPubDraggingId] = useState<string | null>(null);
+  const [pubDropDayKey, setPubDropDayKey] = useState<string | null>(null);
+  const [pubMovingId, setPubMovingId] = useState<string | null>(null);
   const [pubChannelModalOpen, setPubChannelModalOpen] = useState(false);
   const [pubChannelPlatform, setPubChannelPlatform] = useState<"telegram" | "vk">("telegram");
   const [pubChannelTelegram, setPubChannelTelegram] = useState({ botToken: "", chatId: "" });
@@ -1818,8 +1835,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [generatedArchiveId, setGeneratedArchiveId] = useState<string | null>(null);
 
   const pubGridDays = useMemo(() => {
-    const start = pubView === "month" ? startOfWeek(startOfMonth(pubCursor)) : startOfWeek(pubCursor);
-    const count = pubView === "month" ? 42 : 7;
+    const start = pubView === "week" ? startOfWeek(pubCursor) : startOfWeek(startOfMonth(pubCursor));
+    const count = pubView === "week" ? 7 : 42;
     return Array.from({ length: count }, (_, index) => addDays(start, index));
   }, [pubView, pubCursor]);
 
@@ -1866,8 +1883,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // listed, never a function identity that would be new every render.
   useEffect(() => {
     if (activeModule !== "publications" || !activeBrandId) return;
-    const gridStart = pubView === "month" ? startOfWeek(startOfMonth(pubCursor)) : startOfWeek(pubCursor);
-    const gridEnd = addDays(gridStart, pubView === "month" ? 42 : 7);
+    const gridStart = pubView === "week" ? startOfWeek(pubCursor) : startOfWeek(startOfMonth(pubCursor));
+    const gridEnd = addDays(gridStart, pubView === "week" ? 7 : 42);
     let cancelled = false;
     setPubLoading(true);
     setPubError("");
@@ -1892,8 +1909,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // hook, so calling it from an event handler needs no dependency array.
   async function refreshPublications() {
     if (!activeBrandId) return;
-    const gridStart = pubView === "month" ? startOfWeek(startOfMonth(pubCursor)) : startOfWeek(pubCursor);
-    const gridEnd = addDays(gridStart, pubView === "month" ? 42 : 7);
+    const gridStart = pubView === "week" ? startOfWeek(pubCursor) : startOfWeek(startOfMonth(pubCursor));
+    const gridEnd = addDays(gridStart, pubView === "week" ? 7 : 42);
     try {
       const data = await requestPublications(activeBrandId, gridStart.toISOString(), gridEnd.toISOString());
       setPubChannels(data.channels);
@@ -1902,6 +1919,57 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Не удалось обновить календарь.");
     }
+  }
+
+  async function movePubItem(item: PubItem, scheduledAt: string) {
+    setPubMovingId(item.id);
+    try {
+      const response = await fetch("/api/publications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update",
+          id: item.id,
+          scheduledAt,
+          channelId: item.channelId,
+          telegramDeliveryMode: item.telegramDeliveryMode,
+        }),
+      });
+      const payload = await safeJson(response) as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "Не удалось перенести публикацию.");
+      setPubItems((current) => current.map((currentItem) => currentItem.id === item.id ? { ...currentItem, scheduledAt } : currentItem));
+      showToast("Публикация перенесена");
+      await refreshPublications();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Не удалось перенести публикацию.");
+      throw error;
+    } finally {
+      setPubMovingId(null);
+    }
+  }
+
+  function handlePublicationDragStart(event: ReactDragEvent<HTMLButtonElement>, item: PubItem) {
+    if (item.status !== "scheduled" || pubMovingId) {
+      event.preventDefault();
+      return;
+    }
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", item.id);
+    setPubDraggingId(item.id);
+  }
+
+  function handlePublicationDrop(event: ReactDragEvent<HTMLDivElement>, day: Date) {
+    event.preventDefault();
+    const itemId = event.dataTransfer.getData("text/plain");
+    const item = pubItems.find((candidate) => candidate.id === itemId);
+    setPubDraggingId(null);
+    setPubDropDayKey(null);
+    if (!item || item.status !== "scheduled" || pubMovingId) return;
+    const previous = new Date(item.scheduledAt);
+    const next = new Date(day);
+    next.setHours(previous.getHours(), previous.getMinutes(), previous.getSeconds(), previous.getMilliseconds());
+    if (next.getTime() === previous.getTime()) return;
+    void movePubItem(item, next.toISOString()).catch(() => undefined);
   }
 
   function openPubEditor(day: Date, existing?: PubItem) {
@@ -6947,11 +7015,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <div className="publications-view-switch" role="group" aria-label="Вид календаря">
                   <button type="button" className={pubView === "month" ? "active" : ""} onClick={() => setPubView("month")}>Месяц</button>
                   <button type="button" className={pubView === "week" ? "active" : ""} onClick={() => setPubView("week")}>Неделя</button>
+                  <button type="button" className={pubView === "list" ? "active" : ""} onClick={() => setPubView("list")}>Список</button>
                 </div>
                 <div className="publications-nav">
-                  <button type="button" onClick={() => setPubCursor((current) => addDays(current, pubView === "month" ? -30 : -7))} aria-label="Предыдущий период">‹</button>
-                  <b>{pubCursor.toLocaleDateString("ru-RU", { month: "long", year: "numeric" })}</b>
-                  <button type="button" onClick={() => setPubCursor((current) => addDays(current, pubView === "month" ? 30 : 7))} aria-label="Следующий период">›</button>
+                  <button type="button" onClick={() => setPubCursor((current) => pubView === "week" ? addDays(current, -7) : addMonths(current, -1))} aria-label="Предыдущий период">‹</button>
+                  <b>{publicationPeriodLabel(pubView, pubCursor)}</b>
+                  <button type="button" onClick={() => setPubCursor((current) => pubView === "week" ? addDays(current, 7) : addMonths(current, 1))} aria-label="Следующий период">›</button>
                   <button type="button" className="publications-today" onClick={() => setPubCursor(new Date())}>Сегодня</button>
                 </div>
                 <button type="button" className="button primary" onClick={() => openPubEditor(new Date())}>+ Добавить публикацию</button>
@@ -6959,7 +7028,22 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
               {pubError && <p className="generation-error" role="alert">{pubError}</p>}
 
-              <div className="publications-calendar-scroll">
+              {pubView === "list" ? <div className={`publications-list-view ${pubLoading ? "is-loading" : ""}`} aria-label="Список публикаций">
+                {pubItems.length === 0 ? <p className="publications-list-empty">В этом периоде публикаций нет.</p> : [...pubItems].sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt)).map((item) => <button
+                  type="button"
+                  className={`publications-list-item publications-list-item-${item.status} publications-list-item-${item.channel?.platform || "unknown"}`}
+                  draggable={item.status === "scheduled" && pubMovingId !== item.id}
+                  onDragStart={(event) => handlePublicationDragStart(event, item)}
+                  onDragEnd={() => setPubDraggingId(null)}
+                  onClick={() => openPubEditor(new Date(item.scheduledAt), item)}
+                  key={item.id}
+                >
+                  <time dateTime={item.scheduledAt}>{new Date(item.scheduledAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}<br />{new Date(item.scheduledAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</time>
+                  <i className={`publications-list-platform publications-list-platform-${item.channel?.platform || "unknown"}`} aria-label={item.channel?.platform === "telegram" ? "Telegram" : item.channel?.platform === "vk" ? "VK" : "Канал отключён"}>{item.channel?.platform === "telegram" ? "TG" : item.channel?.platform === "vk" ? "VK" : "—"}</i>
+                  <span><b>{item.title || item.body || "Без названия"}</b><small>{item.channel?.label || "Канал отключён"}</small></span>
+                  <em>{item.status === "failed" ? "Ошибка" : item.status === "published" ? "Опубликовано" : item.status === "publishing" ? "Публикуется" : "Запланировано"}</em>
+                </button>)}
+              </div> : <div className="publications-calendar-scroll">
                 <div className={`publications-grid publications-grid-${pubView} ${pubLoading ? "is-loading" : ""}`}>
                 {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((label) => <div className="publications-weekday" key={label}>{label}</div>)}
                 {pubGridDays.map((day) => {
@@ -6967,10 +7051,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   const items = pubByDay.get(key) || [];
                   const isToday = key === localDayKey(new Date());
                   const inMonth = pubView === "week" || day.getMonth() === pubCursor.getMonth();
-                  return <div className={`publications-day ${isToday ? "is-today" : ""} ${inMonth ? "" : "is-outside"} ${pubSelectedDayKey === key ? "is-selected" : ""}`} onClick={() => setPubSelectedDayKey(key)} key={key}>
+                  return <div className={`publications-day ${isToday ? "is-today" : ""} ${inMonth ? "" : "is-outside"} ${pubSelectedDayKey === key ? "is-selected" : ""} ${pubDropDayKey === key ? "is-drop-target" : ""}`} onClick={() => setPubSelectedDayKey(key)} onDragOver={(event) => { if (pubDraggingId) { event.preventDefault(); event.dataTransfer.dropEffect = "move"; setPubDropDayKey(key); } }} onDragLeave={() => { if (pubDropDayKey === key) setPubDropDayKey(null); }} onDrop={(event) => handlePublicationDrop(event, day)} key={key}>
                     <div className="publications-day-head"><span>{day.getDate()}</span><button type="button" onClick={(event) => { event.stopPropagation(); openPubEditor(day); }} aria-label="Добавить публикацию на этот день">+</button></div>
                     <div className="publications-day-items">
-                      {items.slice(0, 3).map((item) => <button type="button" className={`publications-chip publications-chip-${item.status} publications-chip-${item.channel?.platform || "unknown"}`} onClick={(event) => { event.stopPropagation(); setPubSelectedDayKey(key); }} key={item.id}>
+                      {items.slice(0, 3).map((item) => <button type="button" className={`publications-chip publications-chip-${item.status} publications-chip-${item.channel?.platform || "unknown"} ${pubDraggingId === item.id ? "is-dragging" : ""}`} draggable={item.status === "scheduled" && pubMovingId !== item.id} onDragStart={(event) => { event.stopPropagation(); handlePublicationDragStart(event, item); }} onDragEnd={() => setPubDraggingId(null)} onClick={(event) => { event.stopPropagation(); setPubSelectedDayKey(key); }} key={item.id}>
                         <i className={`publications-chip-platform publications-chip-platform-${item.channel?.platform || "unknown"}`} aria-label={item.channel?.platform === "telegram" ? "Telegram" : item.channel?.platform === "vk" ? "VK" : "Канал отключён"}>{item.channel?.platform === "telegram" ? "TG" : item.channel?.platform === "vk" ? "VK" : "—"}</i>
                         <b>{new Date(item.scheduledAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</b>
                         <span>{item.title || "Без названия"}</span>
@@ -6983,8 +7067,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   </div>;
                 })}
                 </div>
-              </div>
-              <div className="publications-mobile-list" aria-label="Список публикаций">
+              </div>}
+              {pubView !== "list" && <div className="publications-mobile-list" aria-label="Список публикаций">
                 <h3>{pubSelectedDay ? `Публикации · ${pubSelectedDay.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}` : "Выберите день"}</h3>
                 {!pubSelectedDay ? <p className="publications-mobile-empty">Нажмите на дату в календаре, чтобы посмотреть её публикации.</p> : !pubSelectedItems.length ? <p className="publications-mobile-empty">На этот день публикаций нет.</p> : pubSelectedItems.map((item) => <button type="button" className={`publications-mobile-item publications-mobile-item-${item.status} publications-mobile-item-${item.channel?.platform || "unknown"}`} onClick={() => openPubEditor(new Date(item.scheduledAt), item)} key={item.id}>
                     {item.imageUrl && <i className="publications-mobile-thumb" style={{ backgroundImage: `url(${item.imageUrl})` }} aria-hidden="true"/>}
@@ -6993,7 +7077,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     <b>{item.title || "Без названия"}</b>
                     <em>{item.status === "failed" ? "Ошибка" : item.status === "published" ? "✓ Опубликовано" : item.retryCount > 0 ? "Повторяем" : "Запланировано"}</em>
                   </button>)}
-              </div>
+              </div>}
             </>}
           </section>
         </section>
