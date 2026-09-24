@@ -543,3 +543,67 @@ html[data-theme="dark"] .workspace-shell.is-dialogue .workspace-layout.is-dialog
     padding: 16px;
   }
 }
+
+/* Dialogue uses the same layered navy atmosphere as the professional
+   workspace. Keep the inner chat/module surfaces transparent so the canvas
+   gradient remains visible between cards instead of becoming a flat block. */
+.workspace-shell.is-dialogue {
+  background:
+    radial-gradient(1100px 700px at 88% 4%, rgba(91, 107, 130, 0.16), transparent 62%),
+    linear-gradient(180deg, #0a1930 0%, #0d2542 55%, #0a1a2f 100%);
+}
+
+html[data-theme="light"] .workspace-shell.is-dialogue {
+  background:
+    radial-gradient(900px 620px at 88% 4%, rgba(53, 104, 212, 0.12), transparent 60%),
+    linear-gradient(180deg, #f7f9fc 0%, #eef3f9 55%, #f9fbfd 100%);
+}
+
+.workspace-shell.is-dialogue > .workspace-header {
+  background:
+    radial-gradient(circle at 78% -60%, rgba(91, 107, 130, 0.52), transparent 42%),
+    linear-gradient(115deg, rgba(4, 17, 34, 0.985), rgba(8, 29, 53, 0.975));
+}
+
+html[data-theme="light"] .workspace-shell.is-dialogue > .workspace-header {
+  background:
+    radial-gradient(circle at 78% -60%, rgba(53, 104, 212, 0.14), transparent 42%),
+    linear-gradient(115deg, #f7f9fc, #eef3f9);
+}
+
+.workspace-shell.is-dialogue :is(.klio-chatkit-shell, .klio-chatkit-main, .workspace-layout.is-dialogue-module-layout, .workspace-layout.is-dialogue-module-layout > .workspace-content) {
+  background: transparent;
+}
+
+.workspace-shell.is-dialogue .klio-chatkit-rail {
+  background:
+    radial-gradient(circle at 15% 5%, rgba(91, 107, 130, 0.25), transparent 28%),
+    linear-gradient(165deg, #041326 0%, #082947 60%, #051b31 100%);
+  border-right-color: rgba(255, 255, 255, 0.13);
+}
+
+html[data-theme="light"] .workspace-shell.is-dialogue .klio-chatkit-rail {
+  background:
+    radial-gradient(circle at 15% 5%, rgba(53, 104, 212, 0.16), transparent 30%),
+    linear-gradient(165deg, #e3eaf6 0%, #f0f4fa 55%, #ffffff 100%);
+  border-right-color: rgba(15, 23, 42, 0.12);
+}
+
+.workspace-shell.is-dialogue .klio-chatkit-rail :is(.klio-chatkit-new, nav button):is(:hover, .is-active) {
+  background:
+    linear-gradient(135deg, rgba(53, 104, 212, 0.42), rgba(27, 75, 137, 0.78));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme="light"] .workspace-shell.is-dialogue .klio-chatkit-rail :is(.klio-chatkit-new, nav button):is(:hover, .is-active) {
+  background: linear-gradient(135deg, rgba(53, 104, 212, 0.16), rgba(220, 229, 243, 0.9));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.74);
+}
+
+.workspace-shell.is-dialogue .klio-chatkit-brand-select > button {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.025));
+}
+
+html[data-theme="light"] .workspace-shell.is-dialogue .klio-chatkit-brand-select > button {
+  background: linear-gradient(135deg, rgba(53, 104, 212, 0.14), rgba(220, 229, 243, 0.84));
+}
