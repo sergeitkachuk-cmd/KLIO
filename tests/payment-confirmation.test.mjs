@@ -10,6 +10,12 @@ test("reconcile and webhook confirm once, consume the discount and preserve late
   await h.db.update(h.schema.accounts).set({ planId: "trial", planExpiresAt: null }).where(orm.eq(h.schema.accounts.email, h.owner));
   await h.db.insert(h.schema.payments).values({ id: paymentId, ownerEmail: h.owner, planId: "start", billing: "monthly", mode: "card", amountKopecks: 79200, discountApplied: true, operationId: "operation-test" });
   const body = load("app/api/_lib/request-body.ts");
+  const confirmTochkaPayment = load("app/api/_lib/confirm-tochka-payment.ts", {
+    "drizzle-orm": orm,
+    "../../../db/schema": h.schema,
+    "../../../db": { getDb: () => h.db },
+    "./subscription": load("app/api/_lib/subscription.ts"),
+  });
   class WorkspaceAccessError extends Error {}
   const dependencies = {
     "drizzle-orm": orm,
@@ -18,6 +24,7 @@ test("reconcile and webhook confirm once, consume the discount and preserve late
     "../../../_lib/tochka": { TochkaConfigError: class extends Error {}, tochkaRequest: async () => ({ Data: { status: "APPROVED" } }), verifyTochkaWebhook: async () => ({ webhookType: "acquiringInternetPayment", status: "APPROVED", paymentLinkId: paymentId, operationId: "operation-test", amount: 792 }) },
     "../../../_lib/subscription": load("app/api/_lib/subscription.ts"),
     "../../../_lib/request-body": body,
+    "../../../_lib/confirm-tochka-payment": confirmTochkaPayment,
   };
   const reconcile = load("app/api/payments/tochka/reconcile/route.ts", dependencies);
   const webhook = load("app/api/payments/tochka/webhook/route.ts", dependencies);
@@ -59,6 +66,12 @@ test("a refund restores the active plan that existed before the purchase", async
   }).where(orm.eq(h.schema.accounts.email, h.owner));
   await h.db.insert(h.schema.payments).values({ id: paymentId, ownerEmail: h.owner, planId: "start", billing: "monthly", mode: "card", amountKopecks: 119000, operationId: "restore-operation" });
   let providerStatus = "APPROVED";
+  const confirmTochkaPayment = load("app/api/_lib/confirm-tochka-payment.ts", {
+    "drizzle-orm": orm,
+    "../../../db/schema": h.schema,
+    "../../../db": { getDb: () => h.db },
+    "./subscription": load("app/api/_lib/subscription.ts"),
+  });
   const route = load("app/api/payments/tochka/reconcile/route.ts", {
     "drizzle-orm": orm,
     "../../../../../db/schema": h.schema,
@@ -66,6 +79,7 @@ test("a refund restores the active plan that existed before the purchase", async
     "../../../_lib/tochka": { TochkaConfigError: class extends Error {}, tochkaRequest: async () => ({ status: providerStatus }) },
     "../../../_lib/subscription": load("app/api/_lib/subscription.ts"),
     "../../../_lib/request-body": load("app/api/_lib/request-body.ts"),
+    "../../../_lib/confirm-tochka-payment": confirmTochkaPayment,
   });
   const request = () => new Request("https://example.invalid", { method: "POST", body: JSON.stringify({ paymentLinkId: paymentId }) });
   assert.equal((await (await route.POST(request())).json()).status, "paid");
@@ -109,6 +123,12 @@ test("monthly discount and quarterly checkout send consistent bank and receipt a
   t.after(() => h.close());
   const operations = [];
   let bankFailure = false;
+  const confirmTochkaPayment = load("app/api/_lib/confirm-tochka-payment.ts", {
+    "drizzle-orm": orm,
+    "../../../db/schema": h.schema,
+    "../../../db": { getDb: () => h.db },
+    "./subscription": load("app/api/_lib/subscription.ts"),
+  });
   const route = load("app/api/payments/tochka/create/route.ts", {
     "drizzle-orm": orm,
     "../../../../../db/schema": h.schema,
@@ -116,6 +136,7 @@ test("monthly discount and quarterly checkout send consistent bank and receipt a
     "../../../_lib/request-body": load("app/api/_lib/request-body.ts"),
     "../../../_lib/admin": { isAdminEmail: () => true },
     "../../../_lib/payment-diagnostics": load("app/api/_lib/payment-diagnostics.ts", {}, { Error }),
+    "../../../_lib/confirm-tochka-payment": confirmTochkaPayment,
     "../../../_lib/base-url": { resolveBaseUrl: () => "https://цифроваяредакция.рф" },
     "../../../../plans": load("app/plans.ts"),
     "../../../../billing-pricing": { ...load("app/billing-pricing.ts"), launchDiscountWindowOpen: () => true },
@@ -123,7 +144,12 @@ test("monthly discount and quarterly checkout send consistent bank and receipt a
     "../../../_lib/tochka": {
       TochkaConfigError: class extends Error {}, discoverTochkaIds: async () => ({ customerCode: "test", merchantId: "test" }),
       extractPaymentUrl: () => "https://example.invalid/pay", extractOperationId: () => "test-operation",
-      tochkaRequest: async (_path, options) => { operations.push(JSON.parse(options.body).Data); if (bankFailure) throw new Error("Tochka API 403: Access denied"); return {}; },
+      tochkaRequest: async (_path, options) => {
+        if (!options) return { Data: { status: "EXPIRED" } };
+        operations.push(JSON.parse(options.body).Data);
+        if (bankFailure) throw new Error("Tochka API 403: Access denied");
+        return {};
+      },
     },
   });
   const request = billing => new Request("https://example.invalid", { method: "POST", body: JSON.stringify({ planId: "start", billing, mode: "card" }) });
