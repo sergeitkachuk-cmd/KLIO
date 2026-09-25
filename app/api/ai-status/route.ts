@@ -6,10 +6,11 @@ import { aiConfigured } from "../_lib/ai-config";
 // or choose a model.
 export async function GET() {
   const connected = aiConfigured();
-  // Deployment marker: a healthy old container must not be mistaken for
-  // the release with bounded, reasoning-enabled material generation.
+  // Release markers let production checks distinguish deployed code from
+  // an older healthy container.
   return Response.json({ connected, configured: connected, health: "unknown" }, { headers: {
     "Cache-Control": "no-store",
+    "X-Klio-Ai-Model-Release": "2026-09-26-gpt-6-luna-v1",
     "X-Klio-Carousel-Publish": "2026-09-21-vk-doc-permission-guide-v6",
     "X-Klio-Dialogue-Release": "2026-09-20-render-text-relay-v4",
     "X-Klio-Payment-Diagnostics": "2026-09-26-payment-auto-reconcile-v1",
