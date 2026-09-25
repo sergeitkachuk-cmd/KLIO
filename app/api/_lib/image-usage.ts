@@ -1,17 +1,17 @@
 import { getDb } from "../../../db";
 import { aiUsage } from "../../../db/schema";
+import type { ImageProviderUsage } from "./image-cost";
 
 export type ImageUsageOperation = "generate_image" | "generate_carousel_image";
 
-/** Image requests use a separate provider path from the text AI router.
- * Record their outcome in the same admin activity log, without pretending
- * image requests have text tokens or known per-request pricing. */
+/** Image requests use a separate provider path from the text AI router. */
 export async function recordImageUsage(input: {
   ownerEmail: string;
   requestId: string;
   operation: ImageUsageOperation;
   durationMs: number;
   status: "success" | "failed";
+  usage?: ImageProviderUsage;
   errorMessage?: string;
 }) {
   if (!process.env.DATABASE_URL?.trim()) return;
@@ -22,13 +22,14 @@ export async function recordImageUsage(input: {
       brandId: null,
       materialId: null,
       operation: input.operation,
-      model: process.env.KLIO_IMAGE_MODEL?.trim() || "image-provider",
+      model: input.usage?.model || process.env.KLIO_IMAGE_MODEL?.trim() || "image-provider",
       reasoningEffort: "none",
-      inputTokens: 0,
-      cachedInputTokens: 0,
-      outputTokens: 0,
-      totalTokens: 0,
-      estimatedCostUsd: 0,
+      inputTokens: input.usage?.inputTokens ?? 0,
+      cachedInputTokens: input.usage?.cachedInputTokens ?? 0,
+      outputTokens: input.usage?.outputTokens ?? 0,
+      totalTokens: input.usage?.totalTokens ?? 0,
+      estimatedCostUsd: input.usage?.estimatedCostUsd ?? 0,
+      costSource: input.usage?.costSource ?? "unknown",
       durationMs: Math.max(0, Math.round(input.durationMs)),
       retryCount: 0,
       status: input.status,

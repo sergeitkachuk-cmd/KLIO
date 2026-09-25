@@ -3,6 +3,7 @@ import { imageContentType } from "./image-type";
 import { ImageRelayUpgradeRequiredError } from "./image-generation-errors";
 import type { CarouselTemplateId } from "../../carousel-templates";
 import { carouselTemplateInstruction } from "../../carousel-templates";
+import { normalizeImageUsage, type ImageProviderUsage } from "./image-cost";
 
 export type ImageAspectRatio = "1:1" | "4:3" | "4:5" | "16:9" | "9:16";
 export type ImageOutputFormat = "png" | "jpeg" | "webp";
@@ -10,6 +11,7 @@ export type ImageQuality = "low" | "medium" | "high" | "xhigh" | "max";
 export type LogoPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 export type ImageInput = { bytes: Uint8Array<ArrayBuffer>; contentType: string };
 type ImagePartialHandler = (dataUrl: string) => void;
+type ImageUsageHandler = (usage: ImageProviderUsage) => void;
 export type ImageGenerationOptions = {
   size?: string;
   aspectRatio?: ImageAspectRatio;
@@ -138,6 +140,7 @@ async function generateImageBytes(
   model?: string,
   mask?: ImageInput,
   onPartial?: ImagePartialHandler,
+  onUsage?: ImageUsageHandler,
 ) {
   // Browser requests only KLIO. Provider credentials and calls stay on the server;
   // image bytes are copied to our existing object store, never hotlinked to OpenAI.
@@ -256,9 +259,22 @@ async function generateImageBytes(
       "Сервис изображений не выполнил запрос. Попробуйте другое описание или загрузите свою картинку.",
     );
   }
-  const encoded = onPartial && (!serviceUrl || relayStreaming) ? await readPartialImages(response, onPartial) : ((await response.json()) as {
+  const responseData = onPartial && (!serviceUrl || relayStreaming)
+    ? await readPartialImages(response, onPartial)
+    : (() => undefined)();
+  const directData = responseData ? null : await response.json() as {
     data?: Array<{ b64_json?: string }>;
-  }).data?.[0]?.b64_json;
+    usage?: unknown;
+  };
+  const encoded = responseData?.encoded ?? directData?.data?.[0]?.b64_json;
+  onUsage?.(normalizeImageUsage(responseData?.usage ?? directData?.usage, {
+    model: resolvedModel,
+    promptCharacters: prompt.length,
+    referenceImageCount: images.length,
+    size: resolved.size,
+    quality: resolved.quality,
+    partialImages: onPartial && (!serviceUrl || relayStreaming) ? 2 : 0,
+  }));
   if (!encoded || encoded.length > 12_000_000)
     throw new Error("Сервис изображений вернул некорректный файл.");
   const bytes = new Uint8Array(Buffer.from(encoded, "base64"));
@@ -290,12 +306,14 @@ async function readPartialImages(response: Response, onPartial: ImagePartialHand
   const decoder = new TextDecoder();
   let buffer = "";
   let finalImage = "";
+  let usage: unknown;
   const handleData = (line: string) => {
     if (!line.startsWith("data:")) return;
     const raw = line.slice(5).trim();
     if (!raw || raw === "[DONE]") return;
-    let event: { type?: string; b64_json?: string; output_format?: string };
+    let event: { type?: string; b64_json?: string; output_format?: string; usage?: unknown };
     try { event = JSON.parse(raw); } catch { return; }
+    if (event.usage) usage = event.usage;
     if (!event.b64_json) return;
     if (event.type === "partial" || event.type?.includes("partial_image")) {
       const type = event.output_format === "jpeg" ? "image/jpeg" : event.output_format === "webp" ? "image/webp" : "image/png";
@@ -314,11 +332,11 @@ async function readPartialImages(response: Response, onPartial: ImagePartialHand
   } finally { reader.releaseLock(); }
   if (buffer) handleData(buffer);
   if (!finalImage || finalImage.length > 12_000_000) throw new Error("Поток завершился без итогового изображения.");
-  return finalImage;
+  return { encoded: finalImage, usage };
 }
 
-export async function createImage(prompt: string, email: string, baseUrl: string, requestId: string, options: ImageGenerationOptions = {}, model?: string, onPartial?: ImagePartialHandler) {
-  const { bytes, contentType } = await generateImageBytes(prompt, requestId, options, undefined, model, undefined, onPartial);
+export async function createImage(prompt: string, email: string, baseUrl: string, requestId: string, options: ImageGenerationOptions = {}, model?: string, onPartial?: ImagePartialHandler, onUsage?: ImageUsageHandler) {
+  const { bytes, contentType } = await generateImageBytes(prompt, requestId, options, undefined, model, undefined, onPartial, onUsage);
   const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
   return uploadPublicationImage(
     new File([bytes], fileName, { type: contentType }),
@@ -339,10 +357,11 @@ export async function createImageFromLogo(
   options: ImageGenerationOptions = {},
   model?: string,
   onPartial?: ImagePartialHandler,
+  onUsage?: ImageUsageHandler,
 ) {
   const corner = options.logoPlacement === "corner" || options.logoPlacement === "overlay";
   const guidedPrompt = `${prompt}\n\n${corner ? cornerLogoInstruction(options.logoPosition) : LOGO_REFERENCE_INSTRUCTION}`;
-  const { bytes, contentType } = await generateImageBytes(guidedPrompt, requestId, corner ? { ...options, background: "opaque" } : options, logo, model, undefined, onPartial);
+  const { bytes, contentType } = await generateImageBytes(guidedPrompt, requestId, corner ? { ...options, background: "opaque" } : options, logo, model, undefined, onPartial, onUsage);
   const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
   return uploadPublicationImage(
     new File([bytes], fileName, { type: contentType }),
@@ -355,7 +374,7 @@ export async function createImageFromLogo(
 // the logo; it must never replace the scene as the sole provider input.
 export async function createImageFromSource(
   prompt: string, source: ImageInput, purpose: "edit" | "reference", logo: ImageInput | undefined,
-  email: string, baseUrl: string, requestId: string, options: ImageGenerationOptions = {}, mask?: ImageInput, onPartial?: ImagePartialHandler,
+  email: string, baseUrl: string, requestId: string, options: ImageGenerationOptions = {}, mask?: ImageInput, onPartial?: ImagePartialHandler, onUsage?: ImageUsageHandler,
 ) {
   for (const image of [source, ...(logo ? [logo] : [])]) {
     const detected = imageContentType(image.bytes);
@@ -385,7 +404,7 @@ export async function createImageFromSource(
   const placementInstruction = logo ? corner ? cornerLogoInstruction(options.logoPosition) : options.logoPlacement === "scene" ? LOGO_REFERENCE_INSTRUCTION : "" : "";
   const { bytes, contentType } = await generateImageBytes(`${instruction}\n${backgroundInstruction}\n\n${prompt}\n\n${logoInstruction}\n${placementInstruction}`, requestId,
     editOptions,
-    logo ? [source, logo] : source, undefined, mask, onPartial);
+    logo ? [source, logo] : source, undefined, mask, onPartial, onUsage);
   return uploadPublicationImage(new File([bytes], "klio-edit", { type: contentType }), email, baseUrl);
 }
 
@@ -411,6 +430,7 @@ export async function createCarouselSlideImage(
   options: ImageGenerationOptions,
   model: string,
   textOverlay?: { headline: string; subtext: string; templateId: CarouselTemplateId },
+  onUsage?: ImageUsageHandler,
 ) {
   const guidedPrompt = !reference
     ? prompt
@@ -426,7 +446,7 @@ export async function createCarouselSlideImage(
         reference?.kind === "logo" ? LOGO_REFERENCE_INSTRUCTION : "",
       ].filter(Boolean).join("\n\n")
     : guidedPrompt;
-  const generated = await generateImageBytes(imagePrompt, requestId, options, reference, model);
+  const generated = await generateImageBytes(imagePrompt, requestId, options, reference, model, undefined, undefined, onUsage);
   const { bytes, contentType } = generated;
   const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
   const url = await uploadPublicationImage(

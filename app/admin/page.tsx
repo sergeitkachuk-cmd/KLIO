@@ -15,6 +15,7 @@ import { AdminUsersTable, type AdminUserRow } from "./admin-users-table";
 import { AdminFeedbackTable } from "./admin-feedback-table";
 import { AdminAnnouncements } from "./admin-announcements";
 import { AdminShell, type AdminSection } from "./admin-shell";
+import { getOpenAiAdminSummary } from "../api/_lib/openai-admin";
 
 export const metadata = { title: "КЛИО / Админка" };
 
@@ -176,7 +177,7 @@ export default async function AdminPage() {
   }
 
   const imageOperations = ["generate_image", "generate_carousel_image"];
-  const [userRows, usageByUser, brandRows, invoiceRefsByUser, transactionRefsByUser, totalsRows, last30Rows, byModelRows, byOperationRows, recentAiRows, recentImageRows, recentImageFailures, externalServices, paymentRows, generationsByOriginRows, imagesByOwnerRows, materialsByTypeRows, publicationsByOwnerRows, paidPaymentOwners, paidInvoiceOwners, socialChannelsByOwnerRows] = await Promise.all([
+  const [userRows, usageByUser, brandRows, invoiceRefsByUser, transactionRefsByUser, totalsRows, last30Rows, imageTotalsRows, imageLast30Rows, byModelRows, byOperationRows, recentAiRows, recentImageRows, recentImageUsage, externalServices, openAiAdmin, paymentRows, generationsByOriginRows, imagesByOwnerRows, materialsByTypeRows, publicationsByOwnerRows, paidPaymentOwners, paidInvoiceOwners, socialChannelsByOwnerRows] = await Promise.all([
     db.select().from(accounts).orderBy(desc(accounts.createdAt)),
     db.select({
       ownerEmail: aiUsage.ownerEmail,
@@ -214,6 +215,15 @@ export default async function AdminPage() {
       totalCalls: sql<number>`count(*)`,
     }).from(aiUsage).where(and(notInArray(aiUsage.operation, imageOperations), sql`${aiUsage.createdAt}::timestamptz > now() - interval '30 days'`)),
     db.select({
+      totalCostUsd: sql<number>`coalesce(sum(${aiUsage.estimatedCostUsd}), 0)`,
+      totalCalls: sql<number>`count(*)`,
+      totalTokens: sql<number>`coalesce(sum(${aiUsage.totalTokens}), 0)`,
+    }).from(aiUsage).where(inArray(aiUsage.operation, imageOperations)),
+    db.select({
+      totalCostUsd: sql<number>`coalesce(sum(${aiUsage.estimatedCostUsd}), 0)`,
+      totalCalls: sql<number>`count(*)`,
+    }).from(aiUsage).where(and(inArray(aiUsage.operation, imageOperations), sql`${aiUsage.createdAt}::timestamptz > now() - interval '30 days'`)),
+    db.select({
       model: aiUsage.model,
       totalCostUsd: sql<number>`coalesce(sum(${aiUsage.estimatedCostUsd}), 0)`,
       totalCalls: sql<number>`count(*)`,
@@ -239,12 +249,12 @@ export default async function AdminPage() {
       status: aiUsage.status,
       errorMessage: aiUsage.errorMessage,
       createdAt: aiUsage.createdAt,
+      costSource: aiUsage.costSource,
     }).from(aiUsage).where(notInArray(aiUsage.operation, imageOperations)).orderBy(desc(aiUsage.createdAt)).limit(30),
-    // Image and carousel requests bypass the text-model router, so they have
-    // never created ai_usage rows. Their successful generation records are
-    // the durable source of truth and must appear in the same recent activity
-    // view; keep their fields explicitly unavailable rather than inventing
-    // token, latency, or cost values.
+    // Keep legacy image generation rows as a fallback for requests created
+    // before image usage logging existed. Current image/carousel calls are
+    // represented by recentImageUsage below, with provider usage or a marked
+    // local estimate instead of invented values.
     db.select({
       id: generations.id,
       ownerEmail: generations.ownerEmail,
@@ -261,12 +271,15 @@ export default async function AdminPage() {
       durationMs: aiUsage.durationMs,
       inputTokens: aiUsage.inputTokens,
       outputTokens: aiUsage.outputTokens,
+      costSource: aiUsage.costSource,
       retryCount: aiUsage.retryCount,
       status: aiUsage.status,
       errorMessage: aiUsage.errorMessage,
+      requestId: aiUsage.requestId,
       createdAt: aiUsage.createdAt,
-    }).from(aiUsage).where(and(inArray(aiUsage.operation, imageOperations), eq(aiUsage.status, "failed"))).orderBy(desc(aiUsage.createdAt)).limit(100),
+    }).from(aiUsage).where(inArray(aiUsage.operation, imageOperations)).orderBy(desc(aiUsage.createdAt)).limit(100),
     getExternalServiceStatuses(),
+    getOpenAiAdminSummary(),
     // Raw payment attempts (SBP/card quick-pay, not the invoice/УПД flow) —
     // exists so a stuck payment (webhook never arrived, see the delivery
     // outage around commit 160b7e6) can be found and cross-checked against
@@ -322,9 +335,14 @@ export default async function AdminPage() {
       count: sql<number>`count(*)`,
     }).from(socialChannels).groupBy(socialChannels.ownerEmail, socialChannels.platform),
   ]);
+  const imageUsageRequestIds = new Set(recentImageUsage.map((row) => row.requestId).filter((value): value is string => Boolean(value)));
+  const recentLegacyImageRows = recentImageRows.filter((row) => {
+    if (imageUsageRequestIds.has(row.id)) return false;
+    return !recentImageUsage.some((usage) => usage.ownerEmail === row.ownerEmail && Math.abs(new Date(usage.createdAt).getTime() - new Date(row.createdAt).getTime()) < 120_000);
+  });
   const recentActivityRows = [
     ...recentAiRows.map((row) => ({ ...row, activityType: "ai" as const, topic: "" })),
-    ...recentImageRows.map((row) => ({
+    ...recentLegacyImageRows.map((row) => ({
       id: row.id,
       ownerEmail: row.ownerEmail,
       operation: row.topic === "Карусель" ? "generate_carousel_image" : "generate_image",
@@ -334,6 +352,7 @@ export default async function AdminPage() {
       durationMs: 0,
       inputTokens: 0,
       outputTokens: 0,
+      costSource: "unknown" as const,
       retryCount: 0,
       status: "success",
       errorMessage: null,
@@ -341,7 +360,7 @@ export default async function AdminPage() {
       activityType: "image" as const,
       topic: row.topic,
     })),
-    ...recentImageFailures.map((row) => ({ ...row, estimatedCostUsd: null, activityType: "image" as const, topic: row.operation === "generate_carousel_image" ? "Карусель" : "Изображение" })),
+    ...recentImageUsage.map((row) => ({ ...row, activityType: "image" as const, topic: row.operation === "generate_carousel_image" ? "Карусель" : "Изображение" })),
   ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 30);
 
   const usageMap = new Map(usageByUser.map((row) => [row.ownerEmail, row]));
@@ -453,6 +472,8 @@ export default async function AdminPage() {
 
   const totals = totalsRows[0] ?? { totalCostUsd: 0, totalCalls: 0, totalTokens: 0 };
   const last30 = last30Rows[0] ?? { totalCostUsd: 0, totalCalls: 0 };
+  const imageTotals = imageTotalsRows[0] ?? { totalCostUsd: 0, totalCalls: 0, totalTokens: 0 };
+  const imageLast30 = imageLast30Rows[0] ?? { totalCostUsd: 0, totalCalls: 0 };
   const verifiedCount = users.filter((item) => item.emailVerified).length;
 
   // Activation/retention funnel — "чтобы понимать и делать анализ по
@@ -529,6 +550,15 @@ export default async function AdminPage() {
               <a href={service.href} target="_blank" rel="noreferrer">Открыть кабинет ↗</a>
             </article>
           ))}
+          <article className={`admin-integration admin-integration-${openAiAdmin.status}`}>
+            <div className="admin-integration-top">
+              <span>OpenAI Admin API</span>
+              <i>{openAiAdmin.status === "connected" ? "Подключён" : openAiAdmin.status === "needs_setup" ? "Нужна настройка" : "Нет ответа"}</i>
+            </div>
+            <b>{openAiAdmin.totalCostUsd === null ? "Остаток через API не показывается" : formatUsd(openAiAdmin.totalCostUsd)}</b>
+            <small>{openAiAdmin.configured ? `Организационный расход за ${openAiAdmin.periodLabel}. ${openAiAdmin.imageBuckets === null ? "Usage изображений недоступен." : `Дневных buckets изображений: ${openAiAdmin.imageBuckets}.`} ${openAiAdmin.error ?? ""}` : "Задайте OPENAI_ADMIN_KEY для официальной статистики расходов и usage."}</small>
+            <a href="https://platform.openai.com/usage" target="_blank" rel="noreferrer">Открыть биллинг ↗</a>
+          </article>
         </div>
       </section>
     ),
@@ -590,7 +620,7 @@ export default async function AdminPage() {
         <div className="admin-block-heading">
           <div>
             <h2>Последние вызовы ИИ</h2>
-            <p>Стоимость указана для каждого текстового запроса по оценке токенов. Для изображений и каруселей точная сумма пока не рассчитывается.</p>
+            <p>Для текста показываем расчёт по токенам. Для изображений и каруселей — фактический usage провайдера, а при его отсутствии — расчётную сумму с пометкой «оценка».</p>
           </div>
         </div>
         <div className="admin-table-scroll">
@@ -604,9 +634,9 @@ export default async function AdminPage() {
                   <td>{row.activityType === "image" ? (row.topic === "Карусель" ? "Генерация карусели" : "Генерация изображения") : OPERATION_LABELS[row.operation as AiOperation] ?? row.operation}</td>
                   <td>{row.model}</td>
                   <td>{row.reasoningEffort}</td>
-                  <td>{row.activityType === "image" ? "—" : formatDuration(row.durationMs)}</td>
-                  <td>{row.activityType === "image" ? "—" : `${formatNumber(row.inputTokens)} / ${formatNumber(row.outputTokens)}`}</td>
-                  <td>{row.activityType === "image" ? "—" : formatUsd(num(row.estimatedCostUsd))}</td>
+                  <td>{num(row.durationMs) > 0 ? formatDuration(row.durationMs) : "—"}</td>
+                  <td>{num(row.inputTokens) > 0 || num(row.outputTokens) > 0 ? `${formatNumber(row.inputTokens)} / ${formatNumber(row.outputTokens)}` : "—"}</td>
+                  <td>{row.estimatedCostUsd === null || row.estimatedCostUsd === undefined ? "—" : `${formatUsd(num(row.estimatedCostUsd))}${row.costSource === "estimate" ? " · оценка" : ""}`}</td>
                   <td>{row.status === "success" ? "Успешно" : `Ошибка${row.retryCount ? ` · повторов ${row.retryCount}` : ""}`}</td>
                   <td className="admin-ai-error">{row.errorMessage || "—"}</td>
                 </tr>
@@ -894,6 +924,8 @@ export default async function AdminPage() {
         <article><span>Пользователей</span><b>{formatNumber(users.length)}</b><small>{formatNumber(verifiedCount)} с подтверждённой почтой</small></article>
         <article><span>Расход текстового ИИ · всего</span><b>{formatUsd(num(totals.totalCostUsd))}</b><small>{formatNumber(num(totals.totalCalls))} запросов, {formatNumber(num(totals.totalTokens))} токенов</small></article>
         <article><span>Расход текстового ИИ · 30 дней</span><b>{formatUsd(num(last30.totalCostUsd))}</b><small>{formatNumber(num(last30.totalCalls))} запросов</small></article>
+        <article><span>Расход изображений · всего</span><b>{formatUsd(num(imageTotals.totalCostUsd))}</b><small>{formatNumber(num(imageTotals.totalCalls))} генераций, {formatNumber(num(imageTotals.totalTokens))} image-токенов</small></article>
+        <article><span>Расход изображений · 30 дней</span><b>{formatUsd(num(imageLast30.totalCostUsd))}</b><small>{formatNumber(num(imageLast30.totalCalls))} генераций</small></article>
         <article><span>Тариф</span><b>Старт (у всех)</b><small>оплата подписки пока не подключена</small></article>
       </section>
 

@@ -281,6 +281,10 @@ export const aiUsage = pgTable("ai_usage", {
   outputTokens: integer("output_tokens").notNull().default(0),
   totalTokens: integer("total_tokens").notNull().default(0),
   estimatedCostUsd: real("estimated_cost_usd").notNull().default(0),
+  // "provider" means the image/text provider returned usage; "estimate" is
+  // a bounded local estimate used when a streaming/relay response omitted
+  // usage; "unknown" is retained for legacy rows with no cost data.
+  costSource: text("cost_source").notNull().default("unknown"),
   durationMs: integer("duration_ms").notNull().default(0),
   retryCount: integer("retry_count").notNull().default(0),
   // "success" | "failed" — see AiUsageStatus in ai-config.ts

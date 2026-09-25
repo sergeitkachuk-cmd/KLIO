@@ -85,6 +85,8 @@ async function createCarouselHarness() {
     "../../../db/schema": schema,
     "./ai-router": { callAiModel: async input => ({ result: await ai(input) }) },
     "./image-generation": { createCarouselSlideImage: (...args) => generateImage(...args) },
+    "./image-cost": { aggregateImageUsages: usages => usages[0] ?? { model: "image-provider", inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, totalTokens: 0, inputImageTokens: 0, inputTextTokens: 0, outputImageTokens: 0, outputTextTokens: 0, estimatedCostUsd: 0, costSource: "unknown" } },
+    "./image-usage": { recordImageUsage: async () => {} },
     "./storage": { downloadBrandLogo: (...args) => downloadLogo(...args) },
     "./workspace-account": workspaceAccount,
     "./async-jobs": asyncJobs,

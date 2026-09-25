@@ -7,6 +7,8 @@ import { getWorkspaceDb, recordCarouselSlideRegeneration, recordGeneration, Work
 import { failAsyncJob, markAsyncJobProcessing } from "./async-jobs";
 import { carouselTemplateInstruction, DEFAULT_CAROUSEL_TEMPLATE, isCarouselTemplateId, type CarouselTemplateId } from "../../carousel-templates";
 import { downloadPublicationImage } from "./storage";
+import { aggregateImageUsages, type ImageProviderUsage } from "./image-cost";
+import { recordImageUsage } from "./image-usage";
 
 export const CAROUSEL_MIN_SLIDES = 3;
 export const CAROUSEL_MAX_SLIDES = 8;
@@ -74,7 +76,7 @@ export type CarouselSlide = { headline: string; subtext: string; imageUrl: strin
 
 // Shared rendering for the professional generator and dialogue. Callers own
 // reservation, persistence and refunds, so each slide is charged only once.
-export async function generateCarouselSlides(jobId: string, input: CarouselInput, ownerEmail: string, beforeSlide?: () => Promise<void>): Promise<CarouselSlide[]> {
+export async function generateCarouselSlides(jobId: string, input: CarouselInput, ownerEmail: string, beforeSlide?: () => Promise<void>, onImageUsage?: (usage: ImageProviderUsage) => void): Promise<CarouselSlide[]> {
   const count = input.slideCount;
   const templateId = isCarouselTemplateId(input.templateId) ? input.templateId : DEFAULT_CAROUSEL_TEMPLATE;
   const templateInstruction = carouselTemplateInstruction(templateId);
@@ -135,7 +137,7 @@ export async function generateCarouselSlides(jobId: string, input: CarouselInput
       : `Текстовый слайд ${index + 1} из ${count} карусели для соцсетей. Это продолжение обложки, а не ещё одна обложка: спокойный фирменный фон, небольшие декоративные элементы, максимум свободного места для чтения. Заголовок заметно меньше, чем на первом слайде. Основной абзац набери достаточно крупно, с хорошим межстрочным интервалом, без сокращений и без добавления новых слов. Сохрани единый стиль карусели и высокий контраст.${logoReminder}${styleReminder}${templateReminder}\nЗаголовок блока: «${slide.headline}»\nОсновной текст: «${slide.subtext}»`;
     let generated;
     try {
-      generated = await createCarouselSlideImage(prompt, reference, ownerEmail, input.baseUrl, `${jobId}-${index}`, input.imageOptions ?? {}, CAROUSEL_IMAGE_MODEL, { headline: slide.headline, subtext: slide.subtext, templateId });
+      generated = await createCarouselSlideImage(prompt, reference, ownerEmail, input.baseUrl, `${jobId}-${index}`, input.imageOptions ?? {}, CAROUSEL_IMAGE_MODEL, { headline: slide.headline, subtext: slide.subtext, templateId }, onImageUsage);
     } catch (error) {
       throw new Error(`Не удалось создать слайд ${index + 1} из ${count} — генерация карусели остановлена. ${error instanceof Error ? error.message : ""}`.trim());
     }
@@ -152,10 +154,12 @@ export async function generateCarouselSlides(jobId: string, input: CarouselInput
 // processing, do the work, complete or fail the job, never thrown back to
 // whoever kicked it off.
 export async function runCarouselGeneration(jobId: string, input: CarouselInput, ownerEmail: string) {
+  const imageUsages: ImageProviderUsage[] = [];
+  const imageStartedAt = Date.now();
   try {
     await markAsyncJobProcessing(jobId);
     const count = input.slideCount;
-    const slides = await generateCarouselSlides(jobId, input, ownerEmail);
+    const slides = await generateCarouselSlides(jobId, input, ownerEmail, undefined, usage => imageUsages.push(usage));
 
     const title = slides[0]?.headline.slice(0, 100) || "Карусель";
     const usage = await recordGeneration({
@@ -175,7 +179,24 @@ export async function runCarouselGeneration(jobId: string, input: CarouselInput,
       slidesJson: JSON.stringify(slides),
     }, { id: jobId, result: { slides } }, count);
     if (!usage) throw new WorkspaceAccessError("Хранилище кабинета недоступно.", 503);
+    await recordImageUsage({
+      ownerEmail,
+      requestId: jobId,
+      operation: "generate_carousel_image",
+      durationMs: Date.now() - imageStartedAt,
+      status: "success",
+      usage: aggregateImageUsages(imageUsages, CAROUSEL_IMAGE_MODEL),
+    });
   } catch (error) {
+    await recordImageUsage({
+      ownerEmail,
+      requestId: jobId,
+      operation: "generate_carousel_image",
+      durationMs: Date.now() - imageStartedAt,
+      status: "failed",
+      usage: imageUsages.length ? aggregateImageUsages(imageUsages, CAROUSEL_IMAGE_MODEL) : undefined,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
     const message = error instanceof WorkspaceAccessError ? error.message : error instanceof Error ? error.message : "Не удалось создать карусель. Попробуйте ещё раз.";
     if (!(error instanceof WorkspaceAccessError)) console.error("carousel background job failed", error);
     await failAsyncJob(jobId, message);
@@ -183,6 +204,8 @@ export async function runCarouselGeneration(jobId: string, input: CarouselInput,
 }
 
 export async function runCarouselSlideRegeneration(jobId: string, input: { generationId: string; slideIndex: number; baseUrl: string }, ownerEmail: string) {
+  const imageStartedAt = Date.now();
+  let imageUsage: ImageProviderUsage | undefined;
   try {
     await markAsyncJobProcessing(jobId);
     const db = await getWorkspaceDb();
@@ -218,6 +241,7 @@ export async function runCarouselSlideRegeneration(jobId: string, input: { gener
       { aspectRatio },
       CAROUSEL_IMAGE_MODEL,
       { headline: slide.headline, subtext: slide.subtext, templateId },
+      usage => { imageUsage = usage; },
     );
     slides[input.slideIndex] = { ...slide, imageUrl: generated.url, templateId };
     const result = await recordCarouselSlideRegeneration({
@@ -228,7 +252,9 @@ export async function runCarouselSlideRegeneration(jobId: string, input: { gener
       slides,
     });
     if (!result) throw new WorkspaceAccessError("Хранилище кабинета недоступно.", 503);
+    await recordImageUsage({ ownerEmail, requestId: jobId, operation: "generate_carousel_image", durationMs: Date.now() - imageStartedAt, status: "success", usage: imageUsage });
   } catch (error) {
+    await recordImageUsage({ ownerEmail, requestId: jobId, operation: "generate_carousel_image", durationMs: Date.now() - imageStartedAt, status: "failed", usage: imageUsage, errorMessage: error instanceof Error ? error.message : String(error) });
     const message = error instanceof WorkspaceAccessError ? error.message : error instanceof Error ? error.message : "Не удалось обновить слайд.";
     if (!(error instanceof WorkspaceAccessError)) console.error("carousel slide regeneration failed", error);
     await failAsyncJob(jobId, message);

@@ -9,6 +9,10 @@ import * as orm from "drizzle-orm";
 import * as pg from "drizzle-orm/pg-core";
 
 const root = new URL("../../", import.meta.url);
+export const imageCost = {
+  normalizeImageUsage: () => ({ model: "image-provider", inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, totalTokens: 0, inputImageTokens: 0, inputTextTokens: 0, outputImageTokens: 0, outputTextTokens: 0, estimatedCostUsd: 0, costSource: "unknown" }),
+  aggregateImageUsages: usages => usages[0] ?? { model: "image-provider", inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, totalTokens: 0, inputImageTokens: 0, inputTextTokens: 0, outputImageTokens: 0, outputTextTokens: 0, estimatedCostUsd: 0, costSource: "unknown" },
+};
 export function load(path, dependencies = {}, globals = {}) {
   const output = ts.transpileModule(readFileSync(new URL(path, root), "utf8"), {
     compilerOptions: {
@@ -189,6 +193,8 @@ export async function createDialogueHarness() {
     "drizzle-orm": orm, "../../../db/schema": schema,
     "./ai-router": { callAiModel: async (input) => { calls++; return { result: await ai(input) }; } },
     "./image-generation": { createCarouselSlideImage: async (...args) => { carouselCalls.push(args); return carouselImage(...args); } },
+    "./image-cost": imageCost,
+    "./image-usage": { recordImageUsage: async () => {} },
     "./storage": { downloadBrandLogo: async () => ({ bytes: new Uint8Array([2]), contentType: "image/png" }) },
     "./workspace-account": workspace, "./async-jobs": {}, "../../carousel-templates": carouselTemplates,
   });
@@ -239,6 +245,7 @@ export async function createDialogueHarness() {
       },
       "../_lib/image-generation-errors": imageGenerationErrors,
       "../_lib/image-usage": { recordImageUsage: async () => {} },
+      "../_lib/image-cost": imageCost,
       "../_lib/storage": {
         downloadBrandLogo: async () => ({ bytes: new Uint8Array(), contentType: "image/png" }),
         downloadPublicationImage: async (key) => { imageDownloads.push(key); return { bytes: new Uint8Array([1, 2, 3]), contentType: "image/png" }; },

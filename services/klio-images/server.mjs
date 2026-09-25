@@ -112,7 +112,7 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare-2026-
       if (previous?.done) {
         if (previous.result?.status !== 200) return reply(previous.result?.status || 502, previous.result?.body || { error: "Image request failed" });
         response.writeHead(200, { "Content-Type": "text/event-stream; charset=utf-8", "Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no" });
-        response.write(`data: ${JSON.stringify({ type: "complete", b64_json: previous.result.body.data[0].b64_json })}\n\n`);
+        response.write(`data: ${JSON.stringify({ type: "complete", b64_json: previous.result.body.data[0].b64_json, usage: previous.result.body.usage })}\n\n`);
         return response.end();
       }
       if (previous) return reply(409, { error: "This image request is already running" });
@@ -141,11 +141,12 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare-2026-
           upstream = await providerFetch("https://api.openai.com/v1/images/generations", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify(payload), signal: AbortSignal.timeout(150_000) });
         }
         if (!upstream.ok || !upstream.body) throw new Error("Image provider did not complete the streaming request");
-        const reader = upstream.body.getReader(); const decoder = new TextDecoder(); let buffer = ""; let finalImage = "";
+        const reader = upstream.body.getReader(); const decoder = new TextDecoder(); let buffer = ""; let finalImage = ""; let usage;
         const handleLine = line => {
           if (!line.startsWith("data:")) return;
           const raw = line.slice(5).trim(); if (!raw || raw === "[DONE]") return;
           let event; try { event = JSON.parse(raw); } catch { return; }
+          if (event.usage) usage = event.usage;
           if (event.type?.includes("partial_image") && typeof event.b64_json === "string") emit({ type: "partial", b64_json: event.b64_json, output_format: event.output_format || outputFormat });
           if (event.type?.endsWith(".completed") && typeof event.b64_json === "string") finalImage = event.b64_json;
           if (event.type === "error") throw new Error("Image provider stream failed");
@@ -157,8 +158,8 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare-2026-
         }
         if (buffer) handleLine(buffer);
         if (!finalImage || finalImage.length > 12_000_000) throw new Error("Image stream ended without a final image");
-        job.result = { status: 200, body: { data: [{ b64_json: finalImage }] } };
-        emit({ type: "complete", b64_json: finalImage, output_format: outputFormat });
+        job.result = { status: 200, body: { data: [{ b64_json: finalImage }], usage } };
+        emit({ type: "complete", b64_json: finalImage, output_format: outputFormat, usage });
       } catch {
         job.result = { status: 502, body: { error: "Image request failed" } };
         emit({ type: "error", message: "Image request failed" });

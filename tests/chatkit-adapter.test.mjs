@@ -310,8 +310,8 @@ test("ChatKit forwards image options to the image service and rejects invalid en
     assert.equal(events.some((event) => event.type === "error"), false, JSON.stringify(events));
   }
   assert.equal(harness.imageCalls.length, 2);
-  assert.deepEqual(JSON.parse(JSON.stringify(harness.imageCalls[0].args.at(-1))), { aspectRatio: "9:16", outputFormat: "webp" });
-  assert.deepEqual(JSON.parse(JSON.stringify(harness.imageCalls[1].args.at(-1))), {});
+  assert.deepEqual(JSON.parse(JSON.stringify(harness.imageCalls[0].args[4])), { aspectRatio: "9:16", outputFormat: "webp" });
+  assert.deepEqual(JSON.parse(JSON.stringify(harness.imageCalls[1].args[4])), {});
 });
 
 test("standalone images never acquire prompt text from Materials; old duplicates stay hidden and manual edits survive", async (t) => {

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import sharp from "sharp";
 import { randomUUID, createHash } from "node:crypto";
 import * as orm from "drizzle-orm";
-import { createDialogueHarness, load, imageGenerationErrors } from "./helpers/dialogue-harness.mjs";
+import { createDialogueHarness, load, imageGenerationErrors, imageCost } from "./helpers/dialogue-harness.mjs";
 
 const promptModule = load("app/api/_lib/dialogue-image-prompt.ts");
 async function fixtures() {
@@ -19,7 +19,7 @@ test("corner mode sends PNG and JPEG logos to AI with the caption and placement;
   const calls = [], uploads = [];
   const image = load("app/api/_lib/image-generation.ts", {
     "./storage": { storageConfigured: () => true, uploadPublicationImage: async file => { uploads.push(file); return "saved"; } },
-    "./image-type": load("app/api/_lib/image-type.ts"), "./image-generation-errors": imageGenerationErrors,
+    "./image-type": load("app/api/_lib/image-type.ts"), "./image-generation-errors": imageGenerationErrors, "./image-cost": imageCost,
   }, { FormData, fetch: async (url, options) => { calls.push({ url: String(url), body: options.body }); return Response.json({ data: [{ b64_json: base.toString("base64") }] }); } });
   for (const [position, label] of Object.entries({ "top-left": "слева вверху", "top-right": "справа вверху", "bottom-left": "слева внизу", "bottom-right": "справа внизу" })) {
     for (const reference of [logo, jpegLogo]) {
@@ -70,7 +70,7 @@ test("relay receives the actual source and JPEG logo, while the largest dialogue
   const requests = [], uploads = [];
   const image = load("app/api/_lib/image-generation.ts", {
     "./storage": { uploadPublicationImage: async file => { uploads.push(file); return "saved"; } },
-    "./image-type": load("app/api/_lib/image-type.ts"), "./image-generation-errors": imageGenerationErrors,
+    "./image-type": load("app/api/_lib/image-type.ts"), "./image-generation-errors": imageGenerationErrors, "./image-cost": imageCost,
   }, { process: { env: { KLIO_IMAGE_SERVICE_URL: "https://relay.example" } }, fetch: async (url, options) => {
     if (new URL(url).pathname === "/health") return Response.json({ maxImageInputs: 2 });
     requests.push(JSON.parse(options.body));
@@ -124,7 +124,7 @@ test("professional images use owned material titles and the same text and logo c
   class WorkspaceAccessError extends Error { constructor(message, status) { super(message); this.status = status; } }
   await h.db.insert(h.schema.brands).values({ id: "studio", ownerEmail: h.owner, name: "Студия", profileJson: JSON.stringify({ logoKey: "real" }) });
   await h.db.insert(h.schema.generations).values({ id: "article", ownerEmail: h.owner, brandId: "studio", format: "social", topic: "Тема", title: "Настоящий заголовок", body: "Текст статьи" });
-  const imageModule = load("app/api/_lib/image-generation.ts", { "./storage": {}, "./image-type": {}, "./image-generation-errors": imageGenerationErrors });
+  const imageModule = load("app/api/_lib/image-generation.ts", { "./storage": {}, "./image-type": {}, "./image-generation-errors": imageGenerationErrors, "./image-cost": imageCost });
   const route = load("app/api/images/route.ts", {
     "node:crypto": { createHash },
     "../_lib/image-type": load("app/api/_lib/image-type.ts"),

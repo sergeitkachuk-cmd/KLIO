@@ -46,6 +46,7 @@ import { DEFAULT_CAROUSEL_TEMPLATE, isCarouselTemplateId, type CarouselTemplateI
 import { buildDialogueImagePrompt, dialogueImageTextInstruction } from "../_lib/dialogue-image-prompt";
 import { generateCarouselSlides, CAROUSEL_MIN_SLIDES, CAROUSEL_MAX_SLIDES } from "../_lib/carousel";
 import { recordImageUsage } from "../_lib/image-usage";
+import { aggregateImageUsages, type ImageProviderUsage } from "../_lib/image-cost";
 
 export const runtime = "nodejs";
 export const maxDuration = 600;
@@ -301,6 +302,7 @@ async function runReply(
     let pendingMaterial: typeof generations.$inferInsert | undefined;
     if (mode === "carousel") {
       const imageStartedAt = Date.now();
+      const imageUsages: ImageProviderUsage[] = [];
       let slides: Awaited<ReturnType<typeof generateCarouselSlides>>;
       try {
         slides = await generateCarouselSlides(row.requestId, {
@@ -315,10 +317,10 @@ async function runReply(
         }, row.ownerEmail, async () => {
           const [active] = await db.select({ id: dialogueThreads.id }).from(dialogueThreads).where(and(owned(row.id, row.ownerEmail), eq(dialogueThreads.status, "processing"), eq(dialogueThreads.requestId, row.requestId))).limit(1);
           if (!active) throw new WorkspaceAccessError("Задание карусели уже завершено или прервано.", 409);
-        });
-        await recordImageUsage({ ownerEmail: row.ownerEmail, requestId: row.requestId, operation: "generate_carousel_image", durationMs: Date.now() - imageStartedAt, status: "success" });
+        }, usage => imageUsages.push(usage));
+        await recordImageUsage({ ownerEmail: row.ownerEmail, requestId: row.requestId, operation: "generate_carousel_image", durationMs: Date.now() - imageStartedAt, status: "success", usage: aggregateImageUsages(imageUsages) });
       } catch (error) {
-        await recordImageUsage({ ownerEmail: row.ownerEmail, requestId: row.requestId, operation: "generate_carousel_image", durationMs: Date.now() - imageStartedAt, status: "failed", errorMessage: error instanceof Error ? error.message : String(error) });
+        await recordImageUsage({ ownerEmail: row.ownerEmail, requestId: row.requestId, operation: "generate_carousel_image", durationMs: Date.now() - imageStartedAt, status: "failed", usage: imageUsages.length ? aggregateImageUsages(imageUsages) : undefined, errorMessage: error instanceof Error ? error.message : String(error) });
         throw error;
       }
       const card: DialogueCard = {
@@ -371,16 +373,17 @@ async function runReply(
       }
       const imageStartedAt = Date.now();
       let imageUrl: string;
+      let imageUsage: ImageProviderUsage | undefined;
       try {
         imageUrl = settings.imageSource
           ? await createImageFromSource(prompt, await downloadPublicationImage(settings.imageSource.key), settings.imageSource.purpose,
-            logoKey ? await downloadBrandLogo(logoKey) : undefined, row.ownerEmail, baseUrl, row.requestId, imageOptions)
+            logoKey ? await downloadBrandLogo(logoKey) : undefined, row.ownerEmail, baseUrl, row.requestId, imageOptions, undefined, undefined, usage => { imageUsage = usage; })
           : logoKey
-          ? await createImageFromLogo(prompt, await downloadBrandLogo(logoKey), row.ownerEmail, baseUrl, row.requestId, imageOptions)
-          : await createImage(prompt, row.ownerEmail, baseUrl, row.requestId, imageOptions);
-        await recordImageUsage({ ownerEmail: row.ownerEmail, requestId: row.requestId, operation: "generate_image", durationMs: Date.now() - imageStartedAt, status: "success" });
+          ? await createImageFromLogo(prompt, await downloadBrandLogo(logoKey), row.ownerEmail, baseUrl, row.requestId, imageOptions, undefined, undefined, usage => { imageUsage = usage; })
+          : await createImage(prompt, row.ownerEmail, baseUrl, row.requestId, imageOptions, undefined, undefined, usage => { imageUsage = usage; });
+        await recordImageUsage({ ownerEmail: row.ownerEmail, requestId: row.requestId, operation: "generate_image", durationMs: Date.now() - imageStartedAt, status: "success", usage: imageUsage });
       } catch (error) {
-        await recordImageUsage({ ownerEmail: row.ownerEmail, requestId: row.requestId, operation: "generate_image", durationMs: Date.now() - imageStartedAt, status: "failed", errorMessage: error instanceof Error ? error.message : String(error) });
+        await recordImageUsage({ ownerEmail: row.ownerEmail, requestId: row.requestId, operation: "generate_image", durationMs: Date.now() - imageStartedAt, status: "failed", usage: imageUsage, errorMessage: error instanceof Error ? error.message : String(error) });
         throw error;
       }
       const materialId = crypto.randomUUID();

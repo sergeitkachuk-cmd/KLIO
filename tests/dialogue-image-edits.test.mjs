@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID, createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { createDialogueHarness, imageGenerationErrors, load } from "./helpers/dialogue-harness.mjs";
+import { createDialogueHarness, imageGenerationErrors, imageCost, load } from "./helpers/dialogue-harness.mjs";
 import { imageService } from "../services/klio-images/server.mjs";
 
 const sourceUrl = (email) => `https://klio.example/api/uploads/publications/${createHash("sha256").update(email).digest("hex")}/${randomUUID()}.png`;
@@ -113,7 +113,7 @@ test("app and Render deliver source then logo as two files to edits, without cha
   const image = load("app/api/_lib/image-generation.ts", {
     "./storage": { storageConfigured: () => true, uploadPublicationImage: async (file) => { uploaded = file; return "saved-image"; } },
     "./image-type": load("app/api/_lib/image-type.ts"),
-    "./image-generation-errors": imageGenerationErrors,
+    "./image-generation-errors": imageGenerationErrors, "./image-cost": imageCost,
   }, { FormData, process: { env: { KLIO_IMAGE_SERVICE_URL: "https://relay.example", KLIO_IMAGE_SERVICE_TOKEN: token } }, fetch: (url, options) => fetch(`${local}${new URL(url).pathname}`, options) });
   assert.equal(await image.createImageFromSource("Добавь логотип", source, "edit", logo, "owner", "https://klio.example", "edit-request-000000001", { aspectRatio: "1:1", outputFormat: "png" }), "saved-image");
   assert.equal(providerCalls, 1); assert.equal(uploaded.type, "image/png");
@@ -123,7 +123,7 @@ test("direct edits request opaque output by default and retain an explicitly cho
   const calls = [];
   const image = load("app/api/_lib/image-generation.ts", {
     "./storage": { storageConfigured: () => true, uploadPublicationImage: async () => "saved-image" },
-    "./image-type": load("app/api/_lib/image-type.ts"), "./image-generation-errors": imageGenerationErrors,
+    "./image-type": load("app/api/_lib/image-type.ts"), "./image-generation-errors": imageGenerationErrors, "./image-cost": imageCost,
   }, { FormData, fetch: async (url, options) => {
     calls.push({ url: String(url), background: options.body.get("background"), prompt: options.body.get("prompt") });
     return Response.json({ data: [{ b64_json: Buffer.from(png("edited")).toString("base64") }] });
@@ -146,7 +146,7 @@ test("an old relay shows its specific cause, retains the source and refunds the 
   const calls = [];
   const image = load("app/api/_lib/image-generation.ts", {
     "./storage": { storageConfigured: () => true }, "./image-type": load("app/api/_lib/image-type.ts"),
-    "./image-generation-errors": imageGenerationErrors,
+    "./image-generation-errors": imageGenerationErrors, "./image-cost": imageCost,
   }, { process: { env: { KLIO_IMAGE_SERVICE_URL: "https://relay.example" } }, fetch: async (url) => { calls.push(new URL(url).pathname); return Response.json({ ready: true }); } });
   const reference = { bytes: png("source"), contentType: "image/png" };
   h.setEditImage(() => image.createImageFromSource("Логотип", reference, "edit", reference, h.owner, "https://klio.example", "edit-request-000000001"));
@@ -170,7 +170,7 @@ test("an unavailable relay is not misreported as needing an update and never rec
   const calls = [];
   const image = load("app/api/_lib/image-generation.ts", {
     "./storage": { storageConfigured: () => true }, "./image-type": load("app/api/_lib/image-type.ts"),
-    "./image-generation-errors": imageGenerationErrors,
+    "./image-generation-errors": imageGenerationErrors, "./image-cost": imageCost,
   }, { process: { env: { KLIO_IMAGE_SERVICE_URL: "https://relay.example" } }, fetch: async url => { calls.push(new URL(url).pathname); return new Response("Unavailable", { status: 503 }); } });
   const reference = { bytes: png("source"), contentType: "image/png" };
   await assert.rejects(image.createImageFromSource("Логотип", reference, "edit", reference, "owner", "https://klio.example", "edit-request-000000001"), error => {
