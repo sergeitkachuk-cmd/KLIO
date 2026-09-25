@@ -2,7 +2,7 @@ import { getDb } from "../../../db";
 import { aiUsage } from "../../../db/schema";
 import type { ImageProviderUsage } from "./image-cost";
 
-export type ImageUsageOperation = "generate_image" | "generate_carousel_image";
+export type ImageUsageOperation = "generate_image" | "generate_carousel_image" | "regenerate_carousel_slide";
 
 /** Image requests use a separate provider path from the text AI router. */
 export async function recordImageUsage(input: {

@@ -252,9 +252,9 @@ export async function runCarouselSlideRegeneration(jobId: string, input: { gener
       slides,
     });
     if (!result) throw new WorkspaceAccessError("Хранилище кабинета недоступно.", 503);
-    await recordImageUsage({ ownerEmail, requestId: jobId, operation: "generate_carousel_image", durationMs: Date.now() - imageStartedAt, status: "success", usage: imageUsage });
+    await recordImageUsage({ ownerEmail, requestId: jobId, operation: "regenerate_carousel_slide", durationMs: Date.now() - imageStartedAt, status: "success", usage: imageUsage });
   } catch (error) {
-    await recordImageUsage({ ownerEmail, requestId: jobId, operation: "generate_carousel_image", durationMs: Date.now() - imageStartedAt, status: "failed", usage: imageUsage, errorMessage: error instanceof Error ? error.message : String(error) });
+    await recordImageUsage({ ownerEmail, requestId: jobId, operation: "regenerate_carousel_slide", durationMs: Date.now() - imageStartedAt, status: "failed", usage: imageUsage, errorMessage: error instanceof Error ? error.message : String(error) });
     const message = error instanceof WorkspaceAccessError ? error.message : error instanceof Error ? error.message : "Не удалось обновить слайд.";
     if (!(error instanceof WorkspaceAccessError)) console.error("carousel slide regeneration failed", error);
     await failAsyncJob(jobId, message);

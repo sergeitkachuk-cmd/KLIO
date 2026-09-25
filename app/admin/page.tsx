@@ -176,7 +176,7 @@ export default async function AdminPage() {
     await db.delete(accounts).where(eq(accounts.email, stale.email));
   }
 
-  const imageOperations = ["generate_image", "generate_carousel_image"];
+  const imageOperations = ["generate_image", "generate_carousel_image", "regenerate_carousel_slide"];
   const [userRows, usageByUser, brandRows, invoiceRefsByUser, transactionRefsByUser, totalsRows, last30Rows, imageTotalsRows, imageLast30Rows, byModelRows, byOperationRows, recentAiRows, recentImageRows, recentImageUsage, externalServices, openAiAdmin, paymentRows, generationsByOriginRows, imagesByOwnerRows, materialsByTypeRows, publicationsByOwnerRows, paidPaymentOwners, paidInvoiceOwners, socialChannelsByOwnerRows] = await Promise.all([
     db.select().from(accounts).orderBy(desc(accounts.createdAt)),
     db.select({
@@ -360,7 +360,13 @@ export default async function AdminPage() {
       activityType: "image" as const,
       topic: row.topic,
     })),
-    ...recentImageUsage.map((row) => ({ ...row, activityType: "image" as const, topic: row.operation === "generate_carousel_image" ? "Карусель" : "Изображение" })),
+    ...recentImageUsage.map((row) => ({
+      ...row,
+      activityType: "image" as const,
+      topic: row.operation === "generate_carousel_image"
+        ? "Карусель"
+        : row.operation === "regenerate_carousel_slide" ? "Слайд карусели" : "Изображение",
+    })),
   ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 30);
 
   const usageMap = new Map(usageByUser.map((row) => [row.ownerEmail, row]));
@@ -631,7 +637,11 @@ export default async function AdminPage() {
                 <tr key={row.id}>
                   <td>{formatDate(row.createdAt)}</td>
                   <td>{row.ownerEmail}</td>
-                  <td>{row.activityType === "image" ? (row.topic === "Карусель" ? "Генерация карусели" : "Генерация изображения") : OPERATION_LABELS[row.operation as AiOperation] ?? row.operation}</td>
+                  <td>{row.activityType === "image"
+                    ? row.topic === "Карусель" ? "Генерация карусели"
+                      : row.topic === "Слайд карусели" ? "Перегенерация слайда"
+                        : "Генерация изображения"
+                    : OPERATION_LABELS[row.operation as AiOperation] ?? row.operation}</td>
                   <td>{row.model}</td>
                   <td>{row.reasoningEffort}</td>
                   <td>{num(row.durationMs) > 0 ? formatDuration(row.durationMs) : "—"}</td>
