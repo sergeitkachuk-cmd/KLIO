@@ -14,7 +14,7 @@ h.setAi(async input => {
   const started = Date.now();
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST", headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "gpt-5.6-luna", instructions: input.instructions, input: input.input, reasoning: { effort: "low" }, max_output_tokens: 16000, text: { verbosity: "medium", format: { type: "json_schema", name: input.schemaName, strict: true, schema: input.schema } }, store: false }),
+    body: JSON.stringify({ model: "gpt-6-luna", instructions: input.instructions, input: input.input, reasoning: { effort: "low" }, max_output_tokens: 16000, text: { verbosity: "medium", format: { type: "json_schema", name: input.schemaName, strict: true, schema: input.schema } }, store: false }),
     signal: AbortSignal.timeout(150000),
   });
   if (!response.ok) throw new Error(`Text provider HTTP ${response.status}`);

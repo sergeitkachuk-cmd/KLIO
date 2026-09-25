@@ -213,7 +213,7 @@ export async function createDialogueHarness() {
       "../../dialogue-generation-settings": load("app/dialogue-generation-settings.ts", { "./content-plans": contentPlans, "./carousel-templates": carouselTemplates }),
       "../_lib/ai-config": {
         aiConfigured: () => true,
-        OPERATION_CONFIG: { dialogue_plain: { model: "gpt-5.6-luna" }, dialogue_deepseek_plain: { model: "deepseek-flash" } },
+        OPERATION_CONFIG: { dialogue_plain: { model: "gpt-6-luna" }, dialogue_deepseek_plain: { model: "deepseek-flash" } },
       },
       "../_lib/ai-router": {
         AiCallError,

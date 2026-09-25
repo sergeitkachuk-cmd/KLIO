@@ -112,13 +112,13 @@ test("all DeepSeek operations use the canonical V4.1 Flash model and current pri
 
 test("dialogue uses OpenAI when configured while content keeps DeepSeek", async () => {
   const h = harness(() => json({ output: [message("A helpful reply")], usage: { input_tokens: 10, output_tokens: 4 } }), Date, { OPENAI_API_KEY: "test-openai" });
-  assert.equal(h.config.OPERATION_CONFIG.dialogue.model, "gpt-5.6-luna");
+  assert.equal(h.config.OPERATION_CONFIG.dialogue.model, "gpt-6-luna");
   assert.equal(h.config.OPERATION_CONFIG.generate_social_post.model, "deepseek-flash");
   assert.equal(h.config.aiConfigured("dialogue"), true);
   const result = await h.callAiModel({ operation: "dialogue_plain", instructions: "Answer", input: "Hello" });
   assert.equal(result.result.raw, "A helpful reply");
   assert.equal(h.calls[0].url, "https://api.openai.com/v1/responses");
-  assert.equal(h.calls[0].body.model, "gpt-5.6-luna");
+  assert.equal(h.calls[0].body.model, "gpt-6-luna");
 });
 
 test("dialogue routes GPT through the existing authenticated Render relay", async () => {
@@ -127,12 +127,23 @@ test("dialogue routes GPT through the existing authenticated Render relay", asyn
     KLIO_IMAGE_SERVICE_TOKEN: "test-relay-token",
   });
   assert.equal(h.config.aiConfigured("dialogue_plain"), true);
-  assert.equal(h.config.OPERATION_CONFIG.dialogue_plain.model, "gpt-5.6-luna");
+  assert.equal(h.config.OPERATION_CONFIG.dialogue_plain.model, "gpt-6-luna");
   const result = await h.callAiModel({ operation: "dialogue_plain", instructions: "Answer", input: "Hello" });
   assert.equal(result.result.raw, "Relay answer");
   assert.equal(h.calls[0].url, "https://klio-telegram-relay.onrender.com/responses");
   assert.equal(h.calls[0].headers.Authorization, "Bearer test-relay-token");
-  assert.equal(h.calls[0].body.model, "gpt-5.6-luna");
+  assert.equal(h.calls[0].body.model, "gpt-6-luna");
+});
+
+test("GPT-6 Luna uses current official pricing and is the only OpenAI content fallback", () => {
+  const h = harness(() => json({ output_text: '{"body":"article"}' }), Date, { AI_PROVIDER: "openai" });
+  assert.equal(h.config.AI_MODELS.CONTENT, "gpt-6-luna");
+  assert.equal(h.config.FALLBACKS["gpt-5.4-nano"], "gpt-6-luna");
+  assert.equal(h.config.estimateCostUsd("gpt-6-luna", {
+    inputTokens: 1_000_000,
+    cachedInputTokens: 0,
+    outputTokens: 1_000_000,
+  }), 0.6);
 });
 
 test("5600-character article keeps thinking with extra headroom and externally supplied research", async () => {

@@ -33,7 +33,7 @@ const OPENAI_MODELS = {
   // Full-tier model: everything the visitor directly reads or publishes —
   // articles, posts, ads, landing copy, content plans, editor rewrites,
   // competitor analysis, semantic research.
-  CONTENT: "gpt-5.6-luna",
+  CONTENT: "gpt-6-luna",
   // Small/fast model: short, formalized, non-creative steps — parsing a
   // freeform brief into structured fields, a semantic QA pass over an
   // already-written draft. Never used to produce user-facing prose.
@@ -66,8 +66,8 @@ export function providerForModel(model: AiModelId): AiProvider {
 // the utility model. Fallback never crosses providers — different API key,
 // different endpoint.
 export const FALLBACKS: Record<AiModelId, AiModelId | null> = {
-  "gpt-5.4-nano": "gpt-5.6-luna",
-  "gpt-5.6-luna": null,
+  "gpt-5.4-nano": "gpt-6-luna",
+  "gpt-6-luna": null,
   "deepseek-flash": null,
 };
 
@@ -82,7 +82,7 @@ type ModelPricing = {
 };
 
 export const MODEL_PRICING: Record<AiModelId, ModelPricing> = {
-  "gpt-5.6-luna": { inputPerMillion: 1, cachedInputPerMillion: 0.1, outputPerMillion: 6 },
+  "gpt-6-luna": { inputPerMillion: 0.1, cachedInputPerMillion: 0.01, outputPerMillion: 0.5 },
   "gpt-5.4-nano": { inputPerMillion: 0.2, cachedInputPerMillion: 0.02, outputPerMillion: 1.25 },
   // V4.1 Flash rates effective 2026-09-10 04:00 UTC; peak/off-peak windows
   // remain in effect — see https://api-docs.deepseek.com/quick_start/pricing.
