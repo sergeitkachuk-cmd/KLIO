@@ -132,6 +132,7 @@ test("professional images use owned material titles and the same text and logo c
     "drizzle-orm": orm, "../../../db/schema": h.schema,
     "../_lib/image-generation": { imageConfigured: () => true, parseImageGenerationOptions: imageModule.parseImageGenerationOptions, createImage: async (...args) => { calls.push({ logo: false, args }); return "image"; }, createImageFromLogo: async (...args) => { calls.push({ logo: true, args }); return "image"; } },
     "../_lib/dialogue-image-prompt": promptModule,
+    "../_lib/image-usage": { recordImageUsage: async () => {} },
     "../_lib/storage": { downloadBrandLogo: async () => ({ bytes: new Uint8Array(), contentType: "image/png" }), StorageError: class extends Error {} },
     "../_lib/request-body": load("app/api/_lib/request-body.ts"),
     "../_lib/request-origin": { hasUnsafeRequestOrigin: () => false }, "../_lib/rate-limit": { isRateLimited: () => false },

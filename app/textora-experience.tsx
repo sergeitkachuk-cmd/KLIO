@@ -2551,7 +2551,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [modeSaving, setModeSaving] = useState(false);
   const [dialogueImport, setDialogueImport] = useState<{ id: string; nonce: number } | null>(null);
   const [workspaceReady, setWorkspaceReady] = useState(!workspace);
-  const [, setWorkspaceSaving] = useState(false);
+  const [workspaceSaving, setWorkspaceSaving] = useState(false);
   const [workspaceDataError, setWorkspaceDataError] = useState("");
   const historyOpen = activeModule === "history";
   const [archivePage, setArchivePage] = useState<{ brandId: string; history: string | null; materials: string | null } | null>(null);
@@ -2786,6 +2786,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     useBrand,
   ]);
   const workspaceSnapshotJson = useMemo(() => JSON.stringify(workspaceSnapshot), [workspaceSnapshot]);
+  const latestBrandSaveSnapshot = useRef("");
+  latestBrandSaveSnapshot.current = JSON.stringify({ action: "save_brand", brandId: activeBrandId, profile: effectiveBrand, workspace: workspaceSnapshot });
   const activeWorkspaceBrand = useMemo(
     () => workspaceBrands.find((item) => item.id === activeBrandId) ?? null,
     [activeBrandId, workspaceBrands],
@@ -3299,7 +3301,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     if (!workspace || !workspaceReady || !activeBrandId || brandSwitchBusy) return;
     const timer = window.setTimeout(() => {
       autosaveWorkspace();
-    }, 1100);
+    }, 650);
     return () => window.clearTimeout(timer);
   }, [activeBrandId, brandSwitchBusy, effectiveBrand, workspace, workspaceReady, workspaceSnapshotJson]);
 
@@ -3568,7 +3570,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       if (saved) workspaceVersions.current.set(saved.id, saved.updatedAt);
       if (saved) setWorkspaceBrands((current) => current.map((item) => item.id === saved.id ? saved : item));
       if (payload.account) setWorkspaceAccount(payload.account);
-      setBrandSaved(true);
+      setBrandSaved(latestBrandSaveSnapshot.current === JSON.stringify(snapshot));
       setWorkspaceDataError("");
       if (showConfirmation) showToast("Профиль и рабочие данные бренда сохранены");
       return true;
@@ -4029,7 +4031,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       if (!response.ok || !payload.key) throw new Error(payload.error || "Не удалось загрузить логотип. Попробуйте ещё раз.");
       setBrand((current) => ({ ...current, logoFileName: payload.fileName || file.name, logoKey: payload.key! }));
       setBrandSaved(false);
-      showToast("Логотип прикреплён. Не забудьте сохранить профиль.");
+      showToast("Логотип добавлен в профиль. Сохранение произойдёт автоматически.");
     } catch (error) {
       setBrandLogoError(error instanceof Error ? error.message : "Не удалось загрузить логотип.");
     } finally {
@@ -6656,7 +6658,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </div>
               </div>
 
-              <div className="brand-profile-footer"><p><i className={brandSaved ? "saved" : ""}/>{brandSaved ? "Профиль и данные бренда сохранены в кабинете" : "Есть несохранённые изменения"}</p><div><button type="button" onClick={restoreBrand}>Восстановить базовый профиль</button><button className="button primary" type="button" onClick={() => void saveBrand()}>Сохранить профиль</button></div></div>
+              <div className="brand-profile-footer"><p role={workspaceDataError ? "alert" : "status"}><i className={brandSaved ? "saved" : workspaceDataError ? "error" : ""}/>{workspaceDataError ? `Не удалось сохранить: ${workspaceDataError}` : workspaceSaving ? "Сохраняем изменения…" : brandSaved ? "Все изменения профиля сохранены автоматически" : "Изменения сохраняются автоматически"}</p><div><button type="button" onClick={restoreBrand}>Восстановить базовый профиль</button><button className="button primary" type="button" onClick={() => void saveBrand()}>{workspaceDataError ? "Повторить сохранение" : "Сохранить сейчас"}</button></div></div>
             </div>
           </section>
 

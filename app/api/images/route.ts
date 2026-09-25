@@ -11,6 +11,7 @@ import { resolveBaseUrl } from "../_lib/base-url";
 import { assertGenerationQuotaAvailable, getWorkspaceDb, recordGeneration, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 import { IMAGE_STYLE_OPTIONS } from "../../dialogue-generation-settings";
 import { imageContentType } from "../_lib/image-type";
+import { recordImageUsage } from "../_lib/image-usage";
 
 export const runtime = "nodejs";
 export const maxDuration = 240;
@@ -105,13 +106,21 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
     }
     if (useLogo && !logoKey) throw new WorkspaceAccessError("Добавьте логотип в профиль бренда или отключите его использование.", 400);
     const finalPrompt = `${prompt}${brandContext}${imageStyle ? `\n\nСтиль изображения: ${imageStyle}` : ""}\n\n${dialogueImageTextInstruction(imageTextMode, imageTextMode === "title" ? sourceTitle : imageText, Boolean(sourceImage) && sourceImagePurpose === "edit", useLogo)}`;
-    const imageUrl = sourceImage
-      ? await createImageFromSource(finalPrompt, sourceImage, sourceImagePurpose,
-        useLogo && logoKey ? await downloadBrandLogo(logoKey) : undefined,
-        user.email, baseUrl, requestId, imageOptions, editMask, onPartial)
-      : useLogo && logoKey
-      ? await createImageFromLogo(finalPrompt, await downloadBrandLogo(logoKey), user.email, baseUrl, requestId, imageOptions, undefined, onPartial)
-      : await createImage(finalPrompt, user.email, baseUrl, requestId, imageOptions, undefined, onPartial);
+    const imageStartedAt = Date.now();
+    let imageUrl: string;
+    try {
+      imageUrl = sourceImage
+        ? await createImageFromSource(finalPrompt, sourceImage, sourceImagePurpose,
+          useLogo && logoKey ? await downloadBrandLogo(logoKey) : undefined,
+          user.email, baseUrl, requestId, imageOptions, editMask, onPartial)
+        : useLogo && logoKey
+        ? await createImageFromLogo(finalPrompt, await downloadBrandLogo(logoKey), user.email, baseUrl, requestId, imageOptions, undefined, onPartial)
+        : await createImage(finalPrompt, user.email, baseUrl, requestId, imageOptions, undefined, onPartial);
+      await recordImageUsage({ ownerEmail: user.email, requestId, operation: "generate_image", durationMs: Date.now() - imageStartedAt, status: "success" });
+    } catch (error) {
+      await recordImageUsage({ ownerEmail: user.email, requestId, operation: "generate_image", durationMs: Date.now() - imageStartedAt, status: "failed", errorMessage: error instanceof Error ? error.message : String(error) });
+      throw error;
+    }
     // When this call is a cover image for an existing article/material
     // (textora-experience.tsx's buildArticleImagePrompt), prompt is that
     // whole title+subtitle+body concatenated - fine as an image prompt,

@@ -45,6 +45,7 @@ import { IMAGE_STYLE_OPTIONS, TEXT_LENGTH_TARGETS } from "../../dialogue-generat
 import { DEFAULT_CAROUSEL_TEMPLATE, isCarouselTemplateId, type CarouselTemplateId } from "../../carousel-templates";
 import { buildDialogueImagePrompt, dialogueImageTextInstruction } from "../_lib/dialogue-image-prompt";
 import { generateCarouselSlides, CAROUSEL_MIN_SLIDES, CAROUSEL_MAX_SLIDES } from "../_lib/carousel";
+import { recordImageUsage } from "../_lib/image-usage";
 
 export const runtime = "nodejs";
 export const maxDuration = 600;
@@ -299,19 +300,27 @@ async function runReply(
     let saveRequested = false;
     let pendingMaterial: typeof generations.$inferInsert | undefined;
     if (mode === "carousel") {
-      const slides = await generateCarouselSlides(row.requestId, {
-        text: last, slideCount: settings.slideCount, brandId: row.brandId || undefined,
-        useBrandContext, useLogo: settings.useLogo, baseUrl,
-        imageStyleInstruction: settings.imageStyle,
-        templateId: settings.carouselTemplate,
-        imageOptions: {
-          ...(settings.imageAspectRatio ? { aspectRatio: settings.imageAspectRatio } : {}),
-          ...(settings.imageOutputFormat ? { outputFormat: settings.imageOutputFormat } : {}),
-        },
-      }, row.ownerEmail, async () => {
-        const [active] = await db.select({ id: dialogueThreads.id }).from(dialogueThreads).where(and(owned(row.id, row.ownerEmail), eq(dialogueThreads.status, "processing"), eq(dialogueThreads.requestId, row.requestId))).limit(1);
-        if (!active) throw new WorkspaceAccessError("Задание карусели уже завершено или прервано.", 409);
-      });
+      const imageStartedAt = Date.now();
+      let slides: Awaited<ReturnType<typeof generateCarouselSlides>>;
+      try {
+        slides = await generateCarouselSlides(row.requestId, {
+          text: last, slideCount: settings.slideCount, brandId: row.brandId || undefined,
+          useBrandContext, useLogo: settings.useLogo, baseUrl,
+          imageStyleInstruction: settings.imageStyle,
+          templateId: settings.carouselTemplate,
+          imageOptions: {
+            ...(settings.imageAspectRatio ? { aspectRatio: settings.imageAspectRatio } : {}),
+            ...(settings.imageOutputFormat ? { outputFormat: settings.imageOutputFormat } : {}),
+          },
+        }, row.ownerEmail, async () => {
+          const [active] = await db.select({ id: dialogueThreads.id }).from(dialogueThreads).where(and(owned(row.id, row.ownerEmail), eq(dialogueThreads.status, "processing"), eq(dialogueThreads.requestId, row.requestId))).limit(1);
+          if (!active) throw new WorkspaceAccessError("Задание карусели уже завершено или прервано.", 409);
+        });
+        await recordImageUsage({ ownerEmail: row.ownerEmail, requestId: row.requestId, operation: "generate_carousel_image", durationMs: Date.now() - imageStartedAt, status: "success" });
+      } catch (error) {
+        await recordImageUsage({ ownerEmail: row.ownerEmail, requestId: row.requestId, operation: "generate_carousel_image", durationMs: Date.now() - imageStartedAt, status: "failed", errorMessage: error instanceof Error ? error.message : String(error) });
+        throw error;
+      }
       const card: DialogueCard = {
         id: crypto.randomUUID(), kind: "post", title: slides[0].headline,
         body: last, imageUrl: slides[0].imageUrl, slides,
@@ -360,12 +369,20 @@ async function runReply(
         const profile = JSON.parse(brand.profileJson) as { logoKey?: unknown };
         if (typeof profile.logoKey === "string") logoKey = profile.logoKey;
       }
-      const imageUrl = settings.imageSource
-        ? await createImageFromSource(prompt, await downloadPublicationImage(settings.imageSource.key), settings.imageSource.purpose,
-          logoKey ? await downloadBrandLogo(logoKey) : undefined, row.ownerEmail, baseUrl, row.requestId, imageOptions)
-        : logoKey
-        ? await createImageFromLogo(prompt, await downloadBrandLogo(logoKey), row.ownerEmail, baseUrl, row.requestId, imageOptions)
-        : await createImage(prompt, row.ownerEmail, baseUrl, row.requestId, imageOptions);
+      const imageStartedAt = Date.now();
+      let imageUrl: string;
+      try {
+        imageUrl = settings.imageSource
+          ? await createImageFromSource(prompt, await downloadPublicationImage(settings.imageSource.key), settings.imageSource.purpose,
+            logoKey ? await downloadBrandLogo(logoKey) : undefined, row.ownerEmail, baseUrl, row.requestId, imageOptions)
+          : logoKey
+          ? await createImageFromLogo(prompt, await downloadBrandLogo(logoKey), row.ownerEmail, baseUrl, row.requestId, imageOptions)
+          : await createImage(prompt, row.ownerEmail, baseUrl, row.requestId, imageOptions);
+        await recordImageUsage({ ownerEmail: row.ownerEmail, requestId: row.requestId, operation: "generate_image", durationMs: Date.now() - imageStartedAt, status: "success" });
+      } catch (error) {
+        await recordImageUsage({ ownerEmail: row.ownerEmail, requestId: row.requestId, operation: "generate_image", durationMs: Date.now() - imageStartedAt, status: "failed", errorMessage: error instanceof Error ? error.message : String(error) });
+        throw error;
+      }
       const materialId = crypto.randomUUID();
       const title = selected?.title || last.slice(0, 100) || "Изображение";
       // Materials and the dialogue must agree: an image prompt is metadata,

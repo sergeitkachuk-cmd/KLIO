@@ -238,6 +238,7 @@ export async function createDialogueHarness() {
         createImageFromSource: async (...args) => { imageCalls.push({ source: true, logo: Boolean(args[3]), args }); return editImage(...args); },
       },
       "../_lib/image-generation-errors": imageGenerationErrors,
+      "../_lib/image-usage": { recordImageUsage: async () => {} },
       "../_lib/storage": {
         downloadBrandLogo: async () => ({ bytes: new Uint8Array(), contentType: "image/png" }),
         downloadPublicationImage: async (key) => { imageDownloads.push(key); return { bytes: new Uint8Array([1, 2, 3]), contentType: "image/png" }; },

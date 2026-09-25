@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { getCurrentUser } from "../identity";
 import { isAdminEmail } from "../api/_lib/admin";
 import type { AiOperation } from "../api/_lib/ai-config";
@@ -175,7 +175,8 @@ export default async function AdminPage() {
     await db.delete(accounts).where(eq(accounts.email, stale.email));
   }
 
-  const [userRows, usageByUser, brandRows, invoiceRefsByUser, transactionRefsByUser, totalsRows, last30Rows, byModelRows, byOperationRows, recentAiRows, externalServices, paymentRows, generationsByOriginRows, imagesByOwnerRows, materialsByTypeRows, publicationsByOwnerRows, paidPaymentOwners, paidInvoiceOwners, socialChannelsByOwnerRows] = await Promise.all([
+  const imageOperations = ["generate_image", "generate_carousel_image"];
+  const [userRows, usageByUser, brandRows, invoiceRefsByUser, transactionRefsByUser, totalsRows, last30Rows, byModelRows, byOperationRows, recentAiRows, recentImageRows, recentImageFailures, externalServices, paymentRows, generationsByOriginRows, imagesByOwnerRows, materialsByTypeRows, publicationsByOwnerRows, paidPaymentOwners, paidInvoiceOwners, socialChannelsByOwnerRows] = await Promise.all([
     db.select().from(accounts).orderBy(desc(accounts.createdAt)),
     db.select({
       ownerEmail: aiUsage.ownerEmail,
@@ -183,7 +184,7 @@ export default async function AdminPage() {
       totalCalls: sql<number>`count(*)`,
       totalTokens: sql<number>`coalesce(sum(${aiUsage.totalTokens}), 0)`,
       lastCallAt: sql<string>`max(${aiUsage.createdAt})`,
-    }).from(aiUsage).groupBy(aiUsage.ownerEmail),
+    }).from(aiUsage).where(notInArray(aiUsage.operation, imageOperations)).groupBy(aiUsage.ownerEmail),
     // Full profileJson per brand (not just a count) — needed for the
     // "% заполнен профиль бренда" breakdown below. brandMap (count) and
     // brandProfileMap (completion of the most recently updated brand) are
@@ -207,29 +208,30 @@ export default async function AdminPage() {
       totalCostUsd: sql<number>`coalesce(sum(${aiUsage.estimatedCostUsd}), 0)`,
       totalCalls: sql<number>`count(*)`,
       totalTokens: sql<number>`coalesce(sum(${aiUsage.totalTokens}), 0)`,
-    }).from(aiUsage),
+    }).from(aiUsage).where(notInArray(aiUsage.operation, imageOperations)),
     db.select({
       totalCostUsd: sql<number>`coalesce(sum(${aiUsage.estimatedCostUsd}), 0)`,
       totalCalls: sql<number>`count(*)`,
-    }).from(aiUsage).where(sql`${aiUsage.createdAt}::timestamptz > now() - interval '30 days'`),
+    }).from(aiUsage).where(and(notInArray(aiUsage.operation, imageOperations), sql`${aiUsage.createdAt}::timestamptz > now() - interval '30 days'`)),
     db.select({
       model: aiUsage.model,
       totalCostUsd: sql<number>`coalesce(sum(${aiUsage.estimatedCostUsd}), 0)`,
       totalCalls: sql<number>`count(*)`,
-    }).from(aiUsage).groupBy(aiUsage.model),
+    }).from(aiUsage).where(notInArray(aiUsage.operation, imageOperations)).groupBy(aiUsage.model),
     db.select({
       operation: aiUsage.operation,
       totalCostUsd: sql<number>`coalesce(sum(${aiUsage.estimatedCostUsd}), 0)`,
       totalCalls: sql<number>`count(*)`,
       averageDurationMs: sql<number>`coalesce(avg(${aiUsage.durationMs}), 0)`,
       maximumDurationMs: sql<number>`coalesce(max(${aiUsage.durationMs}), 0)`,
-    }).from(aiUsage).groupBy(aiUsage.operation).orderBy(sql`sum(${aiUsage.estimatedCostUsd}) desc`),
+    }).from(aiUsage).where(notInArray(aiUsage.operation, imageOperations)).groupBy(aiUsage.operation).orderBy(sql`sum(${aiUsage.estimatedCostUsd}) desc`),
     db.select({
       id: aiUsage.id,
       ownerEmail: aiUsage.ownerEmail,
       operation: aiUsage.operation,
       model: aiUsage.model,
       reasoningEffort: aiUsage.reasoningEffort,
+      estimatedCostUsd: aiUsage.estimatedCostUsd,
       durationMs: aiUsage.durationMs,
       inputTokens: aiUsage.inputTokens,
       outputTokens: aiUsage.outputTokens,
@@ -237,7 +239,33 @@ export default async function AdminPage() {
       status: aiUsage.status,
       errorMessage: aiUsage.errorMessage,
       createdAt: aiUsage.createdAt,
-    }).from(aiUsage).orderBy(desc(aiUsage.createdAt)).limit(30),
+    }).from(aiUsage).where(notInArray(aiUsage.operation, imageOperations)).orderBy(desc(aiUsage.createdAt)).limit(30),
+    // Image and carousel requests bypass the text-model router, so they have
+    // never created ai_usage rows. Their successful generation records are
+    // the durable source of truth and must appear in the same recent activity
+    // view; keep their fields explicitly unavailable rather than inventing
+    // token, latency, or cost values.
+    db.select({
+      id: generations.id,
+      ownerEmail: generations.ownerEmail,
+      topic: generations.topic,
+      createdAt: generations.createdAt,
+    }).from(generations).where(inArray(generations.topic, ["Изображение", "Карусель"])).orderBy(desc(generations.createdAt)).limit(100),
+    db.select({
+      id: aiUsage.id,
+      ownerEmail: aiUsage.ownerEmail,
+      operation: aiUsage.operation,
+      model: aiUsage.model,
+      reasoningEffort: aiUsage.reasoningEffort,
+      estimatedCostUsd: aiUsage.estimatedCostUsd,
+      durationMs: aiUsage.durationMs,
+      inputTokens: aiUsage.inputTokens,
+      outputTokens: aiUsage.outputTokens,
+      retryCount: aiUsage.retryCount,
+      status: aiUsage.status,
+      errorMessage: aiUsage.errorMessage,
+      createdAt: aiUsage.createdAt,
+    }).from(aiUsage).where(and(inArray(aiUsage.operation, imageOperations), eq(aiUsage.status, "failed"))).orderBy(desc(aiUsage.createdAt)).limit(100),
     getExternalServiceStatuses(),
     // Raw payment attempts (SBP/card quick-pay, not the invoice/УПД flow) —
     // exists so a stuck payment (webhook never arrived, see the delivery
@@ -294,6 +322,27 @@ export default async function AdminPage() {
       count: sql<number>`count(*)`,
     }).from(socialChannels).groupBy(socialChannels.ownerEmail, socialChannels.platform),
   ]);
+  const recentActivityRows = [
+    ...recentAiRows.map((row) => ({ ...row, activityType: "ai" as const, topic: "" })),
+    ...recentImageRows.map((row) => ({
+      id: row.id,
+      ownerEmail: row.ownerEmail,
+      operation: row.topic === "Карусель" ? "generate_carousel_image" : "generate_image",
+      model: "Изображение",
+      reasoningEffort: "—",
+      estimatedCostUsd: null,
+      durationMs: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      retryCount: 0,
+      status: "success",
+      errorMessage: null,
+      createdAt: row.createdAt,
+      activityType: "image" as const,
+      topic: row.topic,
+    })),
+    ...recentImageFailures.map((row) => ({ ...row, estimatedCostUsd: null, activityType: "image" as const, topic: row.operation === "generate_carousel_image" ? "Карусель" : "Изображение" })),
+  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 30);
 
   const usageMap = new Map(usageByUser.map((row) => [row.ownerEmail, row]));
   const brandMap = new Map<string, number>();
@@ -535,33 +584,34 @@ export default async function AdminPage() {
   sections.push({
     id: "recent-calls",
     label: "Последние вызовы ИИ",
-    badge: String(recentAiRows.length),
+    badge: String(recentActivityRows.length),
     content: (
       <section className="admin-block">
         <div className="admin-block-heading">
           <div>
             <h2>Последние вызовы ИИ</h2>
-            <p>Каждая строка — отдельный запрос к модели. Несколько соседних строк одного пользователя могут относиться к одной генерации: основной текст, коррекция или сокращение.</p>
+            <p>Стоимость указана для каждого текстового запроса по оценке токенов. Для изображений и каруселей точная сумма пока не рассчитывается.</p>
           </div>
         </div>
         <div className="admin-table-scroll">
           <table className="admin-table">
-            <thead><tr><th>Время</th><th>Пользователь</th><th>Операция</th><th>Модель</th><th>Размышление</th><th>Длительность</th><th>Токены вход / выход</th><th>Статус</th><th>Ошибка</th></tr></thead>
+            <thead><tr><th>Время</th><th>Пользователь</th><th>Операция</th><th>Модель</th><th>Размышление</th><th>Длительность</th><th>Токены вход / выход</th><th>Расход, USD</th><th>Статус</th><th>Ошибка</th></tr></thead>
             <tbody>
-              {recentAiRows.map((row) => (
+              {recentActivityRows.map((row) => (
                 <tr key={row.id}>
                   <td>{formatDate(row.createdAt)}</td>
                   <td>{row.ownerEmail}</td>
-                  <td>{OPERATION_LABELS[row.operation as AiOperation] ?? row.operation}</td>
+                  <td>{row.activityType === "image" ? (row.topic === "Карусель" ? "Генерация карусели" : "Генерация изображения") : OPERATION_LABELS[row.operation as AiOperation] ?? row.operation}</td>
                   <td>{row.model}</td>
                   <td>{row.reasoningEffort}</td>
-                  <td>{formatDuration(row.durationMs)}</td>
-                  <td>{formatNumber(row.inputTokens)} / {formatNumber(row.outputTokens)}</td>
+                  <td>{row.activityType === "image" ? "—" : formatDuration(row.durationMs)}</td>
+                  <td>{row.activityType === "image" ? "—" : `${formatNumber(row.inputTokens)} / ${formatNumber(row.outputTokens)}`}</td>
+                  <td>{row.activityType === "image" ? "—" : formatUsd(num(row.estimatedCostUsd))}</td>
                   <td>{row.status === "success" ? "Успешно" : `Ошибка${row.retryCount ? ` · повторов ${row.retryCount}` : ""}`}</td>
                   <td className="admin-ai-error">{row.errorMessage || "—"}</td>
                 </tr>
               ))}
-              {!recentAiRows.length && <tr><td colSpan={9} className="admin-empty-row">Пока нет вызовов ИИ.</td></tr>}
+              {!recentActivityRows.length && <tr><td colSpan={10} className="admin-empty-row">Пока нет вызовов ИИ.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -842,8 +892,8 @@ export default async function AdminPage() {
 
       <section className="admin-cards">
         <article><span>Пользователей</span><b>{formatNumber(users.length)}</b><small>{formatNumber(verifiedCount)} с подтверждённой почтой</small></article>
-        <article><span>Расход на ИИ · всего</span><b>{formatUsd(num(totals.totalCostUsd))}</b><small>{formatNumber(num(totals.totalCalls))} запросов, {formatNumber(num(totals.totalTokens))} токенов</small></article>
-        <article><span>Расход на ИИ · 30 дней</span><b>{formatUsd(num(last30.totalCostUsd))}</b><small>{formatNumber(num(last30.totalCalls))} запросов</small></article>
+        <article><span>Расход текстового ИИ · всего</span><b>{formatUsd(num(totals.totalCostUsd))}</b><small>{formatNumber(num(totals.totalCalls))} запросов, {formatNumber(num(totals.totalTokens))} токенов</small></article>
+        <article><span>Расход текстового ИИ · 30 дней</span><b>{formatUsd(num(last30.totalCostUsd))}</b><small>{formatNumber(num(last30.totalCalls))} запросов</small></article>
         <article><span>Тариф</span><b>Старт (у всех)</b><small>оплата подписки пока не подключена</small></article>
       </section>
 
@@ -1140,6 +1190,50 @@ function AdminStyles() {
          count changes. */
       @media (max-width: 1100px) { .admin-table-users th:nth-child(4), .admin-table-users td:nth-child(4), .admin-table-users th:nth-child(6), .admin-table-users td:nth-child(6) { display: none; } .admin-user-details { grid-template-columns: repeat(2, minmax(180px, 1fr)); } }
       @media (max-width: 700px) { .admin-user-details { grid-template-columns: 1fr; } }
+      /* KLIO workspace visual language: deep navy surfaces, soft blue light,
+         and the same sky-blue active accent used by the product controls. */
+      .admin-page { max-width: 1760px; padding-top: 28px; }
+      .admin-header { padding: 20px 22px; border: 1px solid rgba(148, 191, 235, .22); border-radius: 24px; background: linear-gradient(110deg, rgba(20, 52, 87, .94), rgba(9, 30, 56, .96)); box-shadow: 0 16px 42px rgba(0, 12, 29, .18); }
+      .admin-header h1 { letter-spacing: -.025em; }
+      .admin-sidebar nav { gap: 7px; }
+      .admin-sidebar button { border-radius: 14px; transition: background .16s ease, border-color .16s ease, transform .16s ease; }
+      .admin-sidebar button:hover { transform: translateX(2px); }
+      .admin-sidebar button.active { border-color: rgba(139, 190, 255, .52); background: linear-gradient(115deg, #244d78, #183b63); color: #f4f8ff; box-shadow: inset 0 1px rgba(255,255,255,.12), 0 8px 20px rgba(5, 22, 43, .18); }
+      .admin-sidebar button em { color: #bed8f6; }
+      .admin-block { padding: 20px; border: 1px solid rgba(131, 177, 220, .22); border-radius: 22px; background: rgba(13, 39, 67, .76); box-shadow: 0 16px 42px rgba(0, 12, 29, .12); }
+      .admin-cards article { border-radius: 20px; }
+      .admin-table-scroll { border-radius: 16px; }
+      .admin-table tbody tr:hover td { background: rgba(95, 157, 221, .08); }
+      .admin-refresh, .admin-theme-toggle, .admin-details-toggle, .admin-control-actions button { border-radius: 999px; transition: background .16s ease, border-color .16s ease, transform .16s ease; }
+      .admin-refresh:hover, .admin-details-toggle:hover { transform: translateY(-1px); }
+      .admin-funnel-fill { background: linear-gradient(90deg, #5b91d5, #8db7f2); }
+      body[data-admin-theme="dark"] { background: radial-gradient(ellipse at 80% 0%, rgba(53, 112, 172, .24), transparent 38%), linear-gradient(145deg, #071a30 0%, #0a2748 52%, #071b33 100%) fixed; }
+      body[data-admin-theme="dark"] .admin-page { color: #e8f1fb; }
+      body[data-admin-theme="dark"] .admin-header { border-color: rgba(142, 190, 238, .28); background: linear-gradient(110deg, rgba(18, 53, 88, .96), rgba(8, 30, 55, .98)); }
+      body[data-admin-theme="dark"] .admin-cards article, body[data-admin-theme="dark"] .admin-integration, body[data-admin-theme="dark"] .admin-account-controls, body[data-admin-theme="dark"] .admin-block { border-color: rgba(137, 184, 231, .22); background: radial-gradient(circle at 100% 0%, rgba(79, 139, 204, .16), transparent 38%), linear-gradient(145deg, #102d4d, #0b2340 70%, #0a203b); }
+      body[data-admin-theme="dark"] .admin-sidebar button:hover, body[data-admin-theme="dark"] .admin-sidebar button em { background: rgba(113, 166, 225, .13); }
+      body[data-admin-theme="dark"] .admin-sidebar button.active { background: linear-gradient(115deg, #244d78, #183b63); }
+      body[data-admin-theme="dark"] .admin-block-heading p, body[data-admin-theme="dark"] .admin-integration small, body[data-admin-theme="dark"] .admin-note, body[data-admin-theme="dark"] .admin-kicker { color: #a9bfd7; }
+      body[data-admin-theme="dark"] .admin-table th { color: #9fb8d2; }
+      body[data-admin-theme="dark"] .admin-table th, body[data-admin-theme="dark"] .admin-table td, body[data-admin-theme="dark"] .admin-table-scroll { border-color: rgba(143, 184, 222, .18); }
+      body[data-admin-theme="dark"] .admin-refresh, body[data-admin-theme="dark"] .admin-theme-toggle, body[data-admin-theme="dark"] .admin-controls-grid select, body[data-admin-theme="dark"] .admin-controls-grid input, body[data-admin-theme="dark"] .admin-users-toolbar input { background: #102f50; border-color: rgba(139, 187, 235, .3); color: #e8f1fb; }
+      body[data-admin-theme="dark"] .admin-announcement-row { background: #102b49; border-color: rgba(139, 187, 235, .22); }
+      body[data-admin-theme="dark"] .admin-announcement-row-head, body[data-admin-theme="dark"] .admin-integration a { color: #91b9ec; }
+      body[data-admin-theme="dark"] .admin-funnel-track { background: rgba(139, 187, 235, .12); }
+      body[data-admin-theme="dark"] .admin-user-details { background: rgba(7, 27, 49, .7); color: #d3e2f2; }
+      body[data-admin-theme="light"] { background: radial-gradient(ellipse at 95% 0%, rgba(122, 169, 223, .16), transparent 36%), linear-gradient(145deg, #f4f8fd, #eaf1fa 55%, #f7faff) fixed; }
+      body[data-admin-theme="light"] .admin-page { color: #102742; }
+      body[data-admin-theme="light"] .admin-header { border-color: rgba(77, 123, 173, .2); background: linear-gradient(110deg, rgba(255,255,255,.94), rgba(232,241,251,.96)); }
+      body[data-admin-theme="light"] .admin-block, body[data-admin-theme="light"] .admin-cards article, body[data-admin-theme="light"] .admin-integration, body[data-admin-theme="light"] .admin-account-controls { border-color: rgba(90, 133, 179, .2); background: linear-gradient(145deg, rgba(255,255,255,.96), rgba(242,247,253,.98)); box-shadow: 0 12px 32px rgba(35, 70, 112, .07); }
+      body[data-admin-theme="light"] .admin-sidebar button.active { border-color: rgba(77, 135, 201, .32); background: linear-gradient(115deg, #dceafe, #c8dcf7); color: #123353; }
+      body[data-admin-theme="light"] .admin-sidebar button:hover { background: rgba(106, 154, 208, .12); }
+      body[data-admin-theme="light"] .admin-sidebar button em { color: #355b82; background: rgba(75, 125, 182, .12); }
+      body[data-admin-theme="light"] .admin-block-heading p, body[data-admin-theme="light"] .admin-integration small, body[data-admin-theme="light"] .admin-note, body[data-admin-theme="light"] .admin-kicker { color: #5c7188; }
+      body[data-admin-theme="light"] .admin-table th { color: #58718b; }
+      body[data-admin-theme="light"] .admin-table th, body[data-admin-theme="light"] .admin-table td, body[data-admin-theme="light"] .admin-table-scroll { border-color: rgba(90, 133, 179, .17); }
+      body[data-admin-theme="light"] .admin-refresh, body[data-admin-theme="light"] .admin-theme-toggle { background: rgba(255,255,255,.8); border-color: rgba(90, 133, 179, .28); color: #173552; }
+      @media (max-width: 900px) { .admin-page { padding: 14px 12px 84px; } .admin-header { border-radius: 18px; padding: 16px; } .admin-block { padding: 14px; border-radius: 18px; } }
+      @media (prefers-reduced-motion: reduce) { .admin-sidebar button, .admin-refresh, .admin-details-toggle { transition: none; } }
     `}</style>
   );
 }

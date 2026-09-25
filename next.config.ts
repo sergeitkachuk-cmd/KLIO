@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Turbopack keeps some CSS chunk names stable between deployments. The
   // default immutable cache then makes an already-open mobile browser keep
-  // an old stylesheet even when Render serves newer content at that URL.
+  // an old stylesheet even when the production host serves newer content at that URL.
   // Revalidate static assets instead: page updates now arrive without asking
   // a client to clear cache, while the browser can still use conditional
   // requests (ETag) when nothing changed.
@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "Content-Security-Policy", value: "frame-ancestors 'self' https://chatgpt.com https://chat.openai.com; object-src 'none'; base-uri 'self'" },
           { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "X-Klio-UI-Release", value: "2026-09-24-dialogue-shell-composer-v1" },
+          { key: "X-Klio-UI-Release", value: "2026-09-25-admin-usage-autosave-v1" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), usb=()" },
         ],
