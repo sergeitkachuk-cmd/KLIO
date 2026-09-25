@@ -11,6 +11,7 @@ import { getExternalServiceStatuses } from "../api/_lib/external-service-status"
 import { trialExpiresAt } from "../api/_lib/workspace-account";
 import { AdminThemeToggle } from "./admin-theme-toggle";
 import { AdminAccountControls } from "./admin-account-controls";
+import { AdminPaymentAction } from "./admin-payment-action";
 import { AdminUsersTable, type AdminUserRow } from "./admin-users-table";
 import { AdminFeedbackTable } from "./admin-feedback-table";
 import { AdminAnnouncements } from "./admin-announcements";
@@ -137,6 +138,7 @@ const OPERATION_LABELS: Record<AiOperation, string> = {
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
   pending: "Ожидает оплаты",
   paid: "Оплачен",
+  expired: "Срок оплаты истёк",
   refunded: "Возвращён",
 };
 
@@ -832,7 +834,7 @@ export default async function AdminPage() {
         </div>
         <div className="admin-table-scroll">
           <table className="admin-table">
-            <thead><tr><th>Email</th><th>Тариф</th><th>Период</th><th>Способ</th><th>Сумма</th><th>Статус</th><th>ID операции</th><th>Создан</th><th>Оплачен</th></tr></thead>
+            <thead><tr><th>Email</th><th>Тариф</th><th>Период</th><th>Способ</th><th>Сумма</th><th>Статус</th><th>ID операции</th><th>Создан</th><th>Оплачен</th><th>Действие</th></tr></thead>
             <tbody>
               {paymentRows.map((payment) => (
                 <tr key={payment.id}>
@@ -845,9 +847,10 @@ export default async function AdminPage() {
                   <td className="admin-payment-id">{payment.operationId || payment.id}</td>
                   <td>{formatDate(payment.createdAt)}</td>
                   <td>{formatDate(payment.paidAt)}</td>
+                  <td>{payment.status === "pending" ? <AdminPaymentAction paymentId={payment.id} operationId={payment.operationId} /> : "—"}</td>
                 </tr>
               ))}
-              {!paymentRows.length && <tr><td colSpan={9} className="admin-empty-row">Платежей пока не было.</td></tr>}
+              {!paymentRows.length && <tr><td colSpan={10} className="admin-empty-row">Платежей пока не было.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -1121,6 +1124,11 @@ function AdminStyles() {
       .admin-payment-status-paid { color: #15803d; background: rgba(74, 222, 128, 0.14); font-weight: 700; }
       .admin-payment-status-refunded { color: #475569; background: rgba(148, 163, 184, 0.16); font-weight: 700; }
       .admin-payment-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+      .admin-payment-actions { display: grid; gap: 6px; min-width: 170px; }
+      .admin-payment-actions button { border: 1px solid rgba(148, 163, 184, .35); border-radius: 999px; padding: 6px 10px; background: rgba(255,255,255,.08); color: inherit; cursor: pointer; font: inherit; font-size: 12px; white-space: nowrap; }
+      .admin-payment-actions button:disabled { opacity: .55; cursor: wait; }
+      .admin-payment-actions .admin-payment-preserve { background: transparent; }
+      .admin-payment-actions small { color: #a9bfd7; white-space: normal; }
       /* "Выделим линией пользователей, которые зарегистрировались сегодня" —
          a left accent stripe plus a faint tint, not a text badge, so it reads
          at a glance while scanning the table without adding another column. */

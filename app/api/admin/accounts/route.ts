@@ -41,6 +41,7 @@ export async function PATCH(request: Request) {
   const [current] = await db.select({ planExpiresAt: accounts.planExpiresAt }).from(accounts).where(eq(accounts.email, email)).limit(1);
   if (!current) return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
   const now = new Date();
+  const nowIso = now.toISOString();
   const isTrialOrClear = planId === "trial" || months === 0 || days === 0;
   const base = current.planExpiresAt && new Date(current.planExpiresAt).getTime() > now.getTime() ? new Date(current.planExpiresAt) : now;
   const nextExpiry = isTrialOrClear
@@ -53,6 +54,7 @@ export async function PATCH(request: Request) {
   const [updated] = await db.update(accounts).set({
     planId: planId as PlanId,
     planExpiresAt: nextExpiry,
+    adminPlanGrantedAt: isTrialOrClear ? null : nowIso,
     // Assigning a plan here should behave like a fresh grant, not silently
     // carry over whatever was used under whatever plan the account had
     // before — a real payment already resets these same three counters
@@ -67,7 +69,7 @@ export async function PATCH(request: Request) {
     dialogueActionsUsed: 0,
     generationMonth: `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`,
     quotaPeriodEndsAt: isTrialOrClear ? null : nextQuotaPeriodEnd(now),
-    updatedAt: now.toISOString(),
+    updatedAt: nowIso,
   }).where(eq(accounts.email, email)).returning({ email: accounts.email, planId: accounts.planId, planExpiresAt: accounts.planExpiresAt });
   return NextResponse.json(updated);
 }

@@ -12,7 +12,7 @@ export async function GET() {
     "Cache-Control": "no-store",
     "X-Klio-Carousel-Publish": "2026-09-21-vk-doc-permission-guide-v6",
     "X-Klio-Dialogue-Release": "2026-09-20-render-text-relay-v4",
-    "X-Klio-Payment-Diagnostics": "2026-09-19-checkout-stage-v1",
+    "X-Klio-Payment-Diagnostics": "2026-09-26-payment-auto-reconcile-v1",
     "X-Klio-Publication-Safety": "2026-09-14-network-errors-v1",
     "X-Klio-Audit-Release": "2026-09-12-ai-publish-safety-v3",
     "X-Klio-Auth-Release": "2026-09-12-request-time-session-v2",

@@ -3,8 +3,7 @@ import { readBoundedJson, RequestBodyError } from "../../../_lib/request-body";
 import { accounts, payments } from "../../../../../db/schema";
 import { getWorkspaceDb, workspaceIdentity, WorkspaceAccessError } from "../../../_lib/workspace-account";
 import { tochkaRequest, TochkaConfigError } from "../../../_lib/tochka";
-import { subscriptionExpiry, nextQuotaPeriodEnd } from "../../../_lib/subscription";
-import type { BillingPeriod } from "../../../../billing-pricing";
+import { confirmTochkaPayment } from "../../../_lib/confirm-tochka-payment";
 
 function statusOf(value: unknown): string | undefined {
   if (!value || typeof value !== "object") return undefined;
@@ -39,17 +38,11 @@ export async function POST(request: Request) {
           : [current];
         if (!updatedPayment) return;
         await tx.select({ email: accounts.email }).from(accounts).where(eq(accounts.email, updatedPayment.ownerEmail)).limit(1).for("update");
-        // A refund revokes the access granted by this purchase. Do not touch an
-        // account that has a newer successful payment.
         const successful = await tx.select({ id: payments.id, paidAt: payments.paidAt }).from(payments)
           .where(and(eq(payments.ownerEmail, updatedPayment.ownerEmail), eq(payments.status, "paid")));
         const refundedAt = new Date(updatedPayment.paidAt || updatedPayment.createdAt).getTime();
         const hasNewerPayment = successful.some((item) => new Date(item.paidAt || 0).getTime() > refundedAt);
-        // Restore the entitlement that was active before this purchase. This
-        // covers both an ordinary customer's previous paid plan and a
-        // perpetual plan granted by an administrator. Legacy payments made
-        // before the snapshot columns existed keep the old safe fallback.
-        if (!hasNewerPayment) {
+        if (!hasNewerPayment && updatedPayment.entitlementApplied) {
           const restoredEntitlement = updatedPayment.previousPlanId
             ? {
               planId: updatedPayment.previousPlanId,
@@ -72,32 +65,7 @@ export async function POST(request: Request) {
     if (providerStatus !== "APPROVED") return Response.json({ status: providerStatus === "EXPIRED" && payment.status === "pending" ? "expired" : payment.status });
     if (payment.status === "paid") return Response.json({ status: "paid" });
 
-    const now = new Date();
-    const status = await db.transaction(async (tx) => {
-      // Match webhook lock order: payment first, account second.
-      const [current] = await tx.select().from(payments).where(eq(payments.id, paymentLinkId)).limit(1).for("update");
-      if (!current) return "pending";
-      if (current.status !== "pending") return current.status;
-      const [account] = await tx.select().from(accounts).where(eq(accounts.email, current.ownerEmail)).limit(1).for("update");
-      if (!account) throw new Error("Payment account is missing.");
-      const [confirmedPayment] = await tx.update(payments).set({
-        status: "paid",
-        paidAt: now.toISOString(),
-        previousPlanId: account.planId,
-        previousPlanExpiresAt: account.planExpiresAt,
-        previousQuotaPeriodEndsAt: account.quotaPeriodEndsAt,
-        previousGenerationMonth: account.generationMonth,
-        previousGenerationsUsed: account.generationsUsed,
-        previousResearchUsed: account.researchUsed,
-        previousEditorActionsUsed: account.editorActionsUsed,
-        previousDialogueActionsUsed: account.dialogueActionsUsed,
-        updatedAt: now.toISOString(),
-      }).where(and(eq(payments.id, paymentLinkId), eq(payments.status, "pending"))).returning();
-      if (!confirmedPayment) return current.status;
-      if (confirmedPayment.discountApplied) await tx.update(accounts).set({ launchDiscountUsedAt: now.toISOString() }).where(eq(accounts.email, confirmedPayment.ownerEmail));
-      await tx.update(accounts).set({ planId: confirmedPayment.planId, planExpiresAt: subscriptionExpiry(account?.planExpiresAt, confirmedPayment.billing as BillingPeriod, now), generationsUsed: 0, researchUsed: 0, editorActionsUsed: 0, dialogueActionsUsed: 0, generationMonth: `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`, quotaPeriodEndsAt: nextQuotaPeriodEnd(now), updatedAt: now.toISOString() }).where(eq(accounts.email, confirmedPayment.ownerEmail));
-      return "paid";
-    });
+    const status = await confirmTochkaPayment(db, paymentLinkId, payment.operationId);
     return Response.json({ status });
   } catch (error) {
     if (error instanceof RequestBodyError) return Response.json({ error: error.message }, { status: error.status });

@@ -12,16 +12,27 @@
 // duplicate call just finds nothing left to claim on the rows the first
 // call already picked up.
 
-import { and, asc, eq, lte, sql } from "drizzle-orm";
-import { publications } from "../../../../db/schema";
+import { and, asc, eq, isNotNull, lte, sql } from "drizzle-orm";
+import { payments, publications } from "../../../../db/schema";
 import { getWorkspaceDb, workspaceDatabaseAvailable } from "../../_lib/workspace-account";
 import { attemptPublish } from "../../_lib/publish-attempt";
 import { resolveBaseUrl } from "../../_lib/base-url";
+import { tochkaRequest } from "../../_lib/tochka";
+import { confirmTochkaPayment } from "../../_lib/confirm-tochka-payment";
 
 // Bounds how much work one invocation does — a scheduler firing every
 // minute will always keep the backlog near zero in practice, this just
 // keeps a single request from running away if it's ever down for a while.
 const BATCH_SIZE = 20;
+const PAYMENT_BATCH_SIZE = 12;
+
+function paymentStatus(value: unknown): string | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  if (Array.isArray(value)) return value.map(paymentStatus).find(Boolean);
+  const record = value as Record<string, unknown>;
+  if (typeof record.status === "string") return record.status;
+  return Object.values(record).map(paymentStatus).find(Boolean);
+}
 
 function authorized(request: Request) {
   const secret = process.env.CRON_SECRET?.trim();
@@ -35,6 +46,30 @@ export async function POST(request: Request) {
 
   const db = await getWorkspaceDb();
   const nowIso = new Date().toISOString();
+  const stalePayments = await db.select({ id: payments.id, operationId: payments.operationId }).from(payments).where(and(
+    eq(payments.status, "pending"),
+    isNotNull(payments.operationId),
+    isNotNull(payments.paymentUrl),
+    sql`${payments.updatedAt}::timestamptz <= CURRENT_TIMESTAMP - INTERVAL '5 minutes'`,
+    sql`${payments.createdAt}::timestamptz >= CURRENT_TIMESTAMP - INTERVAL '3 days'`,
+  )).orderBy(asc(payments.updatedAt)).limit(PAYMENT_BATCH_SIZE);
+  let paymentsApproved = 0;
+  let paymentChecksFailed = 0;
+  await Promise.all(stalePayments.map(async (payment) => {
+    try {
+      const operation = await tochkaRequest<unknown>(`/acquiring/v1.0/payments/${encodeURIComponent(payment.operationId!)}`);
+      const providerStatus = paymentStatus(operation)?.toUpperCase();
+      if (providerStatus === "APPROVED") {
+        const confirmed = await confirmTochkaPayment(db, payment.id, payment.operationId!);
+        if (confirmed === "paid") paymentsApproved += 1;
+      }
+    } catch (error) {
+      paymentChecksFailed += 1;
+      console.error("publish-due: Tochka payment check failed", payment.id, error instanceof Error ? error.message : "unknown error");
+    } finally {
+      await db.update(payments).set({ updatedAt: new Date().toISOString() }).where(and(eq(payments.id, payment.id), eq(payments.status, "pending")));
+    }
+  }));
   // A stopped container cannot report its last outbound request's outcome.
   // Recover visibility, never replay an uncertain external side effect.
   await db.update(publications).set({
@@ -65,7 +100,7 @@ export async function POST(request: Request) {
     }
   }));
 
-  return Response.json({ processed: results.length, results });
+  return Response.json({ processed: results.length, results, paymentsChecked: stalePayments.length, paymentsApproved, paymentChecksFailed });
 }
 
 // GET mirrors POST — some cron dashboards only offer GET pings. Same

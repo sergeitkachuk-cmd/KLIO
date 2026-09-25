@@ -1,10 +1,9 @@
-import { and, eq } from "drizzle-orm";
-import { accounts, payments } from "../../../../../db/schema";
+import { eq } from "drizzle-orm";
+import { payments } from "../../../../../db/schema";
 import { getWorkspaceDb } from "../../../_lib/workspace-account";
 import { verifyTochkaWebhook } from "../../../_lib/tochka";
-import { subscriptionExpiry, nextQuotaPeriodEnd } from "../../../_lib/subscription";
-import type { BillingPeriod } from "../../../../billing-pricing";
 import { readBoundedBody, RequestBodyError } from "../../../_lib/request-body";
+import { confirmTochkaPayment } from "../../../_lib/confirm-tochka-payment";
 
 function stringClaim(value: unknown) {
   return typeof value === "string" ? value : undefined;
@@ -41,48 +40,8 @@ export async function POST(request: Request) {
     }
 
     const db = await getWorkspaceDb();
-    let outcome: "confirmed" | "already_processed" | "unknown_payment" = "unknown_payment";
-    await db.transaction(async (tx) => {
-      const [payment] = await tx.select().from(payments).where(eq(payments.id, paymentLinkId)).limit(1).for("update");
-      if (!payment) return;
-      if (payment.status === "paid" || payment.status === "refunded") { outcome = "already_processed"; return; }
-      if (payment.status !== "pending" || payment.amountKopecks !== amountKopecks) throw new Error("Payment verification failed.");
-      if (payment.operationId && payment.operationId !== operationId) throw new Error("Payment operation mismatch.");
-      const [account] = await tx.select().from(accounts).where(eq(accounts.email, payment.ownerEmail)).limit(1).for("update");
-      if (!account) throw new Error("Payment account is missing.");
-      const paidAt = new Date();
-      const [confirmedPayment] = await tx.update(payments).set({
-        status: "paid",
-        operationId,
-        paidAt: paidAt.toISOString(),
-        previousPlanId: account.planId,
-        previousPlanExpiresAt: account.planExpiresAt,
-        previousQuotaPeriodEndsAt: account.quotaPeriodEndsAt,
-        previousGenerationMonth: account.generationMonth,
-        previousGenerationsUsed: account.generationsUsed,
-        previousResearchUsed: account.researchUsed,
-        previousEditorActionsUsed: account.editorActionsUsed,
-        previousDialogueActionsUsed: account.dialogueActionsUsed,
-        updatedAt: paidAt.toISOString(),
-      }).where(and(eq(payments.id, paymentLinkId), eq(payments.status, "pending"))).returning();
-      if (!confirmedPayment) { outcome = "already_processed"; return; }
-      await tx.update(accounts).set({
-        planId: confirmedPayment.planId,
-        planExpiresAt: subscriptionExpiry(account?.planExpiresAt, confirmedPayment.billing as BillingPeriod, paidAt),
-        generationsUsed: 0,
-        researchUsed: 0,
-        editorActionsUsed: 0,
-        dialogueActionsUsed: 0,
-        generationMonth: `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, "0")}`,
-        quotaPeriodEndsAt: nextQuotaPeriodEnd(paidAt),
-        // Only on confirmed payment, not on payment-link creation — an
-        // abandoned checkout must not burn the one-time launch discount
-        // (see billing-pricing.ts).
-        ...(confirmedPayment.discountApplied ? { launchDiscountUsedAt: paidAt.toISOString() } : {}),
-        updatedAt: paidAt.toISOString(),
-      }).where(eq(accounts.email, payment.ownerEmail));
-      outcome = "confirmed";
-    });
+    const state = await confirmTochkaPayment(db, paymentLinkId, operationId, { amountKopecks });
+    const outcome = state === "paid" ? "confirmed" : state === "unknown" ? "unknown_payment" : "already_processed";
     console.log("Tochka webhook processed", outcome, paymentLinkId, operationId);
     return new Response(null, { status: 200 });
   } catch (error) {

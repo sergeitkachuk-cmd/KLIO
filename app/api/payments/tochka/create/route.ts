@@ -1,6 +1,6 @@
 ﻿import { workspaceIdentity, WorkspaceAccessError } from "../../../_lib/workspace-account";
 import { discoverTochkaIds, extractOperationId, extractPaymentUrl, tochkaRequest, TochkaConfigError } from "../../../_lib/tochka";
-import { eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { readBoundedJson, RequestBodyError } from "../../../_lib/request-body";
 import { isPlanId, type PlanId } from "../../../../plans";
 import { payments } from "../../../../../db/schema";
@@ -11,6 +11,15 @@ import { PAYMENT_LINK_TTL_MINUTES } from "../../../../payment-link";
 import { resolveBaseUrl } from "../../../_lib/base-url";
 import { isAdminEmail } from "../../../_lib/admin";
 import { paymentErrorDetail } from "../../../_lib/payment-diagnostics";
+import { confirmTochkaPayment } from "../../../_lib/confirm-tochka-payment";
+
+function statusOf(value: unknown): string | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  if (Array.isArray(value)) return value.map(statusOf).find(Boolean);
+  const record = value as Record<string, unknown>;
+  if (typeof record.status === "string") return record.status;
+  return Object.values(record).map(statusOf).find(Boolean);
+}
 
 export async function POST(request: Request) {
   let admin = false;
@@ -32,11 +41,41 @@ export async function POST(request: Request) {
     // can't apply a discount that has already expired or been used.
     const discountApplied = billing === LAUNCH_DISCOUNT_BILLING && launchDiscountWindowOpen() && !account.launchDiscountUsedAt;
     const amount = discountApplied ? applyLaunchDiscount(baseAmount) : baseAmount;
+    const db = await getWorkspaceDb();
+    const baseUrl = new URL(resolveBaseUrl(request)).origin;
+    const [existing] = await db.select().from(payments).where(and(
+      eq(payments.ownerEmail, user.email),
+      eq(payments.planId, planId),
+      eq(payments.billing, billing),
+      eq(payments.mode, mode),
+      eq(payments.status, "pending"),
+      sql`${payments.createdAt}::timestamptz >= CURRENT_TIMESTAMP - INTERVAL '3 days'`,
+    )).orderBy(desc(payments.createdAt)).limit(1);
+    if (existing) {
+      if (existing.operationId) {
+        stage = "existing-payment-check";
+        const operation = await tochkaRequest<unknown>(`/acquiring/v1.0/payments/${encodeURIComponent(existing.operationId)}`);
+        const status = statusOf(operation)?.toUpperCase();
+        if (status === "APPROVED") {
+          await confirmTochkaPayment(db, existing.id, existing.operationId);
+          return Response.json({ paymentUrl: `${baseUrl}/account?payment=success&paymentLinkId=${encodeURIComponent(existing.id)}`, paymentLinkId: existing.id, planId, amount: existing.amountKopecks / 100, billing, mode, discountApplied: existing.discountApplied });
+        }
+        if (status === "EXPIRED") {
+          await db.update(payments).set({ status: "expired", updatedAt: new Date().toISOString() }).where(and(eq(payments.id, existing.id), eq(payments.status, "pending")));
+        } else if (existing.paymentUrl) {
+          return Response.json({ paymentUrl: existing.paymentUrl, paymentLinkId: existing.id, planId, amount: existing.amountKopecks / 100, billing, mode, discountApplied: existing.discountApplied });
+        } else {
+          return Response.json({ error: "Предыдущая платёжная ссылка ещё обрабатывается. Обновите страницу через минуту." }, { status: 409 });
+        }
+      } else if (existing.paymentUrl) {
+        return Response.json({ paymentUrl: existing.paymentUrl, paymentLinkId: existing.id, planId, amount: existing.amountKopecks / 100, billing, mode, discountApplied: existing.discountApplied });
+      } else {
+        return Response.json({ error: "Предыдущая платёжная ссылка ещё создаётся. Обновите страницу через минуту." }, { status: 409 });
+      }
+    }
     stage = "bank-settings";
     const { customerCode, merchantId } = await discoverTochkaIds();
-    const baseUrl = new URL(resolveBaseUrl(request)).origin;
     const paymentLinkId = `klio-${planId}-${crypto.randomUUID()}`.slice(0, 45);
-    const db = await getWorkspaceDb();
     stage = "save-payment";
     await db.insert(payments).values({
       id: paymentLinkId,
@@ -92,7 +131,7 @@ export async function POST(request: Request) {
     if (!paymentUrl) throw new Error("Точка не вернула ссылку на оплату.");
     const operationId = extractOperationId(response);
     stage = "save-operation";
-    if (operationId) await db.update(payments).set({ operationId, updatedAt: new Date().toISOString() }).where(eq(payments.id, paymentLinkId));
+    await db.update(payments).set({ paymentUrl, ...(operationId ? { operationId } : {}), updatedAt: new Date().toISOString() }).where(eq(payments.id, paymentLinkId));
     return Response.json({ paymentUrl, paymentLinkId, planId, amount, billing, mode, discountApplied });
   } catch (error) {
     if (error instanceof RequestBodyError) return Response.json({ error: error.message }, { status: error.status });

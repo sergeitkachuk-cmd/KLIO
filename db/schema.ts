@@ -31,6 +31,8 @@ export const accounts = pgTable("accounts", {
   signupMethod: text("signup_method").notNull().default("unknown"),
   planId: text("plan_id").notNull().default("trial"),
   planExpiresAt: text("plan_expires_at"),
+  // Prevent an older pending checkout from overwriting a later manual grant.
+  adminPlanGrantedAt: text("admin_plan_granted_at"),
   // Anchors the monthly usage-quota reset to the payment date instead of
   // the calendar month (see nextQuotaPeriodEnd in api/_lib/subscription.ts
   // and the reset logic in api/_lib/workspace-account.ts's ensureAccount).
@@ -90,7 +92,9 @@ export const payments = pgTable("payments", {
   // account's launchDiscountUsedAt once this payment is confirmed.
   discountApplied: boolean("discount_applied").notNull().default(false),
   status: text("status").notNull().default("pending"),
+  entitlementApplied: boolean("entitlement_applied").notNull().default(true),
   operationId: text("operation_id"),
+  paymentUrl: text("payment_url"),
   paidAt: text("paid_at"),
   // Snapshot of the entitlement active immediately before this payment was
   // confirmed. A refund must restore that entitlement instead of expiring the
