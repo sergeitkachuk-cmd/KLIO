@@ -40,6 +40,13 @@ Do not use `https://klio-telegram-relay.onrender.com` as the image service URL.
 The caller authenticates server-to-server. Clients receive image URLs on the
 main site's `/api/uploads/` path and do not call the provider directly.
 
+`GET /health` reports `maxImageInputs` and `editMasks`. `POST /generate`
+forwards the caller's validated model ID and can accept one source PNG plus a
+transparent PNG mask of the same dimensions. The mask is included in the
+idempotency fingerprint and sent as the provider's `mask` file. Masked source
+images must contain 655,360–8,294,400 pixels; the main application prepares
+uploaded JPEG/WEBP files as matching PNG pairs before calling this service.
+
 This branch contains only the image service, not the dialogue UI or database
 changes. Deployment of the main feature and real end-to-end verification on
 the customer domain are still required. `/health` indicates configuration
@@ -48,9 +55,10 @@ load its saved URL on a client without VPN before announcing availability.
 
 ## Validation and operating bounds
 
-`node --test tests/dialogue-images.test.mjs` verifies authentication, duplicate
-requests, conflict handling and keeping provider credentials out of responses.
-The test uses a fake provider and makes no paid API calls.
+`node --test tests/dialogue-images.test.mjs tests/image-edit-relay.test.mjs`
+verifies authentication, duplicate requests, conflict handling, mask validation,
+mask forwarding and keeping provider credentials out of responses. The tests
+use a fake provider and make no paid API calls.
 
 The service limits concurrent generations to two, provider waiting to 150
 seconds and response bodies to 12 MB. Up to eight jobs are held in an in-memory

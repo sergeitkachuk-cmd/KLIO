@@ -31,12 +31,24 @@ const ALLOWED_FORMAT = new Set(["png", "jpeg", "webp"]);
 const ALLOWED_BACKGROUND = new Set(["auto", "transparent", "opaque"]);
 const ALLOWED_TEXT_MODELS = new Set(["gpt-5.6-luna", "gpt-6-luna"]);
 const ALLOWED_IMAGE_TYPE = new Set(["image/png", "image/jpeg", "image/webp"]);
+const MIN_MASK_PIXELS = 655_360;
+const MAX_MASK_PIXELS = 8_294_400;
 // A brand logo can be up to 8MB (see app/api/_lib/storage.ts's
 // MAX_BRAND_LOGO_BYTES) - base64 inflates that by ~4/3, plus JSON
 // overhead. The previous 64,000-byte cap only ever needed to fit a bare
 // text prompt; this one has to fit that same prompt alongside an embedded
 // logo file.
-const MAX_REQUEST_BYTES = 24 * 1024 * 1024; // Source + logo, each <= 8 MiB raw.
+const MAX_REQUEST_BYTES = 24 * 1024 * 1024; // Two <= 8 MiB images or one image and its mask, base64 encoded.
+
+function pngInfo(bytes) {
+  const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  if (bytes.length < 26 || !bytes.subarray(0, 8).equals(signature) || bytes.toString("ascii", 12, 16) !== "IHDR") return null;
+  return {
+    width: bytes.readUInt32BE(16),
+    height: bytes.readUInt32BE(20),
+    hasAlpha: bytes[25] === 4 || bytes[25] === 6,
+  };
+}
 
 export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", providerFetch = fetch }) {
   const jobs = new Map(); let running = 0; let textRunning = 0;
@@ -47,7 +59,7 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", pro
   };
   return createServer(async (request, response) => {
     const reply = (status, body) => { response.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" }); response.end(JSON.stringify(body)); };
-    if (request.method === "GET" && request.url === "/health") return reply(apiKey && token?.length >= 32 ? 200 : 503, { ready: Boolean(apiKey && token?.length >= 32), maxImageInputs: 2 });
+    if (request.method === "GET" && request.url === "/health") return reply(apiKey && token?.length >= 32 ? 200 : 503, { ready: Boolean(apiKey && token?.length >= 32), maxImageInputs: 2, editMasks: true });
     if (request.method !== "POST" || (request.url !== "/generate" && request.url !== "/responses")) return reply(404, { error: "Not found" });
     if (!authorized(request.headers.authorization)) return reply(401, { error: "Unauthorized" });
     if (!apiKey) return reply(503, { error: "Image provider is not configured" });
@@ -123,12 +135,30 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", pro
       if (!bytes.length || bytes.length > 8 * 1024 * 1024) return reply(413, { error: "Image too large" });
       images.push({ bytes, contentType: input.image_type });
     }
+    let mask;
+    if (body.mask_b64 !== undefined) {
+      if (images.length !== 1 || images[0].contentType !== "image/png" || typeof body.mask_b64 !== "string"
+        || !/^[A-Za-z0-9+/]+={0,2}$/.test(body.mask_b64) || body.mask_type !== "image/png")
+        return reply(400, { error: "Invalid edit mask" });
+      mask = Buffer.from(body.mask_b64, "base64");
+      if (!mask.length || mask.length > 8 * 1024 * 1024 || mask.toString("base64") !== body.mask_b64)
+        return reply(413, { error: "Invalid edit mask" });
+      const sourceInfo = pngInfo(images[0].bytes);
+      const maskInfo = pngInfo(mask);
+      const pixels = sourceInfo ? sourceInfo.width * sourceInfo.height : 0;
+      if (!sourceInfo || !maskInfo || !maskInfo.hasAlpha
+        || sourceInfo.width !== maskInfo.width || sourceInfo.height !== maskInfo.height
+        || pixels < MIN_MASK_PIXELS || pixels > MAX_MASK_PIXELS)
+        return reply(400, { error: "Edit mask must be a transparent PNG matching a supported source image" });
+    }
+    const requestedModel = typeof body.model === "string" && /^[a-zA-Z0-9_.-]{1,64}$/.test(body.model) ? body.model : model;
     const resolvedSize = resolveSize(body.size);
     const quality = ALLOWED_QUALITY.has(body.quality) ? body.quality : "medium";
     const outputFormat = ALLOWED_FORMAT.has(body.output_format) ? body.output_format : "png";
     const background = ALLOWED_BACKGROUND.has(body.background) ? body.background : undefined;
-    const hash = createHash("sha256").update(JSON.stringify({ prompt: body.prompt, model, size: resolvedSize, quality, outputFormat, background,
-      images: images.map((image) => ({ type: image.contentType, sha256: createHash("sha256").update(image.bytes).digest("hex") })) })).digest("hex");
+    const hash = createHash("sha256").update(JSON.stringify({ prompt: body.prompt, model: requestedModel, size: resolvedSize, quality, outputFormat, background,
+      images: images.map((image) => ({ type: image.contentType, sha256: createHash("sha256").update(image.bytes).digest("hex") })),
+      mask: mask ? createHash("sha256").update(mask).digest("hex") : null })).digest("hex");
     const previous = jobs.get(id);
     if (previous && previous.hash !== hash) return reply(409, { error: "Request key already used" });
     if (!previous && running >= 2) return reply(429, { error: "Image service is busy" });
@@ -154,7 +184,7 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", pro
                 method: "POST", headers: { Authorization: `Bearer ${apiKey}` },
                 body: (() => {
                   const form = new FormData();
-                  form.append("model", model);
+                  form.append("model", requestedModel);
                   form.append("prompt", body.prompt);
                   form.append("n", "1");
                   form.append("size", resolvedSize);
@@ -162,6 +192,7 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", pro
                   form.append("output_format", outputFormat);
                   if (background) form.append("background", background);
                   images.forEach((image, index) => form.append(images.length > 1 ? "image[]" : "image", new Blob([image.bytes], { type: image.contentType }), `reference-${index}`));
+                  if (mask) form.append("mask", new Blob([mask], { type: "image/png" }), "mask.png");
                   return form;
                 })(),
                 signal: AbortSignal.timeout(150_000),
