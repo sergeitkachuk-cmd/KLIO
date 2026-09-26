@@ -32,7 +32,7 @@ test("relay forwards authenticated bounded dialogue requests without exposing it
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   t.after(() => new Promise(resolve => server.close(resolve)));
   const endpoint = `http://127.0.0.1:${server.address().port}/responses`;
-  const body = JSON.stringify({ model: "gpt-5.6-luna", store: false, max_output_tokens: 100, input: "Привет", instructions: "Ответь" });
+  const body = JSON.stringify({ model: "gpt-6-luna", store: false, max_output_tokens: 100, input: "Привет", instructions: "Ответь" });
   assert.equal((await fetch(endpoint, { method: "POST", body })).status, 401);
   assert.equal((await fetch(endpoint, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ model: "other", input: "x" }) })).status, 400);
   assert.equal(calls.length, 0);
@@ -41,6 +41,12 @@ test("relay forwards authenticated bounded dialogue requests without exposing it
   assert.equal((await result.json()).output[0].content[0].text, "Привет");
   assert.equal(calls[0].url, "https://api.openai.com/v1/responses");
   assert.equal(calls[0].options.headers.Authorization, "Bearer fixture-provider-key");
+  assert.equal(JSON.parse(calls[0].options.body).model, "gpt-6-luna");
+
+  const legacyBody = JSON.stringify({ model: "gpt-5.6-luna", store: false, max_output_tokens: 100, input: "Привет", instructions: "Ответь" });
+  const legacyResult = await fetch(endpoint, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: legacyBody });
+  assert.equal(legacyResult.status, 200);
+  assert.equal(JSON.parse(calls[1].options.body).model, "gpt-5.6-luna");
 });
 
 test("image service forwards the caller's size, quality and format instead of hardcoding them", async t => {

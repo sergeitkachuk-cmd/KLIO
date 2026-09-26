@@ -29,6 +29,7 @@ function resolveSize(value) {
 const ALLOWED_QUALITY = new Set(["low", "medium", "high", "auto"]);
 const ALLOWED_FORMAT = new Set(["png", "jpeg", "webp"]);
 const ALLOWED_BACKGROUND = new Set(["auto", "transparent", "opaque"]);
+const ALLOWED_TEXT_MODELS = new Set(["gpt-5.6-luna", "gpt-6-luna"]);
 const ALLOWED_IMAGE_TYPE = new Set(["image/png", "image/jpeg", "image/webp"]);
 // A brand logo can be up to 8MB (see app/api/_lib/storage.ts's
 // MAX_BRAND_LOGO_BYTES) - base64 inflates that by ~4/3, plus JSON
@@ -64,7 +65,7 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", pro
         payload = JSON.parse(Buffer.concat(chunks).toString("utf8"));
       } catch { return reply(400, { error: "Invalid request" }); }
       finally { clearTimeout(timer); }
-      if (!payload || payload.model !== "gpt-5.6-luna"
+      if (!payload || !ALLOWED_TEXT_MODELS.has(payload.model)
         || typeof payload.input !== "string" || payload.input.length > 65_000
         || typeof payload.instructions !== "string" || payload.instructions.length > 45_000
         || !Number.isInteger(payload.max_output_tokens) || payload.max_output_tokens < 1 || payload.max_output_tokens > 16_000
