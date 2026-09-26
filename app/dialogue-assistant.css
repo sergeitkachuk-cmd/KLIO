@@ -128,12 +128,11 @@
 .klio-aui-carousel a { display: inline-block; margin-top: 6px; color: inherit; font-size: 12px; }
 .klio-aui-quota { color: var(--ck-muted); font-size: 12px; }
 .klio-aui-attachment { display:flex; flex-wrap:wrap; gap:8px; align-items:center; max-width:100%; }
-.klio-aui-attach-trigger,.klio-aui-attachment-preview button { display:flex; align-items:center; gap:6px; border:0; border-radius:16px; padding:6px 8px; background:transparent; color:var(--ck-text); font:inherit; font-size:12px; cursor:pointer; }
-.klio-aui-attach-trigger:hover,.klio-aui-attachment-preview button:hover { background:var(--ck-hover); }
+.klio-aui-attach-trigger,.klio-aui-attachment-preview > button { display:flex; align-items:center; gap:6px; border:0; border-radius:16px; padding:6px 8px; background:transparent; color:var(--ck-text); font:inherit; font-size:12px; cursor:pointer; }
+.klio-aui-attach-trigger:hover,.klio-aui-attachment-preview > button:hover { background:var(--ck-hover); }
 .klio-aui-attachment-preview { display:flex; align-items:center; gap:8px; padding:6px; max-width:100%; border:1px solid var(--ck-line); border-radius:14px; background:var(--ck-panel); }
 .klio-aui-attachment-preview img { width:48px; height:48px; object-fit:contain; border-radius:8px; }
-.klio-aui-attachment-preview label { display:grid; gap:3px; min-width:0; color:var(--ck-muted); font-size:11px; }
-.klio-aui-attachment-preview select { width:auto; max-width:190px; border:0; padding:2px; background:var(--ck-panel); color:var(--ck-text); font:inherit; font-size:12px; }
+.klio-aui-attachment-purpose { flex:1; min-width:0; max-width:220px; }
 .klio-aui-message-source { display:flex; justify-content:flex-end; margin-bottom:6px; }
 
 /* The same short review step for text from a topic and an image from a text. */

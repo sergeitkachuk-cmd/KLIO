@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
+import { focusListboxOption, handleListboxKeyDown } from "./listbox-navigation";
 
 // Replaces an always-open, unstyled thumbnail strip (site owner: "это
 // реализовано ужасно... там всё криво переполняется" - .publications-
@@ -24,6 +25,7 @@ export function PublicationImagePicker({ label, items, activeUrl, onSelect }: {
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const listId = useId();
   // Decided once when it opens, not re-decided on scroll - see ModuleSelect's
   // own note on why (avoids the menu flipping side mid-scroll).
   const openUpRef = useRef(false);
@@ -36,7 +38,14 @@ export function PublicationImagePicker({ label, items, activeUrl, onSelect }: {
       setOpen(false);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    const closeOnFocusOutside = (event: FocusEvent) => {
+      const target = event.target as Node;
+      if (target === triggerRef.current || !listRef.current?.contains(target)) setOpen(false);
     };
     const measureMenu = () => {
       if (!triggerRef.current) return;
@@ -57,15 +66,21 @@ export function PublicationImagePicker({ label, items, activeUrl, onSelect }: {
     };
     document.addEventListener("mousedown", closeOnOutsideClick);
     document.addEventListener("keydown", closeOnEscape);
+    document.addEventListener("focusin", closeOnFocusOutside);
     window.addEventListener("scroll", repositionOnScroll, true);
     window.addEventListener("resize", repositionOnScroll);
     return () => {
       document.removeEventListener("mousedown", closeOnOutsideClick);
       document.removeEventListener("keydown", closeOnEscape);
+      document.removeEventListener("focusin", closeOnFocusOutside);
       window.removeEventListener("scroll", repositionOnScroll, true);
       window.removeEventListener("resize", repositionOnScroll);
     };
   }, [open]);
+
+  useEffect(() => {
+    if (open && items.length) focusListboxOption(listRef.current, activeUrl);
+  }, [activeUrl, items.length, open]);
 
   function toggleOpen() {
     if (!open && triggerRef.current) {
@@ -85,13 +100,18 @@ export function PublicationImagePicker({ label, items, activeUrl, onSelect }: {
   }
 
   return <div className="pub-image-picker" ref={containerRef}>
-    <button type="button" ref={triggerRef} className="button ghost pub-image-picker-trigger" aria-haspopup="listbox" aria-expanded={open} onClick={toggleOpen}>
+    <button type="button" ref={triggerRef} className="button ghost pub-image-picker-trigger" aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? listId : undefined} onClick={toggleOpen} onKeyDown={(event) => {
+      if (!open && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+        event.preventDefault();
+        toggleOpen();
+      }
+    }}>
       {label}
     </button>
     {open && menuRect && createPortal(
-      <div className="pub-image-picker-list" role="listbox" aria-label={label} ref={listRef} style={{ position: "fixed", top: menuRect.top, bottom: menuRect.bottom, left: menuRect.left, width: menuRect.width, maxHeight: menuRect.maxHeight }}>
+      <div id={listId} className="pub-image-picker-list" role="listbox" aria-label={label} ref={listRef} onKeyDown={(event) => handleListboxKeyDown(event, listRef.current, () => setOpen(false), triggerRef.current)} style={{ position: "fixed", top: menuRect.top, bottom: menuRect.bottom, left: menuRect.left, width: menuRect.width, maxHeight: menuRect.maxHeight }}>
         {items.map((item) => (
-          <button type="button" role="option" aria-selected={activeUrl === item.imageUrl} className={activeUrl === item.imageUrl ? "active" : ""} onClick={() => { onSelect(item); setOpen(false); }} key={item.id}>
+          <button data-listbox-value={item.imageUrl} type="button" role="option" tabIndex={-1} aria-selected={activeUrl === item.imageUrl} className={activeUrl === item.imageUrl ? "active" : ""} onClick={() => { onSelect(item); setOpen(false); triggerRef.current?.focus(); }} key={item.id}>
             <Image unoptimized width={72} height={72} src={item.imageUrl} alt={item.title} />
             <span>{item.title || "Изображение"}</span>
           </button>

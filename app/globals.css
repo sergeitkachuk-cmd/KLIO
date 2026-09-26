@@ -2968,6 +2968,11 @@ select:focus-visible {
   background: rgba(167, 178, 194, 0.09);
 }
 
+.module-select-list > button:focus-visible {
+  outline: 2px solid var(--acid);
+  outline-offset: 1px;
+}
+
 .module-select-list > button > em {
   color: var(--acid);
   font-size: 13px;
@@ -13314,6 +13319,11 @@ input[type="radio"] {
   background: rgba(167, 178, 194, 0.09);
 }
 
+.pub-image-picker-list > button:focus-visible {
+  outline: 2px solid var(--acid);
+  outline-offset: 1px;
+}
+
 /* Same grid/dark-card look as the picker above, but static (plain divs,
    not buttons) - this is a read-only "here's what's about to be sent"
    preview for a carousel-backed publication draft, not something to pick
@@ -23452,7 +23462,13 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
   background: transparent;
   box-shadow: none;
 }
-.brand-tab-shell .brand-tabs button:focus-visible,
+.brand-tab-shell .brand-tabs button:focus-visible {
+  color: var(--profile-accent);
+  border-bottom-color: var(--profile-accent);
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+}
 .brand-tab-shell .profile-help-trigger:focus-visible {
   outline: 2px solid var(--profile-accent);
   outline-offset: 3px;
@@ -24499,7 +24515,47 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
   line-height: 1.5;
 }
 :root[data-theme="light"] .brand-tab-shell { --profile-help-bg: #f1f4f7; }
-:root[data-theme="light"] .brand-tabs { background: #edf1f5; }
+.brand-tab-shell .brand-fields .brand-profile-field .profile-field-heading label {
+  color: var(--profile-text);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.4;
+}
+.brand-tab-shell .brand-fields .brand-profile-field > small:not(.is-error) {
+  display: block;
+  margin-top: 8px;
+  color: var(--profile-muted);
+  font-size: 12px;
+  font-weight: 450;
+  letter-spacing: 0;
+  line-height: 1.55;
+}
+.brand-tab-shell .brand-fields .brand-profile-field .brand-book-status {
+  color: var(--profile-text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.brand-tab-shell .brand-tabs,
+:root[data-theme="light"] .brand-tab-shell .brand-tabs {
+  background: transparent;
+}
+:root .workspace-account:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+:root .workspace-account:focus-visible > i {
+  outline: 2px solid var(--field-focus);
+  outline-offset: 3px;
+}
+:root .generator-module .generation-action.generate {
+  display: flex;
+  width: min(100%, 420px);
+  align-items: center;
+  justify-content: center;
+  margin-inline: auto;
+}
 :root[data-theme="light"] .generator-module .studio {
   border-radius: 24px;
   background: #f1f4f7;

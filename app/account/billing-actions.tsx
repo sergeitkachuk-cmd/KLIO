@@ -10,6 +10,7 @@ import {
   type BillingPeriod,
 } from "@/app/billing-pricing";
 import { trackMetricaGoal } from "@/app/analytics-consent";
+import { ModuleSelect } from "../module-select";
 import { waitForPaymentConfirmation } from "../payment-confirmation";
 
 const plans = [
@@ -30,51 +31,7 @@ export function StyledSelect({
   options: SelectOption[];
   onChange: (value: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const close = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, []);
-  const selected =
-    options.find((option) => option.value === value) ?? options[0];
-  return (
-    <div className="account-select" ref={rootRef}>
-      <span className="account-select-label">{label}</span>
-      <button
-        type="button"
-        className={`account-select-trigger${open ? " is-open" : ""}`}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        onClick={() => setOpen((state) => !state)}
-      >
-        <span>{selected?.label}</span>
-        <span className="account-select-chevron">⌄</span>
-      </button>
-      {open && (
-        <div className="account-select-menu" role="listbox">
-          {options.map((option) => (
-            <button
-              type="button"
-              role="option"
-              aria-selected={option.value === value}
-              className={`account-select-option${option.value === value ? " is-selected" : ""}`}
-              key={option.value}
-              onClick={() => {
-                onChange(option.value);
-                setOpen(false);
-              }}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  return <ModuleSelect label={label} value={value} options={options} onChange={onChange} />;
 }
 
 export default function BillingActions({

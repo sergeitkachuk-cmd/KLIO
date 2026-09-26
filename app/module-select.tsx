@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { HelpTip } from "./help-tip";
+import { focusListboxOption, handleListboxKeyDown } from "./listbox-navigation";
 
 // Custom dropdown matching the brand-switcher's visual language (trigger +
 // floating list, checkmark on the active item) instead of a native <select>
@@ -34,6 +35,8 @@ export function ModuleSelect({ label, value, options, onChange, help, variant, d
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const listId = useId();
+  const optionsKey = options.map((item) => item.value).join("\u0000");
   // Which side the menu opens on is decided once, when it opens (below,
   // unless there's more room above) — not re-decided on every scroll event.
   // Re-deciding on scroll used to flip the menu between above and below the
@@ -51,8 +54,15 @@ export function ModuleSelect({ label, value, options, onChange, help, variant, d
       if (containerRef.current?.contains(target) || listRef.current?.contains(target)) return;
       setOpen(false);
     };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    const closeOnFocusOutside = (event: FocusEvent) => {
+      const target = event.target as Node;
+      if (target === triggerRef.current || !listRef.current?.contains(target)) setOpen(false);
     };
     // Reposition on scroll instead of closing — the list is portaled and
     // position:fixed, so it needs to track the trigger if the page scrolls.
@@ -78,15 +88,22 @@ export function ModuleSelect({ label, value, options, onChange, help, variant, d
     };
     document.addEventListener("mousedown", closeOnOutsideClick);
     document.addEventListener("keydown", closeOnEscape);
+    document.addEventListener("focusin", closeOnFocusOutside);
     window.addEventListener("scroll", repositionOnScroll, true);
     window.addEventListener("resize", repositionOnScroll);
     return () => {
       document.removeEventListener("mousedown", closeOnOutsideClick);
       document.removeEventListener("keydown", closeOnEscape);
+      document.removeEventListener("focusin", closeOnFocusOutside);
       window.removeEventListener("scroll", repositionOnScroll, true);
       window.removeEventListener("resize", repositionOnScroll);
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !options.length) return;
+    focusListboxOption(listRef.current, value);
+  }, [open, options.length, optionsKey, value]);
 
   function toggleOpen() {
     if (disabled) return;
@@ -111,7 +128,12 @@ export function ModuleSelect({ label, value, options, onChange, help, variant, d
 
   return <div className={`field module-select ${variantClass} ${open ? "is-open" : ""}`} ref={containerRef}>
     <span className="field-label-help">{label}{help && <HelpTip label={label} text={help}/>}</span>
-    <button type="button" ref={triggerRef} className="module-select-trigger" onClick={toggleOpen} disabled={disabled} aria-haspopup="listbox" aria-expanded={open}>
+    <button type="button" ref={triggerRef} className="module-select-trigger" onClick={toggleOpen} onKeyDown={(event) => {
+      if (!open && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
+        event.preventDefault();
+        toggleOpen();
+      }
+    }} disabled={disabled} aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? listId : undefined}>
       <b>{activeOption?.label || value}</b>
       <em className="ui-chevron" aria-hidden="true" />
     </button>
@@ -125,8 +147,8 @@ export function ModuleSelect({ label, value, options, onChange, help, variant, d
          away" when there's no room below, i.e. exactly the branch that
          opens upward). `bottom` pins the list's actual bottom edge to the
          trigger regardless of how tall the content turns out to be. */
-      <div className={`module-select-list ${variantClass}`} role="listbox" aria-label={label} ref={listRef} style={{ position: "fixed", top: menuRect.top, bottom: menuRect.bottom, left: menuRect.left, width: menuRect.width, maxHeight: menuRect.maxHeight }}>
-        {options.map((item) => <button type="button" role="option" aria-selected={item.value === value} className={item.value === value ? "active" : ""} onClick={() => { onChange(item.value); setOpen(false); }} key={item.value}>
+      <div id={listId} className={`module-select-list ${variantClass}`} role="listbox" aria-label={label} ref={listRef} onKeyDown={(event) => handleListboxKeyDown(event, listRef.current, () => setOpen(false), triggerRef.current)} style={{ position: "fixed", top: menuRect.top, bottom: menuRect.bottom, left: menuRect.left, width: menuRect.width, maxHeight: menuRect.maxHeight }}>
+        {options.map((item) => <button data-listbox-value={item.value} type="button" role="option" tabIndex={-1} aria-selected={item.value === value} className={item.value === value ? "active" : ""} onClick={() => { onChange(item.value); setOpen(false); triggerRef.current?.focus(); }} key={item.value}>
           <span>{item.label}</span><em>{item.value === value ? "✓" : ""}</em>
         </button>)}
       </div>,

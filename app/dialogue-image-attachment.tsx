@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ImagePlus, X } from "lucide-react";
 import type { DialogueImageSource } from "./dialogue-image-source";
+import { ModuleSelect } from "./module-select";
 
 export function DialogueImageAttachment({ source, url, busy, onChange, onBusy }: {
   source: DialogueImageSource | null;
@@ -38,12 +39,12 @@ export function DialogueImageAttachment({ source, url, busy, onChange, onBusy }:
     {source && url ? <div className="klio-aui-attachment-preview">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={url} alt="Исходное изображение" />
-      <label>Изображение
-        <select aria-label="Как использовать изображение" value={source.purpose} disabled={busy} onChange={(event) => onChange({ ...source, purpose: event.target.value as DialogueImageSource["purpose"] })}>
-          <option value="edit">Доработать исходник</option>
-          <option value="reference">Взять за референс</option>
-        </select>
-      </label>
+      <div className="klio-aui-attachment-purpose">
+        <ModuleSelect variant="chatkit" label="Как использовать изображение" value={source.purpose} disabled={busy} options={[
+          { value: "edit", label: "Доработать исходник" },
+          { value: "reference", label: "Взять за референс" },
+        ]} onChange={(purpose) => onChange({ ...source, purpose: purpose as DialogueImageSource["purpose"] })} />
+      </div>
       <button type="button" aria-label="Убрать исходное изображение" disabled={busy} onClick={() => onChange(null)}><X size={16} /></button>
     </div> : <button type="button" className="klio-aui-attach-trigger" disabled={busy} onClick={() => input.current?.click()}><ImagePlus size={16} />Референс</button>}
     {busy && <small role="status">Загружаем изображение…</small>}
