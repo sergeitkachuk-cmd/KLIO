@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { brands, generations } from "../../../db/schema";
 import { imageConfigured, createImage, createImageFromLogo, createImageFromSource, parseImageGenerationOptions } from "../_lib/image-generation";
@@ -13,11 +13,13 @@ import { IMAGE_STYLE_OPTIONS } from "../../dialogue-generation-settings";
 import { imageContentType } from "../_lib/image-type";
 import { recordImageUsage } from "../_lib/image-usage";
 import type { ImageProviderUsage } from "../_lib/image-cost";
+import { ImageInputError, ImageRelayUpgradeRequiredError } from "../_lib/image-generation-errors";
 
 export const runtime = "nodejs";
 export const maxDuration = 240;
 
 async function handleImageRequest(request: Request, onPartial?: (image: string) => void) {
+  let failureId: string = randomUUID();
   try {
     if (hasUnsafeRequestOrigin(request)) return Response.json({ error: "Недопустимый источник запроса." }, { status: 403 });
     const user = await workspaceIdentity();
@@ -26,6 +28,7 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
     let sourceTitle = typeof input.sourceTitle === "string" ? input.sourceTitle.trim().slice(0, 500) : "";
     const brandId = typeof input.brandId === "string" ? input.brandId.trim() : "";
     const requestId = typeof input.requestId === "string" ? input.requestId.trim() : "";
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) failureId = requestId;
     const sourceImageGenerationId = typeof input.sourceImageGenerationId === "string" ? input.sourceImageGenerationId.trim() : "";
     const sourceImageUrl = typeof input.sourceImageUrl === "string" ? input.sourceImageUrl.trim().slice(0, 600) : "";
     const sourceImagePurpose = input.sourceImagePurpose === "reference" ? "reference" : "edit";
@@ -153,8 +156,10 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
     if (error instanceof RequestBodyError) return Response.json({ error: error.message }, { status: error.status });
     if (error instanceof StorageError) return Response.json({ error: error.message }, { status: error.status });
     if (error instanceof WorkspaceAccessError) return workspaceErrorResponse(error);
-    console.error("Image generation failed", error instanceof Error ? error.message : "unknown");
-    return Response.json({ error: "Не удалось создать изображение. Попробуйте ещё раз." }, { status: 502 });
+    if (error instanceof ImageInputError) return Response.json({ error: error.message }, { status: 400 });
+    if (error instanceof ImageRelayUpgradeRequiredError) return Response.json({ error: error.message }, { status: 503 });
+    console.error("Image generation failed", { requestId: failureId, error: error instanceof Error ? error.message : "unknown" });
+    return Response.json({ error: `Не удалось создать изображение. Код обращения: ${failureId.slice(0, 8).toUpperCase()}.`, requestId: failureId }, { status: 502 });
   }
 }
 

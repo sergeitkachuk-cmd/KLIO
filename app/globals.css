@@ -2833,6 +2833,12 @@ select:focus-visible {
   min-width: 0;
 }
 
+.field.three {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 11px;
+}
+
 /* ModuleSelect: custom dropdown for Стиль/Объём, matching .brand-menu's
    trigger + floating list pattern instead of a native <select>. */
 .module-select {
@@ -3041,8 +3047,9 @@ select:focus-visible {
 
 .format-tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 7px;
+  grid-template-columns: repeat(2, minmax(0, 420px));
+  justify-content: center;
+  gap: 10px;
   margin-top: 9px;
 }
 
@@ -3062,98 +3069,6 @@ select:focus-visible {
   color: #fff;
   background: linear-gradient(115deg, rgba(91, 107, 130, 0.9), rgba(109, 125, 148, 0.76));
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.23);
-}
-
-.editorial-plan-card {
-  display: grid;
-  gap: 13px;
-  margin: 4px 0 18px;
-  padding: 16px;
-  border-radius: 15px;
-}
-
-.generator-plan-card {
-  border: 1px solid rgba(223, 227, 233, 0.2);
-  background: linear-gradient(145deg, rgba(91, 107, 130, 0.18), rgba(255, 255, 255, 0.055));
-}
-
-.editorial-plan-card > div {
-  display: grid;
-  gap: 4px;
-}
-
-.editorial-plan-card > div > span {
-  color: var(--acid);
-  font-size: 9px;
-  font-weight: 760;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.editorial-plan-card > div > b {
-  color: #fff;
-  font-size: 15px;
-  line-height: 1.35;
-}
-
-.editorial-plan-card > div > small {
-  color: rgba(255, 255, 255, 0.64);
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.editorial-plan-card ol {
-  display: grid;
-  gap: 7px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  counter-reset: editorial-plan;
-}
-
-.editorial-plan-card li {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
-  gap: 8px;
-  color: rgba(255, 255, 255, 0.76);
-  font-size: 11px;
-  line-height: 1.45;
-  counter-increment: editorial-plan;
-}
-
-.editorial-plan-card li::before {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border: 1px solid rgba(223, 227, 233, 0.22);
-  border-radius: 50%;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.06);
-  content: counter(editorial-plan, decimal-leading-zero);
-  font-size: 8px;
-  font-weight: 760;
-}
-
-.editorial-plan-card > p {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin: 0;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.11);
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 11px;
-  line-height: 1.45;
-}
-
-.editorial-plan-card > p i {
-  color: var(--acid);
-  font-size: 9px;
-  font-style: normal;
-  font-weight: 760;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .generate {
@@ -15312,31 +15227,28 @@ input[type="radio"] {
 
 .generator-context-head > span {
   color: var(--acid);
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 760;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0;
 }
 
 .generator-context-head > small {
   color: rgba(255, 255, 255, 0.74);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.48;
 }
 
-/* The eyebrow label here is tiny (10px uppercase) - shrink the "?"
-   trigger to match on precise-pointer devices; touch devices keep the
-   standard 40px tap target from the shared mobile rule. */
+/* Keep the hint readable now that the heading uses normal label sizing. */
 @media (hover: hover) and (pointer: fine) {
   .generator-context-head .help-tip-trigger {
-    flex-basis: 20px;
-    width: 20px;
-    height: 20px;
+    flex-basis: 24px;
+    width: 24px;
+    height: 24px;
   }
   .generator-context-head .help-tip-trigger span {
-    width: 13px;
-    height: 13px;
-    font-size: 9px;
+    width: 16px;
+    height: 16px;
+    font-size: 11px;
   }
 }
 
@@ -15427,12 +15339,11 @@ input[type="radio"] {
 }
 
 .generator-context-options label small {
-  overflow: hidden;
+  overflow-wrap: anywhere;
   color: rgba(255, 255, 255, 0.62);
-  font-size: 10px;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: normal;
 }
 
 .workspace-history-head {
@@ -19574,7 +19485,7 @@ input[type="radio"] {
 /* ---------------------------------------------------------------------
    Light theme installment 3: Генератор (.studio - .brief-panel left /
    .result-panel right) plus the shared form components it's built from
-   (.field, ModuleSelect, .format-tabs, .editorial-plan-card,
+   (.field, ModuleSelect, .format-tabs,
    .generator-context-card) - these are dark-native (never had a light
    version to begin with, unlike modules that started light and got a
    dark pass later), so every rule below is a genuinely new light
@@ -19765,39 +19676,6 @@ input[type="radio"] {
   color: #fff;
   background: linear-gradient(115deg, #2452b8, #3568d4);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.2);
-}
-
-[data-theme="light"] .generator-plan-card {
-  border-color: rgba(15, 23, 42, 0.14);
-  background: linear-gradient(145deg, rgba(53, 104, 212, 0.1), rgba(255, 255, 255, 0.7));
-}
-
-[data-theme="light"] .editorial-plan-card > div > span {
-  color: #2452b8;
-}
-
-[data-theme="light"] .editorial-plan-card > div > b {
-  color: #0d1b31;
-}
-
-[data-theme="light"] .editorial-plan-card > div > small,
-[data-theme="light"] .editorial-plan-card li {
-  color: rgba(13, 27, 49, 0.68);
-}
-
-[data-theme="light"] .editorial-plan-card li::before {
-  border-color: rgba(15, 23, 42, 0.16);
-  color: #0d1b31;
-  background: rgba(255, 255, 255, 0.7);
-}
-
-[data-theme="light"] .editorial-plan-card > p {
-  border-top-color: rgba(15, 23, 42, 0.12);
-  color: rgba(13, 27, 49, 0.68);
-}
-
-[data-theme="light"] .editorial-plan-card > p i {
-  color: #2452b8;
 }
 
 [data-theme="light"] .generator-context-card {
@@ -24374,6 +24252,25 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
     border-bottom-color: rgba(31, 49, 70, .14);
   }
   .studio.has-result .result-panel { animation-name: generator-result-enter-mobile; }
+}
+
+@media (max-width: 600px) {
+  .field.three { grid-template-columns: minmax(0, 1fr); }
+  .format-tabs { grid-template-columns: minmax(0, 420px); }
+}
+
+.studio.has-result .generator-core-settings {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.studio.has-result .generator-core-settings > :first-child {
+  grid-column: 1 / -1;
+}
+@media (max-width: 980px) {
+  .studio.has-result .generator-core-settings { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .studio.has-result .generator-core-settings > :first-child { grid-column: auto; }
+}
+@media (max-width: 600px) {
+  .studio.has-result .generator-core-settings { grid-template-columns: minmax(0, 1fr); }
 }
 @keyframes generator-result-enter-mobile {
   from { opacity: 0; transform: translateY(18px); }

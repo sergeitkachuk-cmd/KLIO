@@ -1,6 +1,6 @@
 import { storageConfigured, uploadPublicationImage } from "./storage";
 import { imageContentType } from "./image-type";
-import { ImageRelayUpgradeRequiredError } from "./image-generation-errors";
+import { ImageInputError, ImageRelayUpgradeRequiredError } from "./image-generation-errors";
 import type { CarouselTemplateId } from "../../carousel-templates";
 import { carouselTemplateInstruction } from "../../carousel-templates";
 import { normalizeImageUsage, type ImageProviderUsage } from "./image-cost";
@@ -108,6 +108,20 @@ export function resolveImageGenerationOptions(options: ImageGenerationOptions = 
 // requirements mandatory instead of trading one off against the other.
 const LOGO_REFERENCE_INSTRUCTION = "Дополнительно на изображении должен точно повторяться логотип бренда с приложенного референса: те же цвета, форма и текст, максимально близко к оригиналу - не сочиняй новый логотип и не изменяй его. Впиши его в сцену органично, как её часть (например, на вывеске или упаковке), а не отдельным слоем поверх готовой картинки. Это дополнение к сцене и только тем надписям, которые разрешены выбранными параметрами, а не замена им. Не переноси текст статьи на картинку, если выбран режим без текста. Надпись внутри самого логотипа сохрани. Не вводи ради логотипа то, чего не просили (ноутбук, телефон, экран устройства).";
 
+function providerErrorSummary(bodyText: string) {
+  try {
+    const payload = JSON.parse(bodyText) as { error?: { code?: unknown; type?: unknown; message?: unknown } | string };
+    const issue = typeof payload.error === "object" && payload.error ? payload.error : null;
+    return {
+      code: typeof issue?.code === "string" ? issue.code.slice(0, 120) : undefined,
+      type: typeof issue?.type === "string" ? issue.type.slice(0, 120) : undefined,
+      message: typeof issue?.message === "string" ? issue.message.slice(0, 400) : undefined,
+    };
+  } catch {
+    return { message: bodyText.slice(0, 400) || undefined };
+  }
+}
+
 export const imageConfigured = () =>
   Boolean(storageConfigured() && (process.env.OPENAI_API_KEY?.trim() ||
     (process.env.KLIO_IMAGE_SERVICE_URL?.trim() && process.env.KLIO_IMAGE_SERVICE_TOKEN?.trim())));
@@ -194,7 +208,7 @@ async function generateImageBytes(
       relayMaskEditing = capabilities?.editMasks === true;
       if (images.length > 1 && (!Number.isInteger(capabilities?.maxImageInputs) || capabilities.maxImageInputs < images.length))
         throw new ImageRelayUpgradeRequiredError();
-      if (mask && !relayMaskEditing) throw new Error("Для редактирования кистью требуется обновить сервер изображений. Обычная генерация доступна.");
+      if (mask && !relayMaskEditing) throw new ImageRelayUpgradeRequiredError("Для редактирования кистью требуется обновить сервер изображений. Обычная доработка доступна.");
     }
     const imageRequest = {
       model: resolvedModel,
@@ -263,7 +277,7 @@ async function generateImageBytes(
     // bad request) is otherwise a dead end. Body may be JSON or plain
     // text depending on what actually rejected the request.
     const bodyText = await response.text().catch(() => "");
-    console.error(`Image provider rejected the request: ${response.status} ${bodyText.slice(0, 2000)}`);
+    console.error("Image provider rejected the request", { requestId, status: response.status, ...providerErrorSummary(bodyText) });
     throw new Error(
       "Сервис изображений не выполнил запрос. Попробуйте другое описание или загрузите свою картинку.",
     );
@@ -385,14 +399,42 @@ export async function createImageFromSource(
   prompt: string, source: ImageInput, purpose: "edit" | "reference", logo: ImageInput | undefined,
   email: string, baseUrl: string, requestId: string, options: ImageGenerationOptions = {}, mask?: ImageInput, onPartial?: ImagePartialHandler, onUsage?: ImageUsageHandler,
 ) {
+  const maxInputBytes = 8 * 1024 * 1024;
   for (const image of [source, ...(logo ? [logo] : [])]) {
     const detected = imageContentType(image.bytes);
-    if (image.bytes.byteLength > 8 * 1024 * 1024 || !detected || !["image/png", "image/jpeg", "image/webp"].includes(detected))
-      throw new Error("Не удалось прочитать исходное изображение. Загрузите PNG, JPEG или WEBP до 8 МБ.");
+    if (!detected || !["image/png", "image/jpeg", "image/webp"].includes(detected))
+      throw new ImageInputError("Для доработки загрузите изображение в формате PNG, JPEG или WEBP.");
     image.contentType = detected;
+    // A generated PNG can be larger than the upload limit even though it is
+    // a valid saved material. Optimize oversized unmasked inputs before they
+    // reach the provider or the relay's 8 MiB per-image limit. Masked source
+    // images are normalized together with their mask below to keep dimensions
+    // identical.
+    if (image.bytes.byteLength > maxInputBytes && !(mask && image === source)) {
+      const sharp = (await import("sharp")).default;
+      const metadata = await sharp(image.bytes).metadata();
+      if (!metadata.width || !metadata.height)
+        throw new ImageInputError("Не удалось прочитать исходное изображение. Загрузите PNG, JPEG или WEBP.");
+      let scale = Math.min(1, Math.sqrt(8_294_400 / (metadata.width * metadata.height)));
+      let optimized: Buffer | null = null;
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        const width = Math.max(1, Math.floor(metadata.width * scale));
+        const height = Math.max(1, Math.floor(metadata.height * scale));
+        const pipeline = sharp(image.bytes).rotate().resize(width, height, { fit: "inside", withoutEnlargement: true, kernel: "lanczos3" });
+        optimized = metadata.hasAlpha
+          ? await pipeline.webp({ quality: 92, effort: 4, alphaQuality: 100 }).toBuffer()
+          : await pipeline.jpeg({ quality: 92, mozjpeg: true }).toBuffer();
+        if (optimized.byteLength <= maxInputBytes) break;
+        scale *= Math.min(0.85, Math.sqrt(maxInputBytes / optimized.byteLength) * 0.92);
+      }
+      if (!optimized || optimized.byteLength > maxInputBytes)
+        throw new ImageInputError("Исходное изображение слишком большое. Уменьшите его размер и загрузите снова.");
+      image.bytes = Uint8Array.from(optimized);
+      image.contentType = metadata.hasAlpha ? "image/webp" : "image/jpeg";
+    }
   }
-  if (mask && (purpose !== "edit" || logo)) throw new Error("Кисть доступна только при редактировании изображения без логотипа.");
-  if (mask && (mask.contentType !== "image/png" || mask.bytes.byteLength > 8 * 1024 * 1024)) throw new Error("Маска должна быть PNG до 8 МБ.");
+  if (mask && (purpose !== "edit" || logo)) throw new ImageInputError("Кисть доступна только при редактировании изображения без логотипа.");
+  if (mask && (mask.contentType !== "image/png" || mask.bytes.byteLength > maxInputBytes)) throw new ImageInputError("Выделение слишком большое или повреждено. Сбросьте кисть и отметьте область снова.");
   if (mask) {
     const sharp = (await import("sharp")).default;
     const [sourceMetadata, maskMetadata] = await Promise.all([
@@ -400,16 +442,15 @@ export async function createImageFromSource(
       sharp(mask.bytes).metadata(),
     ]);
     if (!sourceMetadata.width || !sourceMetadata.height || maskMetadata.format !== "png" || !maskMetadata.hasAlpha)
-      throw new Error("Не удалось прочитать прозрачную маску. Сбросьте выделение и отметьте область снова.");
+      throw new ImageInputError("Не удалось прочитать прозрачное выделение. Сбросьте кисть и отметьте область снова.");
     const rotated = (sourceMetadata.orientation || 1) >= 5 && (sourceMetadata.orientation || 1) <= 8;
     const sourceWidth = rotated ? sourceMetadata.height : sourceMetadata.width;
     const sourceHeight = rotated ? sourceMetadata.width : sourceMetadata.height;
     if (maskMetadata.width !== sourceWidth || maskMetadata.height !== sourceHeight)
-      throw new Error("Размер выделения не совпадает с изображением. Сбросьте кисть и отметьте область снова.");
+      throw new ImageInputError("Размер выделения не совпадает с изображением. Сбросьте кисть и отметьте область снова.");
 
     const minPixels = 655_360;
     const maxPixels = 8_294_400;
-    const maxInputBytes = 8 * 1024 * 1024;
     const originalPixels = sourceWidth * sourceHeight;
     const scale = originalPixels < minPixels
       ? Math.sqrt(minPixels / originalPixels)
@@ -439,12 +480,12 @@ export async function createImageFromSource(
       const nextWidth = Math.max(1, Math.floor(width * nextScale));
       const nextHeight = Math.max(1, Math.floor(height * nextScale));
       if (nextWidth * nextHeight < minPixels || (nextWidth === width && nextHeight === height))
-        throw new Error("Изображение слишком большое для кисти. Загрузите файл меньшего размера.");
+        throw new ImageInputError("Изображение слишком большое для кисти. Загрузите файл меньшего размера.");
       width = nextWidth;
       height = nextHeight;
     }
     if (width * height < minPixels || width * height > maxPixels)
-      throw new Error("Размер изображения не поддерживается для правки кистью.");
+      throw new ImageInputError("Размер изображения не поддерживается для правки кистью.");
     source.bytes = Uint8Array.from(sourcePng);
     source.contentType = "image/png";
     mask.bytes = Uint8Array.from(maskPng);
@@ -468,9 +509,12 @@ export async function createImageFromSource(
     ? "Результат — цельное непрозрачное изображение. Не добавляй прозрачные участки, полупрозрачные края, виньетку, рамку или подложку под логотип."
     : "";
   const placementInstruction = logo ? logoPlacementInstruction(options.logoPlacement, options.logoPosition) : "";
+  const editModel = purpose === "edit"
+    ? process.env.KLIO_IMAGE_EDIT_MODEL?.trim() || "gpt-image-2.5-sunburst-2026-09-08"
+    : undefined;
   const { bytes, contentType } = await generateImageBytes(`${instruction}\n${backgroundInstruction}\n\n${prompt}\n\n${logoInstruction}\n${placementInstruction}`, requestId,
     editOptions,
-    logo ? [source, logo] : source, undefined, mask, onPartial, onUsage);
+    logo ? [source, logo] : source, editModel, mask, onPartial, onUsage);
   return uploadPublicationImage(new File([bytes], "klio-edit", { type: contentType }), email, baseUrl);
 }
 

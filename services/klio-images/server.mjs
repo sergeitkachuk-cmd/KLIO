@@ -26,6 +26,18 @@ const IMAGE_BACKGROUND_VALUES = new Set(["auto", "transparent", "opaque"]);
 // generation errors only when the logo toggle is on).
 const MAX_REQUEST_BYTES = 24_000_000; // One source and one logo, each <= 8 MiB before base64.
 
+async function logProviderRejection(response, requestId) {
+  const payload = await response.clone().json().catch(() => null);
+  const issue = payload?.error && typeof payload.error === "object" ? payload.error : null;
+  console.error("Image provider rejected request", {
+    requestId,
+    status: response.status,
+    code: typeof issue?.code === "string" ? issue.code.slice(0, 120) : undefined,
+    type: typeof issue?.type === "string" ? issue.type.slice(0, 120) : undefined,
+    message: typeof issue?.message === "string" ? issue.message.slice(0, 400) : undefined,
+  });
+}
+
 function resolveRequestSize(rawSize, aspectRatio) {
   if (rawSize === "auto") return "auto";
   if (typeof rawSize === "string" && /^\d+x\d+$/.test(rawSize)) return rawSize;
@@ -140,6 +152,7 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare-2026-
             ...(body.output_format ? { output_format: outputFormat } : {}), ...(body.background ? { background } : {}) };
           upstream = await providerFetch("https://api.openai.com/v1/images/generations", { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify(payload), signal: AbortSignal.timeout(150_000) });
         }
+        if (!upstream.ok) await logProviderRejection(upstream, id);
         if (!upstream.ok || !upstream.body) throw new Error("Image provider did not complete the streaming request");
         const reader = upstream.body.getReader(); const decoder = new TextDecoder(); let buffer = ""; let finalImage = ""; let usage;
         const handleLine = line => {
@@ -160,7 +173,8 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare-2026-
         if (!finalImage || finalImage.length > 12_000_000) throw new Error("Image stream ended without a final image");
         job.result = { status: 200, body: { data: [{ b64_json: finalImage }], usage } };
         emit({ type: "complete", b64_json: finalImage, output_format: outputFormat, usage });
-      } catch {
+      } catch (error) {
+        console.error("Image relay request failed", { requestId: id, error: error instanceof Error ? error.message : "unknown" });
         job.result = { status: 502, body: { error: "Image request failed" } };
         emit({ type: "error", message: "Image request failed" });
       } finally {
@@ -209,7 +223,10 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare-2026-
               signal: AbortSignal.timeout(150_000),
             });
           }
-          if (!upstream.ok) return { status: upstream.status === 400 ? 400 : 502, body: { error: "Image provider did not complete the request" } };
+          if (!upstream.ok) {
+            await logProviderRejection(upstream, id);
+            return { status: upstream.status === 400 ? 400 : 502, body: { error: "Image provider did not complete the request" } };
+          }
           const reader = upstream.body.getReader(); const chunks = []; let size = 0;
           try {
             while (true) { const part = await reader.read(); if (part.done) break; size += part.value.length; if (size > 12_000_000) { await reader.cancel(); throw new Error("Image response too large"); } chunks.push(part.value); }
@@ -217,7 +234,10 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare-2026-
           const data = JSON.parse(Buffer.concat(chunks).toString("utf8"));
           if (typeof data.data?.[0]?.b64_json !== "string") throw new Error("Missing image");
           return { status: 200, body: { data: [{ b64_json: data.data[0].b64_json }], usage: data.usage } };
-        } catch { return { status: 502, body: { error: "Image request failed" } }; }
+        } catch (error) {
+          console.error("Image relay request failed", { requestId: id, error: error instanceof Error ? error.message : "unknown" });
+          return { status: 502, body: { error: "Image request failed" } };
+        }
         finally { running--; job.done = true; }
       })();
       jobs.set(id, job);

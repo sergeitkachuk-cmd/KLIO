@@ -16,7 +16,7 @@ import { ImageLightbox } from "./image-lightbox";
 import ImageMaskEditor from "./image-mask-editor";
 import { FOUNDATION_FIELDS, VOICE_FIELDS, mergeProfileFill, missingVoiceFoundation } from "./brand-profile-fill";
 import { russianGeoTree } from "./geo-data";
-import { ADAPTATION_PLANS, FORMAT_PLANS, TONE_PLANS } from "./content-plans";
+import { ADAPTATION_PLANS, TONE_PLANS } from "./content-plans";
 import { publicationBodyWithSignature, publicationBodyWithoutTrailingSignature } from "./publication-signature";
 import { PLAN_RULES, type PlanId } from "./plans";
 import { BILLING_PERIODS, PLAN_PRICES, periodAmount, LAUNCH_DISCOUNT_PERCENT, type BillingPeriod } from "./billing-pricing";
@@ -2720,6 +2720,19 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const generatorBrandReady = useBrand && Boolean(effectiveBrand.name.trim());
   const generatorSemanticsReady = semanticAnalysisReady && selectedSemanticKeywords.length > 0;
   const generatorCompetitorsReady = competitorMode !== "example" && !competitorNeedsRefresh && selectedCompetitorArticleTopics.length > 0;
+  const generatorBrandContextDescription = generatorUseBrand
+    ? generatorBrandReady ? `Учитывать профиль «${effectiveBrand.name}»` : "Включите и заполните профиль бренда"
+    : "Добавить данные профиля бренда";
+  const generatorSemanticsContextDescription = generatorSemanticsReady
+    ? generatorUseSemantics ? `Учитывать выбранные фразы · ${selectedSemanticKeywords.length}` : `Добавить выбранные фразы · ${selectedSemanticKeywords.length}`
+    : generatorUseSemantics
+      ? semanticNeedsRefresh ? "Обновите запросы в разделе «Семантика»" : "Выберите запросы в разделе «Семантика»"
+      : "Использовать запросы из раздела «Семантика»";
+  const generatorCompetitorsContextDescription = generatorCompetitorsReady
+    ? generatorUseCompetitors ? `Учитывать выбранные выводы · ${selectedCompetitorTopics.length}` : `Добавить выбранные выводы · ${selectedCompetitorTopics.length}`
+    : generatorUseCompetitors
+      ? "Постройте матрицу и выберите выводы"
+      : "Использовать выводы из анализа конкурентов";
   const contentPlanProgress = useMemo(() => ({
     ready: contentPlanResult.items.filter((item) => item.status === "Готово").length,
     working: contentPlanResult.items.filter((item) => item.status === "В работе").length,
@@ -2732,7 +2745,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     () => competitors.filter((item) => /^https?:\/\//i.test(item.url.trim())).length,
     [competitors],
   );
-  const activeFormatPlan = FORMAT_PLANS[format];
   const activeAdaptationPlan = ADAPTATION_PLANS[adaptationGoal];
   const activeArchivePlan = ADAPTATION_PLANS[archiveTransformGoal];
   const workspaceSnapshot = useMemo<BrandWorkspaceSnapshot>(() => ({
@@ -5544,6 +5556,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     if (!keepsSavedEditSource) setImageResult(null);
     setImageStreamPreview("");
     setCarouselResult(null);
+    const requestId = crypto.randomUUID();
     try {
       const response = await fetch("/api/images", {
         method: "POST",
@@ -5557,7 +5570,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           sourceImagePurpose: imageEditSourceId || imageReferenceSourceId || imageReferenceUrl ? imageReferencePurpose : undefined,
           imageEditMask: imageEditMask || undefined,
           brandId: useBrand ? activeBrandId || undefined : undefined,
-          requestId: crypto.randomUUID(),
+          requestId,
           aspectRatio: imageAspectRatio,
           outputFormat: imageOutputFormat,
           imageStyle,
@@ -7145,51 +7158,46 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </div>}
                 {generatorMode === "advanced" && <>
                 <div className="field"><label>Формат</label><div className="format-tabs">{formats.map((item) => <button type="button" className={format === item.id ? "active" : ""} onClick={() => { changeFormat(item.id); if (editorialBrief) setEditorialBrief(null); }} key={item.id}>{item.label}</button>)}</div></div>
-                <div className="editorial-plan-card generator-plan-card">
-                  <div><span>Редакционный контракт</span><b>{activeFormatPlan.title}</b><small>{activeFormatPlan.summary}</small></div>
-                  <ol>{activeFormatPlan.steps.map((step) => <li key={step}>{step}</li>)}</ol>
-                  <p><i>Итог</i>{activeFormatPlan.result}</p>
-                </div>
                 <label className="field">Тема материала<AutoTextarea rows={2} value={topic} onChange={(event) => { setTopic(event.target.value); if (editorialBrief) setEditorialBrief(null); }} /></label>
-                <div className="field"><ModuleSelect label="Авторская позиция" value={authorPosition} help="Позиция задаёт местоимения и дистанцию: тон меняет подачу, но не заменяет голос автора." options={[
-                  { value: "brand", label: "От лица бренда" }, { value: "expert", label: "Эксперт" }, { value: "journalist", label: "Журналист" }, { value: "customer", label: "Клиент" }, { value: "neutral", label: "Нейтральная" },
-                ]} onChange={(value) => { setAuthorPosition(value); if (editorialBrief) setEditorialBrief(null); }}/></div>
                 <label className="field"><span className="field-label-help">Ключевые слова<HelpTip label="Ключевые слова" text="Разделяйте запросы запятыми или получите их после анализа выдачи."/></span><AutoTextarea value={keywords} onChange={(event) => { setKeywords(event.target.value); if (editorialBrief) setEditorialBrief(null); }} /></label>
                 <label className="field generator-accent-field"><span className="field-label-help">Дополнительный акцент<HelpTip label="Дополнительный акцент" text="Здесь можно поправить цель, ракурс, аудиторию, структуру, фактуру и предложенную зацепку из контент-плана. Можно ввести вручную или передать выводы из матрицы."/></span><AutoTextarea rows={3} value={accent} onChange={(event) => { setAccent(event.target.value); if (editorialBrief) setEditorialBrief(null); }} placeholder="Например: раскрыть питание, ограничения и порядок консультации"/>{Boolean((accent.match(/^\s*[•*\-–—]\s+/gm) ?? []).length) && <small>Распознано обязательных редакционных ориентиров: {(accent.match(/^\s*[•*\-–—]\s+/gm) ?? []).length}</small>}</label>
-                <div className="field two">
+                <div className="field three generator-core-settings">
+                  <ModuleSelect label="Авторская позиция" value={authorPosition} help="Позиция задаёт местоимения и дистанцию: тон меняет подачу, но не заменяет голос автора." options={[
+                    { value: "brand", label: "От лица бренда" }, { value: "expert", label: "Эксперт" }, { value: "journalist", label: "Журналист" }, { value: "customer", label: "Клиент" }, { value: "neutral", label: "Нейтральная" },
+                  ]} onChange={(value) => { setAuthorPosition(value); if (editorialBrief) setEditorialBrief(null); }}/>
                   <ModuleSelect label="Стиль" value={tone} help="Стиль меняет лексику и ритм, но не превращает выбранный формат в другой тип материала." options={styles.map((item) => ({ value: item, label: item }))} onChange={(value) => { setTone(value); if (editorialBrief) setEditorialBrief(null); }}/>
                   <ModuleSelect label="Объём" value={customLength ? "custom" : String(length)} options={[...lengthPresets[format].map((item) => ({ value: String(item.value), label: item.label })), { value: "custom", label: "Свой объём…" }]} onChange={changeLength}/>
                 </div>
                 {customLength && <label className="field custom-length">Свой объём<div><input type="number" min="300" max="30000" step="100" value={manualLengthInput} onChange={(event) => setManualLength(event.target.value)} onBlur={commitManualLength} inputMode="numeric"/><span>знаков</span></div><small>Укажите от 300 до 30 000 знаков с пробелами</small></label>}
                 <div className="generator-context-card">
-                  <div className="generator-context-head"><span className="field-label-help">Контекст КЛИО<HelpTip label="Контекст КЛИО" text="Выберите источники для материала. Если модуль ещё не подготовлен, КЛИО сохранит выбор и покажет, что нужно сделать перед его подключением."/></span></div>
+                  <div className="generator-context-head"><span className="field-label-help">Дополнительные данные<HelpTip label="Дополнительные данные" text="Отметьте, какие сведения учитывать в материале: профиль бренда, поисковые запросы или выводы анализа конкурентов."/></span><small>Выберите, что добавить к генерации.</small></div>
                   <div className="generator-context-options">
                     <label className={`${generatorBrandReady ? "is-ready" : "is-pending"} ${generatorUseBrand ? "is-checked" : ""}`}>
                       <input type="checkbox" checked={generatorUseBrand} onChange={(event) => {
                         const checked = event.target.checked;
                         setGeneratorUseBrand(checked);
-                        if (checked && !generatorBrandReady) showToast("Выбор сохранён — сначала заполните и включите профиль бренда");
+                        if (checked && !generatorBrandReady) showToast("Чтобы добавить данные бренда, включите и заполните профиль.");
                       }}/>
                       <i aria-hidden="true">✓</i>
-                      <span><b>Профиль бренда</b><small>{generatorBrandReady ? `${effectiveBrand.name} · готовность ${brandScore}%` : generatorUseBrand ? useBrand ? "Выбран · заполните профиль бренда" : "Выбран · включите профиль в модуле 01" : "Не использовать в этой генерации"}</small></span>
+                      <span><b>Профиль бренда</b><small>{generatorBrandContextDescription}</small></span>
                     </label>
                     <label className={`${generatorSemanticsReady ? "is-ready" : "is-pending"} ${generatorUseSemantics ? "is-checked" : ""}`}>
                       <input type="checkbox" checked={generatorUseSemantics} onChange={(event) => {
                         const checked = event.target.checked;
                         setGeneratorUseSemantics(checked);
-                        if (checked && !generatorSemanticsReady) showToast("Выбор сохранён — сначала подготовьте семантику в разделе «Семантика»");
+                        if (checked && !generatorSemanticsReady) showToast("Чтобы добавить запросы, подготовьте их и выберите нужные в разделе «Семантика».");
                       }}/>
                       <i aria-hidden="true">✓</i>
-                        <span><b>Поисковые запросы</b><small>{generatorSemanticsReady ? `${selectedSemanticKeywords.length} фраз · ${semanticResult.intent.label || "задача читателя определена"}` : generatorUseSemantics ? semanticNeedsRefresh ? "Выбрано · соберите или обновите запросы" : "Выбрано · отметьте нужные фразы" : "Не использовать в этом материале"}</small></span>
+                      <span><b>Поисковые запросы</b><small>{generatorSemanticsContextDescription}</small></span>
                     </label>
                     <label className={`${generatorCompetitorsReady ? "is-ready" : "is-pending"} ${generatorUseCompetitors ? "is-checked" : ""}`}>
                       <input type="checkbox" checked={generatorUseCompetitors} onChange={(event) => {
                         const checked = event.target.checked;
                         setGeneratorUseCompetitors(checked);
-                        if (checked && !generatorCompetitorsReady) showToast("Выбор сохранён — сначала постройте конкурентную матрицу");
+                        if (checked && !generatorCompetitorsReady) showToast("Чтобы добавить выводы, постройте матрицу и выберите темы в разделе «Анализ конкурентов».");
                       }}/>
                       <i aria-hidden="true">✓</i>
-                      <span><b>Анализ конкурентов</b><small>{generatorCompetitorsReady ? `${selectedCompetitorTopics.length} выводов из актуальной матрицы` : generatorUseCompetitors ? "Выбран · постройте матрицу и отметьте выводы" : "Не использовать в этой генерации"}</small></span>
+                      <span><b>Анализ конкурентов</b><small>{generatorCompetitorsContextDescription}</small></span>
                     </label>
                   </div>
                 </div>

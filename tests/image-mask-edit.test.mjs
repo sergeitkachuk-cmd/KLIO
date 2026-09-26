@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import sharp from "sharp";
 import test from "node:test";
 import { load, imageGenerationErrors, imageCost } from "./helpers/dialogue-harness.mjs";
@@ -66,6 +66,36 @@ test("brush edit normalizes JPEG input and transparent mask to matching PNG file
   assert.ok(imageMetadata.width * imageMetadata.height >= 655_360);
   assert.ok(imageMetadata.width * imageMetadata.height <= 8_294_400);
   assert.equal(app.uploads.length, 1);
+});
+
+test("unmasked source edits use the dedicated edit model instead of the general generation model", async () => {
+  const { source, generated } = await fixtures();
+  const app = loadImageGeneration(
+    async () => Response.json({ data: [{ b64_json: generated.toString("base64") }] }),
+    { KLIO_IMAGE_MODEL: "gpt-image-2.5-flare-test", KLIO_IMAGE_EDIT_MODEL: "gpt-image-2.5-sunburst-test" },
+  );
+  await app.imageGen.createImageFromSource(
+    "Добавь мягкий вечерний свет", { bytes: new Uint8Array(source), contentType: "image/jpeg" }, "edit", undefined,
+    "owner@example.invalid", "https://klio.example.invalid", randomUUID(), {},
+  );
+  assert.equal(app.requests[0].options.body.get("model"), "gpt-image-2.5-sunburst-test");
+});
+
+test("large saved images are optimized before a source edit instead of failing at the upload cap", async () => {
+  const { generated } = await fixtures();
+  const pixels = randomBytes(2000 * 2000 * 3);
+  const largeSource = await sharp(pixels, { raw: { width: 2000, height: 2000, channels: 3 } }).png({ compressionLevel: 0 }).toBuffer();
+  assert.ok(largeSource.byteLength > 8 * 1024 * 1024);
+  const app = loadImageGeneration(async () => Response.json({ data: [{ b64_json: generated.toString("base64") }] }));
+  await app.imageGen.createImageFromSource(
+    "Измени освещение", { bytes: new Uint8Array(largeSource), contentType: "image/png" }, "edit", undefined,
+    "owner@example.invalid", "https://klio.example.invalid", randomUUID(), {},
+  );
+  const image = app.requests[0].options.body.get("image");
+  assert.ok(image.size <= 8 * 1024 * 1024);
+  assert.equal(image.type, "image/jpeg");
+  const metadata = await sharp(Buffer.from(await image.arrayBuffer())).metadata();
+  assert.ok(metadata.width * metadata.height <= 8_294_400);
 });
 
 test("small source images are enlarged with the mask to the provider's minimum area", async () => {
