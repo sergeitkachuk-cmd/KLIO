@@ -45,15 +45,10 @@ function resolveRequestSize(rawSize, aspectRatio) {
   return "1024x1024";
 }
 
-// gpt-image-2.5-flare default (was gpt-image-1) - a manual side-by-side
-// test against gpt-image-1 (test-image-models.mjs in this session's
-// scratchpad) confirmed it renders Russian headline text into a generated
-// image far more reliably. Same accepted size literals as gpt-image-1
-// (confirmed against the OpenAI API guide before switching this default -
-// resolveRequestSize below still only ever sends one of those three), so
-// this is a same-shape swap, not a request-format change. Use OpenAI's
+// Use Sunburst by default for higher-quality generation and editing.
+// Flare remains available as an explicit faster alternative. Use OpenAI's
 // undated alias so provider improvements can reach the relay automatically.
-export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", providerFetch = fetch }) {
+export function imageService({ token, apiKey, model = "gpt-image-2.5-sunburst", providerFetch = fetch }) {
   const jobs = new Map(); let running = 0;
   const authorized = value => {
     if (!token || token.length < 32) return false;

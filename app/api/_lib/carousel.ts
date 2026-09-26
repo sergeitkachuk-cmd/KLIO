@@ -13,7 +13,7 @@ export const CAROUSEL_MIN_SLIDES = 3;
 export const CAROUSEL_MAX_SLIDES = 8;
 // Use the current provider alias so carousel generation receives model
 // improvements without waiting for an application code change.
-export const CAROUSEL_IMAGE_MODEL = "gpt-image-2.5-flare";
+export const CAROUSEL_IMAGE_MODEL = "gpt-image-2.5-sunburst";
 
 const slideSchema = {
   type: "object",

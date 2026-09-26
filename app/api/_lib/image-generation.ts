@@ -178,20 +178,14 @@ async function generateImageBytes(
   let relayStreaming = false;
   let relayMaskEditing = false;
   const apiKey = serviceUrl ? process.env.KLIO_IMAGE_SERVICE_TOKEN : process.env.OPENAI_API_KEY;
-  // "gpt-image-2.5-flare" briefly wasn't a real OpenAI model at all - every
-  // request without an explicit KLIO_IMAGE_MODEL override failed outright
-  // back when that was the fallback here (site owner: three failures in a
-  // row). OpenAI shipped it for real on 2026-09-08; a manual side-by-side
-  // test against gpt-image-1 in this same session (see
-  // test-image-models.mjs in the scratchpad) confirmed it renders Russian
-  // headline text into a generated image far more reliably, so it's now
-  // the default instead. Use OpenAI's undated aliases so improvements to
-  // text rendering and editing behavior can roll forward without a code
-  // change. `model` (param) and the environment variables still allow an
-  // explicit model override for an individual deployment or operation.
+  // Use Sunburst as the shared default for generation and editing because
+  // OpenAI describes it as the higher-quality option. Flare remains
+  // available as an explicit faster alternative. Undated aliases let
+  // provider improvements roll forward without a code change; `model` and
+  // environment variables still allow an explicit override.
   const resolvedModel = model?.trim() || (mask
     ? process.env.KLIO_IMAGE_EDIT_MODEL?.trim() || "gpt-image-2.5-sunburst"
-    : process.env.KLIO_IMAGE_MODEL?.trim() || "gpt-image-2.5-flare");
+    : process.env.KLIO_IMAGE_MODEL?.trim() || "gpt-image-2.5-sunburst");
   let requestBody: string | FormData;
   let contentTypeHeader: string | undefined;
   if (serviceUrl) {
