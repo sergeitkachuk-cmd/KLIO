@@ -495,6 +495,9 @@ export async function createImageFromSource(
   const instruction = purpose === "edit"
     ? "Первое изображение — исходник для редактирования. Измени именно его по запросу пользователя. Сохрани композицию, людей, предметы, ракурс, освещение и все детали, которых правка не касается. Сохрани изображение по всей площади, включая края и углы. Не стирай участки исходника и не освобождай место под логотип. Не создавай новую сцену по старому описанию."
     : "Первое изображение — визуальный референс. Учитывай его реальные детали, композицию и стиль при выполнении запроса пользователя.";
+  const maskInstruction = mask
+    ? "Голубая кисть отмечает единственную область, которую разрешено менять. Выполни запрос внутри выделения; не перемещай новые объекты в другие части кадра. За пределами выделения оставь исходные пиксели без изменений."
+    : "";
   const corner = Boolean(logo) && (options.logoPlacement === "corner" || options.logoPlacement === "both" || options.logoPlacement === "overlay");
   const logoInstruction = logo
     ? "Второе изображение — настоящий логотип бренда. Используй именно этот знак и его надпись; не выдумывай другой бренд. Размести его на первом изображении в соответствии с запросом. Прозрачность вокруг знака относится только к файлу логотипа: не переноси её на фотографию и не удаляй под ним или вокруг него исходное изображение."
@@ -513,9 +516,56 @@ export async function createImageFromSource(
   const editModel = purpose === "edit"
     ? process.env.KLIO_IMAGE_EDIT_MODEL?.trim() || "gpt-image-2.5-sunburst-2026-09-08"
     : undefined;
-  const { bytes, contentType } = await generateImageBytes(`${instruction}\n${backgroundInstruction}\n\n${prompt}\n\n${logoInstruction}\n${placementInstruction}`, requestId,
+  const { bytes, contentType } = await generateImageBytes(`${instruction}\n${maskInstruction}\n${backgroundInstruction}\n\n${prompt}\n\n${logoInstruction}\n${placementInstruction}`, requestId,
     editOptions,
-    logo ? [source, logo] : source, editModel, mask, onPartial, onUsage);
+    logo ? [source, logo] : source, editModel, mask, mask ? undefined : onPartial, onUsage);
+
+  // The provider treats an edit mask as guidance and can still change pixels
+  // outside it. Lock those pixels locally: only let generated pixels through
+  // the transparent (painted) part of the user's mask.
+  if (mask && purpose === "edit") {
+    const sharp = (await import("sharp")).default;
+    const [sourceMetadata, resultMetadata] = await Promise.all([
+      sharp(source.bytes).metadata(),
+      sharp(bytes).metadata(),
+    ]);
+    if (!sourceMetadata.width || !sourceMetadata.height || !resultMetadata.width || !resultMetadata.height)
+      throw new ImageInputError("Не удалось совместить результат с выделением. Попробуйте запустить доработку ещё раз.");
+
+    const width = sourceMetadata.width;
+    const height = sourceMetadata.height;
+    const sourceRatio = width / height;
+    const resultRatio = resultMetadata.width / resultMetadata.height;
+    if (Math.abs(sourceRatio - resultRatio) / sourceRatio > 0.005)
+      throw new ImageInputError("Сервис изменил пропорции исходника, поэтому применить кисть точно не удалось. Попробуйте ещё раз.");
+
+    const selectedAreaAlpha = await sharp(mask.bytes)
+      .extractChannel("alpha")
+      .negate()
+      .raw()
+      .toBuffer();
+    const softenedAlpha = await sharp(selectedAreaAlpha, { raw: { width, height, channels: 1 } })
+      .blur(2)
+      .raw()
+      .toBuffer();
+    // Soften only the inside edge; never let generated pixels leak outside
+    // the user's painted selection.
+    for (let index = 0; index < selectedAreaAlpha.length; index += 1)
+      selectedAreaAlpha[index] = Math.min(selectedAreaAlpha[index], softenedAlpha[index]);
+    const generatedLayer = await sharp(bytes)
+      .rotate()
+      .resize(width, height, { fit: "fill", kernel: "lanczos3" })
+      .removeAlpha()
+      .joinChannel(selectedAreaAlpha, { raw: { width, height, channels: 1 } })
+      .png()
+      .toBuffer();
+    const lockedResult = await sharp(source.bytes)
+      .composite([{ input: generatedLayer, left: 0, top: 0, blend: "over" }])
+      .png()
+      .toBuffer();
+    return uploadPublicationImage(new File([lockedResult], "klio-edit.png", { type: "image/png" }), email, baseUrl);
+  }
+
   return uploadPublicationImage(new File([bytes], "klio-edit", { type: contentType }), email, baseUrl);
 }
 

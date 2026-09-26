@@ -122,7 +122,7 @@ export default function ImageMaskEditor({ src, onMaskChange }: Props) {
 
   return <div className="image-mask-editor">
     <div className="image-mask-editor-tools">
-      <span>Кистью отметьте область для изменения</span>
+      <span>Закрасьте объект целиком и немного вокруг: новый появится в этой области</span>
       <label>Размер <input type="range" min="3" max="24" value={brushSize} onChange={event => setBrushSize(Number(event.target.value))}/></label>
       <button type="button" className="button ghost" onClick={clear} disabled={!hasStroke}>Сбросить область</button>
     </div>
@@ -131,6 +131,6 @@ export default function ImageMaskEditor({ src, onMaskChange }: Props) {
       <canvas ref={paintRef} aria-label="Выбранная кистью область" onPointerDown={startDrawing} onPointerMove={event => { if (drawingRef.current) draw(event); }} onPointerUp={finish} onPointerCancel={finish}/>
       <canvas ref={maskRef} className="image-mask-editor-mask" />
     </div>
-    <small>Голубым отмечается участок, который КЛИО сможет перерисовать. Остальная часть останется ориентиром.</small>
+    <small>КЛИО изменит только выделенную область. Чтобы заменить предмет целиком, закрасьте его полностью и оставьте небольшой запас вокруг.</small>
   </div>;
 }
