@@ -394,8 +394,27 @@ type GenerationArchiveItem = {
   createdAt: string;
 };
 
-type CarouselSlide = { headline: string; subtext: string; imageUrl: string; templateId?: CarouselTemplateId };
+type CarouselSlide = { headline: string; subtext: string; imageUrl: string; templateId?: CarouselTemplateId; aspectRatio?: string };
 type ImageGeneratorMode = "create" | "edit" | "carousel";
+
+function readCarouselSlides(value?: string): CarouselSlide[] {
+  try {
+    const parsed: unknown = JSON.parse(value || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item): item is CarouselSlide => {
+      if (!item || typeof item !== "object") return false;
+      const slide = item as Partial<CarouselSlide>;
+      return typeof slide.imageUrl === "string" && Boolean(slide.imageUrl.trim())
+        && typeof slide.headline === "string" && typeof slide.subtext === "string";
+    });
+  } catch {
+    return [];
+  }
+}
+
+function isImageMaterial(item: Pick<GenerationArchiveItem, "topic">): boolean {
+  return item.topic === "Изображение" || item.topic === "Карусель";
+}
 
 type SavedMaterialType = "semantics" | "competitors" | "content_plan";
 type MaterialsFilter = "all" | "article" | "image" | "dialogue_topic" | "dialogue_note" | SavedMaterialType | "archived";
@@ -2557,6 +2576,17 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     [workspaceHistory],
   );
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [materialCarouselLightbox, setMaterialCarouselLightbox] = useState<{ slides: CarouselSlide[]; index: number; title: string } | null>(null);
+  const materialCarouselLightboxSlide = materialCarouselLightbox?.slides[materialCarouselLightbox.index] ?? null;
+  const materialCarouselLightboxNavigation = useMemo(() => {
+    if (!materialCarouselLightbox || materialCarouselLightbox.slides.length < 2) return undefined;
+    return {
+      current: materialCarouselLightbox.index + 1,
+      total: materialCarouselLightbox.slides.length,
+      onPrevious: () => setMaterialCarouselLightbox(current => current ? { ...current, index: Math.max(0, current.index - 1) } : current),
+      onNext: () => setMaterialCarouselLightbox(current => current ? { ...current, index: Math.min(current.slides.length - 1, current.index + 1) } : current),
+    };
+  }, [materialCarouselLightbox]);
   const [workspaceMaterials, setWorkspaceMaterials] = useState<SavedWorkspaceMaterial[]>([]);
   const [workspaceUserName, setWorkspaceUserName] = useState("Сергей");
   const [workspaceUserKey, setWorkspaceUserKey] = useState("");
@@ -2856,8 +2886,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   );
   const materialsFilterOptions = useMemo(() => [
     { id: "all" as const, label: "Все материалы", count: activeBrandArticlesLive.length + activeBrandSavedMaterialsLive.length },
-    { id: "article" as const, label: "Статьи и тексты", count: activeBrandArticlesLive.filter(item => item.topic !== "Тема из диалога" && item.topic !== "Заметка из диалога" && item.topic !== "Изображение").length },
-    { id: "image" as const, label: "Изображения", count: activeBrandArticlesLive.filter(item => item.topic === "Изображение").length },
+    { id: "article" as const, label: "Статьи и тексты", count: activeBrandArticlesLive.filter(item => item.topic !== "Тема из диалога" && item.topic !== "Заметка из диалога" && !isImageMaterial(item)).length },
+    { id: "image" as const, label: "Изображения", count: activeBrandArticlesLive.filter(isImageMaterial).length },
     { id: "dialogue_topic" as const, label: "Темы", count: activeBrandArticlesLive.filter(item => item.topic === "Тема из диалога").length },
     { id: "dialogue_note" as const, label: "Заметки", count: activeBrandArticlesLive.filter(item => item.topic === "Заметка из диалога").length },
     { id: "content_plan" as const, label: "Контент‑планы", count: activeBrandSavedMaterialsLive.filter((item) => item.type === "content_plan").length },
@@ -2868,8 +2898,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const visibleBrandArticles = (materialsFilter === "archived"
     ? archivedBrandArticles
     : materialsFilter === "all" ? activeBrandArticlesLive
-    : materialsFilter === "article" ? activeBrandArticlesLive.filter(item => item.topic !== "Тема из диалога" && item.topic !== "Заметка из диалога" && item.topic !== "Изображение")
-    : materialsFilter === "image" ? activeBrandArticlesLive.filter(item => item.topic === "Изображение")
+    : materialsFilter === "article" ? activeBrandArticlesLive.filter(item => item.topic !== "Тема из диалога" && item.topic !== "Заметка из диалога" && !isImageMaterial(item))
+    : materialsFilter === "image" ? activeBrandArticlesLive.filter(isImageMaterial)
     : materialsFilter === "dialogue_topic" ? activeBrandArticlesLive.filter(item => item.topic === "Тема из диалога")
     : materialsFilter === "dialogue_note" ? activeBrandArticlesLive.filter(item => item.topic === "Заметка из диалога") : [])
     .filter((item) => isWithinMaterialsDateRange(item.createdAt, materialsDateRange));
@@ -5724,8 +5754,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
   // Reopen a saved carousel in the same preview so individual slides can be replaced.
   function openCarouselResult(item: GenerationArchiveItem) {
-    let slides: CarouselSlide[] = [];
-    try { slides = JSON.parse(item.slidesJson || "[]"); } catch { slides = []; }
+    const slides = readCarouselSlides(item.slidesJson);
     const savedTemplate = slides[0]?.templateId;
     if (savedTemplate && CAROUSEL_TEMPLATE_OPTIONS.some(option => option.value === savedTemplate)) setCarouselTemplate(savedTemplate);
     setImageGeneratorMode("carousel");
@@ -5802,6 +5831,19 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setImageError("");
     setCarouselError("");
     openModule("images");
+  }
+
+  function openMaterialImage(item: GenerationArchiveItem) {
+    if (item.topic === "Карусель") {
+      const slides = readCarouselSlides(item.slidesJson);
+      if (slides.length) {
+        setLightboxUrl(null);
+        setMaterialCarouselLightbox({ slides, index: 0, title: item.title || "Карусель" });
+        return;
+      }
+    }
+    setMaterialCarouselLightbox(null);
+    setLightboxUrl(item.imageUrl || null);
   }
 
   function startFreshImage() {
@@ -6124,7 +6166,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           <a className="telegram-header-link" href="https://t.me/kliopress" target="_blank" rel="noreferrer" aria-label="Telegram КЛИО"><Icon name="telegram"/><span className="telegram-header-link-text">Telegram КЛИО</span></a>
           <div className={`account-menu ${accountMenuOpen ? "is-open" : ""}`} ref={accountMenuRef}>
             <button type="button" className="workspace-account" onClick={() => setAccountMenuOpen((value) => !value)} aria-label={`Меню аккаунта: ${workspaceUserName}`} aria-haspopup="menu" aria-expanded={accountMenuOpen}>
-              <i>{nameInitials(workspaceUserName)}{feedbackUnread > 0 && <em className="workspace-account-badge">{feedbackUnread}</em>}</i><b>{workspaceUserName}</b><small>{workspaceAccount.planName} · 1 пользователь</small><em className="ui-chevron" aria-hidden="true" />
+              <i>{brand.logoKey && activeBrandId ? <Image className="workspace-account-logo" src={`/api/brand/logo?brandId=${encodeURIComponent(activeBrandId)}`} alt="" width={36} height={36} unoptimized/> : nameInitials(workspaceUserName)}{feedbackUnread > 0 && <em className="workspace-account-badge">{feedbackUnread}</em>}</i><b>{workspaceUserName}</b><small>{workspaceAccount.planName} · 1 пользователь</small><em className="ui-chevron" aria-hidden="true" />
             </button>
             {accountMenuOpen && <div className="account-menu-list" role="menu">
               <Link href="/account" role="menuitem">Личный кабинет</Link>
@@ -6334,8 +6376,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               if (kind === "article") {
                 const formatLabel = materialFormatLabel(item);
                 const isImageOnly = item.topic === "Изображение";
+                const isCarousel = item.topic === "Карусель";
                 const hasImage = Boolean(item.imageUrl);
-                return <article className={`material-card material-article ${isImageOnly ? "is-image-only" : hasImage ? "is-text-with-image" : ""} ${item.origin === "editor" ? "is-editor" : ""} ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><div className="material-card-badges"><span className="material-format-badge">{formatLabel}</span>{item.origin === "editor" && <span className="material-origin-badge">РЕД</span>}</div><small>{archiveDate(item.createdAt)}</small></div>{!isImageOnly && <><h3>{item.title}</h3><p>{item.topic}</p></>}{item.imageUrl && <button type="button" className="image-generator-result-trigger" aria-label="Открыть изображение крупнее" onClick={() => setLightboxUrl(item.imageUrl)}><Image className="material-card-image" src={item.imageUrl} alt={item.title || "Изображение КЛИО"} width={720} height={720} unoptimized/></button>}<footer><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал" title="Удалить материал"><Icon name="trash"/></button><button type="button" className="material-archive" onClick={() => void archiveArchiveItem(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" className="material-publish" onClick={() => openPublicationDraftForMaterial(item)}>Публикация</button>{item.imageUrl && <a className="material-export" href={item.imageUrl} download>Скачать {imageFormatLabel(item.imageUrl)}</a>}{item.topic !== "Изображение" && item.topic !== "Карусель" && <><button type="button" onClick={() => prepareImageGeneration({ generationId: item.id }, buildArticleImagePrompt(item.title, item.subtitle, item.body), item.title)}>Создать картинку</button><button type="button" onClick={() => prepareImageGeneration({ text: buildArticleCarouselSource(item.title, item.subtitle, item.body) }, buildArticleCarouselSource(item.title, item.subtitle, item.body), item.title, "carousel")}>Создать карусель</button></>}<button type="button" onClick={() => void openMaterialInDialogue(item.id)}>В диалог</button><button type="button" onClick={() => item.topic === "Карусель" ? openCarouselResult(item) : openArchiveItem(item)}>Редактор <Icon name="arrow"/></button></div></footer></article>;
+                return <article className={`material-card material-article ${isImageOnly ? "is-image-only" : hasImage ? "is-text-with-image" : ""} ${isCarousel ? "is-carousel-material" : ""} ${item.origin === "editor" ? "is-editor" : ""} ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><div className="material-card-badges"><span className="material-format-badge">{formatLabel}</span>{item.origin === "editor" && <span className="material-origin-badge">РЕД</span>}</div><small>{archiveDate(item.createdAt)}</small></div>{!isImageOnly && <><h3>{item.title}</h3><p>{item.topic}</p></>}{item.imageUrl && <button type="button" className="image-generator-result-trigger" aria-label={isCarousel ? "Открыть карусель" : "Открыть изображение крупнее"} onClick={() => openMaterialImage(item)}><Image className="material-card-image" src={item.imageUrl} alt={item.title || "Изображение КЛИО"} width={720} height={720} unoptimized/></button>}<footer><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал" title="Удалить материал"><Icon name="trash"/></button><button type="button" className="material-archive" onClick={() => void archiveArchiveItem(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" className="material-publish" onClick={() => openPublicationDraftForMaterial(item)}>Публикация</button>{item.imageUrl && <a className="material-export" href={item.imageUrl} download>Скачать {imageFormatLabel(item.imageUrl)}</a>}{item.topic !== "Изображение" && item.topic !== "Карусель" && <><button type="button" onClick={() => prepareImageGeneration({ generationId: item.id }, buildArticleImagePrompt(item.title, item.subtitle, item.body), item.title)}>Создать картинку</button><button type="button" onClick={() => prepareImageGeneration({ text: buildArticleCarouselSource(item.title, item.subtitle, item.body) }, buildArticleCarouselSource(item.title, item.subtitle, item.body), item.title, "carousel")}>Создать карусель</button></>}<button type="button" onClick={() => void openMaterialInDialogue(item.id)}>В диалог</button><button type="button" onClick={() => item.topic === "Карусель" ? openCarouselResult(item) : openArchiveItem(item)}>Редактор <Icon name="arrow"/></button></div></footer></article>;
               }
               const typeLabel = item.type === "content_plan" ? "Контент‑план" : item.type === "semantics" ? "Семантика" : "Анализ конкурентов";
               // Full items (not just title strings) so each topic can be sent
@@ -6361,6 +6404,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>}
 
           {lightboxUrl && <ImageLightbox src={lightboxUrl} alt="Изображение" onClose={() => setLightboxUrl(null)} />}
+          {materialCarouselLightboxSlide && materialCarouselLightbox && <ImageLightbox
+            src={materialCarouselLightboxSlide.imageUrl}
+            alt={`${materialCarouselLightbox.title}, слайд ${materialCarouselLightbox.index + 1}`}
+            onClose={() => setMaterialCarouselLightbox(null)}
+            navigation={materialCarouselLightboxNavigation}
+            actions={<a className="button ghost" href={materialCarouselLightboxSlide.imageUrl} download>Скачать {imageFormatLabel(materialCarouselLightboxSlide.imageUrl)}</a>}
+          />}
           {carouselLightboxSlide && carouselLightboxIndex !== null && carouselLightboxNavigation && carouselResult && <ImageLightbox
             src={carouselLightboxSlide.imageUrl}
             alt={carouselLightboxSlide.headline}
@@ -7176,7 +7226,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 {imageGeneratorMode === "carousel" && carouselResult ? <>
                   <div className="image-generator-carousel-slides">
                     {carouselResult.slides.map((slide, index) => <div className={`image-generator-carousel-slide ${carouselSlideBusy === index ? "is-regenerating" : ""}`} key={`${slide.imageUrl}-${index}`}>
-                      <button type="button" className="image-generator-result-trigger" aria-label={`Открыть слайд ${index + 1}: ${slide.headline}`} onClick={() => setCarouselLightboxIndex(index)}><Image src={slide.imageUrl} alt={slide.headline} width={480} height={480} unoptimized/></button>
+                      <button type="button" className="image-generator-result-trigger" style={{ aspectRatio: typeof slide.aspectRatio === "string" && /^\d+:\d+$/.test(slide.aspectRatio) ? slide.aspectRatio.replace(":", " / ") : "1 / 1" }} aria-label={`Открыть слайд ${index + 1}: ${slide.headline}`} onClick={() => setCarouselLightboxIndex(index)}><Image src={slide.imageUrl} alt={slide.headline} width={480} height={480} unoptimized/></button>
                       <b>{slide.headline}</b>
                       <div className="image-generator-carousel-slide-actions">
                         <a className="button ghost" href={slide.imageUrl} download>Скачать {imageFormatLabel(slide.imageUrl)}</a>
