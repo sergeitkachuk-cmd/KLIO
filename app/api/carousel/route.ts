@@ -11,7 +11,7 @@ import { resolveBaseUrl } from "../_lib/base-url";
 import { ensureAccount, getWorkspaceDb, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 import { planRule } from "../../plans";
 import { IMAGE_STYLE_OPTIONS } from "../../dialogue-generation-settings";
-import { DEFAULT_CAROUSEL_TEMPLATE, isCarouselTemplateId } from "../../carousel-templates";
+import { DEFAULT_CAROUSEL_TEMPLATE, isCarouselTemplateId, MAX_CAROUSEL_SOURCE_CHARACTERS } from "../../carousel-templates";
 
 // Same shape as app/api/generate/route.ts (see its own comment on
 // runMaterialGenerationJob): a request this long-running (one LLM call
@@ -73,6 +73,9 @@ export async function POST(request: Request) {
     }
     text = text.trim();
     if (text.length < 20) return Response.json({ error: "Добавьте текст статьи или вставьте свой текст — этого недостаточно для карусели." }, { status: 400 });
+    if (text.length > MAX_CAROUSEL_SOURCE_CHARACTERS) {
+      return Response.json({ error: `Для карусели можно передать не больше ${MAX_CAROUSEL_SOURCE_CHARACTERS.toLocaleString("ru-RU")} символов. Сократите текст в поле и попробуйте ещё раз.` }, { status: 400 });
+    }
 
     if (!aiConfigured("generate_carousel_slides") || !imageConfigured()) {
       return Response.json({ error: "Генерация карусели пока недоступна." }, { status: 503 });

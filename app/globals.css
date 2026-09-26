@@ -15111,6 +15111,17 @@ input[type="radio"] {
   background: rgba(255, 255, 255, 0.22);
 }
 
+.image-lightbox-navigation{display:flex;align-items:center;justify-content:center;gap:18px;color:#fff;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;cursor:default}
+.image-lightbox-navigation button{display:grid;place-items:center;width:42px;height:42px;border:1px solid rgba(255,255,255,.38);border-radius:50%;background:rgba(255,255,255,.12);color:#fff;font-size:28px;line-height:1;cursor:pointer;transition:background .16s ease,border-color .16s ease}
+.image-lightbox-navigation button:hover:not(:disabled){border-color:rgba(255,255,255,.7);background:rgba(255,255,255,.24)}
+.image-lightbox-navigation button:disabled{opacity:.38;cursor:default}
+.image-lightbox-overlay.image-lightbox-with-actions{grid-template-rows:minmax(0,1fr) auto auto;gap:10px;padding-bottom:18px}
+.image-lightbox-overlay.image-lightbox-with-actions .image-lightbox-image{max-height:78vh}
+.image-lightbox-actions{display:flex;justify-content:center;width:min(100%,520px);cursor:default}
+.carousel-lightbox-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+.carousel-lightbox-actions .button{min-height:40px;padding:8px 14px;font-size:13px;white-space:normal}
+@media(max-width:750px){.image-generator-carousel-controls{grid-template-columns:1fr}.image-generator-carousel-slides{grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))}.image-lightbox-navigation button{width:38px;height:38px}.image-lightbox-overlay.image-lightbox-with-actions .image-lightbox-image{max-height:62vh}}
+
 .publications-published-note {
   margin: 12px 0 0;
   padding: 10px 12px;
@@ -23607,6 +23618,7 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 .image-generator-form label{font-size:16px;font-weight:750;color:inherit}
 .image-generator-form textarea{width:100%;min-height:180px;resize:vertical;padding:16px;border:1px solid #586782;border-radius:12px;background:#101f37;color:#fff;font:inherit;line-height:1.5}
 .image-generator-form textarea::placeholder{color:#aab8cb}
+.image-generator-source-count{align-self:flex-end;margin-top:-8px;color:#91a4bd;font-size:12px;font-variant-numeric:tabular-nums}
 .image-generator-style-field{display:grid;gap:8px;width:100%}
 .image-generator-style-heading{display:grid;gap:3px}
 .image-generator-style-heading>span{font-size:13px;font-weight:750;color:inherit}
@@ -23662,7 +23674,8 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 .image-generator-carousel{display:flex;flex-direction:column;gap:10px;width:100%;margin-top:4px;padding-top:16px;border-top:1px solid #34425a}
 .image-generator-carousel>div>span{color:#8eb6ee;font-size:11px;font-weight:720;letter-spacing:.08em;text-transform:uppercase}
 .image-generator-carousel>div>h3{margin:2px 0 0;font-size:15px}
-.image-generator-carousel .module-select{width:160px}
+.image-generator-carousel-controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;width:100%;margin:4px 0}
+.image-generator-carousel-controls .module-select{min-width:0;width:100%}
 .image-generator-template-field{display:grid;gap:8px;width:100%;margin-top:4px;padding-top:8px}
 .image-generator-template-heading{display:grid;gap:3px}
 .image-generator-template-heading>span{font-size:13px;font-weight:750;color:inherit}
@@ -23676,9 +23689,11 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 .image-generator-template-picker button.is-selected small{color:#c1d3e9}
 .image-generator-template-picker button i{position:absolute;top:10px;right:11px;font-style:normal;color:#b9d0f5;font-size:14px}
 .image-generator-template-picker button:disabled{cursor:wait;opacity:.62}
-.image-generator-carousel-slides{display:flex;flex-wrap:nowrap;gap:12px;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.image-generator-carousel-slide{flex:0 0 180px;display:flex;flex-direction:column;gap:8px;padding:10px;border:1px solid #34425a;border-radius:12px;background:#101f37}
-.image-generator-carousel-slide img{display:block;width:100%;height:180px;object-fit:contain;border-radius:8px;background:#08182c}
+.image-generator-carousel-slides{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px;width:100%}
+.image-generator-carousel-slide{display:flex;min-width:0;flex-direction:column;gap:8px;padding:10px;border:1px solid #34425a;border-radius:12px;background:#101f37}
+.image-generator-carousel-slide .image-generator-result-trigger{overflow:hidden;border-radius:8px;background:#08182c}
+.image-generator-carousel-slide img{display:block;width:100%;height:190px;object-fit:contain}
+.image-generator-carousel-slide>.button{justify-content:center;width:100%;min-height:40px;padding:8px 11px;font-size:12px;line-height:1.25;white-space:normal}
 .image-generator-carousel-slide b{font-size:13px;font-weight:700;line-height:1.35;color:#eef2fa}
 .image-generator-carousel-slide.is-regenerating{border-color:#83aee8;box-shadow:0 0 0 1px rgba(131,174,232,.24),0 8px 24px rgba(3,18,37,.2)}
 .image-generator-carousel-slide .carousel-slide-regenerate{font-size:11px;line-height:1.25;white-space:normal;color:#dce9fb;border-color:#42688f;background:linear-gradient(135deg,#183a5d,#102a47)}
@@ -24378,6 +24393,7 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
   background: #f8f9fa;
   box-shadow: none;
 }
+:root[data-theme="light"] .image-generator-source-count { color: #60738c; }
 :root[data-theme="light"] .image-generator-logo-toggle {
   border-color: #cbd5df;
   color: #263b52;

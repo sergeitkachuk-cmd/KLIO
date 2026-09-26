@@ -124,7 +124,7 @@ async function createCarouselHarness() {
 }
 
 function slides(count) {
-  return Array.from({ length: count }, (_, i) => ({ headline: `Заголовок ${i + 1}`, subtext: `Текст ${i + 1}` }));
+  return Array.from({ length: count }, (_, i) => ({ headline: `Заголовок ${i + 1}`, subtext: `Текст ${i + 1}`, visual: `Отдельная предметная сцена ${i + 1}` }));
 }
 
 test("trial lasts three days and exhausted research cannot block ordinary dialogue", async t => {
@@ -165,6 +165,8 @@ test("carousel debits exactly one generation per slide and saves one row with sl
   assert.equal(rows[0].imageUrl, `https://cdn.example.invalid/${job.id}-0.png`);
   const saved = JSON.parse(rows[0].slidesJson);
   assert.equal(saved.length, 3);
+  assert.deepEqual(saved.map(s => s.aspectRatio), ["1:1", "1:1", "1:1"]);
+  assert.deepEqual(saved.map(s => s.outputFormat), ["png", "png", "png"]);
   assert.deepEqual(saved.map(s => s.headline), ["Заголовок 1", "Заголовок 2", "Заголовок 3"]);
   assert.ok(saved.every(s => s.imageUrl.startsWith("https://cdn.example.invalid/")));
 
@@ -172,7 +174,7 @@ test("carousel debits exactly one generation per slide and saves one row with sl
   assert.equal(settled.status, "done");
 });
 
-test("carousel makes slide one a cover and the following slides content cards", async t => {
+test("carousel reads all 3500 source characters and gives every slide its own full image composition", async t => {
   const h = await createCarouselHarness();
   t.after(() => h.close());
   await h.seedAccount();
@@ -181,34 +183,41 @@ test("carousel makes slide one a cover and the following slides content cards", 
     aiRequest = request;
     return {
       slides: [
-        { headline: "Почему привычный подход больше не работает", subtext: "Разбираем главную причину и решение" },
-        { headline: "Где возникает проблема", subtext: "Обычный процесс теряет важные данные на первом этапе. Из-за этого команда принимает решение по неполной картине и исправляет последствия вместо причины." },
-        { headline: "Что изменить сейчас", subtext: "Сначала соберите исходные данные, затем проверьте ключевую гипотезу и только после этого масштабируйте решение." },
+        { headline: "Почему привычный подход больше не работает", subtext: "Разбираем главную причину и решение", visual: "Команда сравнивает два плана на рабочем столе" },
+        { headline: "Где возникает проблема", subtext: "Первый этап теряет важные данные, и команда исправляет последствия вместо причины.", visual: "Поток документов теряет одну страницу по дороге" },
+        { headline: "Что изменить сейчас", subtext: "Соберите исходные данные, проверьте гипотезу и только после этого масштабируйте решение.", visual: "Специалист отмечает проверенную гипотезу на доске" },
       ],
     };
   });
   const prompts = [];
-  h.setGenerateImage(async prompt => {
-    prompts.push(prompt);
+  const references = [];
+  const copies = [];
+  h.setGenerateImage(async (...args) => {
+    prompts.push(args[0]);
+    references.push(args[1]);
+    copies.push(args[7]);
     return { url: `https://cdn.example.invalid/${prompts.length}.png`, bytes: new Uint8Array([prompts.length]), contentType: "image/png" };
   });
 
-  const input = { text: "Подробная статья о проблеме, её причине и последовательности решения.", slideCount: 3, baseUrl: "http://127.0.0.1:3027" };
+  const source = "А".repeat(3500);
+  const input = { text: source, slideCount: 3, baseUrl: "http://127.0.0.1:3027", imageOptions: { aspectRatio: "1:1", outputFormat: "png" } };
   const job = await h.claimJob(input);
   await h.runCarouselGeneration(job.id, input, h.owner);
 
   assert.match(aiRequest.instructions, /Первый слайд — обложка/);
-  assert.match(aiRequest.instructions, /25–45 слов/);
-  assert.match(aiRequest.instructions, /не подзаголовок и не рекламный слоган/i);
-  assert.match(prompts[0], /дизайнерская обложка/);
-  assert.match(prompts[0], /Фотография или иллюстрация не обязательна/);
-  assert.match(prompts[0], /выразительную типографику/);
-  assert.match(prompts[1], /Это продолжение обложки, а не ещё одна обложка/);
-  assert.match(prompts[1], /Основной текст/);
-  assert.doesNotMatch(prompts[1], /Крупный заголовок/);
+  assert.match(aiRequest.instructions, /не более 20 слов/);
+  assert.match(aiRequest.instructions, /Для каждого слайда заполни visual/);
+  assert.equal(JSON.parse(aiRequest.input).text, source);
+  assert.match(prompts[0], /Обложка карусели/);
+  assert.match(prompts[0], /Команда сравнивает два плана/);
+  assert.match(prompts[1], /Поток документов теряет одну страницу/);
+  assert.match(prompts[2], /Специалист отмечает проверенную гипотезу/);
+  assert.ok(copies.every(copy => copy && copy.headline && copy.subtext));
+  assert.equal(copies[1].subtext, "Первый этап теряет важные данные, и команда исправляет последствия вместо причины.");
+  assert.deepEqual(references, [undefined, undefined, undefined]);
 });
 
-test("each slide after the first receives the previous slide's own bytes as its reference", async t => {
+test("each slide after the first is generated without inheriting the previous slide image", async t => {
   const h = await createCarouselHarness();
   t.after(() => h.close());
   await h.seedAccount();
@@ -225,12 +234,10 @@ test("each slide after the first receives the previous slide's own bytes as its 
   const job = await h.claimJob(input);
   await h.runCarouselGeneration(job.id, input, h.owner);
 
-  assert.equal(seenReferences[0], undefined);
-  assert.deepEqual(Array.from(seenReferences[1].bytes), [0]);
-  assert.deepEqual(Array.from(seenReferences[2].bytes), [1]);
+  assert.deepEqual(seenReferences, [undefined, undefined, undefined]);
 });
 
-test("slide 1 references the brand logo when useLogo is set, later slides fall back to the previous slide", async t => {
+test("every slide can reference the brand logo without chaining slide images", async t => {
   const h = await createCarouselHarness();
   t.after(() => h.close());
   await h.seedAccount();
@@ -249,13 +256,11 @@ test("slide 1 references the brand logo when useLogo is set, later slides fall b
   const job = await h.claimJob(input);
   await h.runCarouselGeneration(job.id, input, h.owner);
 
-  assert.equal(seenReferences[0].reference.kind, "logo");
-  assert.deepEqual(Array.from(seenReferences[0].reference.bytes), [9, 9]);
-  assert.equal(seenReferences[1].reference.kind, "previous-slide");
-  assert.deepEqual(Array.from(seenReferences[1].reference.bytes), [0]);
-  assert.equal(seenReferences[2].reference.kind, "previous-slide");
-  assert.match(seenReferences[1].prompt, /логотип бренда/);
-  assert.doesNotMatch(seenReferences[0].prompt, /Сохраняй тот же логотип/);
+  for (const slide of seenReferences) {
+    assert.equal(slide.reference.kind, "logo");
+    assert.deepEqual(Array.from(slide.reference.bytes), [9, 9]);
+    assert.match(slide.prompt, /логотип бренда/);
+  }
 });
 
 test("carousel without useLogo never touches brand logo storage even when a brandId is given", async t => {

@@ -8,6 +8,8 @@
  */
 export type CarouselTemplateId = "editorial" | "gradient-pop" | "paper-light" | "terminal-dev";
 
+export const MAX_CAROUSEL_SOURCE_CHARACTERS = 12_000;
+
 export type CarouselTemplateOption = {
   value: CarouselTemplateId;
   label: string;

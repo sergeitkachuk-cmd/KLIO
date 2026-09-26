@@ -11,10 +11,18 @@ import { createPortal } from "react-dom";
 // same image at (near-)full size in an overlay; portaled to escape
 // whatever clipping/stacking context the thumbnail lives in, same reason
 // as this app's other portaled overlays.
-export function ImageLightbox({ src, alt, onClose, actions }: { src: string; alt: string; onClose: () => void; actions?: ReactNode }) {
+type ImageLightboxNavigation = { current: number; total: number; onPrevious: () => void; onNext: () => void };
+
+export function ImageLightbox({ src, alt, onClose, actions, navigation }: { src: string; alt: string; onClose: () => void; actions?: ReactNode; navigation?: ImageLightboxNavigation }) {
   const downTarget = useRef<EventTarget | null>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const overlay = useRef<HTMLDivElement>(null);
+  const navigationRef = useRef(navigation);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    navigationRef.current = navigation;
+    onCloseRef.current = onClose;
+  }, [navigation, onClose]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -24,7 +32,9 @@ export function ImageLightbox({ src, alt, onClose, actions }: { src: string; alt
     // so Escape closes the preview instead of reaching the embedded composer.
     closeButton.current?.focus();
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") { event.preventDefault(); onClose(); }
+      if (event.key === "Escape") { event.preventDefault(); onCloseRef.current(); }
+      if (event.key === "ArrowLeft" && navigationRef.current) { event.preventDefault(); navigationRef.current.onPrevious(); }
+      if (event.key === "ArrowRight" && navigationRef.current) { event.preventDefault(); navigationRef.current.onNext(); }
       if (event.key === "Tab") {
         const controls = overlay.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href]');
         if (!controls?.length) return;
@@ -39,7 +49,7 @@ export function ImageLightbox({ src, alt, onClose, actions }: { src: string; alt
       document.removeEventListener("keydown", closeOnEscape);
       previousFocus?.focus();
     };
-  }, [onClose]);
+  }, []);
 
   // Same deferred-close pattern as this app's other backdrop overlays: a
   // mousedown that starts on the backdrop but drags/releases elsewhere
@@ -71,6 +81,11 @@ export function ImageLightbox({ src, alt, onClose, actions }: { src: string; alt
           preview of an already-loaded, already-optimized thumbnail's own
           source; next/image needs known dimensions this doesn't have. */}
       <img className="image-lightbox-image" src={src} alt={alt} />
+      {navigation && <div className="image-lightbox-navigation" role="group" aria-label="Перелистывание слайдов">
+        <button type="button" aria-label="Предыдущий слайд" onClick={navigation.onPrevious} disabled={navigation.current <= 1}>‹</button>
+        <span>{navigation.current} / {navigation.total}</span>
+        <button type="button" aria-label="Следующий слайд" onClick={navigation.onNext} disabled={navigation.current >= navigation.total}>›</button>
+      </div>}
       {actions && <div className="image-lightbox-actions">{actions}</div>}
     </div>,
     document.body,

@@ -107,6 +107,7 @@ export function resolveImageGenerationOptions(options: ImageGenerationOptions = 
 // instruction first, before the additive framing, is meant to keep both
 // requirements mandatory instead of trading one off against the other.
 const LOGO_REFERENCE_INSTRUCTION = "Дополнительно на изображении должен точно повторяться логотип бренда с приложенного референса: те же цвета, форма и текст, максимально близко к оригиналу - не сочиняй новый логотип и не изменяй его. Впиши его в сцену органично, как её часть (например, на вывеске или упаковке), а не отдельным слоем поверх готовой картинки. Это дополнение к сцене и только тем надписям, которые разрешены выбранными параметрами, а не замена им. Не переноси текст статьи на картинку, если выбран режим без текста. Надпись внутри самого логотипа сохрани. Не вводи ради логотипа то, чего не просили (ноутбук, телефон, экран устройства).";
+const CAROUSEL_LOGO_REFERENCE_INSTRUCTION = "Приложенный референс — только логотип бренда: точно сохрани его форму, цвета и внутреннюю надпись. Не копируй из референса фон или композицию. Встрой логотип в сцену органично, не перекрывая заголовок и основной текст.";
 
 function providerErrorSummary(bodyText: string) {
   try {
@@ -518,42 +519,28 @@ export async function createImageFromSource(
   return uploadPublicationImage(new File([bytes], "klio-edit", { type: contentType }), email, baseUrl);
 }
 
-// Sibling to createImageFromLogo above, for a carousel's per-slide
-// reference image, which serves one of two different purposes depending
-// on `reference.kind` - the wording has to match which one it actually is:
-// - "logo": slide 1 when the brand logo is requested - same "weave it in
-//   naturally, reproduce it closely" framing as createImageFromLogo.
-// - "previous-slide": every slide after that references the one before it
-//   for style/composition consistency (the reference-image chaining
-//   OpenAI's own docs describe for gpt-image-2.5 multi-image consistency -
-//   confirmed via the API guide, up to 16 reference images, no dedicated
-//   "generate a consistent set" endpoint exists), not to match a fixed
-//   logo. Slide 1's own bytes already carry the logo forward into that
-//   chain when one was used, but the wording below also reinforces it via
-//   text for slides 2+ (see carousel.ts's own prompt for that reminder).
+// Each carousel card is generated as a complete raster image by the image
+// model: scene, layout, and exact Russian copy are all in its prompt. The
+// optional reference is only the brand logo, never a preceding slide.
 export async function createCarouselSlideImage(
   prompt: string,
-  reference: { bytes: Uint8Array<ArrayBuffer>; contentType: string; kind: "logo" | "previous-slide" } | undefined,
+  reference: { bytes: Uint8Array<ArrayBuffer>; contentType: string; kind: "logo" } | undefined,
   email: string,
   baseUrl: string,
   requestId: string,
   options: ImageGenerationOptions,
   model: string,
-  textOverlay?: { headline: string; subtext: string; templateId: CarouselTemplateId },
+  slideCopy?: { headline: string; subtext: string; templateId: CarouselTemplateId },
   onUsage?: ImageUsageHandler,
 ) {
-  const guidedPrompt = !reference
-    ? prompt
-    : reference.kind === "logo"
-      ? `${prompt}\n\n${logoPlacementInstruction(options.logoPlacement, options.logoPosition)}`
-      : `${prompt}\n\nЭто один слайд карусели из серии. Сохрани ту же визуальную стилистику, палитру, шрифт и композицию, что и на приложенном референсном изображении - слайды должны выглядеть частью одного набора, но с текстом именно этого слайда, не референсного.`;
-  const imagePrompt = textOverlay
+  const guidedPrompt = prompt;
+  const imagePrompt = slideCopy
     ? [
         guidedPrompt,
-        `Создай готовый дизайнерский слайд карусели и органично впиши в композицию этот текст на русском языке. Заголовок напиши точно, без замены букв, сокращений и дополнительных слов: «${textOverlay.headline}». Основной текст напиши точно и полностью: «${textOverlay.subtext}».`,
-        `Выбранный стиль «${textOverlay.templateId}»: ${carouselTemplateInstruction(textOverlay.templateId)}`,
-        "Текст — часть журнальной композиции: крупный ясный заголовок, под ним читаемый основной текст; не помещай весь текст в одну массивную отдельную плашку. Кириллица должна быть настоящими аккуратными буквами, без псевдотекста. Не добавляй другого текста, подписей, цифр и случайных символов.",
-        reference?.kind === "logo" ? LOGO_REFERENCE_INSTRUCTION : "",
+        `Сгенерируй целое готовое изображение слайда: саму сцену, арт-дирекцию, сетку, типографику и текст. Не используй готовый фон и не накладывай текст отдельным этапом. Встрой на изображение точный русский текст. Заголовок напиши без замены букв, сокращений и дополнительных слов: «${slideCopy.headline}». Основной текст напиши точно и полностью: «${slideCopy.subtext}».`,
+        `Выбранный стиль «${slideCopy.templateId}»: ${carouselTemplateInstruction(slideCopy.templateId)}`,
+        "Текст является частью цельной композиции, а не отдельной большой плашкой: крупный ясный заголовок и короткий читаемый абзац, оба с безопасными полями и высоким контрастом. Используй настоящую кириллицу, без псевдотекста. Не добавляй другого текста, подписей, цифр и случайных символов.",
+        reference?.kind === "logo" ? CAROUSEL_LOGO_REFERENCE_INSTRUCTION : "",
       ].filter(Boolean).join("\n\n")
     : guidedPrompt;
   const generated = await generateImageBytes(imagePrompt, requestId, options, reference, model, undefined, undefined, onUsage);
@@ -564,9 +551,6 @@ export async function createCarouselSlideImage(
     email,
     baseUrl,
   );
-  // Bytes returned alongside the URL (unlike createImage/createImageFromLogo)
-  // so the caller can pass THIS slide's own bytes as the reference for the
-  // next one, without an extra round-trip fetch of the just-uploaded file.
-  return { url, bytes, contentType, referenceBytes: generated.bytes };
+  return { url, bytes, contentType };
 }
 
