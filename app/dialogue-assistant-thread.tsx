@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AssistantRuntimeProvider, ComposerPrimitive, MessagePrimitive, ThreadPrimitive, useExternalStoreRuntime, type ThreadMessageLike } from "@assistant-ui/react";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
-import { ArrowDown, ArrowUp, Copy, ImageIcon, Lightbulb, MessageCircle, Plus, SquarePen, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Copy, ImageIcon, Lightbulb, MessageCircle, SquarePen, X } from "lucide-react";
 import { isStandaloneImage, type DialogueCard } from "./dialogue-model";
 import { DialogueResultActions, imageDownloadUrl } from "./dialogue-result-actions";
 import type { DialogueSession } from "./dialogue-session";
@@ -134,7 +134,7 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
             <ComposerPrimitive.Input ref={input} className="klio-aui-input" aria-label="Сообщение КЛИО" placeholder={activeTool.placeholder} rows={1} maxLength={8000} autoFocus={false} cancelOnEscape={false} addAttachmentOnPaste={false} unstable_insertNewlineOnTouchEnter onChange={(event) => session.setDraft(event.target.value)} />
             <div className="klio-aui-compose-tools">
               <div className="klio-aui-picker" ref={picker}>
-                <button type="button" className="klio-aui-icon" aria-label="Выбрать режим" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><Plus size={23} /></button>
+                <button type="button" className="klio-aui-icon" aria-label="Открыть меню задач" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><svg className="klio-aui-tool-menu-icon" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="7" cy="7" r="4"/><circle cx="17" cy="7" r="4"/><circle cx="7" cy="17" r="4"/><circle cx="17" cy="17" r="4"/></svg></button>
                 {menuOpen && <div className="klio-aui-tool-menu" aria-label="Режим генерации">
                   {TOOLS.map(({ id, label, Icon }) => <button type="button" key={id} aria-pressed={(tool || "chat") === id || (tool === "carousel" && id === "image")} onClick={() => { onTool(id); setMenuOpen(false); input.current?.focus(); }}><Icon size={18} />{label}</button>)}
                 </div>}
