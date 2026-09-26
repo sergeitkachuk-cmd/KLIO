@@ -41,6 +41,7 @@ export async function GET() {
     "X-Klio-Ui-Release": "2026-09-26-dialogue-settings-fit-v1",
     "X-Klio-Professional-Workspace-Release": "2026-09-27-professional-workspace-ux-v3",
     "X-Klio-Image-Studio-Release": "2026-09-27-image-edit-reliability-v1",
+    "X-Klio-Image-Mask-Release": "2026-09-27-brush-area-lock-v1",
     "X-Klio-Carousel-Editor-Release": "2026-09-27-carousel-viewer-v1",
     "X-Klio-Carousel-Release": "2026-09-27-carousel-visual-variety-v1",
     "X-Klio-Admin-Release": "2026-09-07-ai-latency-visible",
