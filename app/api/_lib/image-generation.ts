@@ -171,7 +171,9 @@ async function generateImageBytes(
   // behavior change. `model` (param) still lets one call ask for a
   // different model than this fallback, without changing every other
   // image call in the app.
-  const resolvedModel = model?.trim() || process.env.KLIO_IMAGE_MODEL?.trim() || "gpt-image-2.5-flare-2026-09-08";
+  const resolvedModel = model?.trim() || (mask
+    ? process.env.KLIO_IMAGE_EDIT_MODEL?.trim() || "gpt-image-2.5-sunburst-2026-09-08"
+    : process.env.KLIO_IMAGE_MODEL?.trim() || "gpt-image-2.5-flare-2026-09-08");
   let requestBody: string | FormData;
   let contentTypeHeader: string | undefined;
   if (serviceUrl) {
@@ -382,8 +384,65 @@ export async function createImageFromSource(
       throw new Error("Не удалось прочитать исходное изображение. Загрузите PNG, JPEG или WEBP до 8 МБ.");
     image.contentType = detected;
   }
-  if (mask && (purpose !== "edit" || logo)) throw new Error("РљРёСЃС‚СЊ РґРѕСЃС‚СѓРїРЅР° РґР»СЏ СЂРµР¶РёРјР° В«Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊВ» Р±РµР· РЅР°Р»РѕР¶РµРЅРёСЏ Р»РѕРіРѕС‚РёРїР°.");
-  if (mask && (mask.contentType !== "image/png" || mask.bytes.byteLength > 8 * 1024 * 1024)) throw new Error("РњР°СЃРєР° РґРѕР»Р¶РЅР° Р±С‹С‚СЊ PNG РґРѕ 8 РњР‘.");
+  if (mask && (purpose !== "edit" || logo)) throw new Error("Кисть доступна только при редактировании изображения без логотипа.");
+  if (mask && (mask.contentType !== "image/png" || mask.bytes.byteLength > 8 * 1024 * 1024)) throw new Error("Маска должна быть PNG до 8 МБ.");
+  if (mask) {
+    const sharp = (await import("sharp")).default;
+    const [sourceMetadata, maskMetadata] = await Promise.all([
+      sharp(source.bytes).metadata(),
+      sharp(mask.bytes).metadata(),
+    ]);
+    if (!sourceMetadata.width || !sourceMetadata.height || maskMetadata.format !== "png" || !maskMetadata.hasAlpha)
+      throw new Error("Не удалось прочитать прозрачную маску. Сбросьте выделение и отметьте область снова.");
+    const rotated = (sourceMetadata.orientation || 1) >= 5 && (sourceMetadata.orientation || 1) <= 8;
+    const sourceWidth = rotated ? sourceMetadata.height : sourceMetadata.width;
+    const sourceHeight = rotated ? sourceMetadata.width : sourceMetadata.height;
+    if (maskMetadata.width !== sourceWidth || maskMetadata.height !== sourceHeight)
+      throw new Error("Размер выделения не совпадает с изображением. Сбросьте кисть и отметьте область снова.");
+
+    const minPixels = 655_360;
+    const maxPixels = 8_294_400;
+    const maxInputBytes = 8 * 1024 * 1024;
+    const originalPixels = sourceWidth * sourceHeight;
+    const scale = originalPixels < minPixels
+      ? Math.sqrt(minPixels / originalPixels)
+      : originalPixels > maxPixels
+        ? Math.sqrt(maxPixels / originalPixels)
+        : 1;
+    let width = Math.max(1, scale < 1 ? Math.floor(sourceWidth * scale) : Math.ceil(sourceWidth * scale));
+    let height = Math.max(1, scale < 1 ? Math.floor(sourceHeight * scale) : Math.ceil(sourceHeight * scale));
+    while (originalPixels < minPixels && width * height < minPixels) {
+      if (width / sourceWidth <= height / sourceHeight) width += 1;
+      else height += 1;
+    }
+    let sourcePng: Buffer;
+    let maskPng: Buffer;
+    while (true) {
+      sourcePng = await sharp(source.bytes)
+        .rotate()
+        .resize(width, height, { fit: "fill", kernel: "lanczos3" })
+        .png({ compressionLevel: 9 })
+        .toBuffer();
+      maskPng = await sharp(mask.bytes)
+        .resize(width, height, { fit: "fill", kernel: "nearest" })
+        .png({ compressionLevel: 9 })
+        .toBuffer();
+      if (sourcePng.byteLength <= maxInputBytes && maskPng.byteLength <= maxInputBytes) break;
+      const nextScale = Math.sqrt(maxInputBytes / Math.max(sourcePng.byteLength, maskPng.byteLength)) * 0.9;
+      const nextWidth = Math.max(1, Math.floor(width * nextScale));
+      const nextHeight = Math.max(1, Math.floor(height * nextScale));
+      if (nextWidth * nextHeight < minPixels || (nextWidth === width && nextHeight === height))
+        throw new Error("Изображение слишком большое для кисти. Загрузите файл меньшего размера.");
+      width = nextWidth;
+      height = nextHeight;
+    }
+    if (width * height < minPixels || width * height > maxPixels)
+      throw new Error("Размер изображения не поддерживается для правки кистью.");
+    source.bytes = Uint8Array.from(sourcePng);
+    source.contentType = "image/png";
+    mask.bytes = Uint8Array.from(maskPng);
+    mask.contentType = "image/png";
+  }
   const instruction = purpose === "edit"
     ? "Первое изображение — исходник для редактирования. Измени именно его по запросу пользователя. Сохрани композицию, людей, предметы, ракурс, освещение и все детали, которых правка не касается. Сохрани изображение по всей площади, включая края и углы. Не стирай участки исходника и не освобождай место под логотип. Не создавай новую сцену по старому описанию."
     : "Первое изображение — визуальный референс. Учитывай его реальные детали, композицию и стиль при выполнении запроса пользователя.";
