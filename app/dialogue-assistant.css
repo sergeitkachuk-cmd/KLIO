@@ -18,6 +18,7 @@
   position: sticky;
   bottom: 0;
   z-index: 2;
+  flex-shrink: 0;
   padding: 30px 0 max(8px, env(safe-area-inset-bottom));
   background: transparent;
   isolation: isolate;
@@ -65,7 +66,7 @@
 .klio-aui-tool-menu { position:absolute; bottom:44px; left:0; width:235px; padding:6px; background:var(--ck-bg); border:1px solid var(--ck-line); border-radius:16px; box-shadow:0 8px 28px #0002; }
 .klio-aui-tool-menu button { display:flex; width:100%; align-items:center; gap:10px; padding:11px; border:0; border-radius:10px; text-align:left; color:var(--ck-text); background:transparent; font-size:14px; }
 .klio-aui-tool-menu button:is(:hover,[aria-pressed="true"]) { background:var(--ck-hover); }
-.klio-aui-footer .klio-chatkit-composer-options { width:100%; padding:8px 6px 0; gap:10px; }
+.klio-aui-footer .klio-chatkit-composer-options { width:100%; padding:6px 6px 0; gap:6px 10px; }
 .klio-aui-disclaimer { margin:8px 0 0; text-align:center; font-size:11px; line-height:1.4; color:var(--ck-muted); }
 .klio-aui-welcome { padding:0 0 26px; text-align:center; }
 .klio-aui-welcome h1 { margin:0; color:var(--ck-text); font-size:30px; font-weight:550; letter-spacing:-.6px; line-height:1.25; }
@@ -116,6 +117,7 @@
   .klio-aui-suggestions { gap:6px; }
   .klio-aui-suggestions button { font-size:12px; padding:8px 10px; }
   .klio-aui-disclaimer { font-size:10px; }
+  .klio-aui-footer .klio-chatkit-composer-options { padding:4px 2px 0; gap:5px 8px; }
 }
 @media(prefers-reduced-motion:reduce) { .klio-aui-pulse { animation:none; } }
 /* Keep carousel previews in their generated proportions, inside the thread. */

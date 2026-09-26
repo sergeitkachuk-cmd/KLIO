@@ -38,7 +38,7 @@ export async function GET() {
     "X-Klio-Bank-Deadline": "2026-09-13-bounded-provider-v1",
     "X-Klio-Checkout-Input": "2026-09-13-bounded-shared-prices-v1",
     "X-Klio-Ai-Release": "2026-09-10-v4-1-output-budget-v2",
-    "X-Klio-Ui-Release": "2026-09-10-larger-material-topic-titles",
+    "X-Klio-Ui-Release": "2026-09-26-dialogue-settings-fit-v1",
     "X-Klio-Image-Studio-Release": "2026-09-25-streaming-masks-editorial-v2",
     "X-Klio-Carousel-Editor-Release": "2026-09-25-carousel-editor-mobile-ui-v2",
     "X-Klio-Admin-Release": "2026-09-07-ai-latency-visible",

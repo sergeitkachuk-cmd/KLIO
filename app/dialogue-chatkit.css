@@ -577,13 +577,13 @@ html[data-theme="light"] .module-select-list.module-select-chatkit {
 .klio-chatkit-composer-options {
   display: flex;
   flex-wrap: wrap;
+  align-content: flex-start;
   align-items: center;
   gap: 4px 10px;
   flex: 0 0 auto;
   width: min(800px, 100%);
-  max-height: 40%;
   align-self: center;
-  overflow-y: auto;
+  min-height: 0;
   padding: 0 20px 12px;
   color: var(--ck-text);
 }
@@ -591,7 +591,9 @@ html[data-theme="light"] .module-select-list.module-select-chatkit {
 .klio-chatkit-settings-popover {
   position: fixed;
   z-index: 3000;
-  overflow-y: auto;
+  box-sizing: border-box;
+  max-width: calc(100vw - 24px);
+  overflow: visible;
   padding: 14px;
   border: 1px solid var(--ck-line);
   border-radius: 16px;
@@ -633,6 +635,15 @@ html[data-theme="light"] .module-select-list.module-select-chatkit {
   align-items: end;
   gap: 8px;
   padding: 6px 0 2px;
+}
+
+.klio-chatkit-settings-grid > small,
+.klio-chatkit-settings-grid .klio-image-text-setting {
+  grid-column: 1 / -1;
+}
+
+.klio-chatkit-settings-grid > small {
+  line-height: 1.35;
 }
 
 .klio-chatkit-settings-grid[hidden] { display: none; }
@@ -992,7 +1003,7 @@ html[data-theme="light"] .klio-result-actions .klio-result-action-error { color:
 
   .klio-chatkit-brand-context strong { max-width: 100%; }
 
-  .klio-chatkit-settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .klio-chatkit-settings-grid { gap: 7px; }
 
   .klio-chatkit-settings-logo { grid-column: 1 / -1; min-height: 28px; }
 
@@ -1064,4 +1075,25 @@ html[data-theme="light"] .klio-result-actions .klio-result-action-error { color:
   .klio-chatkit-thread-dialog h2 { margin-bottom: 10px; font-size: 17px; }
   .klio-chatkit-thread-dialog footer { gap: 6px; margin-top: 12px; }
   .klio-chatkit-thread-dialog footer button { min-height: 40px; padding: 8px 12px; font-size: 13px; }
+}
+
+@media (min-width: 521px) {
+  .klio-chatkit-settings-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 480px) {
+  .klio-chatkit-settings-popover { padding: 11px; }
+  .klio-chatkit-settings-grid { gap: 6px; }
+  .klio-chatkit-settings .module-select-chatkit { gap: 3px; }
+  .klio-chatkit-settings .module-select-trigger { min-height: 30px; padding: 5px 7px; }
+}
+
+@media (max-height: 540px) {
+  .klio-chatkit-settings-popover { padding: 9px; }
+  .klio-chatkit-settings-popover h2 { margin-bottom: 6px; font-size: 12px; }
+  .klio-chatkit-settings-grid { gap: 5px; padding-top: 3px; }
+  .klio-chatkit-settings .module-select-chatkit { gap: 2px; }
+  .klio-chatkit-settings .module-select-trigger { min-height: 28px; padding: 4px 7px; font-size: 11px; }
+  .klio-chatkit-settings-logo { min-height: 25px; padding-block: 2px; font-size: 11px; }
+  .klio-chatkit-settings-grid > small { font-size: 10px; line-height: 1.25; }
 }

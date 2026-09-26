@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 export function DialogueSettingsPopover({ open, onOpenChange, title, children }: {
@@ -11,21 +11,42 @@ export function DialogueSettingsPopover({ open, onOpenChange, title, children }:
 }) {
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState<{ left: number; bottom: number; width: number; maxHeight: number } | null>(null);
+  const [position, setPosition] = useState<{ left: number; top: number; width: number } | null>(null);
   const measure = useCallback(() => {
     if (!trigger.current) return;
     const rect = trigger.current.getBoundingClientRect();
     const viewport = window.visualViewport;
-    const left = viewport?.offsetLeft || 0;
-    const top = viewport?.offsetTop || 0;
-    const width = Math.min(360, (viewport?.width || window.innerWidth) - 24);
-    setPosition({
-      left: Math.max(left + 12, Math.min(rect.left, left + (viewport?.width || window.innerWidth) - width - 12)),
-      bottom: window.innerHeight - rect.top + 8,
-      width,
-      maxHeight: Math.max(0, Math.min(420, rect.top - top - 20)),
-    });
+    const viewportLeft = viewport?.offsetLeft ?? 0;
+    const viewportTop = viewport?.offsetTop ?? 0;
+    const viewportWidth = viewport?.width ?? window.innerWidth;
+    const viewportHeight = viewport?.height ?? window.innerHeight;
+    const viewportBottom = viewportTop + viewportHeight;
+    const width = Math.max(0, Math.min(560, viewportWidth - 24));
+    const left = Math.max(viewportLeft + 12, Math.min(rect.left, viewportLeft + viewportWidth - width - 12));
+    const panelHeight = panel.current?.getBoundingClientRect().height
+      ?? Math.min(320, Math.max(0, viewportHeight - 24));
+    const safeTop = viewportTop + 12;
+    const safeBottom = viewportBottom - 12;
+    const above = rect.top - panelHeight - 8;
+    const below = rect.bottom + 8;
+    const fitsAbove = above >= safeTop;
+    const fitsBelow = below + panelHeight <= safeBottom;
+    const top = fitsAbove
+      ? above
+      : fitsBelow
+        ? below
+        : Math.max(safeTop, safeTop + (safeBottom - safeTop - panelHeight) / 2);
+    setPosition((current) => current
+      && Math.abs(current.left - left) < 0.5
+      && Math.abs(current.top - top) < 0.5
+      && Math.abs(current.width - width) < 0.5
+      ? current
+      : { left, top, width });
   }, []);
+
+  useLayoutEffect(() => {
+    if (open) measure();
+  }, [open, measure, position?.width]);
 
   useEffect(() => {
     if (!open) return;
@@ -46,11 +67,15 @@ export function DialogueSettingsPopover({ open, onOpenChange, title, children }:
     };
     document.addEventListener("pointerdown", outside);
     document.addEventListener("keydown", escape, true);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    if (panel.current) observer?.observe(panel.current);
+    measure();
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", measure, true);
     window.visualViewport?.addEventListener("resize", measure);
     window.visualViewport?.addEventListener("scroll", measure);
     return () => {
+      observer?.disconnect();
       document.removeEventListener("pointerdown", outside);
       document.removeEventListener("keydown", escape, true);
       window.removeEventListener("resize", measure);
