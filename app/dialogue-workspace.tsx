@@ -603,14 +603,14 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
                 <ModuleSelect variant="chatkit" label="Формат файла" value={generationSettings.imageOutputFormat} options={IMAGE_FORMAT_OPTIONS} onChange={(value) => changeSetting("imageOutputFormat", value)} />
                 {props.hasLogo ? <label className="klio-chatkit-settings-logo"><input type="checkbox" checked={generationSettings.useLogo} onChange={(event) => changeSetting("useLogo", event.target.checked)} />Логотип на изображении</label> : <button type="button" className="klio-chatkit-settings-logo" onClick={() => props.onNavigate("brand")}>＋ Добавить логотип</button>}
                 {generationSettings.imageKind !== "carousel" && <>
-                  <ModuleSelect variant="chatkit" label="Текст на изображении" value={generationSettings.imageTextMode || "auto"} options={IMAGE_TEXT_OPTIONS.filter(option => option.value !== "title")} onChange={value => changeSetting("imageTextMode", value)} />
+                  <ModuleSelect variant="chatkit" label="Текст на изображении" help="На обычной картинке надписи не будет, если вы не попросили о ней в описании. Для обложки статьи КЛИО может использовать её заголовок." value={generationSettings.imageTextMode || "auto"} options={IMAGE_TEXT_OPTIONS.filter(option => option.value !== "title")} onChange={value => changeSetting("imageTextMode", value)} />
                   {generationSettings.imageTextMode === "custom" && <label className="klio-image-text-setting">Текст для изображения<textarea rows={2} maxLength={200} value={generationSettings.imageText || ""} onChange={event => changeSetting("imageText", event.target.value)} /></label>}
                   {props.hasLogo && generationSettings.useLogo && <>
-                    <ModuleSelect variant="chatkit" label="Как разместить логотип" value={generationSettings.logoPlacement || "scene"} options={LOGO_PLACEMENT_OPTIONS} onChange={value => changeSetting("logoPlacement", value)} />
-                    {generationSettings.logoPlacement === "corner" && <>
-                      <ModuleSelect variant="chatkit" label="Положение логотипа" value={generationSettings.logoPosition || "bottom-right"} options={LOGO_POSITION_OPTIONS} onChange={value => changeSetting("logoPosition", value)} />
-                      <small>Знак адаптируется без лишнего фона, с учётом текста. Мелкие детали могут отличаться от оригинала.</small>
+                    <ModuleSelect variant="chatkit" label="Размещение логотипа" help="Можно встроить знак в сцену, поставить его отдельно в углу или использовать оба способа." value={generationSettings.logoPlacement || "scene"} options={LOGO_PLACEMENT_OPTIONS} onChange={value => changeSetting("logoPlacement", value)} />
+                    {(generationSettings.logoPlacement === "corner" || generationSettings.logoPlacement === "both") && <>
+                      <ModuleSelect variant="chatkit" label="Угол для логотипа" value={generationSettings.logoPosition || "bottom-right"} options={LOGO_POSITION_OPTIONS} onChange={value => changeSetting("logoPosition", value)} />
                     </>}
+                    <small>{generationSettings.logoPlacement === "both" ? "Один логотип станет частью сцены, второй будет отдельным знаком в выбранном углу." : generationSettings.logoPlacement === "corner" ? "Логотип будет отдельным небольшим знаком в выбранном углу." : "Логотип станет частью сцены."} Модель может немного изменить мелкие детали.</small>
                   </>}
                 </>}
               </>}

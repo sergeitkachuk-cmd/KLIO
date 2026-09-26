@@ -965,7 +965,7 @@ const WORKSPACE_USE_CASES = [
   { kind: "Задача", id: "semantics", task: "Нужно понять, что именно ищут будущие клиенты", solution: "Соберёт поисковые запросы по теме и географии, сгруппирует их по смыслу и поможет выбрать фокус статьи.", cta: "Найти запросы" },
   { kind: "Задача", id: "competitors", task: "Хочется найти свободный угол в теме, а не повторять конкурентов", solution: "Покажет, какие темы уже раскрыты у конкурентов и где ваш материал может быть полезнее читателю.", cta: "Посмотреть конкурентов" },
   { kind: "Совет", id: "content-plan", task: "Хотите точнее получить результат контент-плана?", solution: "Заполните поле «Тема или фокус»: например, укажите услугу, сезонную кампанию или нужную аудиторию. Так КЛИО сделает акцент именно на этом.", cta: "Уточнить фокус" },
-  { kind: "Совет", id: "generator", task: "В режиме «Новичок» достаточно описать задачу своими словами", solution: "Расскажите КЛИО, какой материал вам нужен. Нужны отдельные настройки формата, ключей и стиля — переключитесь в режим «Эксперт» и заполните поля.", cta: "Открыть генератор" },
+  { kind: "Совет", id: "generator", task: "В режиме «Одним запросом» достаточно описать задачу своими словами", solution: "Расскажите КЛИО, какой материал вам нужен. Если хотите задать формат, ключи и стиль отдельно, выберите «По полям».", cta: "Открыть генератор" },
   { kind: "Совет", id: "brand", task: "Не хотите заполнять профиль бренда вручную?", solution: "Впишите адрес сайта и нажмите «Заполнить по сайту с КЛИО». КЛИО предложит основу профиля, а вам останется проверить и дополнить важные детали.", cta: "Заполнить по сайту" },
 ] as const;
 
@@ -2604,6 +2604,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // The generator's target is the ready-to-publish text, not merely the
   // body: Telegram and other channels receive the headline and hook too.
   const characters = useMemo(() => [title, subtitle, body].filter(Boolean).join("\n\n").trim().length, [body, subtitle, title]);
+  const hasGeneratedResult = Boolean(title.trim() || body.trim() || generationMode === "ai" || generationMode === "demo");
   const foundationReady = Boolean(
     brand.name.trim()
     && brand.description.trim()
@@ -5016,6 +5017,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       ...activeBrandArticles.map((item) => item.title),
       ...savedPlanTitles,
     ]).slice(0, 50);
+    setExpandedPlanItem(null);
     setContentPlanBusy(true);
     setContentPlanError("");
     try {
@@ -5064,7 +5066,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setContentPlanResult(result);
       setContentPlanMode(mode);
       setContentPlanNeedsRefresh(false);
-      setExpandedPlanItem(result.items[0]?.id ?? null);
+      setExpandedPlanItem(null);
       setSelectedPlanItemIds([]);
       setPlanReplacements([]);
       setPlanReplacementOpen(false);
@@ -5162,7 +5164,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setSelectedPlanItemIds((current) => current.filter((item) => item !== sourceId));
     setContentPlanNeedsRefresh(false);
     setPlanReplacements((current) => current.filter((item) => item.sourceId !== sourceId));
-    setExpandedPlanItem(sourceId);
+    setExpandedPlanItem(null);
     persistContentPlan({ result, needsRefresh: false });
     showToast("Тема заменена, остальные строки плана сохранены");
   }
@@ -5175,6 +5177,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
   async function sendDialogueTopicToGenerator(source: { title: string; body: string; useBrandContext: boolean }) {
     if (!await changeWorkspaceMode("professional")) return;
+    clearGenerationResultFields();
     setGeneratorMode("advanced");
     setTopic(source.title);
     setAccent(source.body);
@@ -5195,6 +5198,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }
 
   function sendPlanItemToGenerator(item: ContentPlanItem) {
+    setExpandedPlanItem(null);
+    clearGenerationResultFields();
     const cleanTitle = cleanContentPlanTitle(item.title);
     const structureLines = item.structure.map((section) => `• ${section}: раскрыть применительно к теме материала и опереться только на подтверждённые факты`);
     const targetFormat = contentPlanFormatToGeneratorFormat[item.format] ?? "seo";
@@ -5227,11 +5232,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     });
     setGeneratorMode("advanced");
     setTopic(cleanTitle);
-    setSubtitle(item.subtitle);
     setKeywords(uniqueText([item.primaryKeyword, ...item.lsi]).join(", "));
     setLength(defaultLengthByFormat[targetFormat]);
     setCustomLength(false);
     setAccent([
+      `Редакционный интент: ${item.intent}`,
+      item.subtitle ? `Предложенная зацепка: ${item.subtitle}` : "",
       useBrand && item.intent !== "Информационный"
         ? `Цель материала: продвигать конкретное предложение бренда ${effectiveBrand.name}; не заменять его общей инструкцией по выбору категории.`
         : "Цель материала: дать самостоятельный экспертный ответ по теме без подмены предмета.",
@@ -6640,7 +6646,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   </ProfileField>
                   <ProfileField id="brand-logo" label="Логотип" help="Загрузите файл логотипа, чтобы использовать его при генерации изображений — КЛИО разместит именно ваш логотип на картинке вместо того, чтобы придумывать свой на каждой генерации.">
                     <div className="brand-website-row">
-                      {brand.logoKey && activeBrandId && <img className="brand-logo-preview" src={`/api/brand/logo?brandId=${encodeURIComponent(activeBrandId)}`} alt="Логотип бренда"/>}
+                      {brand.logoKey && activeBrandId && <Image className="brand-logo-preview" src={`/api/brand/logo?brandId=${encodeURIComponent(activeBrandId)}`} alt="Логотип бренда" width={48} height={48} unoptimized/>}
                       <span className="brand-book-status">{brand.logoFileName || "Файл не прикреплён"}</span>
                       <button type="button" className={brandLogoBusy ? "is-busy" : ""} disabled={brandLogoBusy} onClick={() => brandLogoInputRef.current?.click()}>{brandLogoBusy ? "Загружаем…" : brand.logoFileName ? "Заменить файл" : "Загрузить логотип"}</button>
                       <input ref={brandLogoInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden disabled={brandLogoBusy} onChange={(event) => {
@@ -7067,13 +7073,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <fieldset className="image-generator-extra-settings" disabled={imageBusy || carouselBusy}>
                   <legend>Параметры одного изображения</legend>
                   <div className="image-generator-settings">
-                    <ModuleSelect label="Текст на изображении" value={imageTextMode} onChange={setImageTextMode} options={IMAGE_TEXT_OPTIONS.filter(option => option.value !== "title" || Boolean(imageSourceTitle))} />
-                    {useBrand && brand.logoKey && useLogoInImage && <ModuleSelect label="Как разместить логотип" value={logoPlacement} onChange={setLogoPlacement} options={LOGO_PLACEMENT_OPTIONS} />}
-                    {useBrand && brand.logoKey && useLogoInImage && logoPlacement === "corner" && <ModuleSelect label="Положение логотипа" value={logoPosition} onChange={setLogoPosition} options={LOGO_POSITION_OPTIONS} />}
+                    <ModuleSelect label="Текст на изображении" help="На обычной картинке надписи не будет, если вы не попросили о ней в описании. Для обложки статьи КЛИО может использовать её заголовок." value={imageTextMode} onChange={setImageTextMode} options={IMAGE_TEXT_OPTIONS.filter(option => option.value !== "title" || Boolean(imageSourceTitle))} />
+                    {useBrand && brand.logoKey && useLogoInImage && <ModuleSelect label="Размещение логотипа" help="Можно встроить знак в сцену, поставить его отдельно в выбранном углу или использовать оба способа сразу." value={logoPlacement} onChange={setLogoPlacement} options={LOGO_PLACEMENT_OPTIONS} />}
+                    {useBrand && brand.logoKey && useLogoInImage && (logoPlacement === "corner" || logoPlacement === "both") && <ModuleSelect label="Угол для логотипа" value={logoPosition} onChange={setLogoPosition} options={LOGO_POSITION_OPTIONS} />}
                   </div>
                   {imageTextMode === "title" && <p>На изображении: {imageSourceTitle}</p>}
                   {imageTextMode === "custom" && <><label htmlFor="professional-image-text">Текст для изображения</label><textarea id="professional-image-text" rows={2} maxLength={200} value={imageText} onChange={event => setImageText(event.target.value)} placeholder="Например: Закулисье нашей студии" /></>}
-                  {useBrand && brand.logoKey && useLogoInImage && <small>{logoPlacement === "corner" ? "Адаптируем знак из PNG или JPG без лишнего фона, с учётом текста и выбранного угла. Модель может немного изменить мелкие детали. Надпись самого логотипа останется и в режиме «Без текста»." : "Логотип станет частью сцены. Модель может немного изменить его детали."}</small>}
+                  {useBrand && brand.logoKey && useLogoInImage && <small>{logoPlacement === "corner" ? "Логотип будет отдельным небольшим знаком в выбранном углу." : logoPlacement === "both" ? "Один логотип станет частью сцены, второй будет отдельным знаком в выбранном углу." : "Логотип станет частью сцены."} Модель может немного изменить мелкие детали знака.</small>}
                   </fieldset>
                 </details>
                 {imageError && <p className="generation-error" role="alert">{imageError}</p>}
@@ -7118,12 +7124,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
           <section className="workspace-module generator-module" id="generator" style={{ display: activeModule === "generator" ? undefined : "none" }}>
             <div className="workspace-module-heading tool-heading workspace-module-banner"><div><span>Главный экран</span><h2>Генератор материалов<span className="klio-mark-dot">.</span></h2></div><p>Укажите формат, тему, ключевые слова и то, что важно раскрыть. Остальные инструменты подключаются только по необходимости.</p></div>
-            <div className="studio">
+            <div className={`studio ${hasGeneratedResult ? "has-result" : ""}`}>
               <aside className="brief-panel">
                 <div className="brief-step"><div className="brief-step-label"><span>Шаг 01</span><b>Бриф материала</b></div><button type="button" className="brief-reset" onClick={resetGeneratorBrief}>Начать заново</button></div>
-                <div className="generator-mode-switch" role="radiogroup" aria-label="Режим генератора">
-                  <button type="button" className={generatorMode === "quick" ? "active" : ""} onClick={() => setGeneratorMode("quick")} role="radio" aria-checked={generatorMode === "quick"}><i>✦</i><span><b>Новичок</b><small>опишите задачу в одном окне</small></span></button>
-                  <button type="button" className={generatorMode === "advanced" ? "active" : ""} onClick={() => setGeneratorMode("advanced")} role="radio" aria-checked={generatorMode === "advanced"}><i>≡</i><span><b>Эксперт</b><small>формат, ключи, стиль отдельно</small></span></button>
+                <div className="generator-mode-switch" role="radiogroup" aria-label="Как описать задачу">
+                  <button type="button" className={generatorMode === "quick" ? "active" : ""} onClick={() => setGeneratorMode("quick")} role="radio" aria-checked={generatorMode === "quick"}><i>✦</i><span><b>Одним запросом</b><small>КЛИО сама выберет настройки</small></span></button>
+                  <button type="button" className={generatorMode === "advanced" ? "active" : ""} onClick={() => setGeneratorMode("advanced")} role="radio" aria-checked={generatorMode === "advanced"}><i>≡</i><span><b>По полям</b><small>Формат, ключи и стиль отдельно</small></span></button>
                 </div>
                 {generatorMode === "quick" && <div className="generator-quick">
                   <label className="field"><span className="field-label-help">Опишите задачу для КЛИО<HelpTip label="Опишите задачу для КЛИО" text="Опишите бренд, сайт или тему и что нужно написать — формат, тон и объём КЛИО определит сама. Если назван реальный бренд или сайт, КЛИО проверит факты в вебе, а не будет их выдумывать."/></span><AutoTextarea rows={6} value={quickPrompt} onChange={(event) => setQuickPrompt(event.target.value)} placeholder="Например: напиши SEO-статью про ORCA (сайт theorca.pro) — платформа для трейдеров с no-code сканерами и стратегиями. Аудитория — активные трейдеры."/><small>{generatorBrandReady ? <>Профиль бренда «{effectiveBrand.name}» включён — КЛИО учтёт его факты и голос, если задача с ним связана.</> : "Профиль бренда сейчас не используется — включите его выше и заполните основу, если хотите писать в голосе бренда без пересказа задачи."}</small></label>
@@ -7138,20 +7144,20 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <button className={`button primary generate generation-action ${quickBusy ? "is-busy" : ""}`} type="button" onClick={() => void generateQuick()} disabled={!workspaceReady || quickBusy || aiConnection !== "connected"}><Icon name="spark"/>{quickBusy ? "КЛИО пишет…" : !workspaceReady ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
                 </div>}
                 {generatorMode === "advanced" && <>
-                <div className="field"><label>Формат</label><div className="format-tabs">{formats.map((item) => <button type="button" className={format === item.id ? "active" : ""} onClick={() => changeFormat(item.id)} key={item.id}>{item.label}</button>)}</div></div>
+                <div className="field"><label>Формат</label><div className="format-tabs">{formats.map((item) => <button type="button" className={format === item.id ? "active" : ""} onClick={() => { changeFormat(item.id); if (editorialBrief) setEditorialBrief(null); }} key={item.id}>{item.label}</button>)}</div></div>
                 <div className="editorial-plan-card generator-plan-card">
                   <div><span>Редакционный контракт</span><b>{activeFormatPlan.title}</b><small>{activeFormatPlan.summary}</small></div>
                   <ol>{activeFormatPlan.steps.map((step) => <li key={step}>{step}</li>)}</ol>
                   <p><i>Итог</i>{activeFormatPlan.result}</p>
                 </div>
-                <label className="field">Тема материала<AutoTextarea rows={2} value={topic} onChange={(event) => setTopic(event.target.value)} /></label>
+                <label className="field">Тема материала<AutoTextarea rows={2} value={topic} onChange={(event) => { setTopic(event.target.value); if (editorialBrief) setEditorialBrief(null); }} /></label>
                 <div className="field"><ModuleSelect label="Авторская позиция" value={authorPosition} help="Позиция задаёт местоимения и дистанцию: тон меняет подачу, но не заменяет голос автора." options={[
                   { value: "brand", label: "От лица бренда" }, { value: "expert", label: "Эксперт" }, { value: "journalist", label: "Журналист" }, { value: "customer", label: "Клиент" }, { value: "neutral", label: "Нейтральная" },
-                ]} onChange={setAuthorPosition}/></div>
-                <label className="field"><span className="field-label-help">Ключевые слова<HelpTip label="Ключевые слова" text="Разделяйте запросы запятыми или получите их после анализа выдачи."/></span><AutoTextarea value={keywords} onChange={(event) => setKeywords(event.target.value)} /></label>
-                <label className="field generator-accent-field"><span className="field-label-help">Дополнительный акцент<HelpTip label="Дополнительный акцент" text="Можно ввести вручную или передать выводы из матрицы. Ориентиры влияют на разделы статьи, а не остаются служебной заметкой."/></span><AutoTextarea rows={3} value={accent} onChange={(event) => setAccent(event.target.value)} placeholder="Например: раскрыть питание, ограничения и порядок консультации"/>{Boolean((accent.match(/^\s*[•*\-–—]\s+/gm) ?? []).length) && <small>Распознано обязательных редакционных ориентиров: {(accent.match(/^\s*[•*\-–—]\s+/gm) ?? []).length}</small>}</label>
+                ]} onChange={(value) => { setAuthorPosition(value); if (editorialBrief) setEditorialBrief(null); }}/></div>
+                <label className="field"><span className="field-label-help">Ключевые слова<HelpTip label="Ключевые слова" text="Разделяйте запросы запятыми или получите их после анализа выдачи."/></span><AutoTextarea value={keywords} onChange={(event) => { setKeywords(event.target.value); if (editorialBrief) setEditorialBrief(null); }} /></label>
+                <label className="field generator-accent-field"><span className="field-label-help">Дополнительный акцент<HelpTip label="Дополнительный акцент" text="Здесь можно поправить цель, ракурс, аудиторию, структуру, фактуру и предложенную зацепку из контент-плана. Можно ввести вручную или передать выводы из матрицы."/></span><AutoTextarea rows={3} value={accent} onChange={(event) => { setAccent(event.target.value); if (editorialBrief) setEditorialBrief(null); }} placeholder="Например: раскрыть питание, ограничения и порядок консультации"/>{Boolean((accent.match(/^\s*[•*\-–—]\s+/gm) ?? []).length) && <small>Распознано обязательных редакционных ориентиров: {(accent.match(/^\s*[•*\-–—]\s+/gm) ?? []).length}</small>}</label>
                 <div className="field two">
-                  <ModuleSelect label="Стиль" value={tone} help="Стиль меняет лексику и ритм, но не превращает выбранный формат в другой тип материала." options={styles.map((item) => ({ value: item, label: item }))} onChange={setTone}/>
+                  <ModuleSelect label="Стиль" value={tone} help="Стиль меняет лексику и ритм, но не превращает выбранный формат в другой тип материала." options={styles.map((item) => ({ value: item, label: item }))} onChange={(value) => { setTone(value); if (editorialBrief) setEditorialBrief(null); }}/>
                   <ModuleSelect label="Объём" value={customLength ? "custom" : String(length)} options={[...lengthPresets[format].map((item) => ({ value: String(item.value), label: item.label })), { value: "custom", label: "Свой объём…" }]} onChange={changeLength}/>
                 </div>
                 {customLength && <label className="field custom-length">Свой объём<div><input type="number" min="300" max="30000" step="100" value={manualLengthInput} onChange={(event) => setManualLength(event.target.value)} onBlur={commitManualLength} inputMode="numeric"/><span>знаков</span></div><small>Укажите от 300 до 30 000 знаков с пробелами</small></label>}
@@ -7200,7 +7206,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </>}
                 </>}
               </aside>
-              <article className="result-panel" ref={resultPanelRef}>
+              <article className="result-panel" ref={resultPanelRef} aria-hidden={!hasGeneratedResult}>
                 <div className="result-head"><div><span className={`status status-${generationMode}`}><i/>{generationMode === "ai" ? "Создано КЛИО" : generationMode === "demo" ? "Сохранённая версия" : aiConnection === "connected" ? "Ожидает генерацию" : "ИИ не подключён"}</span><small>{generatorMode === "quick" && generationMode === "example" ? `${characters.toLocaleString("ru-RU")} знаков с пробелами` : `${characters.toLocaleString("ru-RU")} / ${length.toLocaleString("ru-RU")} знаков с пробелами · ${tone}`}</small></div></div>
                 <AutoTextarea className="result-title" rows={1} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Здесь появится заголовок материала" aria-label="Заголовок результата"/>
                 <label className="result-subtitle-field"><span>Зацепка статьи</span><AutoTextarea className="result-subtitle" rows={2} value={subtitle} onChange={(event) => setSubtitle(event.target.value)} placeholder="Здесь появится зацепка статьи" aria-label="Подзаголовок или зацепка статьи"/></label>
@@ -7292,7 +7298,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                           <p><span>Основной запрос</span><b>{item.primaryKeyword}</b></p>
                         </div>
                         <div className={`content-plan-status status-${statusClass}`}><ModuleSelect label="Статус" value={item.status} options={CONTENT_PLAN_STATUS_OPTIONS} onChange={(value) => updateContentPlanStatus(item.id, value as ContentPlanStatus)}/></div>
-                        <div className="content-plan-item-actions"><button type="button" onClick={() => setExpandedPlanItem(expanded ? null : item.id)}>{expanded ? "Скрыть бриф" : "Открыть бриф"}</button><button type="button" onClick={() => sendPlanItemToGenerator(item)}>В генератор <Icon name="arrow"/></button></div>
+                        <div className="content-plan-item-actions"><button type="button" onClick={() => setExpandedPlanItem(expanded ? null : item.id)}>{expanded ? "Скрыть детали" : "Показать детали"}</button><button type="button" onClick={() => sendPlanItemToGenerator(item)}>В генератор <Icon name="arrow"/></button></div>
                       </div>
                       {expanded && <div className="content-plan-brief">
                         <div className="content-plan-strategy"><section><span>Редакционный ракурс</span><p>{item.angle}</p></section><section><span>Коммуникационная цель</span><p>{item.objective}</p></section><section><span>Следующий шаг</span><p>{item.cta || "Определяется редактором"}</p></section></div>

@@ -19,7 +19,7 @@ export type ImageGenerationOptions = {
   outputFormat?: ImageOutputFormat;
   background?: "auto" | "transparent" | "opaque";
   // "overlay" is a legacy client value; it now means an adapted corner mark.
-  logoPlacement?: "scene" | "corner" | "overlay";
+  logoPlacement?: "scene" | "corner" | "both" | "overlay";
   logoPosition?: LogoPosition;
 };
 
@@ -59,7 +59,7 @@ export function parseImageGenerationOptions(input: Record<string, unknown>): Ima
     quality,
     outputFormat,
     background,
-    logoPlacement: input.logoPlacement === "corner" || input.logoPlacement === "overlay" ? "corner" : "scene",
+    logoPlacement: input.logoPlacement === "both" ? "both" : input.logoPlacement === "corner" || input.logoPlacement === "overlay" ? "corner" : "scene",
     logoPosition: input.logoPosition === "top-left" || input.logoPosition === "top-right" || input.logoPosition === "bottom-left" ? input.logoPosition : "bottom-right",
   };
 }
@@ -118,6 +118,13 @@ function cornerLogoInstruction(position: LogoPosition = "bottom-right") {
 Файл логотипа может быть JPEG, PNG или WEBP с непрозрачным фоном. Отдели сам знак и его надпись от внешнего фона файла: не копируй квадратную или прямоугольную подложку, поля и лишний фон референса. Сохрани элементы, которые действительно являются частью самого знака. Прозрачность референса относится только к логотипу, а не к итоговой картинке.
 Компонуй логотип и разрешённый заголовок одновременно. Не перекрывай логотипом текст, лица и значимые объекты; не накладывай текст на логотип. Сохрани выбранную надпись полностью и читаемо, оставь между ней и знаком свободное расстояние. Уменьши знак или немного сдвинь его внутри выбранного угла, если там тесно. Ориентир: ширина знака до 12–15% кадра, отступ от краёв 3–5%; приоритет — отсутствие пересечений и читаемость. В новой сцене заранее учти их раздельное размещение. При редактировании сохраняй существующие надписи и детали исходника, которых запрос не касается.
 Не стирай и не размывай картинку ради места под логотип. Не добавляй пустой прямоугольник, рамку, виньетку, прозрачные края или подложку. Сцена должна продолжаться по всей площади, включая углы; итоговое изображение непрозрачное. Не добавляй ради логотипа новые предметы. Режим «Без текста» запрещает новые заголовки, но собственная надпись настоящего логотипа сохраняется.`;
+}
+
+function logoPlacementInstruction(placement: ImageGenerationOptions["logoPlacement"], position?: LogoPosition) {
+  if (placement === "corner" || placement === "overlay") return cornerLogoInstruction(position);
+  if (placement !== "both") return LOGO_REFERENCE_INSTRUCTION;
+  const corner = { "top-left": "слева вверху", "top-right": "справа вверху", "bottom-left": "слева внизу", "bottom-right": "справа внизу" }[position || "bottom-right"];
+  return `${LOGO_REFERENCE_INSTRUCTION}\n\n${cornerLogoInstruction(position)}\n\nЭто два размещения одного приложенного логотипа: один знак встроен в сцену, второй стоит отдельно ${corner}. Не добавляй другие логотипы; разнеси оба знака так, чтобы они не перекрывали текст, лица и важные детали.`;
 }
 
 // The actual provider call, split out of createImage below so
@@ -361,8 +368,8 @@ export async function createImageFromLogo(
   onPartial?: ImagePartialHandler,
   onUsage?: ImageUsageHandler,
 ) {
-  const corner = options.logoPlacement === "corner" || options.logoPlacement === "overlay";
-  const guidedPrompt = `${prompt}\n\n${corner ? cornerLogoInstruction(options.logoPosition) : LOGO_REFERENCE_INSTRUCTION}`;
+  const corner = options.logoPlacement === "corner" || options.logoPlacement === "both" || options.logoPlacement === "overlay";
+  const guidedPrompt = `${prompt}\n\n${logoPlacementInstruction(options.logoPlacement, options.logoPosition)}`;
   const { bytes, contentType } = await generateImageBytes(guidedPrompt, requestId, corner ? { ...options, background: "opaque" } : options, logo, model, undefined, onPartial, onUsage);
   const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
   return uploadPublicationImage(
@@ -446,7 +453,7 @@ export async function createImageFromSource(
   const instruction = purpose === "edit"
     ? "Первое изображение — исходник для редактирования. Измени именно его по запросу пользователя. Сохрани композицию, людей, предметы, ракурс, освещение и все детали, которых правка не касается. Сохрани изображение по всей площади, включая края и углы. Не стирай участки исходника и не освобождай место под логотип. Не создавай новую сцену по старому описанию."
     : "Первое изображение — визуальный референс. Учитывай его реальные детали, композицию и стиль при выполнении запроса пользователя.";
-  const corner = Boolean(logo) && (options.logoPlacement === "corner" || options.logoPlacement === "overlay");
+  const corner = Boolean(logo) && (options.logoPlacement === "corner" || options.logoPlacement === "both" || options.logoPlacement === "overlay");
   const logoInstruction = logo
     ? "Второе изображение — настоящий логотип бренда. Используй именно этот знак и его надпись; не выдумывай другой бренд. Размести его на первом изображении в соответствии с запросом. Прозрачность вокруг знака относится только к файлу логотипа: не переноси её на фотографию и не удаляй под ним или вокруг него исходное изображение."
     : "Логотип бренда не приложен. Не выдумывай фирменные знаки.";
@@ -460,7 +467,7 @@ export async function createImageFromSource(
   const backgroundInstruction = editOptions.background === "opaque"
     ? "Результат — цельное непрозрачное изображение. Не добавляй прозрачные участки, полупрозрачные края, виньетку, рамку или подложку под логотип."
     : "";
-  const placementInstruction = logo ? corner ? cornerLogoInstruction(options.logoPosition) : options.logoPlacement === "scene" ? LOGO_REFERENCE_INSTRUCTION : "" : "";
+  const placementInstruction = logo ? logoPlacementInstruction(options.logoPlacement, options.logoPosition) : "";
   const { bytes, contentType } = await generateImageBytes(`${instruction}\n${backgroundInstruction}\n\n${prompt}\n\n${logoInstruction}\n${placementInstruction}`, requestId,
     editOptions,
     logo ? [source, logo] : source, undefined, mask, onPartial, onUsage);
@@ -494,7 +501,7 @@ export async function createCarouselSlideImage(
   const guidedPrompt = !reference
     ? prompt
     : reference.kind === "logo"
-      ? `${prompt}\n\n${LOGO_REFERENCE_INSTRUCTION}`
+      ? `${prompt}\n\n${logoPlacementInstruction(options.logoPlacement, options.logoPosition)}`
       : `${prompt}\n\nЭто один слайд карусели из серии. Сохрани ту же визуальную стилистику, палитру, шрифт и композицию, что и на приложенном референсном изображении - слайды должны выглядеть частью одного набора, но с текстом именно этого слайда, не референсного.`;
   const imagePrompt = textOverlay
     ? [

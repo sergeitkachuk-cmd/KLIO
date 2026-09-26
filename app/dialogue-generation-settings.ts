@@ -61,14 +61,15 @@ export const IMAGE_KIND_OPTIONS = [
   { value: "carousel", label: "Карусель" },
 ];
 export const IMAGE_TEXT_OPTIONS = [
-  { value: "auto", label: "По запросу" },
+  { value: "auto", label: "Автоматически" },
   { value: "none", label: "Без текста" },
   { value: "title", label: "Заголовок статьи" },
   { value: "custom", label: "Свой текст" },
 ];
 export const LOGO_PLACEMENT_OPTIONS = [
   { value: "scene", label: "Вписать в сцену" },
-  { value: "corner", label: "Адаптировать в углу" },
+  { value: "corner", label: "Отдельно в углу" },
+  { value: "both", label: "В сцене и в углу" },
 ];
 export const LOGO_POSITION_OPTIONS = [
   { value: "bottom-right", label: "Справа внизу" },

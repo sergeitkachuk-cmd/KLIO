@@ -13,7 +13,7 @@ async function fixtures() {
   return { base, logo: { bytes: new Uint8Array(logo), contentType: "image/png" } };
 }
 
-test("corner mode sends PNG and JPEG logos to AI with the caption and placement; saved pixels are never overlaid", async () => {
+test("corner and combined modes send the real logo with placement instructions; saved pixels are never overlaid", async () => {
   const { base, logo } = await fixtures();
   const jpegLogo = { bytes: new Uint8Array(await sharp(Buffer.from(logo.bytes)).flatten({ background: "#132c52" }).jpeg().toBuffer()), contentType: "image/jpeg" };
   const calls = [], uploads = [];
@@ -45,9 +45,13 @@ test("corner mode sends PNG and JPEG logos to AI with the caption and placement;
   assert.deepEqual(Buffer.from(await calls.at(-1).body.get("image").arrayBuffer()), Buffer.from(logo.bytes));
   assert.match(calls.at(-1).body.get("prompt"), /Впиши его в сцену/);
   assert.doesNotMatch(calls.at(-1).body.get("prompt"), /Компонуй логотип/);
+  await image.createImageFromLogo("Сцена с логотипом", logo, "owner", "https://klio.example", "both-test", { logoPlacement: "both", logoPosition: "bottom-left" });
+  assert.match(calls.at(-1).body.get("prompt"), /Это два размещения одного приложенного логотипа/);
+  assert.match(calls.at(-1).body.get("prompt"), /размести его слева внизу/);
+  assert.equal(calls.at(-1).body.get("background"), "opaque");
   // Already-open clients may still submit the old overlay choice.
-  for (const placement of ["corner", "overlay"]) {
-    assert.equal(image.parseImageGenerationOptions({ logoPlacement: placement }).logoPlacement, "corner");
+  for (const placement of ["corner", "overlay", "both"]) {
+    assert.equal(image.parseImageGenerationOptions({ logoPlacement: placement }).logoPlacement, placement === "both" ? "both" : "corner");
     await image.createImageFromSource("Добавь логотип к готовому изображению", { bytes: new Uint8Array(base), contentType: "image/png" }, "edit", jpegLogo, "owner", "https://klio.example", randomUUID(), { logoPlacement: placement, logoPosition: "top-left", background: "transparent" });
     const call = calls.at(-1), inputs = call.body.getAll("image[]");
     assert.match(call.url, /edits$/); assert.equal(inputs.length, 2);
@@ -57,11 +61,11 @@ test("corner mode sends PNG and JPEG logos to AI with the caption and placement;
     assert.match(call.body.get("prompt"), /Сохрани композицию/);
     assert.match(call.body.get("prompt"), /включая края и углы/);
     assert.match(call.body.get("prompt"), /Второе изображение — настоящий логотип/);
-    assert.match(call.body.get("prompt"), /размести его слева вверху/);
-    assert.match(call.body.get("prompt"), /При редактировании сохраняй существующие надписи/);
+    assert.match(call.body.get("prompt"), placement === "both" ? /Это два размещения одного приложенного логотипа/ : /размести его слева вверху/);
+    if (placement !== "both") assert.match(call.body.get("prompt"), /При редактировании сохраняй существующие надписи/);
     assert.deepEqual(Buffer.from(await uploads.at(-1).arrayBuffer()), base);
   }
-  assert.equal(uploads.length, 11);
+  assert.equal(uploads.length, 13);
 });
 
 test("relay receives the actual source and JPEG logo, while the largest dialogue brief keeps all composition rules", async () => {
@@ -115,7 +119,12 @@ test("dialogue validates text before billing and preserves choices after a long 
     assert.match(args[0], /собственной надписи в настоящем логотипе/);
     assert.equal(args[5].logoPlacement, "corner"); assert.equal(args[5].logoPosition, "top-left");
   }
-  assert.equal((await h.account()).generationsUsed, 2);
+  await h.post(send({ imageTextMode: "none", useLogo: true, logoPlacement: "both", logoPosition: "top-right" }));
+  thread = await h.settled(thread.id);
+  assert.equal(thread.status, "idle");
+  const bothArgs = h.imageCalls.at(-1).args;
+  assert.equal(bothArgs[5].logoPlacement, "both"); assert.equal(bothArgs[5].logoPosition, "top-right");
+  assert.equal((await h.account()).generationsUsed, 3);
 });
 
 test("professional images use owned material titles and the same text and logo choices", async t => {

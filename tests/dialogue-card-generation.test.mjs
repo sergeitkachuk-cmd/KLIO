@@ -56,7 +56,7 @@ test("image from text can be cancelled or confirmed with its own orientation, lo
   await ui.click(ui.findButton("Портретная", dialog));
   await ui.click(ui.findButton("WEBP", dialog));
   await ui.click(dialog.querySelectorAll('input[type="checkbox"]')[1]);
-  await ui.click(ui.findButton("Адаптировать в углу", dialog));
+  await ui.click(ui.findButton("Отдельно в углу", dialog));
   await ui.click(ui.findButton("Слева вверху", dialog));
   await ui.click(ui.findButton("Заголовок статьи", dialog));
   await ui.click(ui.findButton("Создать изображение", dialog));
