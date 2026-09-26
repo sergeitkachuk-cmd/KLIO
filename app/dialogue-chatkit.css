@@ -426,7 +426,8 @@ html[data-theme="light"] .module-select-list.module-select-chatkit {
   background-position: center;
   background-repeat: no-repeat;
   background-size: contain;
-  background-color: #f4f7fb;
+  background-color: #bfcee7;
+  background-size: contain, cover;
 }
 
 .klio-chatkit-brand-select span {

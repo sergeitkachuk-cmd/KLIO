@@ -1956,7 +1956,7 @@ select:focus-visible {
   object-fit: contain;
   border: 1px solid rgba(49, 58, 70, 0.13);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.55);
+  background: linear-gradient(145deg, #dce5f5 0%, #bfcee7 52%, #aebfdd 100%);
 }
 
 /* Higher specificity than the base .brand-fields input rule on purpose
@@ -4772,7 +4772,7 @@ footer nav a {
   height: 100%;
   border-radius: 50%;
   object-fit: contain;
-  background: #f4f7fb;
+  background: linear-gradient(145deg, #dce5f5 0%, #bfcee7 52%, #aebfdd 100%);
 }
 
 /* Site owner: the unread-reply count only lived inside the account
