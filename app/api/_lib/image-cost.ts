@@ -22,9 +22,10 @@ export type ImageProviderUsage = {
   costSource: ImageUsageCostSource;
 };
 
-// GPT Image 2.5 Flare pricing, USD per million tokens. The provider's
-// response is always preferred; these rates are only used when a response
-// contains usage but not a more specific token breakdown.
+// GPT Image 2.5 Flare and Sunburst pricing, USD per million tokens. OpenAI
+// currently lists the same token rates for both; usage amounts can differ.
+// The provider's response is always preferred; these rates are only used
+// when a response contains usage but not a more specific token breakdown.
 const PRICE_PER_MILLION = {
   imageInput: 8,
   cachedImageInput: 2,
