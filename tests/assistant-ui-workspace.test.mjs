@@ -30,7 +30,7 @@ test("theme changes preserve the thread and unsent composer text", async (t) => 
 });
 test("image mode has compact settings and profile checkbox is independent of logo", async (t) => {
   const ui = await mountDialogue(t, { overrides: { brandId: "brand", brandName: "Киностудия", hasLogo: true, brands: [{ id: "brand", name: "Киностудия" }] } });
-  await ui.click(ui.findButton("Выбрать режим")); await ui.click(ui.findButton("Создать изображение", ui.document.querySelector(".klio-aui-tool-menu")));
+  await ui.click(ui.findButton("Открыть меню задач")); await ui.click(ui.findButton("Создать изображение", ui.document.querySelector(".klio-aui-tool-menu")));
   await ui.click(ui.document.querySelector(".klio-chatkit-settings-toggle"));
   assert.ok(ui.document.body.textContent.includes("Ориентация"));
   assert.ok(ui.document.body.textContent.includes("Логотип на изображении"));
@@ -98,7 +98,7 @@ test("settings close with Escape and blocked local storage still permits chat", 
   await ui.click(ui.findButton("Создать изображение")); await ui.click(ui.document.querySelector(".klio-chatkit-settings-toggle"));
   await React.act(async () => ui.document.dispatchEvent(new ui.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
   assert.equal(ui.document.querySelector(".klio-chatkit-settings-popover"), null);
-  await ui.click(ui.findButton("Выбрать режим")); await ui.click(ui.findButton("Общение"));
+  await ui.click(ui.findButton("Открыть меню задач")); await ui.click(ui.findButton("Общение"));
   await ui.type("Привет"); await ui.click(ui.findButton("Отправить сообщение"));
   assert.equal(ui.calls.find((c) => c.action === "send").mode, "chat");
 });
@@ -109,7 +109,7 @@ test("text settings do not leak into ordinary conversation after clearing the mo
   await ui.click(fields[0]); await ui.click(ui.findButton("SEO-статья"));
   await ui.type("Напиши статью про съёмку"); await ui.click(ui.findButton("Отправить сообщение"));
   const first = ui.calls.find((c) => c.action === "send"); assert.equal(first.settings.format, "seo");
-  await ui.click(ui.findButton("Выбрать режим")); await ui.click(ui.findButton("Общение"));
+  await ui.click(ui.findButton("Открыть меню задач")); await ui.click(ui.findButton("Общение"));
   await ui.type("А какая сегодня погода?"); await ui.click(ui.findButton("Отправить сообщение"));
   const last = ui.calls.filter((c) => c.action === "send").at(-1); assert.equal(last.mode, "chat"); assert.deepEqual(last.settings, {});
 });
@@ -164,10 +164,10 @@ test("empty topics support Enter without a brand; other modes still need a messa
   assert.equal(sends.length, 1); assert.equal(sends[0].mode, "topics");
   assert.equal(sends[0].useBrandContext, false); assert.ok(sends[0].text.trim());
   assert.equal(ui.document.querySelector("textarea.klio-aui-input").value, "");
-  await ui.click(ui.findButton("Выбрать режим")); await ui.click(ui.findButton("Общение"));
+  await ui.click(ui.findButton("Открыть меню задач")); await ui.click(ui.findButton("Общение"));
   assert.equal(ui.findButton("Отправить сообщение").disabled, true);
   for (const mode of ["Создать изображение", "Написать текст"]) {
-    await ui.click(ui.findButton("Выбрать режим"));
+    await ui.click(ui.findButton("Открыть меню задач"));
     await ui.click(ui.findButton(mode, ui.document.querySelector(".klio-aui-tool-menu")));
     assert.equal(ui.findButton("Отправить сообщение").disabled, true);
   }
@@ -204,7 +204,7 @@ test("image mode persists for another variant and explicit chat still permits di
   assert.ok(ui.document.querySelector(".klio-aui-tool-chip").textContent.includes("Создать изображение"));
   await ui.type("Сделай ещё один вариант"); await ui.click(ui.findButton("Отправить сообщение"));
   assert.deepEqual(ui.calls.filter((c) => c.action === "send").map((c) => c.mode), ["image", "image"]);
-  await ui.click(ui.findButton("Выбрать режим")); await ui.click(ui.findButton("Общение"));
+  await ui.click(ui.findButton("Открыть меню задач")); await ui.click(ui.findButton("Общение"));
   await ui.type("Нарисуй картинку — это хорошая формулировка?"); await ui.click(ui.findButton("Отправить сообщение"));
   assert.equal(ui.calls.filter((c) => c.action === "send").at(-1).mode, "chat");
   await ui.click(ui.document.querySelector(".klio-chatkit-new"));
@@ -215,7 +215,7 @@ test("image mode persists for another variant and explicit chat still permits di
 test("a forgotten generation mode yields to conversation and drops generation settings", async (t) => {
   const ui = await mountDialogue(t, { overrides: { researchRemaining: 0 } });
   for (const label of ["Предложить темы", "Создать изображение", "Написать текст"]) {
-    await ui.click(ui.findButton("Выбрать режим")); await ui.click(ui.findButton(label, ui.document.querySelector(".klio-aui-tool-menu")));
+    await ui.click(ui.findButton("Открыть меню задач")); await ui.click(ui.findButton(label, ui.document.querySelector(".klio-aui-tool-menu")));
     await ui.type("А почему ты считаешь это хорошей идеей?"); await ui.click(ui.findButton("Отправить сообщение"));
     const send = ui.calls.filter(c => c.action === "send").at(-1);
     assert.equal(send.mode, "chat"); assert.deepEqual(send.settings, {});
