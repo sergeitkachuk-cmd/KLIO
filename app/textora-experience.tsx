@@ -6368,7 +6368,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             navigation={carouselLightboxNavigation}
             actions={<div className="carousel-lightbox-actions">
               <a className="button ghost" href={carouselLightboxSlide.imageUrl} download>Скачать {imageFormatLabel(carouselLightboxSlide.imageUrl)}</a>
-              <button className="button ghost carousel-slide-regenerate" type="button" onClick={() => void regenerateCarouselSlide(carouselLightboxIndex)} disabled={carouselSlideBusy !== null || carouselBusy || workspaceAccount.generationsRemaining < 1}>{carouselSlideBusy === carouselLightboxIndex ? "Обновляем слайд…" : "Перегенерировать · 1 генерация"}</button>
+              <div className="carousel-lightbox-regeneration">
+                <button className="button ghost carousel-slide-regenerate" type="button" onClick={() => void regenerateCarouselSlide(carouselLightboxIndex)} disabled={carouselSlideBusy !== null || carouselBusy || workspaceAccount.generationsRemaining < 1}>{carouselSlideBusy === carouselLightboxIndex ? "Обновляем слайд…" : "Перегенерировать"}</button>
+                <small>1 генерация</small>
+              </div>
             </div>}
           />}
           {archiveEditorItem && <div className="archive-editor-overlay" onMouseDown={handleOverlayBackdropDown} onClick={(event) => handleOverlayBackdropClick(event, closeArchiveEditor)}>
@@ -7174,8 +7177,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <div className="image-generator-carousel-slides">
                     {carouselResult.slides.map((slide, index) => <div className={`image-generator-carousel-slide ${carouselSlideBusy === index ? "is-regenerating" : ""}`} key={`${slide.imageUrl}-${index}`}>
                       <button type="button" className="image-generator-result-trigger" aria-label={`Открыть слайд ${index + 1}: ${slide.headline}`} onClick={() => setCarouselLightboxIndex(index)}><Image src={slide.imageUrl} alt={slide.headline} width={480} height={480} unoptimized/></button>
-                      <b>{slide.headline}</b><a className="button ghost" href={slide.imageUrl} download>Скачать {imageFormatLabel(slide.imageUrl)}</a>
-                      <button className="button ghost carousel-slide-regenerate" type="button" onClick={() => void regenerateCarouselSlide(index)} disabled={carouselSlideBusy !== null || carouselBusy || workspaceAccount.generationsRemaining < 1}>{carouselSlideBusy === index ? "Обновляем слайд…" : "Перегенерировать · 1 генерация"}</button>
+                      <b>{slide.headline}</b>
+                      <div className="image-generator-carousel-slide-actions">
+                        <a className="button ghost" href={slide.imageUrl} download>Скачать {imageFormatLabel(slide.imageUrl)}</a>
+                        <div className="carousel-slide-regeneration">
+                          <button className="button ghost carousel-slide-regenerate" type="button" onClick={() => void regenerateCarouselSlide(index)} disabled={carouselSlideBusy !== null || carouselBusy || workspaceAccount.generationsRemaining < 1}>{carouselSlideBusy === index ? "Обновляем слайд…" : "Перегенерировать"}</button>
+                          <small>1 генерация</small>
+                        </div>
+                      </div>
                     </div>)}
                   </div>
                   <p>Карусель из {carouselResult.slides.length} слайдов сохранена в «Материалы».</p>

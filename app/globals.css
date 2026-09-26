@@ -15118,9 +15118,11 @@ input[type="radio"] {
 .image-lightbox-overlay.image-lightbox-with-actions{grid-template-rows:minmax(0,1fr) auto auto;gap:10px;padding-bottom:18px}
 .image-lightbox-overlay.image-lightbox-with-actions .image-lightbox-image{max-height:78vh}
 .image-lightbox-actions{display:flex;justify-content:center;width:min(100%,520px);cursor:default}
-.carousel-lightbox-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
-.carousel-lightbox-actions .button{min-height:40px;padding:8px 14px;font-size:13px;white-space:normal}
-@media(max-width:750px){.image-generator-carousel-controls{grid-template-columns:1fr}.image-generator-carousel-slides{grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))}.image-lightbox-navigation button{width:38px;height:38px}.image-lightbox-overlay.image-lightbox-with-actions .image-lightbox-image{max-height:62vh}}
+.carousel-lightbox-actions{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:center;gap:12px}
+.carousel-lightbox-actions .button{box-sizing:border-box;width:min(100%,220px);min-width:0;min-height:42px;padding:9px 14px;font-size:14px;line-height:1.2;text-align:center;white-space:normal;overflow-wrap:anywhere}
+.carousel-lightbox-regeneration{display:grid;gap:3px;width:min(100%,220px)}
+.carousel-lightbox-regeneration small,.carousel-slide-regeneration small{color:#aebbd0;font-size:11px;line-height:1.2;text-align:center}
+@media(max-width:750px){.image-generator-carousel-controls{grid-template-columns:1fr}.image-lightbox-navigation button{width:38px;height:38px}.image-lightbox-overlay.image-lightbox-with-actions .image-lightbox-image{max-height:62vh}}
 
 .publications-published-note {
   margin: 12px 0 0;
@@ -23689,15 +23691,16 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 .image-generator-template-picker button.is-selected small{color:#c1d3e9}
 .image-generator-template-picker button i{position:absolute;top:10px;right:11px;font-style:normal;color:#b9d0f5;font-size:14px}
 .image-generator-template-picker button:disabled{cursor:wait;opacity:.62}
-.image-generator-carousel-slides{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px;width:100%}
+.image-generator-carousel-slides{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px;width:100%}
 .image-generator-carousel-slide{display:flex;min-width:0;flex-direction:column;gap:8px;padding:10px;border:1px solid #34425a;border-radius:12px;background:#101f37}
 .image-generator-carousel-slide .image-generator-result-trigger{overflow:hidden;border-radius:8px;background:#08182c}
-.image-generator-carousel-slide img{display:block;width:100%;height:190px;object-fit:contain}
-.image-generator-carousel-slide>.button{justify-content:center;width:100%;min-height:40px;padding:8px 11px;font-size:12px;line-height:1.25;white-space:normal}
-.image-generator-carousel-slide b{font-size:13px;font-weight:700;line-height:1.35;color:#eef2fa}
+.image-generator-carousel-slide img{display:block;width:100%;height:220px;object-fit:contain}
+.image-generator-carousel-slide-actions{display:grid;gap:8px;margin-top:auto}
+.image-generator-carousel-slide .button{box-sizing:border-box;justify-content:center;width:100%;min-width:0;max-width:100%;min-height:42px;padding:9px 12px;font-size:14px;line-height:1.2;text-align:center;white-space:normal;overflow-wrap:anywhere}
+.carousel-slide-regeneration{display:grid;gap:3px}
+.carousel-slide-regeneration small{color:#aebbd0}
+.image-generator-carousel-slide b{font-size:15px;font-weight:700;line-height:1.35;color:#eef2fa}
 .image-generator-carousel-slide.is-regenerating{border-color:#83aee8;box-shadow:0 0 0 1px rgba(131,174,232,.24),0 8px 24px rgba(3,18,37,.2)}
-.image-generator-carousel-slide .carousel-slide-regenerate{font-size:11px;line-height:1.25;white-space:normal;color:#dce9fb;border-color:#42688f;background:linear-gradient(135deg,#183a5d,#102a47)}
-.image-generator-carousel-slide .carousel-slide-regenerate:hover:not(:disabled){border-color:#8eb6ee;background:linear-gradient(135deg,#244d78,#163653)}
 .image-generator-carousel-slide .carousel-slide-regenerate:disabled{opacity:.58}
 .material-card-image{display:block;width:100%;max-height:280px;height:auto;object-fit:contain;margin:14px 0;border-radius:10px;background:rgba(0,0,0,.06)}
 .workspace-history-list .material-article.is-text-with-image .material-card-image{max-height:172px;object-fit:cover;margin-top:10px}
@@ -23746,9 +23749,9 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 [data-theme="light"] .image-generator-carousel-slide img{background:#f2f5fa}
 [data-theme="light"] .image-generator-carousel-slide b{color:#14253f}
 [data-theme="light"] .image-generator-carousel-slide.is-regenerating{border-color:#7b9fcf;box-shadow:0 0 0 1px rgba(87,131,190,.2),0 8px 24px rgba(49,78,116,.12)}
-[data-theme="light"] .image-generator-carousel-slide .carousel-slide-regenerate{color:#183451;border-color:#9eb8da;background:linear-gradient(135deg,#e2edfb,#f3f7fd)}
-[data-theme="light"] .image-generator-carousel-slide .carousel-slide-regenerate:hover:not(:disabled){border-color:#6f98cc;background:linear-gradient(135deg,#d4e4f8,#e9f1fc)}
+[data-theme="light"] .carousel-lightbox-regeneration small,[data-theme="light"] .carousel-slide-regeneration small{color:#60738c}
 @media(max-width:750px){.image-generator-studio-steps{display:flex;grid-template-columns:none;gap:8px;overflow-x:auto;padding:16px 16px 0;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}.image-generator-studio-steps>div{flex:0 0 min(82vw,240px);scroll-snap-align:start}.image-generator-mode-switch{display:flex;gap:8px;overflow-x:auto;padding:16px 16px 0;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}.image-generator-mode-switch button{flex:0 0 min(78vw,250px);scroll-snap-align:start}.image-generator-layout{grid-template-columns:1fr;padding:16px}.image-generator-form,.image-generator-preview{padding:18px}.image-generator-empty{min-height:220px}.image-generator-reference-actions{align-items:stretch;flex-direction:column}.image-generator-reference-actions .button,.image-generator-reference-upload{justify-content:center;width:100%}.image-generator-reference-selected{align-items:stretch;flex-direction:column}.image-generator-reference-selected>img{width:100%;height:160px}.image-generator-reference-selected .module-select{min-width:0}.image-generator-style-picker{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;margin:0 -2px;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}.image-generator-style-picker button{flex:0 0 148px;scroll-snap-align:start}.image-generator-template-picker{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;margin:0 -2px;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}.image-generator-template-picker button{flex:0 0 164px;scroll-snap-align:start}}
+@media(max-width:750px){.image-generator-carousel-slides{grid-template-columns:1fr}.carousel-lightbox-actions{align-items:stretch;flex-direction:column}.carousel-lightbox-actions>.button,.carousel-lightbox-regeneration{width:100%;max-width:320px;margin-inline:auto}.image-generator-carousel-slide img{height:200px}}
 
 /* Publication calendar additions: keep the established calendar surface and
    add only the compact agenda and safe drag target affordances. */
