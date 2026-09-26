@@ -11,10 +11,9 @@ import { recordImageUsage } from "./image-usage";
 
 export const CAROUSEL_MIN_SLIDES = 3;
 export const CAROUSEL_MAX_SLIDES = 8;
-// Pinned dated snapshot, same reasoning as image-generation.ts's own
-// default (a bare rolling alias could change what this feature was
-// actually tested against without any code change here).
-export const CAROUSEL_IMAGE_MODEL = "gpt-image-2.5-flare-2026-09-08";
+// Use the current provider alias so carousel generation receives model
+// improvements without waiting for an application code change.
+export const CAROUSEL_IMAGE_MODEL = "gpt-image-2.5-flare";
 
 const slideSchema = {
   type: "object",

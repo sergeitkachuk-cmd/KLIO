@@ -51,12 +51,9 @@ function resolveRequestSize(rawSize, aspectRatio) {
 // image far more reliably. Same accepted size literals as gpt-image-1
 // (confirmed against the OpenAI API guide before switching this default -
 // resolveRequestSize below still only ever sends one of those three), so
-// this is a same-shape swap, not a request-format change. Pinned to the
-// dated snapshot, not the bare rolling alias OpenAI also offers - the
-// alias can start pointing at a different snapshot later without any
-// change here, silently changing output; the dated pin matches exactly
-// what was tested, and an upgrade later is a deliberate one-line bump.
-export function imageService({ token, apiKey, model = "gpt-image-2.5-flare-2026-09-08", providerFetch = fetch }) {
+// this is a same-shape swap, not a request-format change. Use OpenAI's
+// undated alias so provider improvements can reach the relay automatically.
+export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", providerFetch = fetch }) {
   const jobs = new Map(); let running = 0;
   const authorized = value => {
     if (!token || token.length < 32) return false;

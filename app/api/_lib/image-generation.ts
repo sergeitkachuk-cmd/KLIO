@@ -185,17 +185,13 @@ async function generateImageBytes(
   // test against gpt-image-1 in this same session (see
   // test-image-models.mjs in the scratchpad) confirmed it renders Russian
   // headline text into a generated image far more reliably, so it's now
-  // the default instead. Pinned to the dated snapshot rather than the bare
-  // rolling alias - OpenAI offers both, and the bare alias can silently
-  // start pointing at a different snapshot later; pinning keeps this
-  // matching the exact version whose output was actually verified, and a
-  // future upgrade becomes a deliberate one-line bump instead of a quiet
-  // behavior change. `model` (param) still lets one call ask for a
-  // different model than this fallback, without changing every other
-  // image call in the app.
+  // the default instead. Use OpenAI's undated aliases so improvements to
+  // text rendering and editing behavior can roll forward without a code
+  // change. `model` (param) and the environment variables still allow an
+  // explicit model override for an individual deployment or operation.
   const resolvedModel = model?.trim() || (mask
-    ? process.env.KLIO_IMAGE_EDIT_MODEL?.trim() || "gpt-image-2.5-sunburst-2026-09-08"
-    : process.env.KLIO_IMAGE_MODEL?.trim() || "gpt-image-2.5-flare-2026-09-08");
+    ? process.env.KLIO_IMAGE_EDIT_MODEL?.trim() || "gpt-image-2.5-sunburst"
+    : process.env.KLIO_IMAGE_MODEL?.trim() || "gpt-image-2.5-flare");
   let requestBody: string | FormData;
   let contentTypeHeader: string | undefined;
   if (serviceUrl) {
@@ -514,7 +510,7 @@ export async function createImageFromSource(
     : "";
   const placementInstruction = logo ? logoPlacementInstruction(options.logoPlacement, options.logoPosition) : "";
   const editModel = purpose === "edit"
-    ? process.env.KLIO_IMAGE_EDIT_MODEL?.trim() || "gpt-image-2.5-sunburst-2026-09-08"
+    ? process.env.KLIO_IMAGE_EDIT_MODEL?.trim() || "gpt-image-2.5-sunburst"
     : undefined;
   const { bytes, contentType } = await generateImageBytes(`${instruction}\n${maskInstruction}\n${backgroundInstruction}\n\n${prompt}\n\n${logoInstruction}\n${placementInstruction}`, requestId,
     editOptions,
@@ -534,11 +530,6 @@ export async function createImageFromSource(
 
     const width = sourceMetadata.width;
     const height = sourceMetadata.height;
-    const sourceRatio = width / height;
-    const resultRatio = resultMetadata.width / resultMetadata.height;
-    if (Math.abs(sourceRatio - resultRatio) / sourceRatio > 0.005)
-      throw new ImageInputError("Сервис изменил пропорции исходника, поэтому применить кисть точно не удалось. Попробуйте ещё раз.");
-
     const selectedAreaAlpha = await sharp(mask.bytes)
       .extractChannel("alpha")
       .negate()

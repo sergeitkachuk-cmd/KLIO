@@ -51,7 +51,7 @@ test("brush edit normalizes JPEG input and transparent mask to matching PNG file
   assert.equal(app.requests.length, 1);
   assert.match(app.requests[0].url, /\/v1\/images\/edits$/);
   const form = app.requests[0].options.body;
-  assert.equal(form.get("model"), "gpt-image-2.5-sunburst-2026-09-08");
+  assert.equal(form.get("model"), "gpt-image-2.5-sunburst");
   const imageFile = form.get("image");
   const maskFile = form.get("mask");
   assert.equal(imageFile.type, "image/png");
@@ -160,7 +160,7 @@ test("app sends a brush mask to a relay only after its health response advertise
   );
   const request = app.requests.find(item => new URL(item.url).pathname === "/generate");
   const body = JSON.parse(request.options.body);
-  assert.equal(body.model, "gpt-image-2.5-sunburst-2026-09-08");
+  assert.equal(body.model, "gpt-image-2.5-sunburst");
   assert.equal(body.image_type, "image/png");
   assert.equal(body.mask_type, "image/png");
   assert.equal(body.mask_b64, Buffer.from(body.mask_b64, "base64").toString("base64"));
