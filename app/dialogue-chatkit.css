@@ -418,6 +418,17 @@ html[data-theme="light"] .module-select-list.module-select-chatkit {
   font-weight: 700;
 }
 
+.klio-chatkit-brand-logo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-color: #f4f7fb;
+}
+
 .klio-chatkit-brand-select span {
   overflow: hidden;
   text-overflow: ellipsis;

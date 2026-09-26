@@ -13,6 +13,7 @@ export type DialogueWorkspaceProps = {
   visible: boolean;
   brands: Array<{ id: string; name: string }>;
   hasLogo: boolean;
+  brandLogoUrl?: string;
   dialogueRemaining: number;
   researchRemaining: number;
   generationsRemaining: number;

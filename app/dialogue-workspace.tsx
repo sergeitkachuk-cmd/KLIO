@@ -511,7 +511,7 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
               disabled={snapshot.sending || actionBusy}
               onClick={() => setBrandMenuOpen((open) => !open)}
             >
-              <i>{(props.brandName || "Л").trim().charAt(0).toUpperCase()}</i>
+              <i>{props.brandLogoUrl ? <span className="klio-chatkit-brand-logo" style={{ backgroundImage: `url("${props.brandLogoUrl}")` }} /> : (props.brandName || "Л").trim().charAt(0).toUpperCase()}</i>
               <span title={props.brandName || "Личное пространство"}>{props.brandName || "Личное пространство"}</span>
               <em aria-hidden="true">⌄</em>
             </button>

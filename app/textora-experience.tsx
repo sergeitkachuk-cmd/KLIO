@@ -2848,6 +2848,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     () => workspaceBrands.find((item) => item.id === activeBrandId) ?? null,
     [activeBrandId, workspaceBrands],
   );
+  const activeBrandLogoUrl = activeBrandId && (activeWorkspaceBrand?.profile.logoKey || brand.logoKey)
+    ? `/api/brand/logo?brandId=${encodeURIComponent(activeBrandId)}`
+    : "";
   // Raw brand-scoped lists, archived items included — the "Архив" tab and
   // its count need these; every other tab works off the *Live variants
   // below instead, so an archived item doesn't linger in "Все материалы"
@@ -6166,7 +6169,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           <a className="telegram-header-link" href="https://t.me/kliopress" target="_blank" rel="noreferrer" aria-label="Telegram КЛИО"><Icon name="telegram"/><span className="telegram-header-link-text">Telegram КЛИО</span></a>
           <div className={`account-menu ${accountMenuOpen ? "is-open" : ""}`} ref={accountMenuRef}>
             <button type="button" className="workspace-account" onClick={() => setAccountMenuOpen((value) => !value)} aria-label={`Меню аккаунта: ${workspaceUserName}`} aria-haspopup="menu" aria-expanded={accountMenuOpen}>
-              <i>{brand.logoKey && activeBrandId ? <Image className="workspace-account-logo" src={`/api/brand/logo?brandId=${encodeURIComponent(activeBrandId)}`} alt="" width={36} height={36} unoptimized/> : nameInitials(workspaceUserName)}{feedbackUnread > 0 && <em className="workspace-account-badge">{feedbackUnread}</em>}</i><b>{workspaceUserName}</b><small>{workspaceAccount.planName} · 1 пользователь</small><em className="ui-chevron" aria-hidden="true" />
+              <i>{nameInitials(workspaceUserName)}{feedbackUnread > 0 && <em className="workspace-account-badge">{feedbackUnread}</em>}</i><b>{workspaceUserName}</b><small>{workspaceAccount.planName} · 1 пользователь</small><em className="ui-chevron" aria-hidden="true" />
             </button>
             {accountMenuOpen && <div className="account-menu-list" role="menu">
               <Link href="/account" role="menuitem">Личный кабинет</Link>
@@ -6249,7 +6252,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         theme={theme}
         visible={workspaceMode === "dialogue" && activeModule === "start"}
         brandId={activeBrandId} brandName={activeWorkspaceBrand?.name || ""} brands={workspaceBrands}
-        hasLogo={Boolean(brand.logoKey)}
+        hasLogo={Boolean(activeBrandLogoUrl)} brandLogoUrl={activeBrandLogoUrl}
         dialogueRemaining={workspaceAccount.dialogueActionsRemaining}
         researchRemaining={workspaceAccount.researchRemaining}
         generationsRemaining={workspaceAccount.generationsRemaining}
@@ -6277,7 +6280,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <span>Ваш бизнес</span>
             <div className="klio-chatkit-brand-select" ref={dialogueBrandPickerRef}>
               <button type="button" aria-label="Выбрать бизнес" aria-expanded={brandMenuOpen} disabled={brandSwitchBusy} onClick={() => workspaceBrands.length ? setBrandMenuOpen((value) => !value) : openModule("brand")}>
-                <i>{(activeWorkspaceBrand?.name || brand.name || "Л").trim().charAt(0).toLocaleUpperCase("ru-RU")}</i>
+                <i>{activeBrandLogoUrl ? <Image className="workspace-brand-avatar-logo" src={activeBrandLogoUrl} alt="" width={30} height={30} unoptimized/> : (activeWorkspaceBrand?.name || brand.name || "Л").trim().charAt(0).toLocaleUpperCase("ru-RU")}</i>
                 <span title={activeWorkspaceBrand?.name || "Личное пространство"}>{activeWorkspaceBrand?.name || "Личное пространство"}</span>
                 <em aria-hidden="true">⌄</em>
               </button>
@@ -6296,14 +6299,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <span>Активный бренд</span>
             <div className={`brand-menu ${brandMenuOpen ? "is-open" : ""}`} ref={brandPickerRef}>
               <button className="brand-menu-trigger" type="button" onClick={() => workspaceBrands.length ? setBrandMenuOpen((value) => !value) : setBrandCreatorOpen(true)} disabled={brandSwitchBusy} aria-haspopup={workspaceBrands.length ? "listbox" : undefined} aria-expanded={workspaceBrands.length ? brandMenuOpen : undefined}>
-                <i>{workspaceBrands.length ? (activeWorkspaceBrand?.name || brand.name || "К").trim().charAt(0).toLocaleUpperCase("ru-RU") : "+"}</i>
+                <i>{activeBrandLogoUrl ? <Image className="workspace-brand-avatar-logo" src={activeBrandLogoUrl} alt="" width={34} height={34} unoptimized/> : workspaceBrands.length ? (activeWorkspaceBrand?.name || brand.name || "К").trim().charAt(0).toLocaleUpperCase("ru-RU") : "+"}</i>
                 <span><b>{workspaceBrands.length ? (activeWorkspaceBrand?.name || brand.name || "Выберите бренд") : "Добавить первый бренд"}</b><small>{workspaceBrands.length ? (activeWorkspaceBrand?.website || "Профиль компании") : "Создайте профиль компании"}</small></span>
                 <em className={workspaceBrands.length ? "ui-chevron" : "brand-menu-arrow"} aria-hidden="true">{workspaceBrands.length ? "" : "→"}</em>
               </button>
               {brandMenuOpen && <button type="button" className="brand-menu-backdrop" aria-label="Закрыть меню брендов" onClick={() => setBrandMenuOpen(false)} />}
               {brandMenuOpen && <div className="brand-menu-list" role="listbox" aria-label="Выбор бренда">
                 {workspaceBrands.map((item) => <button type="button" role="option" aria-selected={item.id === activeBrandId} className={item.id === activeBrandId ? "active" : ""} onClick={() => void switchWorkspaceBrand(item.id)} key={item.id}>
-                  <i>{item.name.trim().charAt(0).toLocaleUpperCase("ru-RU") || "К"}</i>
+                  <i>{item.profile.logoKey ? <Image className="workspace-brand-avatar-logo" src={`/api/brand/logo?brandId=${encodeURIComponent(item.id)}`} alt="" width={34} height={34} unoptimized/> : item.name.trim().charAt(0).toLocaleUpperCase("ru-RU") || "К"}</i>
                   <span><b>{item.name}</b><small>{item.website || "Профиль без сайта"}</small></span>
                   <em>{item.id === activeBrandId ? "✓" : ""}</em>
                 </button>)}
