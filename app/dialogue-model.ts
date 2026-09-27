@@ -77,9 +77,31 @@ export function dialogueContext(data: DialogueData, selectedId: string) {
     messages.unshift({ role: message.role, text: message.text });
     size += message.text.length;
   }
+  const selected = data.cards.find((card) => card.id === selectedId) ?? null;
+  // Keep the latest material bodies in the conversation context. Titles alone
+  // are not enough for follow-up commands such as "добавь абзац" or
+  // "добавь заголовок статьи": the model needs the article it is revising.
+  // Bound each body and the total payload so a long-running thread remains
+  // usable while the selected card is still available in full below.
+  const materials: Array<{ id: string; kind: DialogueCard["kind"]; title: string; body: string; imageUrl: string; hasImage: boolean }> = [];
+  let materialSize = 0;
+  for (const card of [...data.cards].reverse()) {
+    if (materials.length >= 6 || materialSize >= 30_000) break;
+    const body = card.id === selected?.id ? card.body : card.body.slice(0, 6_000);
+    materials.unshift({
+      id: card.id,
+      kind: card.kind,
+      title: card.title,
+      body,
+      imageUrl: card.imageUrl,
+      hasImage: Boolean(card.imageUrl || card.slides?.length),
+    });
+    materialSize += body.length + card.title.length;
+  }
   return {
     messages,
-    selected: data.cards.find((card) => card.id === selectedId) ?? null,
+    selected,
+    materials,
     available: data.cards
       .map(({ id, kind, title }) => ({ id, kind, title }))
       .slice(-50),

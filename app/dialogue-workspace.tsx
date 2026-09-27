@@ -14,7 +14,7 @@ import { DialogueResultsMenu } from "./dialogue-results-menu";
 import { DialogueResultPreview } from "./dialogue-result-preview";
 import { DialogueResultActions } from "./dialogue-result-actions";
 import { ImageLightbox } from "./image-lightbox";
-import { isImageEditRequest, requestedLogoChange, resolveDialogueTool, TOPICS_STARTER } from "./dialogue-starters";
+import { isImageEditRequest, isMaterialEditRequest, requestedLogoChange, resolveDialogueTool, TOPICS_STARTER } from "./dialogue-starters";
 import { dialogueImageSourceUrl, latestDialogueImage, type DialogueImageSource } from "./dialogue-image-source";
 import { DialogueImageAttachment } from "./dialogue-image-attachment";
 import { DialogueCardGenerationDialog } from "./dialogue-card-generation-dialog";
@@ -79,6 +79,8 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
   const [error, setError] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
   const [toolChoice, setSelectedTool] = useState<string | null>(null);
+  // Kept for compatibility with saved composer state; the advanced panel is
+  // intentionally hidden from the dialogue UI.
   const [settingsExpanded, setSettingsExpanded] = useState(false);
   const [generationSettings, setGenerationSettings] = useState(DEFAULT_GENERATION_SETTINGS);
   const [cardGeneration, setCardGeneration] = useState<{ card: DialogueCard; threadId: string; view: number; kind: CardGenerationKind; initial: CardGenerationChoices } | null>(null);
@@ -161,7 +163,9 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
     const before = session.getSnapshot();
     const latestImage = latestDialogueImage(before.thread?.data);
     const previousTool = selectedTool === "image" && generationSettingsRef.current.imageKind === "carousel" ? "carousel" : selectedTool;
-    const tool = resolveDialogueTool(text, previousTool, requestedTool, Boolean(latestImage));
+    const hasMaterials = Boolean(before.thread?.data.cards.length);
+    const latestCardId = before.thread?.data.cards.at(-1)?.id || "";
+    const tool = resolveDialogueTool(text, previousTool, requestedTool, Boolean(latestImage), hasMaterials, Boolean(imageSource));
     if (!requestedTool) {
       if (tool === "chat" && selectedTool && selectedTool !== "chat") {
         setSelectedTool(null);
@@ -177,13 +181,13 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
     if (logoChange !== null) changeSetting("useLogo", logoChange);
     const context = Boolean(props.brandId) && useBrandContext;
     const prompt = text.trim() || (tool === "topics" ? TOPICS_STARTER : "");
-    if (tool === "image" && generationSettingsRef.current.imageTextMode === "custom" && !generationSettingsRef.current.imageText?.trim()) {
-      setError("Введите текст для изображения в настройках или выберите «Без текста».");
-      setSettingsExpanded(true); return false;
-    }
+    // Image text defaults are automatic. Explicit requests such as a title
+    // are interpreted by the server from the current material context.
+    const contextCardId = source?.cardId || (isMaterialEditRequest(text) ? latestCardId : "");
     const sent = await session.send(prompt, {
       mode: tool === "carousel" ? "carousel" : tool.startsWith("image-card:") || tool === "image" ? "image" : tool === "topics" ? "topics" : ["text", "topic-post", "topic-article"].includes(tool) ? "text" : "chat",
       ...(tool.startsWith("image-card:") ? { cardId: tool.slice("image-card:".length) } : {}),
+      ...(contextCardId ? { cardId: contextCardId } : {}),
       ...(source ? { imageSource: source } : {}),
       useBrandContext: context, settings: settingsForTool(tool, generationSettingsRef.current, props.hasLogo),
     }, context ? beforeProfile : undefined);
@@ -574,7 +578,7 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
             {snapshot.error && snapshot.selectedId && <button type="button" onClick={() => void session.refresh()}>Обновить диалог</button>}
           </div>
         )}
-        <DialogueAssistantThread key={snapshot.view} session={session} snapshot={snapshot} tool={selectedTool === "image" && generationSettings.imageKind === "carousel" ? "carousel" : selectedTool} onTool={(tool) => { if (imageUploading) return; session.setImageSource(null); setSelectedTool(tool); if (tool === "image") changeSetting("imageKind", "single"); setSettingsExpanded(false); }} onSend={sendText} busy={actionBusy || imageUploading} onAction={(type, cardId, slideIndex) => { if (activeThreadId) void handleWidgetAction({ type, payload: { threadId: activeThreadId, cardId, slideIndex } }); }} onProfile={(messageId) => void applyProfile(messageId)} options={
+        <DialogueAssistantThread key={snapshot.view} session={session} snapshot={snapshot} tool={selectedTool === "image" && generationSettings.imageKind === "carousel" ? "carousel" : selectedTool} onTool={(tool) => { if (imageUploading) return; session.setImageSource(null); setSelectedTool(tool); if (tool === "image" || tool === "carousel") changeSetting("imageKind", tool === "carousel" ? "carousel" : "single"); setSettingsExpanded(false); }} onSend={sendText} busy={actionBusy || imageUploading} onAction={(type, cardId, slideIndex) => { if (activeThreadId) void handleWidgetAction({ type, payload: { threadId: activeThreadId, cardId, slideIndex } }); }} onProfile={(messageId) => void applyProfile(messageId)} options={
 <div className="klio-chatkit-composer-options">
           {selectedTool === "image" && generationSettings.imageKind !== "carousel" && <DialogueImageAttachment key={snapshot.view} source={imageSource} url={imageSource ? dialogueImageSourceUrl(imageSource, snapshot.thread?.data) : ""} busy={imageUploading} onBusy={(busy) => setUpload({ view: snapshot.view, busy })} onChange={session.setImageSource} />}
           <label className="klio-chatkit-brand-context">
@@ -583,7 +587,7 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
             {useBrandContext && props.brandName && <strong title={props.brandName}>{props.brandName}</strong>}
           </label>
         {selectedTool && ["topics", "text", "image"].includes(selectedTool) && (
-          <DialogueSettingsPopover open={settingsExpanded && props.visible} onOpenChange={setSettingsExpanded} title={selectedTool === "image" ? "Параметры изображения" : selectedTool === "topics" ? "Параметры тем" : "Параметры текста"}>
+          <span style={{ display: "none" }} aria-hidden="true"><DialogueSettingsPopover open={settingsExpanded && props.visible} onOpenChange={setSettingsExpanded} title={selectedTool === "image" ? "Параметры изображения" : selectedTool === "topics" ? "Параметры тем" : "Параметры текста"}>
               {(selectedTool === "topics" || selectedTool === "text") && <ModuleSelect variant="chatkit" label="Формат" value={generationSettings.format} options={FORMAT_OPTIONS} onChange={(value) => changeSetting("format", value)} />}
               {selectedTool === "topics" && <ModuleSelect variant="chatkit" label="Количество тем" value={generationSettings.topicCount} options={TOPIC_COUNT_OPTIONS} onChange={(value) => changeSetting("topicCount", value)} />}
               {selectedTool === "text" && <>
@@ -615,9 +619,9 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
                   </>}
                 </>}
               </>}
-          </DialogueSettingsPopover>
+          </DialogueSettingsPopover></span>
         )}
-        <small className="klio-aui-quota">
+        <small className="klio-aui-quota" aria-hidden="true" style={{ display: "none" }}>
           {selectedTool === "topics" ? `Подбор тем: осталось ${props.researchRemaining ?? "—"} запусков`
             : selectedTool === "image" || selectedTool === "text" ? `Материалы: осталось ${props.generationsRemaining ?? "—"}${selectedTool === "image" && generationSettings.imageKind === "carousel" ? ` · на карусель нужно ${generationSettings.carouselSlideCount}` : ""}`
             : `Общение: осталось ${props.dialogueRemaining ?? "—"} ответов`}

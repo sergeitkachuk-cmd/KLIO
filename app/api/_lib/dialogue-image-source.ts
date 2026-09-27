@@ -4,7 +4,7 @@ import { isImageEditRequest } from "../../dialogue-starters";
 import type { DialogueData } from "../../dialogue-model";
 
 export class DialogueImageSourceError extends Error {}
-export type ResolvedDialogueImageSource = { key: string; url: string; purpose: "edit" | "reference" };
+export type ResolvedDialogueImageSource = { key: string; url: string; purpose: "edit" | "reference"; cardId?: string; slideIndex?: number };
 
 export function resolveDialogueImageSource(raw: unknown, data: DialogueData, text: string, email: string, baseUrl: string): ResolvedDialogueImageSource | undefined {
   let source: DialogueImageSource | null;
@@ -29,5 +29,11 @@ export function resolveDialogueImageSource(raw: unknown, data: DialogueData, tex
   // Never fetch a supplied URL. Only read an owner-scoped key from our own S3.
   if (!/^https?:$/.test(parsed.protocol) || !match || match[2] !== owner)
     throw new DialogueImageSourceError("Выберите своё изображение из диалога или загрузите файл заново.");
-  return { key: match[1], url: new URL(`/api/uploads/${match[1]}`, baseUrl).href, purpose: source.purpose };
+  return {
+    key: match[1],
+    url: new URL(`/api/uploads/${match[1]}`, baseUrl).href,
+    purpose: source.purpose,
+    ...(source.cardId ? { cardId: source.cardId } : {}),
+    ...(source.slideIndex === undefined ? {} : { slideIndex: source.slideIndex }),
+  };
 }

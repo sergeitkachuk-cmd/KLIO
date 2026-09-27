@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AssistantRuntimeProvider, ComposerPrimitive, MessagePrimitive, ThreadPrimitive, useExternalStoreRuntime, type ThreadMessageLike } from "@assistant-ui/react";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
-import { ArrowDown, ArrowUp, Copy, ImageIcon, Lightbulb, MessageCircle, SquarePen, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Copy, ImageIcon, Images, Lightbulb, MessageCircle, SquarePen, X } from "lucide-react";
 import { isStandaloneImage, type DialogueCard } from "./dialogue-model";
 import { DialogueResultActions, imageDownloadUrl } from "./dialogue-result-actions";
 import type { DialogueSession } from "./dialogue-session";
@@ -16,6 +16,7 @@ const TOOLS = [
   { id: "topics", label: "Предложить темы", placeholder: "Уточните пожелания к темам (необязательно)", Icon: Lightbulb },
   { id: "text", label: "Написать текст", placeholder: "О чём и для какой площадки написать?", Icon: SquarePen },
   { id: "image", label: "Создать изображение", placeholder: "Опишите изображение", Icon: ImageIcon },
+  { id: "carousel", label: "Создать карусель", placeholder: "Опишите тему или дайте текст для слайдов", Icon: Images },
 ];
 function Markdown() { return <MarkdownTextPrimitive className="klio-aui-markdown" smooth={false} />; }
 const convertMessage = (message: ThreadMessageLike) => message;
@@ -82,7 +83,7 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
     document.addEventListener("pointerdown", close); document.addEventListener("keydown", key);
     return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", key); };
   }, [menuOpen]);
-  const activeTool = tool === "carousel" ? { ...TOOLS[3], label: "Карусель", placeholder: "Добавьте текст для слайдов или подробно опишите тему" } : TOOLS.find((item) => item.id === tool) || TOOLS[0];
+  const activeTool = TOOLS.find((item) => item.id === tool) || TOOLS[0];
   const empty = !messages.length && !loading;
   // A revised card may be referenced by several messages. Render its current
   // version once, at the last reference, so result navigation has one target.
@@ -158,7 +159,7 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
               <div className="klio-aui-picker" ref={picker}>
                 <button type="button" className="klio-aui-icon" aria-label="Открыть меню задач" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><svg className="klio-aui-tool-menu-icon" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="7" cy="7" r="4"/><circle cx="17" cy="7" r="4"/><circle cx="7" cy="17" r="4"/><circle cx="17" cy="17" r="4"/></svg></button>
                 {menuOpen && <div className="klio-aui-tool-menu" aria-label="Режим генерации">
-                  {TOOLS.map(({ id, label, Icon }) => <button type="button" key={id} aria-pressed={(tool || "chat") === id || (tool === "carousel" && id === "image")} onClick={() => { onTool(id); setMenuOpen(false); input.current?.focus(); }}><Icon size={18} />{label}</button>)}
+                  {TOOLS.map(({ id, label, Icon }) => <button type="button" key={id} aria-pressed={(tool || "chat") === id} onClick={() => { onTool(id); setMenuOpen(false); input.current?.focus(); }}><Icon size={18} />{label}</button>)}
                 </div>}
               </div>
               {tool && tool !== "chat" && <button type="button" className="klio-aui-tool-chip" onClick={() => onTool(null)} title="Переключиться на обычное общение"><activeTool.Icon size={17} />{activeTool.label}<X size={15} /></button>}

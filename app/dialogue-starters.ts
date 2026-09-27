@@ -13,6 +13,14 @@ export function dialogueTool(tool: string, text: string, newThread: boolean) {
 // Only explicit generation commands: questions about a task stay in chat.
 export function inferDialogueTool(text: string): "image" | "carousel" | "topics" | "text" | null {
   const request = normalizeDialogueRequest(text);
+  // A question about wording or a capability is conversation, even when it
+  // contains a generation verb and an image noun.
+  if (/[?؟]\s*$/.test(request)) return null;
+  // A direct creation command must win over the currently selected shortcut.
+  // This is what makes "создай картинку к тексту" work even when the user
+  // forgot to open the image shortcut first.
+  if (/^(?:добавь|вставь|прикрепи)\b.*\b(?:картин\w*|изображен\w*|иллюстраци\w*|фото)\b/.test(request)) return "image";
+  if (/^(?:создай|сделай|сгенерируй|нарисуй|подготовь)\b.*\b(?:картин\w*|изображен\w*|иллюстраци\w*|фото)\b/.test(request)) return "image";
   if (/^(создай|сделай|сгенерируй|подготовь)\s+(?:(мне|нам|еще|новую|пожалуйста)\s+)*карусел/.test(request)) return "carousel";
   if (/^нарисуй(?:\s|$)/.test(request) || /^(создай|сделай|сгенерируй|подготовь)\s+(?:(мне|нам|еще|одну|новую|другую|пожалуйста)\s+)*(картинк|изображени|иллюстраци|фото)/.test(request)) return "image";
   if (/^(предложи|подбери|придумай|сгенерируй|создай|составь)\s+(?:(мне|нам|еще|новые|несколько|\d+|пожалуйста)\s+)*(тем[уы]|идеи для (постов|контента)|контент[ -]план)/.test(request)) return "topics";
@@ -47,16 +55,29 @@ export function isImageEditRequest(text: string) {
     || /^(?:на|в)\s+(?:этом|этой|готовом|готовой)\s+(?:изображении|картинке|фото)/.test(request) && /(?:добавь|убери|замени|измени)/.test(request);
 }
 
+export function isMaterialEditRequest(text: string) {
+  if (isDialogueDiscussion(text)) return false;
+  const request = normalizeDialogueRequest(text);
+  return /^(?:добавь|убери|удали|измени|замени|перепиши|отредактируй|доработай|исправь|сократи|расшири)\b/.test(request);
+}
+
 export function requestedLogoChange(text: string): boolean | null {
   if (!isImageEditRequest(text) || !/логотип|фирменн(?:ый|ого)\s+знак/.test(normalizeDialogueRequest(text))) return null;
   return !/^(?:убери|удали)/.test(normalizeDialogueRequest(text));
 }
 
-export function resolveDialogueTool(text: string, selected: string | null, requested?: string, hasImage = false) {
-  // Card actions and explicitly selected ordinary chat retain their semantics.
+export function resolveDialogueTool(text: string, selected: string | null, requested?: string, hasImage = false, hasMaterials = false, hasImageSource = false) {
+  // Card actions retain their semantics, but explicit commands override a
+  // stale shortcut. The old ordering made the chat shortcut swallow image
+  // commands when a user forgot to switch modes manually.
   if (requested) return requested;
-  if (selected === "chat") return "chat";
+  const inferred = inferDialogueTool(text);
+  if (inferred) return inferred;
+  const normalized = normalizeDialogueRequest(text);
+  const imageSpecific = /(?:изображен|картин|фото|фон|логотип|слайд|на\s+(?:этом|этой|готовом|готовой)\s+(?:изображении|картинке|фото))/.test(normalized);
+  if (hasImageSource || (selected === "image" && hasImage && isImageEditRequest(text)) || (selected !== "chat" && hasImage && isImageEditRequest(text) && (!hasMaterials || imageSpecific))) return "image";
+  if (hasMaterials && isMaterialEditRequest(text)) return "text";
   if (isDialogueDiscussion(text)) return "chat";
   if (selected) return selected;
-  return inferDialogueTool(text) || (hasImage && isImageEditRequest(text) ? "image" : "chat");
+  return "chat";
 }
