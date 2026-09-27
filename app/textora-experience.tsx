@@ -10,7 +10,7 @@ import { createWorkspaceSaveQueue } from "./workspace-save-queue";
 import { HelpTip } from "./help-tip";
 import { ModuleSelect } from "./module-select";
 import { IMAGE_STYLE_OPTIONS, IMAGE_TEXT_OPTIONS, LOGO_PLACEMENT_OPTIONS, LOGO_POSITION_OPTIONS } from "./dialogue-generation-settings";
-import { CAROUSEL_TEMPLATE_OPTIONS, DEFAULT_CAROUSEL_TEMPLATE, MAX_CAROUSEL_SOURCE_CHARACTERS, type CarouselTemplateId } from "./carousel-templates";
+import { CAROUSEL_TEMPLATE_OPTIONS, DEFAULT_CAROUSEL_TEMPLATE, MAX_CAROUSEL_SOURCE_CHARACTERS, type CarouselSlideIndicatorMode, type CarouselTemplateId } from "./carousel-templates";
 import { PublicationImagePicker } from "./publication-image-picker";
 import { ImageLightbox } from "./image-lightbox";
 import ImageMaskEditor from "./image-mask-editor";
@@ -2544,6 +2544,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [imageReferenceError, setImageReferenceError] = useState("");
   const imageReferenceInputRef = useRef<HTMLInputElement | null>(null);
   const [carouselSlideCount, setCarouselSlideCount] = useState("5");
+  const [carouselIndicatorMode, setCarouselIndicatorMode] = useState<CarouselSlideIndicatorMode>("numbers");
   const [carouselAspectRatio, setCarouselAspectRatio] = useState<"1:1" | "4:3" | "4:5" | "16:9" | "9:16">("1:1");
   const [carouselTemplate, setCarouselTemplate] = useState<CarouselTemplateId>(DEFAULT_CAROUSEL_TEMPLATE);
   const [carouselBusy, setCarouselBusy] = useState(false);
@@ -5715,6 +5716,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           outputFormat: imageOutputFormat,
           imageStyle,
           templateId: carouselTemplate,
+          indicatorMode: carouselIndicatorMode,
         }),
       });
       const startPayload = await safeJson(startResponse) as { error?: string; jobId?: string };
@@ -7201,6 +7203,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                       value={carouselSlideCount}
                       onChange={setCarouselSlideCount}
                       options={["3", "4", "5", "6", "7", "8"].map(value => ({ value, label: value }))}
+                    />
+                    <ModuleSelect
+                      label="Обозначение слайдов"
+                      value={carouselIndicatorMode}
+                      onChange={value => setCarouselIndicatorMode(value as CarouselSlideIndicatorMode)}
+                      options={[
+                        { value: "numbers", label: `Номера на слайдах · 01 / ${String(carouselSlideCount).padStart(2, "0")}` },
+                        { value: "dots", label: "Точки прогресса · ● ○ ○ ○ ○" },
+                      ]}
                     />
                     <ModuleSelect
                       label="Формат слайда"

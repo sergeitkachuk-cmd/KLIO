@@ -42,7 +42,7 @@ import { downloadBrandLogo, downloadPublicationImage } from "../_lib/storage";
 import { DialogueImageSourceError, resolveDialogueImageSource, type ResolvedDialogueImageSource } from "../_lib/dialogue-image-source";
 import { requestedLogoChange } from "../../dialogue-starters";
 import { IMAGE_STYLE_OPTIONS, TEXT_LENGTH_TARGETS } from "../../dialogue-generation-settings";
-import { DEFAULT_CAROUSEL_TEMPLATE, isCarouselTemplateId, type CarouselTemplateId } from "../../carousel-templates";
+import { DEFAULT_CAROUSEL_TEMPLATE, isCarouselSlideIndicatorMode, isCarouselTemplateId, type CarouselSlideIndicatorMode, type CarouselTemplateId } from "../../carousel-templates";
 import { buildDialogueImagePrompt, dialogueImageTextInstruction } from "../_lib/dialogue-image-prompt";
 import { generateCarouselSlides, CAROUSEL_MIN_SLIDES, CAROUSEL_MAX_SLIDES } from "../_lib/carousel";
 import { recordImageUsage } from "../_lib/image-usage";
@@ -273,6 +273,7 @@ async function runReply(
     imageText: string;
     slideCount: number;
     carouselTemplate: CarouselTemplateId;
+    carouselIndicatorMode: CarouselSlideIndicatorMode;
     imageSource?: ResolvedDialogueImageSource;
   },
 ) {
@@ -310,6 +311,7 @@ async function runReply(
           useBrandContext, useLogo: settings.useLogo, baseUrl,
           imageStyleInstruction: settings.imageStyle,
           templateId: settings.carouselTemplate,
+          indicatorMode: settings.carouselIndicatorMode,
           imageOptions: {
             ...(settings.imageAspectRatio ? { aspectRatio: settings.imageAspectRatio } : {}),
             ...(settings.imageOutputFormat ? { outputFormat: settings.imageOutputFormat } : {}),
@@ -844,6 +846,7 @@ export async function POST(request: Request) {
       ? IMAGE_STYLE_OPTIONS.find(option => option.value === settingsRaw.imageStyle)?.instruction || ""
       : "";
     const carouselTemplate = isCarouselTemplateId(settingsRaw.templateId) ? settingsRaw.templateId : DEFAULT_CAROUSEL_TEMPLATE;
+    const carouselIndicatorMode = isCarouselSlideIndicatorMode(settingsRaw.indicatorMode) ? settingsRaw.indicatorMode : "numbers";
     const useLogo = (mode === "image" ? requestedLogoChange(clean(p.text, 8000)) : null) ?? (settingsRaw.useLogo === true);
     const imageTextMode = settingsRaw.imageTextMode === "none" || settingsRaw.imageTextMode === "title" || settingsRaw.imageTextMode === "custom" ? settingsRaw.imageTextMode : "auto";
     const imageText = clean(settingsRaw.imageText, 201);
@@ -875,6 +878,7 @@ export async function POST(request: Request) {
       logoPlacement, logoPosition, imageTextMode, imageText,
       slideCount,
       carouselTemplate,
+      carouselIndicatorMode,
       imageSource: undefined as ResolvedDialogueImageSource | undefined,
     };
     if (action === "send") {

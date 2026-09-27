@@ -5,7 +5,7 @@ import { createCarouselSlideImage, type ImageGenerationOptions } from "./image-g
 import { downloadBrandLogo } from "./storage";
 import { getWorkspaceDb, recordCarouselSlideRegeneration, recordGeneration, WorkspaceAccessError } from "./workspace-account";
 import { failAsyncJob, markAsyncJobProcessing } from "./async-jobs";
-import { carouselTemplateInstruction, DEFAULT_CAROUSEL_TEMPLATE, isCarouselTemplateId, MAX_CAROUSEL_SOURCE_CHARACTERS, type CarouselTemplateId } from "../../carousel-templates";
+import { carouselSlideIndicatorInstruction, carouselTemplateInstruction, DEFAULT_CAROUSEL_TEMPLATE, isCarouselSlideIndicatorMode, isCarouselTemplateId, MAX_CAROUSEL_SOURCE_CHARACTERS, type CarouselSlideIndicatorMode, type CarouselTemplateId } from "../../carousel-templates";
 import { aggregateImageUsages, type ImageProviderUsage } from "./image-cost";
 import { recordImageUsage } from "./image-usage";
 
@@ -69,17 +69,19 @@ export type CarouselInput = {
   useBrandContext?: boolean;
   imageStyleInstruction?: string;
   templateId?: CarouselTemplateId;
+  indicatorMode?: CarouselSlideIndicatorMode;
   imageOptions?: ImageGenerationOptions;
   baseUrl: string;
 };
 
-export type CarouselSlide = { headline: string; subtext: string; visual?: string; imageUrl: string; templateId?: CarouselTemplateId; aspectRatio?: ImageGenerationOptions["aspectRatio"]; outputFormat?: ImageGenerationOptions["outputFormat"] };
+export type CarouselSlide = { headline: string; subtext: string; visual?: string; imageUrl: string; templateId?: CarouselTemplateId; indicatorMode?: CarouselSlideIndicatorMode; aspectRatio?: ImageGenerationOptions["aspectRatio"]; outputFormat?: ImageGenerationOptions["outputFormat"] };
 
 // Shared rendering for the professional generator and dialogue. Callers own
 // reservation, persistence and refunds, so each slide is charged only once.
 export async function generateCarouselSlides(jobId: string, input: CarouselInput, ownerEmail: string, beforeSlide?: () => Promise<void>, onImageUsage?: (usage: ImageProviderUsage) => void): Promise<CarouselSlide[]> {
   const count = input.slideCount;
   const templateId = isCarouselTemplateId(input.templateId) ? input.templateId : DEFAULT_CAROUSEL_TEMPLATE;
+  const indicatorMode = isCarouselSlideIndicatorMode(input.indicatorMode) ? input.indicatorMode : "numbers";
   const templateInstruction = carouselTemplateInstruction(templateId);
   let profile: unknown = null;
   if (input.useBrandContext && input.brandId) {
@@ -124,14 +126,15 @@ export async function generateCarouselSlides(jobId: string, input: CarouselInput
     const styleReminder = input.imageStyleInstruction ? `\nВизуальный стиль всей карусели: ${input.imageStyleInstruction}` : "";
     const templateReminder = `\nШаблон «${templateId}»: ${templateInstruction}`;
     const isCover = index === 0;
-    const prompt = `${isCover ? "Обложка" : `Слайд ${index + 1} из ${count}`} карусели. Создай самостоятельное законченное изображение с собственной сценой, напрямую связанной с содержанием этого слайда. Для этой карточки используй именно такой визуальный сюжет: ${slide.visual}. Сцена и композиция должны отличаться от других слайдов этой серии; не повторяй одинаковый фон, объект, ракурс или раскладку. Сохрани общую арт-дирекцию шаблона, но придумай новое изображение для этого тезиса. ${isCover ? "На обложке крупный заголовок и короткое пояснение." : "Это содержательная карточка: ясная визуальная иерархия, крупный заголовок и короткий читаемый абзац."} ${logoReminder}${styleReminder}${templateReminder}`;
+    const indicatorInstruction = carouselSlideIndicatorInstruction(indicatorMode, index, count);
+    const prompt = `${isCover ? "Обложка" : `Слайд ${index + 1} из ${count}`} карусели. Создай самостоятельное законченное изображение с собственной сценой, напрямую связанной с содержанием этого слайда. Для этой карточки используй именно такой визуальный сюжет: ${slide.visual}. Сцена и композиция должны отличаться от других слайдов этой серии; не повторяй одинаковый фон, объект, ракурс или раскладку. Сохрани общую арт-дирекцию шаблона, но придумай новое изображение для этого тезиса. ${isCover ? "На обложке крупный заголовок и короткое пояснение." : "Это содержательная карточка: ясная визуальная иерархия, крупный заголовок и короткий читаемый абзац."} ${indicatorInstruction} ${logoReminder}${styleReminder}${templateReminder}`;
     let generated;
     try {
-      generated = await createCarouselSlideImage(prompt, logo && { ...logo, kind: "logo" }, ownerEmail, input.baseUrl, `${jobId}-${index}`, input.imageOptions ?? {}, CAROUSEL_IMAGE_MODEL, { headline: slide.headline, subtext: slide.subtext, templateId }, onImageUsage);
+      generated = await createCarouselSlideImage(prompt, logo && { ...logo, kind: "logo" }, ownerEmail, input.baseUrl, `${jobId}-${index}`, input.imageOptions ?? {}, CAROUSEL_IMAGE_MODEL, { headline: slide.headline, subtext: slide.subtext, templateId, indicatorMode, slideIndex: index, slideTotal: count }, onImageUsage);
     } catch (error) {
       throw new Error(`Не удалось создать слайд ${index + 1} из ${count} — генерация карусели остановлена. ${error instanceof Error ? error.message : ""}`.trim());
     }
-    slides.push({ headline: slide.headline, subtext: slide.subtext, visual: slide.visual, imageUrl: generated.url, templateId, aspectRatio: input.imageOptions?.aspectRatio ?? "1:1", outputFormat: input.imageOptions?.outputFormat ?? "png" });
+    slides.push({ headline: slide.headline, subtext: slide.subtext, visual: slide.visual, imageUrl: generated.url, templateId, indicatorMode, aspectRatio: input.imageOptions?.aspectRatio ?? "1:1", outputFormat: input.imageOptions?.outputFormat ?? "png" });
   }
 
   return slides;
@@ -211,7 +214,8 @@ export async function runCarouselSlideRegeneration(jobId: string, input: { gener
       throw new WorkspaceAccessError("Данные выбранного слайда повреждены.", 400);
 
     const templateId = isCarouselTemplateId(slide.templateId) ? slide.templateId : DEFAULT_CAROUSEL_TEMPLATE;
-    const prompt = `Создай новое самостоятельное изображение для слайда карусели. Визуальный сюжет: ${slide.visual || `${slide.headline}. ${slide.subtext}`}. Придумай отличающиеся от соседних слайдов сцену и композицию, сохрани только общую арт-дирекцию шаблона «${templateId}».`;
+    const indicatorMode = isCarouselSlideIndicatorMode(slide.indicatorMode) ? slide.indicatorMode : "numbers";
+    const prompt = `Создай новое самостоятельное изображение для слайда карусели. Визуальный сюжет: ${slide.visual || `${slide.headline}. ${slide.subtext}`}. Придумай отличающиеся от соседних слайдов сцену и композицию, сохрани только общую арт-дирекцию шаблона «${templateId}». ${carouselSlideIndicatorInstruction(indicatorMode, input.slideIndex, slides.length)}`;
     const generated = await createCarouselSlideImage(
       prompt,
       undefined,
@@ -220,10 +224,10 @@ export async function runCarouselSlideRegeneration(jobId: string, input: { gener
       `${jobId}-${input.slideIndex}`,
       { aspectRatio: slide.aspectRatio ?? "4:3", outputFormat: slide.outputFormat ?? "png" },
       CAROUSEL_IMAGE_MODEL,
-      { headline: slide.headline, subtext: slide.subtext, templateId },
+      { headline: slide.headline, subtext: slide.subtext, templateId, indicatorMode, slideIndex: input.slideIndex, slideTotal: slides.length },
       usage => { imageUsage = usage; },
     );
-    slides[input.slideIndex] = { ...slide, imageUrl: generated.url, templateId };
+    slides[input.slideIndex] = { ...slide, imageUrl: generated.url, templateId, indicatorMode };
     const result = await recordCarouselSlideRegeneration({
       generationId: input.generationId,
       slidesJson: JSON.stringify(slides),

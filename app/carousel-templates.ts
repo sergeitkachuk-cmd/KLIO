@@ -7,6 +7,19 @@
  * lets professional mode, dialogue mode and the API use the same vocabulary.
  */
 export type CarouselTemplateId = "editorial" | "gradient-pop" | "paper-light" | "terminal-dev";
+export type CarouselSlideIndicatorMode = "numbers" | "dots";
+
+export function isCarouselSlideIndicatorMode(value: unknown): value is CarouselSlideIndicatorMode {
+  return value === "numbers" || value === "dots";
+}
+
+export function carouselSlideIndicatorInstruction(mode: CarouselSlideIndicatorMode | undefined, index: number, total: number): string {
+  const selectedMode = mode || "numbers";
+  if (selectedMode === "dots") {
+    return `Add a small, elegant slide-progress marker as part of the artwork itself, centered near the bottom inside the safe margin. Draw exactly ${total} simple dots in one row; fill/highlight dot ${index + 1} and keep the remaining dots outlined or muted. Keep the same position and style across every slide. This is an intentional navigation cue, not decorative noise. Do not add any other numbering.`;
+  }
+  return `Add a small, elegant slide number as part of the artwork itself, centered near the bottom inside the safe margin. Render exactly "${String(index + 1).padStart(2, "0")} / ${String(total).padStart(2, "0")}" with clear legible digits. Keep the same position and style across every slide. This is an intentional navigation cue, not decorative noise. Do not add dots.`;
+}
 
 export const MAX_CAROUSEL_SOURCE_CHARACTERS = 12_000;
 

@@ -1,8 +1,8 @@
 import { storageConfigured, uploadPublicationImage } from "./storage";
 import { imageContentType } from "./image-type";
 import { ImageInputError, ImageRelayUpgradeRequiredError } from "./image-generation-errors";
-import type { CarouselTemplateId } from "../../carousel-templates";
-import { carouselTemplateInstruction } from "../../carousel-templates";
+import type { CarouselSlideIndicatorMode, CarouselTemplateId } from "../../carousel-templates";
+import { carouselSlideIndicatorInstruction, carouselTemplateInstruction } from "../../carousel-templates";
 import { normalizeImageUsage, type ImageProviderUsage } from "./image-cost";
 
 export type ImageAspectRatio = "1:1" | "4:3" | "4:5" | "16:9" | "9:16";
@@ -565,7 +565,7 @@ export async function createCarouselSlideImage(
   requestId: string,
   options: ImageGenerationOptions,
   model: string,
-  slideCopy?: { headline: string; subtext: string; templateId: CarouselTemplateId },
+  slideCopy?: { headline: string; subtext: string; templateId: CarouselTemplateId; indicatorMode?: CarouselSlideIndicatorMode; slideIndex?: number; slideTotal?: number },
   onUsage?: ImageUsageHandler,
 ) {
   const guidedPrompt = prompt;
@@ -575,6 +575,7 @@ export async function createCarouselSlideImage(
         `Сгенерируй целое готовое изображение слайда: саму сцену, арт-дирекцию, сетку, типографику и текст. Не используй готовый фон и не накладывай текст отдельным этапом. Встрой на изображение точный русский текст. Заголовок напиши без замены букв, сокращений и дополнительных слов: «${slideCopy.headline}». Основной текст напиши точно и полностью: «${slideCopy.subtext}».`,
         `Выбранный стиль «${slideCopy.templateId}»: ${carouselTemplateInstruction(slideCopy.templateId)}`,
         "Текст является частью цельной композиции, а не отдельной большой плашкой: крупный ясный заголовок и короткий читаемый абзац, оба с безопасными полями и высоким контрастом. Используй настоящую кириллицу, без псевдотекста. Не добавляй другого текста, подписей, цифр и случайных символов.",
+        carouselSlideIndicatorInstruction(slideCopy.indicatorMode, slideCopy.slideIndex ?? 0, slideCopy.slideTotal ?? 1),
         reference?.kind === "logo" ? CAROUSEL_LOGO_REFERENCE_INSTRUCTION : "",
       ].filter(Boolean).join("\n\n")
     : guidedPrompt;

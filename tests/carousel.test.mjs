@@ -167,6 +167,7 @@ test("carousel debits exactly one generation per slide and saves one row with sl
   assert.equal(saved.length, 3);
   assert.deepEqual(saved.map(s => s.aspectRatio), ["1:1", "1:1", "1:1"]);
   assert.deepEqual(saved.map(s => s.outputFormat), ["png", "png", "png"]);
+  assert.deepEqual(saved.map(s => s.indicatorMode), ["numbers", "numbers", "numbers"]);
   assert.deepEqual(saved.map(s => s.headline), ["Заголовок 1", "Заголовок 2", "Заголовок 3"]);
   assert.ok(saved.every(s => s.imageUrl.startsWith("https://cdn.example.invalid/")));
 
@@ -215,6 +216,28 @@ test("carousel reads all 3500 source characters and gives every slide its own fu
   assert.ok(copies.every(copy => copy && copy.headline && copy.subtext));
   assert.equal(copies[1].subtext, "Первый этап теряет важные данные, и команда исправляет последствия вместо причины.");
   assert.deepEqual(references, [undefined, undefined, undefined]);
+});
+
+test("carousel dots mark each slide in the generated artwork and are saved for later regeneration", async t => {
+  const h = await createCarouselHarness();
+  t.after(() => h.close());
+  await h.seedAccount();
+  h.setAi(async () => ({ slides: slides(3) }));
+  const prompts = [];
+  h.setGenerateImage(async prompt => {
+    prompts.push(prompt);
+    return { url: `https://cdn.example.invalid/dots-${prompts.length}.png`, bytes: new Uint8Array([1]), contentType: "image/png" };
+  });
+
+  const input = { text: "РљР°СЂСѓСЃРµР»СЊ РїСЂРѕ СЃС†РµРЅР°СЂРёР№ РІРёРґРµРѕСЃСЉС‘РјРєРё.", slideCount: 3, indicatorMode: "dots", baseUrl: "http://127.0.0.1:3027" };
+  const job = await h.claimJob(input);
+  await h.runCarouselGeneration(job.id, input, h.owner);
+
+  assert.match(prompts[0], /Draw exactly 3 simple dots.*highlight dot 1/s);
+  assert.match(prompts[1], /Draw exactly 3 simple dots.*highlight dot 2/s);
+  assert.match(prompts[2], /Draw exactly 3 simple dots.*highlight dot 3/s);
+  const saved = JSON.parse((await h.generations())[0].slidesJson);
+  assert.deepEqual(saved.map(slide => slide.indicatorMode), ["dots", "dots", "dots"]);
 });
 
 test("each slide after the first is generated without inheriting the previous slide image", async t => {

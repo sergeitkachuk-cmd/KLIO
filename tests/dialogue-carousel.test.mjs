@@ -11,13 +11,14 @@ test("carousel quota is reserved once on duplicate sends and errors refund every
   const h = await createDialogueHarness(); t.after(() => h.close());
   let release;
   h.setAi(() => new Promise(resolve => { release = resolve; }));
-  const thread = await h.create(); const request = payload(thread);
+  const thread = await h.create(); const request = payload(thread, { settings: { slideCount: 3, indicatorMode: "dots" } });
   await h.post(request); await h.post(request);
   assert.equal((await h.account()).generationsUsed, 3);
   assert.equal(h.calls(), 1);
   h.setCarouselImage(async () => { throw new Error("Image provider unavailable"); });
   release(slides());
   const failed = await h.settled(thread.id);
+  assert.match(h.carouselCalls[0][0], /Draw exactly 3 simple dots.*highlight dot 1/s);
   assert.equal(failed.status, "failed");
   assert.equal((await h.account()).generationsUsed, 0);
   assert.equal((await h.account()).lifetimeGenerationsUsed, 0);

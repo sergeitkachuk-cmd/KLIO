@@ -17,6 +17,15 @@
   line-height: 1.6;
 }
 
+/* Editable copy should read consistently across generators, briefs, SEO,
+   profile, archive, publication, adaptation, and image settings. Keep the
+   dedicated headline fields and dialogue composer at their own scale. */
+.workspace-shell textarea:not(.klio-aui-input):not(.result-title):not(.adaptation-result-title):not(.archive-editor-title) {
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.55;
+}
+
 .workspace-shell .workspace-content :is(.field > span, .field-label-help, .profile-field-heading label) {
   font-size: 14px;
   font-weight: 500;

@@ -1,5 +1,5 @@
 import { TONE_PLANS } from "./content-plans";
-import { DEFAULT_CAROUSEL_TEMPLATE, type CarouselTemplateId } from "./carousel-templates";
+import { DEFAULT_CAROUSEL_TEMPLATE, type CarouselSlideIndicatorMode, type CarouselTemplateId } from "./carousel-templates";
 
 export { CAROUSEL_TEMPLATE_OPTIONS } from "./carousel-templates";
 export type { CarouselTemplateId } from "./carousel-templates";
@@ -91,6 +91,7 @@ export type GenerationSettings = {
   imageKind: string;
   carouselSlideCount: string;
   carouselTemplate?: CarouselTemplateId;
+  carouselIndicatorMode?: CarouselSlideIndicatorMode;
   imageTextMode?: string;
   imageText?: string;
   logoPlacement?: string;
@@ -103,6 +104,7 @@ export const DEFAULT_GENERATION_SETTINGS: GenerationSettings = {
   imageAspectRatio: "4:3", imageOutputFormat: "png", imageStyle: "", useLogo: false,
   imageKind: "single", carouselSlideCount: "5",
   carouselTemplate: DEFAULT_CAROUSEL_TEMPLATE,
+  carouselIndicatorMode: "numbers",
   imageTextMode: "auto", imageText: "", logoPlacement: "scene", logoPosition: "bottom-right", authorPosition: "brand",
 };
 
@@ -126,6 +128,7 @@ export function settingsForTool(tool: string, settings: Partial<GenerationSettin
     ...(tool === "carousel" ? {
       slideCount: settings.carouselSlideCount || "5",
       templateId: settings.carouselTemplate || DEFAULT_CAROUSEL_TEMPLATE,
+      indicatorMode: settings.carouselIndicatorMode || "numbers",
     } : {}),
   };
   return {};
