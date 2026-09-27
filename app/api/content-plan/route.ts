@@ -224,7 +224,11 @@ const PLAN_LSI_LIMIT = 4;
 const PLAN_SEMANTICS_LIMIT = 24;
 const PLAN_COMPETITOR_INSIGHTS_LIMIT = 5;
 const PLAN_EXISTING_TITLES_LIMIT = 24;
-const PLAN_WEBSITE_SNAPSHOT_LIMIT = 42_000;
+// The crawler still reads the full site, but the generation prompt receives
+// a bounded excerpt so one large site cannot make the provider reject the
+// whole content-plan request with HTTP 413.
+const PLAN_WEBSITE_SNAPSHOT_LIMIT = 24_000;
+const PLAN_INDUSTRY_SITE_SNAPSHOT_LIMIT = 12_000;
 const CONTENT_PLAN_TIMEOUT_MS = 120_000;
 // Titles from completed plans older than this stop being a hard "never
 // again" block and become soft context instead (still told to the model,
@@ -764,7 +768,9 @@ function planClusterCap(requestedCount: number) {
 // it never prevents a content plan from being created.
 async function inferContentPlanIndustryField(brand: BrandInput, website: Awaited<ReturnType<typeof readWebsiteContext>> | null, ownerEmail: string, existingField: string): Promise<string> {
   const brandContext = [brand.description, brand.positioning, brand.advantages, brand.proof].filter(Boolean).join("\n").slice(0, 2000);
-  const siteText = website && website.status === "loaded" ? website.text : "";
+  const siteText = website && website.status === "loaded"
+    ? website.text.slice(0, PLAN_INDUSTRY_SITE_SNAPSHOT_LIMIT)
+    : "";
   // Nothing beyond what's already in existingField to check it against —
   // an AI call here could only guess, not verify, so skip it.
   if (!brandContext && !siteText) return existingField;
@@ -772,7 +778,10 @@ async function inferContentPlanIndustryField(brand: BrandInput, website: Awaited
     const call = await callAiModel<{ industry: string; keywords: string[] }>({
       operation: "infer_content_plan_industry",
       providerOverride: "openai",
-      modelOverride: modelForProvider("openai", "UTILITY"),
+      // Industry inference is part of content-plan research and must use the
+      // content-tier model accepted by the authenticated relay. Keeping the
+      // old utility override made every such request fail at the relay.
+      modelOverride: modelForProvider("openai", "CONTENT"),
       ownerEmail,
       schemaName: "klio_industry_keywords",
       schema: {
