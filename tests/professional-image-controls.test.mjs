@@ -33,7 +33,7 @@ function setup(overrides = {}) {
     setImageReferencePurpose: setResetValue("referencePurpose"), setImageEditMask: setResetValue("mask"), setImageReferenceError: setResetValue("referenceError"),
     setCarouselError: setResetValue("carouselError"), setCarouselResult: setResetValue("carouselResult"), setPendingCarouselSource: setResetValue("carouselSource"),
     setImageBusy: value => { state.busy = value; }, setImageError: value => { state.error = value; }, setImageStreamPreview: setResetValue("streamPreview"),
-    setImageResult: value => { state.result = value; }, setWorkspaceAccount: () => {},
+    setImageResult: value => { state.result = value; }, setImageResultRevealTick: setResetValue("imageResultRevealTick"), setWorkspaceAccount: () => {},
     setWorkspaceHistory: updater => { state.history = updater(state.history); }, openModule: value => { state.module = value; },
     crypto: { randomUUID }, safeJson: response => response.json(),
     fetch: async (url, init) => { state.requests.push({ url, body: JSON.parse(init.body) }); return Response.json({ generation: { id: "new-image", imageUrl: "/image.png" }, account: {} }); },

@@ -2,7 +2,7 @@
 .klio-aui-viewport { display:flex; flex:1; flex-direction:column; overflow-y:auto; overscroll-behavior:contain; min-width:0; padding:0 24px; scrollbar-width:thin; }
 .klio-aui-messages,.klio-aui-footer,.klio-aui-welcome { width:100%; max-width:760px; margin-inline:auto; min-width:0; }
 .klio-aui-messages { flex:1 0 auto; padding-top:20px; }
-.klio-aui-message { margin:0 0 28px; font-size:15px; font-weight:400; line-height:1.65; overflow-wrap:anywhere; }
+.klio-aui-message { margin:0 0 28px; font-size:16px; font-weight:400; line-height:1.65; overflow-wrap:anywhere; }
 .klio-aui-message.is-user { display:flex; justify-content:flex-end; }
 .klio-aui-message.is-user .klio-aui-message-text { max-width:85%; padding:10px 18px; border-radius:22px; background:var(--ck-panel); white-space:pre-wrap; }
 .klio-aui-markdown > :first-child { margin-top:0; }
@@ -111,7 +111,7 @@
   .klio-aui-footer::before { top:24px; border-radius:24px 24px 0 0; clip-path:inset(0 round 24px 24px 0 0); }
   .klio-aui-footer > .klio-aui-to-bottom { top:-44px; right:auto; left:calc(50% - 20px); width:40px; height:40px; }
   .klio-aui-welcome h1 { font-size:25px; }
-  .klio-aui-message { font-size:14px; margin-bottom:22px; line-height:1.65; }
+  .klio-aui-message { font-size:15px; margin-bottom:22px; line-height:1.65; }
   .klio-aui-message.is-user .klio-aui-message-text { max-width:92%; }
   .klio-aui-card { padding:12px; }
   .klio-aui-suggestions { gap:6px; }

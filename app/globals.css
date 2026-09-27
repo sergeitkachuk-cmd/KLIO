@@ -9155,7 +9155,11 @@ footer nav a {
 }
 
 .generator-accent-field textarea {
-  min-height: 94px;
+  min-height: 82px;
+  max-height: 220px;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.45;
   resize: vertical;
 }
 
