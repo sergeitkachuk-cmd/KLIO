@@ -23675,12 +23675,9 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 .image-generator-logo-suggest{display:inline-flex;align-items:center;gap:6px;width:100%;margin-top:10px;padding:0;border:0;background:none;color:var(--acid);font:inherit;font-size:13px;font-weight:600;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
 .image-generator-form p,.image-generator-preview p{margin:0;color:#bec9d8;font-size:14px;line-height:1.5}
 .image-generator-preview>img{display:block;width:100%;height:auto;max-height:680px;object-fit:contain;border-radius:12px}
-/* Kept to one row, not wrapped (site owner: "некрасиво, когда они на
-   несколько строк распадаются") - three full-size .button.ghost easily
-   overflow this panel's width. Smaller/tighter buttons fit more often;
-   horizontal scroll is the fallback for whatever still doesn't, instead of
-   ever breaking onto a second line. */
-.image-generator-preview>div:not(.image-generator-empty){display:flex;flex-wrap:nowrap;gap:8px;margin-top:16px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+/* Non-carousel result actions stay in their own horizontal strip. Carousel
+   slides use a separate two-column card grid below. */
+.image-generator-preview>div:not(.image-generator-empty):not(.image-generator-carousel-slides){display:flex;flex-wrap:nowrap;gap:8px;margin-top:16px;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .image-generator-preview>div:not(.image-generator-empty)>.button{flex:0 0 auto;min-height:38px;padding:0 14px;font-size:13px;white-space:nowrap}
 .image-generator-preview>p{margin-top:14px}
 .image-generator-result-trigger{display:block;padding:0;border:0;background:none;cursor:zoom-in;width:100%}
@@ -23708,8 +23705,10 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 .image-generator-carousel-slide{display:flex;min-width:0;flex-direction:column;gap:8px;padding:10px;border:1px solid #34425a;border-radius:12px;background:#101f37}
 .image-generator-carousel-slide .image-generator-result-trigger{display:block;overflow:hidden;width:100%;padding:0;aspect-ratio:1/1;border-radius:8px;background:#08182c}
 .image-generator-carousel-slide img{display:block;width:100%;height:100%;object-fit:contain}
-.image-generator-carousel-slide-actions{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:auto}
-.image-generator-carousel-slide .button{box-sizing:border-box;justify-content:center;width:auto;min-width:0;max-width:100%;min-height:34px;padding:6px 10px;font-size:12px;line-height:1.2;text-align:center;white-space:nowrap}
+.image-generator-carousel-slide-actions{display:grid;grid-template-columns:repeat(2,38px);align-items:center;justify-content:start;gap:6px;margin-top:auto}
+.image-generator-carousel-slide .button{box-sizing:border-box;display:inline-flex;width:38px;min-width:38px;height:38px;min-height:38px;align-items:center;justify-content:center;padding:8px;border-radius:50%;font-size:0;line-height:1}
+.image-generator-carousel-slide .button svg{width:18px;height:18px}
+.image-generator-carousel-slide-actions small{grid-column:1/-1;color:#aebbd0;font-size:10px;line-height:1.2}
 .carousel-slide-regeneration{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
 .carousel-slide-regeneration small{color:#aebbd0;font-size:10px;line-height:1}
 .image-generator-carousel-slide b{font-size:15px;font-weight:700;line-height:1.35;color:#eef2fa}
@@ -23762,9 +23761,10 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 [data-theme="light"] .image-generator-carousel-slide img{background:#f2f5fa}
 [data-theme="light"] .image-generator-carousel-slide b{color:#14253f}
 [data-theme="light"] .image-generator-carousel-slide.is-regenerating{border-color:#7b9fcf;box-shadow:0 0 0 1px rgba(87,131,190,.2),0 8px 24px rgba(49,78,116,.12)}
-[data-theme="light"] .carousel-lightbox-regeneration small,[data-theme="light"] .carousel-slide-regeneration small{color:#60738c}
+[data-theme="light"] .carousel-lightbox-regeneration small,[data-theme="light"] .carousel-slide-regeneration small,[data-theme="light"] .image-generator-carousel-slide-actions small{color:#60738c}
 @media(max-width:750px){.image-generator-studio-steps{display:flex;grid-template-columns:none;gap:8px;overflow-x:auto;padding:16px 16px 0;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}.image-generator-studio-steps>div{flex:0 0 min(82vw,240px);scroll-snap-align:start}.image-generator-mode-switch{display:flex;gap:8px;overflow-x:auto;padding:16px 16px 0;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}.image-generator-mode-switch button{flex:0 0 min(78vw,250px);scroll-snap-align:start}.image-generator-layout{grid-template-columns:1fr;padding:16px}.image-generator-form,.image-generator-preview{padding:18px}.image-generator-empty{min-height:220px}.image-generator-reference-actions{align-items:stretch;flex-direction:column}.image-generator-reference-actions .button,.image-generator-reference-upload{justify-content:center;width:100%}.image-generator-reference-selected{align-items:stretch;flex-direction:column}.image-generator-reference-selected>img{width:100%;height:160px}.image-generator-reference-selected .module-select{min-width:0}.image-generator-style-picker{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;margin:0 -2px;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}.image-generator-style-picker button{flex:0 0 148px;scroll-snap-align:start}.image-generator-template-picker{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;margin:0 -2px;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}.image-generator-template-picker button{flex:0 0 164px;scroll-snap-align:start}}
-@media(max-width:750px){.image-generator-preview>.image-generator-carousel-slides{grid-template-columns:1fr}.carousel-lightbox-actions{align-items:stretch;flex-direction:column}.carousel-lightbox-actions>.button,.carousel-lightbox-regeneration{width:100%;max-width:320px;margin-inline:auto}}
+@media(max-width:750px){.image-generator-preview>.image-generator-carousel-slides{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.image-generator-carousel-slide{padding:8px}.image-generator-carousel-slide-actions{grid-template-columns:repeat(2,36px);gap:5px}.image-generator-carousel-slide .button{width:36px;min-width:36px;height:36px;min-height:36px}.carousel-lightbox-actions{align-items:stretch;flex-direction:column}.carousel-lightbox-actions>.button,.carousel-lightbox-regeneration{width:100%;max-width:320px;margin-inline:auto}}
+@media(max-width:750px){.image-generator-logo-toggle{min-height:52px;gap:12px;padding:14px;font-size:14px}.image-generator-logo-toggle input{flex-basis:22px;width:22px;height:22px}}
 
 /* Editable brief, comment, material and brand-profile text stays compact and
    regular-weight. Labels remain bold; only the text people type is softened. */
@@ -24382,11 +24382,36 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
   line-height: 1.5;
 }
 .image-generator-logo-toggle {
+  min-height: 48px;
+  align-items: center;
   padding: 12px 14px;
   border: 1px solid rgba(145, 164, 189, .3);
   border-radius: 12px;
   font-size: 14px;
   line-height: 1.4;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.image-generator-logo-toggle input {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.image-generator-logo-toggle.is-disabled {
+  cursor: not-allowed;
+  opacity: .72;
+}
+.image-generator-logo-toggle.is-disabled input { cursor: not-allowed; }
+.image-generator-logo-toggle-note {
+  display: block;
+  margin-top: -8px;
+  color: #aebbd0;
+  font-size: 12px;
+  line-height: 1.45;
 }
 :root[data-theme="light"] .image-generator-form,
 :root[data-theme="light"] .image-generator-preview {
@@ -24406,6 +24431,7 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
   color: #263b52;
   background: #e9eef3;
 }
+:root[data-theme="light"] .image-generator-logo-toggle-note { color: #60738c; }
 :root[data-theme="light"] .image-generator-advanced,
 :root[data-theme="light"] .image-generator-reference-selected {
   border-color: #cbd5df;

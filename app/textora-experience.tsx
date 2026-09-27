@@ -1482,7 +1482,7 @@ function nameInitials(value: string) {
   return (parts.slice(0, 2).map((item) => item[0]?.toLocaleUpperCase("ru-RU") || "").join("") || "К").slice(0, 2);
 }
 
-function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" | "erase" | "sun" | "moon" | "home" | "building" | "list" | "search" | "barChart" | "calendar" | "folder" | "image" | "telegram" | "trash" }) {
+function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" | "erase" | "sun" | "moon" | "home" | "building" | "list" | "search" | "barChart" | "calendar" | "folder" | "image" | "telegram" | "trash" | "download" | "refresh" }) {
   const paths = {
     arrow: <><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></>,
     spark: <><path d="m12 2 1.7 5.3L19 9l-5.3 1.7L12 16l-1.7-5.3L5 9l5.3-1.7L12 2Z"/><path d="m5 16 .7 2.3L8 19l-2.3.7L5 22l-.7-2.3L2 19l2.3-.7L5 16Z"/></>,
@@ -1515,6 +1515,8 @@ function Icon({ name }: { name: "arrow" | "spark" | "check" | "copy" | "edit" | 
     // to a second (site owner request), same reasoning as the calendar
     // chip/publications-badge passes above.
     trash: <><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6"/><path d="M14 11v6"/></>,
+    download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></>,
+    refresh: <><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5.64 18.36A9 9 0 0 0 20 12"/><path d="M4 12a9 9 0 0 1 14.36-6.36L20 7"/></>,
   };
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
@@ -7174,7 +7176,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   />}
                 </div>
                 {useBrand && activeBrandId && (brand.logoKey ? (
-                  <label className="image-generator-logo-toggle"><input type="checkbox" checked={useLogoInImage} disabled={Boolean(imageEditMask)} onChange={(event) => setUseLogoInImage(event.target.checked)}/> Использовать логотип бренда на картинке</label>
+                  <>
+                    <label className={`image-generator-logo-toggle${imageEditMask ? " is-disabled" : ""}`} title={imageEditMask ? "Сначала очистите выделение кистью" : undefined}>
+                      <input type="checkbox" checked={useLogoInImage} disabled={Boolean(imageEditMask)} onChange={(event) => setUseLogoInImage(event.target.checked)}/>
+                      <span>Использовать логотип бренда на картинке</span>
+                    </label>
+                    {imageEditMask && <small className="image-generator-logo-toggle-note">Чтобы добавить логотип, сначала очистите выделение кистью.</small>}
+                  </>
                 ) : (
                   <button type="button" className="image-generator-logo-suggest" onClick={() => openModule("brand")}>Загрузить логотип бренда →</button>
                 ))}
@@ -7252,11 +7260,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                       <button type="button" className="image-generator-result-trigger" style={{ aspectRatio: typeof slide.aspectRatio === "string" && /^\d+:\d+$/.test(slide.aspectRatio) ? slide.aspectRatio.replace(":", " / ") : "1 / 1" }} aria-label={`Открыть слайд ${index + 1}: ${slide.headline}`} onClick={() => setCarouselLightboxIndex(index)}><Image src={slide.imageUrl} alt={slide.headline} width={480} height={480} unoptimized/></button>
                       <b>{slide.headline}</b>
                       <div className="image-generator-carousel-slide-actions">
-                        <a className="button ghost" href={slide.imageUrl} download>Скачать {imageFormatLabel(slide.imageUrl)}</a>
-                        <div className="carousel-slide-regeneration">
-                          <button className="button ghost carousel-slide-regenerate" type="button" onClick={() => void regenerateCarouselSlide(index)} disabled={carouselSlideBusy !== null || carouselBusy || workspaceAccount.generationsRemaining < 1}>{carouselSlideBusy === index ? "Обновляем слайд…" : "Перегенерировать"}</button>
-                          <small>1 генерация</small>
-                        </div>
+                        <a className="button ghost" href={slide.imageUrl} download aria-label={`Скачать слайд ${index + 1} в формате ${imageFormatLabel(slide.imageUrl)}`} title={`Скачать ${imageFormatLabel(slide.imageUrl)}`}><Icon name="download"/></a>
+                        <button className="button ghost carousel-slide-regenerate" type="button" onClick={() => void regenerateCarouselSlide(index)} disabled={carouselSlideBusy !== null || carouselBusy || workspaceAccount.generationsRemaining < 1} aria-label={`Перегенерировать слайд ${index + 1}`} aria-busy={carouselSlideBusy === index} title="Перегенерировать слайд"><Icon name="refresh"/></button>
+                        <small>1 генерация</small>
                       </div>
                     </div>)}
                   </div>
