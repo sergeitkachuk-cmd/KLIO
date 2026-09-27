@@ -47,6 +47,11 @@ test("relay forwards authenticated bounded dialogue requests without exposing it
   const legacyResult = await fetch(endpoint, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: legacyBody });
   assert.equal(legacyResult.status, 200);
   assert.equal(JSON.parse(calls[1].options.body).model, "gpt-5.6-luna");
+
+  const nanoBody = JSON.stringify({ model: "gpt-5.4-nano", store: false, max_output_tokens: 100, input: "Привет", instructions: "Ответь" });
+  const nanoResult = await fetch(endpoint, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: nanoBody });
+  assert.equal(nanoResult.status, 200);
+  assert.equal(JSON.parse(calls[2].options.body).model, "gpt-5.4-nano");
 });
 
 test("image service forwards the caller's size, quality and format instead of hardcoding them", async t => {

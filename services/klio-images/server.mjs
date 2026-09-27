@@ -29,7 +29,7 @@ function resolveSize(value) {
 const ALLOWED_QUALITY = new Set(["low", "medium", "high", "auto"]);
 const ALLOWED_FORMAT = new Set(["png", "jpeg", "webp"]);
 const ALLOWED_BACKGROUND = new Set(["auto", "transparent", "opaque"]);
-const ALLOWED_TEXT_MODELS = new Set(["gpt-5.6-luna", "gpt-6-luna"]);
+const ALLOWED_TEXT_MODELS = new Set(["gpt-5.4-nano", "gpt-5.6-luna", "gpt-6-luna"]);
 const ALLOWED_IMAGE_TYPE = new Set(["image/png", "image/jpeg", "image/webp"]);
 const MIN_MASK_PIXELS = 655_360;
 const MAX_MASK_PIXELS = 8_294_400;
