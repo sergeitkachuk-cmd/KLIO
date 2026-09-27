@@ -931,7 +931,56 @@ body:has(.workspace-shell.is-dialogue:not([data-active-module="brand"]))>.module
 .workspace-shell.is-dialogue .workspace-sidebar nav a i{color:var(--dialogue-muted)!important;background:transparent!important;box-shadow:none}
 .workspace-shell.is-dialogue .workspace-sidebar nav a b{text-transform:none;font-size:14px;letter-spacing:0}
 .workspace-shell.is-dialogue .workspace-sidebar .nav-coming-soon,.workspace-shell.is-dialogue .workspace-quota-stage,.workspace-shell.is-dialogue .workspace-heading,.workspace-shell.is-dialogue .workspace-launch-banner{display:none}
+
+/* Redesigned mobile bottom nav (globals.css's .workspace-sidebar nav - a
+   floating navy capsule with a glowing active tab, replacing a flat
+   full-bleed black bar) loses its item styling in dialogue mode: the
+   !important rules just above strip every nav a back to transparent/flat,
+   so dialogue mode showed the new floating capsule with the OLD flat
+   buttons inside it (site owner: "а чего не переделал нижнее меню в
+   диалоговом режиме - оно там тоже есть"). Restored here, mobile-only
+   (820px matches globals.css's own breakpoint for when this nav becomes
+   the fixed bottom bar - dialogue mode's desktop sidebar list keeps its
+   existing flat rows, not part of what was asked), using colours already
+   established as "this is selected" elsewhere in this theme (same
+   #254263/#cbdbec pair as .brand-tabs button.active and
+   .workspace-mode-switch button[aria-pressed] above - a dark-navy fill +
+   white text in light mode, a pale fill + dark text in dark mode) rather
+   than the professional sidebar's own --sidebar-accent blue. */
+@media (max-width: 820px) {
+  [data-theme="dark"] .workspace-shell.is-dialogue .workspace-sidebar nav a {
+    background: rgba(255, 255, 255, 0.045) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+  }
+  [data-theme="light"] .workspace-shell.is-dialogue .workspace-sidebar nav a {
+    background: rgba(15, 23, 42, 0.035) !important;
+    border-color: rgba(15, 23, 42, 0.12) !important;
+  }
+
+  [data-theme="dark"] .workspace-shell.is-dialogue .workspace-sidebar nav a.active {
+    border-color: transparent !important;
+    background: linear-gradient(180deg, #d7e4f1, #cbdbec) !important;
+    box-shadow: 0 0 0 1px rgba(203, 219, 236, 0.55), 0 6px 16px rgba(203, 219, 236, 0.3) !important;
+  }
+  [data-theme="dark"] .workspace-shell.is-dialogue .workspace-sidebar nav a.active i,
+  [data-theme="dark"] .workspace-shell.is-dialogue .workspace-sidebar nav a.active b {
+    color: #17283a !important;
+  }
+
+  [data-theme="light"] .workspace-shell.is-dialogue .workspace-sidebar nav a.active {
+    border-color: transparent !important;
+    background: linear-gradient(180deg, #2c4f78, #254263) !important;
+    box-shadow: 0 0 0 1px rgba(37, 66, 99, 0.55), 0 6px 16px rgba(37, 66, 99, 0.35) !important;
+  }
+  [data-theme="light"] .workspace-shell.is-dialogue .workspace-sidebar nav a.active i,
+  [data-theme="light"] .workspace-shell.is-dialogue .workspace-sidebar nav a.active b {
+    color: #fff !important;
+  }
+}
+
 .workspace-shell.is-dialogue .workspace-history,.workspace-shell.is-dialogue .publications{background:var(--dialogue-paper)!important;box-shadow:none!important;border:0!important;color:var(--dialogue-ink)}
+.workspace-shell.is-dialogue .workspace-history-head h2{font-size:30px;letter-spacing:-.5px}
+.workspace-shell.is-dialogue .workspace-history-head p,.workspace-shell.is-dialogue .workspace-history-head span{color:var(--dialogue-muted)!important;font-size:13px}
 .workspace-shell.is-dialogue .workspace-history-filters button{background:var(--dialogue-soft)!important;border-color:var(--dialogue-line)!important;color:var(--dialogue-ink)!important;box-shadow:none;border-radius:9px}
 .workspace-shell.is-dialogue .workspace-history-filters button.active{background:var(--dialogue-line)!important}
 .workspace-shell.is-dialogue .material-card,.workspace-shell.is-dialogue .material-card.is-editor{background:var(--dialogue-paper)!important;color:var(--dialogue-ink)!important;box-shadow:none!important;border:1px solid var(--dialogue-line)!important;border-radius:12px;padding:20px}
