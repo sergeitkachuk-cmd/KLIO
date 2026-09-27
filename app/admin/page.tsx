@@ -118,6 +118,7 @@ const OPERATION_LABELS: Record<AiOperation, string> = {
   generate_quick_material: "Быстрый ввод",
   adapt_text: "Редактор адаптации",
   generate_content_plan: "Контент-план",
+  research_content_plan_web: "Контент-план: веб-поиск GPT",
   revise_content_plan: "Контент-план: замена тем",
   generate_carousel_slides: "Карусель: разбивка на слайды",
   research_semantics: "Семантика",
@@ -337,6 +338,16 @@ export default async function AdminPage() {
       count: sql<number>`count(*)`,
     }).from(socialChannels).groupBy(socialChannels.ownerEmail, socialChannels.platform),
   ]);
+  const failedContentPlanJobsRows = await db.select({
+    id: asyncJobs.id,
+    ownerEmail: asyncJobs.ownerEmail,
+    errorMessage: asyncJobs.errorMessage,
+    createdAt: asyncJobs.createdAt,
+    updatedAt: asyncJobs.updatedAt,
+  }).from(asyncJobs).where(and(
+    eq(asyncJobs.kind, "content_plan"),
+    eq(asyncJobs.status, "failed"),
+  )).orderBy(desc(asyncJobs.updatedAt)).limit(30);
   const imageUsageRequestIds = new Set(recentImageUsage.map((row) => row.requestId).filter((value): value is string => Boolean(value)));
   const recentLegacyImageRows = recentImageRows.filter((row) => {
     if (imageUsageRequestIds.has(row.id)) return false;
@@ -654,6 +665,36 @@ export default async function AdminPage() {
                 </tr>
               ))}
               {!recentActivityRows.length && <tr><td colSpan={10} className="admin-empty-row">Пока нет вызовов ИИ.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    ),
+  });
+  sections.push({
+    id: "failed-content-plans",
+    label: "Ошибки контент-планов",
+    badge: String(failedContentPlanJobsRows.length),
+    content: (
+      <section className="admin-block">
+        <div className="admin-block-heading">
+          <div>
+            <h2>Неудачные сборки контент-плана</h2>
+            <p>Ошибки полной сборки после повторных попыток. Отдельные вызовы модели отображаются в разделе последних вызовов ИИ.</p>
+          </div>
+        </div>
+        <div className="admin-table-scroll">
+          <table className="admin-table">
+            <thead><tr><th>Время</th><th>Пользователь</th><th>Ошибка сборки</th></tr></thead>
+            <tbody>
+              {failedContentPlanJobsRows.map((row) => (
+                <tr key={row.id}>
+                  <td>{formatDate(row.updatedAt || row.createdAt)}</td>
+                  <td>{row.ownerEmail}</td>
+                  <td className="admin-ai-error">{row.errorMessage || "Сборка завершилась ошибкой без текста."}</td>
+                </tr>
+              ))}
+              {!failedContentPlanJobsRows.length && <tr><td colSpan={3} className="admin-empty-row">Неудачных сборок контент-плана пока нет.</td></tr>}
             </tbody>
           </table>
         </div>

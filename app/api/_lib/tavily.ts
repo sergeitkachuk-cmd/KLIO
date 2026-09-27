@@ -4,11 +4,6 @@ export type TavilyResearch = {
   query: string;
   provider?: "tavily" | "yandex";
   results: Array<{ title: string; url: string; content: string }>;
-  // Only meaningful for researchContentPlanWeb's currentIndustryFocus case:
-  // true when the recency-scoped news search itself found something,
-  // false when it came back empty and this is the general-mode fallback
-  // instead (see researchContentPlanWeb) — lets the caller's dataNote say
-  // which actually happened rather than treating both the same.
   freshNews?: boolean;
 };
 
@@ -263,7 +258,7 @@ export async function researchContentPlanWeb(topic: string, geography: Geography
 
 // Writing needs substantive facts, not topic-discovery snippets. Keep one
 // bounded external search with up to three relevant passages per source.
-// Existing content-plan/research consumers retain their own small budgets.
+// Article research uses a small, bounded budget and falls back to Yandex.
 export async function researchMaterialWeb(topic: string, geography: Geography[]): Promise<TavilyResearch | null> {
   const geographyHint = geography.slice(0, 2).map((item) => clean(item.label, 60)).join(", ");
   const query = `${clean(topic, 450)} ${geographyHint} первоисточники, подтверждённые факты, исследования, конкретные объяснения и практические нюансы`;
@@ -271,10 +266,9 @@ export async function researchMaterialWeb(topic: string, geography: Geography[])
     ?? yandexResearch(query, 5);
 }
 
-// For "КЛИО Глубина" (deepen) specifically: researchContentPlanWeb's query
-// ("актуальная информация, вопросы аудитории и критерии выбора") is tuned
-// for discovering new content-plan topics, not for finding the concrete
-// numbers, criteria or standards an already-written draft is missing. A
+// For "КЛИО Глубина" (deepen) specifically, this query is tuned for finding
+// concrete numbers, criteria or standards an already-written draft is
+// missing, rather than generic topic discovery. A
 // generic marketing-style query kept surfacing generic marketing-style
 // pages, so the model had nothing specific to add and fell back to noting
 // a gap in editorial_comment instead of actually filling it (site owner:

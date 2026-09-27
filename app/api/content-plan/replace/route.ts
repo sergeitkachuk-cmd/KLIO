@@ -1,5 +1,6 @@
 import { AiResponseError, openAiErrorResponse } from "../../_lib/openai-response";
 import { callAiModel } from "../../_lib/ai-router";
+import { modelForProvider } from "../../_lib/ai-config";
 import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../../_lib/workspace-account";
 
 type ReplacementPayload = {
@@ -177,6 +178,8 @@ export async function POST(request: Request) {
 
     const { result, model } = await callAiModel<ReplacementResult>({
       operation: "revise_content_plan",
+      providerOverride: "openai",
+      modelOverride: modelForProvider("openai", "CONTENT"),
       ownerEmail: identity.email,
       schemaName: "klio_content_plan_replacements",
       schema: replacementSchema(input.selectedItems.map((item) => item.id)),

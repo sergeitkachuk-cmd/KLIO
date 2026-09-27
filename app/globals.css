@@ -9616,6 +9616,78 @@ footer nav a {
   font-weight: 750;
 }
 
+.content-plan-save-status,
+.content-plan-research-sources {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 13px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.045);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.content-plan-save-status.status-failed,
+.content-plan-save-status.status-needs-brand {
+  border-color: rgba(255, 176, 89, 0.48);
+  color: #ffd4a6;
+  background: rgba(124, 63, 8, 0.18);
+}
+
+.content-plan-save-status button {
+  padding: 7px 11px;
+  border: 1px solid currentColor;
+  border-radius: 9px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.content-plan-save-status button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.content-plan-research-sources {
+  justify-content: flex-start;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.content-plan-research-sources > span {
+  flex: 0 0 100%;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.content-plan-research-sources a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  color: #9fc3ff;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.content-plan-research-sources a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.content-plan-research-sources a svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+}
+
 /* Same "real cards, real gaps" treatment as .content-plan-source-strip
    above, and written dark-native for the same reason: four stat cards
    sharing one seamed background used to read as a single stretched bar
@@ -20175,6 +20247,28 @@ input[type="radio"] {
 [data-theme="light"] .content-plan-note > i {
   background: rgba(53, 104, 212, 0.12);
   color: #2452b8;
+}
+
+[data-theme="light"] .content-plan-save-status,
+[data-theme="light"] .content-plan-research-sources {
+  border-color: rgba(15, 23, 42, 0.14);
+  color: rgba(13, 27, 49, 0.76);
+  background: #f2f5fa;
+}
+
+[data-theme="light"] .content-plan-save-status.status-failed,
+[data-theme="light"] .content-plan-save-status.status-needs-brand {
+  border-color: rgba(180, 83, 9, 0.3);
+  color: #8a3d0b;
+  background: #fff5e9;
+}
+
+[data-theme="light"] .content-plan-research-sources a {
+  color: #2452b8;
+}
+
+[data-theme="light"] .content-plan-research-sources a:hover {
+  color: #153b8b;
 }
 
 [data-theme="light"] .content-plan-summary article {

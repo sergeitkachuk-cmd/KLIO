@@ -191,6 +191,7 @@ type ContentPlanResult = {
   items: ContentPlanItem[];
   clusters: string[];
   dataNote: string;
+  researchSources?: Array<{ title: string; url: string }>;
 };
 
 type ContentPlanGoal = "mixed" | "seo" | "social" | "landing" | "ads";
@@ -1326,6 +1327,7 @@ function normalizeStoredContentPlanResult(value: unknown): ContentPlanResult | n
     items,
     clusters: Array.isArray(source.clusters) ? source.clusters.filter((item): item is string => typeof item === "string") : [...new Set(items.map((item) => item.cluster))],
     dataNote: typeof source.dataNote === "string" ? source.dataNote : "",
+    researchSources: Array.isArray(source.researchSources) ? source.researchSources.filter((item): item is { title: string; url: string } => Boolean(item && typeof item === "object" && typeof (item as { title?: unknown }).title === "string" && typeof (item as { url?: unknown }).url === "string")) : [],
   };
 }
 
@@ -1806,6 +1808,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // genuinely needs the real declaration before this point, not just
   // "before it runs".
   const [activeBrandId, setActiveBrandId] = useState("");
+  const activeBrandIdRef = useRef("");
   const [pubChannels, setPubChannels] = useState<PubChannel[]>([]);
   const [pubItems, setPubItems] = useState<PubItem[]>([]);
   const [pubChannelLimit, setPubChannelLimit] = useState(0);
@@ -2411,6 +2414,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [contentPlanResult, setContentPlanResult] = useState<ContentPlanResult>(emptyContentPlanResult);
   const [contentPlanMode, setContentPlanMode] = useState<ContentPlanMode>("idle");
   const [contentPlanBusy, setContentPlanBusy] = useState(false);
+  const [contentPlanArchiveStatus, setContentPlanArchiveStatus] = useState<"saving" | "saved" | "modified" | "failed" | "needs-brand" | null>(null);
   const [contentPlanError, setContentPlanError] = useState("");
   const [expandedPlanItem, setExpandedPlanItem] = useState<string | null>(null);
   const [contentPlanNeedsRefresh, setContentPlanNeedsRefresh] = useState(true);
@@ -3085,6 +3089,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         const selected = records.find((item) => item.id === remembered) ?? records[0];
         if (selected) applyWorkspaceBrand(selected);
         else {
+          activeBrandIdRef.current = "";
           setActiveBrandId("");
           window.localStorage.removeItem("clio-active-brand-id-v1");
           setBrand(emptyBrandProfile());
@@ -3529,12 +3534,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }
 
   function applyWorkspaceBrand(record: WorkspaceBrand) {
+    if (record.updatedAt) workspaceVersions.current.set(record.id, record.updatedAt);
     const snapshot = record.workspace ?? {};
     const semantics = snapshot.semantics ?? {};
     const competitorState = snapshot.competitors ?? {};
     const planState = snapshot.contentPlan ?? {};
     const adaptationState = snapshot.adaptation ?? {};
     setWorkspaceReady(false);
+    activeBrandIdRef.current = record.id;
     setActiveBrandId(record.id);
     setMaterialsFilter("all");
     setModuleMaterialSources({});
@@ -3577,6 +3584,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setContentPlanResult(planState.mode === "ai" && storedPlan ? storedPlan : emptyContentPlanResult);
     setContentPlanMode(planState.mode === "ai" && storedPlan ? "ai" : "idle");
     setContentPlanNeedsRefresh(planState.mode !== "ai" || planState.needsRefresh !== false);
+    setContentPlanArchiveStatus(null);
     setExpandedPlanItem(null);
     setContentPlanError("");
 
@@ -4394,6 +4402,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       const next = remaining[0];
       if (next) applyWorkspaceBrand(next);
       else {
+        activeBrandIdRef.current = "";
         setActiveBrandId("");
         window.localStorage.removeItem("clio-active-brand-id-v1");
         setBrand(emptyBrandProfile());
@@ -4801,9 +4810,34 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     return "PNG";
   }
 
-  async function saveModuleMaterial(type: SavedMaterialType, saveMode: "version" | "copy" = "version") {
-    if (!activeBrandId || materialSavingType) return;
-    const sourceId = moduleMaterialSources[type];
+  async function saveModuleMaterial(
+    type: SavedMaterialType,
+    saveMode: "version" | "copy" = "version",
+    options: {
+      brandId?: string | null;
+      sourceId?: string | null;
+      silent?: boolean;
+      allowDuringContentPlan?: boolean;
+      contentPlan?: { query: string; count: number; result: ContentPlanResult; mode: ContentPlanMode; needsRefresh: boolean };
+    } = {},
+  ): Promise<boolean> {
+    const saveBrandId = Object.prototype.hasOwnProperty.call(options, "brandId") ? options.brandId : activeBrandId;
+    const sourceId = Object.prototype.hasOwnProperty.call(options, "sourceId") ? options.sourceId : moduleMaterialSources[type];
+    if (materialSavingType || (contentPlanBusy && !options.allowDuringContentPlan)) {
+      if (!options.silent) showToast("Дождитесь завершения текущего действия.");
+      return false;
+    }
+    if (!saveBrandId) {
+      if (!options.silent) showToast("Выберите профиль бренда, чтобы сохранить материал.");
+      return false;
+    }
+    const plan = options.contentPlan ?? {
+      query: contentPlanQuery,
+      count: contentPlanCount,
+      result: contentPlanResult,
+      mode: contentPlanMode,
+      needsRefresh: contentPlanNeedsRefresh,
+    };
     const material = type === "semantics"
       ? {
         type,
@@ -4820,38 +4854,43 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         }
         : {
           type,
-          title: contentPlanResult.query || contentPlanQuery || "Контент‑план",
-          status: `${contentPlanProgress.ready} готово · ${contentPlanProgress.working} в работе`,
-          payload: { query: contentPlanQuery, count: contentPlanCount, result: contentPlanResult, mode: contentPlanMode, needsRefresh: contentPlanNeedsRefresh },
+          title: plan.result.query || plan.query || "Контент‑план",
+          status: `${plan.result.items.filter((item) => item.status === "Готово").length} готово · ${plan.result.items.filter((item) => item.status === "В работе").length} в работе`,
+          payload: { query: plan.query, count: plan.count, result: plan.result, mode: plan.mode, needsRefresh: plan.needsRefresh },
         };
 
     const hasResult = type === "semantics"
       ? semanticAnalysisReady
       : type === "competitors"
         ? competitorMode !== "example" && competitorResult.topics.length > 0
-        : contentPlanMode === "ai" && contentPlanResult.items.length > 0;
+        : plan.mode === "ai" && plan.result.items.length > 0;
     if (!hasResult) {
-      showToast("Сначала подготовьте результат модуля");
-      return;
+      if (!options.silent) showToast("Сначала подготовьте результат модуля");
+      return false;
     }
 
     setMaterialSavingType(type);
+    if (type === "content_plan" && activeBrandIdRef.current === saveBrandId) setContentPlanArchiveStatus("saving");
     try {
       const response = await fetch("/api/workspace", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "save_material",
-          material: { ...material, brandId: activeBrandId, sourceId, saveMode },
+          material: { ...material, brandId: saveBrandId, sourceId, saveMode },
         }),
       });
       const payload = await safeJson(response) as { error?: string; material?: SavedWorkspaceMaterial };
       if (!response.ok || !payload.material) throw new Error(payload.error || "Не удалось сохранить материал.");
       setWorkspaceMaterials((current) => [payload.material!, ...current.filter((item) => item.id !== payload.material!.id)].slice(0, 120));
-      setModuleMaterialSources((current) => ({ ...current, [type]: payload.material!.id }));
-      showToast(sourceId && saveMode === "version" ? `Версия ${payload.material.versionNumber} сохранена` : saveMode === "copy" ? "Материал сохранён отдельной копией" : "Материал добавлен в раздел «Материалы»");
+      if (activeBrandIdRef.current === saveBrandId) setModuleMaterialSources((current) => ({ ...current, [type]: payload.material!.id }));
+      if (type === "content_plan" && activeBrandIdRef.current === saveBrandId) setContentPlanArchiveStatus("saved");
+      if (!options.silent) showToast(sourceId && saveMode === "version" ? `Версия ${payload.material.versionNumber} сохранена` : saveMode === "copy" ? "Материал сохранён отдельной копией" : "Материал добавлен в раздел «Материалы»");
+      return true;
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Не удалось сохранить материал.");
+      if (type === "content_plan" && activeBrandIdRef.current === saveBrandId) setContentPlanArchiveStatus("failed");
+      if (!options.silent) showToast(error instanceof Error ? error.message : "Не удалось сохранить материал.");
+      return false;
     } finally {
       setMaterialSavingType(null);
     }
@@ -4893,6 +4932,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setContentPlanResult(storedResult);
       setContentPlanMode("ai");
       setContentPlanNeedsRefresh(Boolean(payload?.needsRefresh));
+      setContentPlanArchiveStatus("saved");
       setSelectedPlanItemIds([]);
       setPlanReplacements([]);
       openModule("content-plan");
@@ -5068,6 +5108,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     // module's query, which only happens via applyCurrentSemanticsForPlan
     // (i.e. actually pressing that button).
     const requestedQuery = contentPlanQuery.trim() || (semanticPlanBasisSelected ? semanticResult.primaryQuery || semanticQuery : "");
+    const saveBrandId = activeBrandId;
+    const saveSourceId = moduleMaterialSources.content_plan;
     const cleanQuery = requestedQuery || (useBrand ? brandComparisonTheme(effectiveBrand) : topic.trim());
     if (!cleanQuery) {
       setContentPlanError("Заполните профиль бренда или укажите тему контент‑плана.");
@@ -5140,6 +5182,20 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setPlanReplacementOpen(false);
       persistContentPlan({ query: requestedQuery, result, mode, needsRefresh: false });
       showToast(`${result.items.length} тем собраны в единую контентную систему`);
+      if (activeBrandIdRef.current === saveBrandId) setContentPlanArchiveStatus(saveBrandId ? "saving" : "needs-brand");
+      const saved = saveBrandId ? await saveModuleMaterial("content_plan", "version", {
+        brandId: saveBrandId,
+        sourceId: saveSourceId,
+        silent: true,
+        allowDuringContentPlan: true,
+        contentPlan: { query: requestedQuery, count: contentPlanCount, result, mode, needsRefresh: false },
+      }) : false;
+      if (!saved && !saveBrandId && activeBrandIdRef.current === saveBrandId) {
+        showToast("План готов. Выберите бренд, чтобы сохранить его в «Материалы».");
+      } else if (!saved && saveBrandId && activeBrandIdRef.current === saveBrandId) {
+        setContentPlanArchiveStatus("failed");
+        showToast("План готов, но не сохранился в «Материалы». Можно повторить сохранение под списком тем.");
+      }
     } catch (error) {
       setContentPlanError(error instanceof Error ? error.message : "Не удалось собрать контент‑план.");
     } finally {
@@ -5155,6 +5211,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setContentPlanResult(result);
     setContentPlanNeedsRefresh(false);
     persistContentPlan({ result });
+    if (moduleMaterialSources.content_plan) setContentPlanArchiveStatus("modified");
   }
 
   function togglePlanItemSelection(id: string) {
@@ -5234,6 +5291,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setPlanReplacements((current) => current.filter((item) => item.sourceId !== sourceId));
     setExpandedPlanItem(null);
     persistContentPlan({ result, needsRefresh: false });
+    if (moduleMaterialSources.content_plan) setContentPlanArchiveStatus("modified");
     showToast("Тема заменена, остальные строки плана сохранены");
   }
 
@@ -7417,7 +7475,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <article><span>Готово</span><b>{contentPlanProgress.ready}</b><small>отмечено редактором</small></article>
                 </div>
 
-                {contentPlanResult.dataNote && <div className="content-plan-note"><i>i</i><p>{contentPlanResult.dataNote}</p></div>}
+                {contentPlanArchiveStatus && <div className={`content-plan-save-status status-${contentPlanArchiveStatus}`} role="status" aria-live="polite">
+                  <span>{contentPlanArchiveStatus === "saving" ? "Сохраняем план в «Материалы»…" : contentPlanArchiveStatus === "saved" ? "План автоматически сохранён в «Материалы»." : contentPlanArchiveStatus === "modified" ? "В плане есть изменения. Сохраните новую версию в «Материалы»." : contentPlanArchiveStatus === "needs-brand" ? "План готов. Выберите бренд, чтобы сохранить его в «Материалы»." : "План готов, но сохранить его не удалось."}</span>
+                  {contentPlanArchiveStatus === "failed" && <button type="button" onClick={() => void saveModuleMaterial("content_plan")} disabled={materialSavingType === "content_plan"}>{materialSavingType === "content_plan" ? "Сохраняем…" : "Повторить сохранение"}</button>}
+                </div>}
+                {contentPlanResult.researchSources?.some((source) => /^https?:\/\//i.test(source.url)) && <nav className="content-plan-research-sources" aria-label="Источники веб-поиска">
+                  <span>Источники веб-поиска</span>
+                  {contentPlanResult.researchSources.filter((source) => /^https?:\/\//i.test(source.url)).slice(0, 8).map((source) => <a href={source.url} target="_blank" rel="noreferrer" key={source.url}>{source.title || source.url}<Icon name="arrow"/></a>)}
+                </nav>}
 
                 {/* Right above the (often long, 10-25 item) list so it's seen
                     immediately after the plan appears, not after scrolling
@@ -7457,8 +7522,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
                 <div className="content-plan-actions">
                   <div className="content-plan-toolbar-actions">
-                    <button type="button" className="button ghost" onClick={() => void saveModuleMaterial("content_plan")} disabled={materialSavingType === "content_plan"}>{materialSavingType === "content_plan" ? "Сохраняем…" : moduleMaterialSources.content_plan ? "Сохранить новую версию" : "Сохранить в материалы"}</button>
-                    {moduleMaterialSources.content_plan && <button type="button" className="button ghost" onClick={() => void saveModuleMaterial("content_plan", "copy")} disabled={materialSavingType === "content_plan"}>Копия</button>}
+                    <button type="button" className="button ghost" onClick={() => void saveModuleMaterial("content_plan")} disabled={contentPlanBusy || materialSavingType !== null}>{materialSavingType === "content_plan" ? "Сохраняем…" : moduleMaterialSources.content_plan ? "Сохранить новую версию" : "Сохранить в материалы"}</button>
+                    {moduleMaterialSources.content_plan && <button type="button" className="button ghost" onClick={() => void saveModuleMaterial("content_plan", "copy")} disabled={contentPlanBusy || materialSavingType !== null}>Копия</button>}
                     <button type="button" className="button ghost" onClick={exportContentPlan}><Icon name="arrow"/> Скачать план (CSV)</button>
                   </div>
                   <div className="content-plan-selection-bar">

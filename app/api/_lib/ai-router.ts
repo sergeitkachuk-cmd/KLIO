@@ -12,6 +12,7 @@ import {
   estimateCostUsd,
   type AiModelId,
   type AiOperation,
+  type AiProvider,
   type ReasoningEffort,
 } from "./ai-config";
 
@@ -21,7 +22,7 @@ import {
 // in the response, usage.input_tokens/output_tokens. That's why requestOnce
 // only branches on endpoint + api key below instead of needing a second
 // parser.
-const PROVIDER_ENDPOINTS: Record<ReturnType<typeof activeProvider>, string> = {
+const PROVIDER_ENDPOINTS: Record<AiProvider, string> = {
   openai: "https://api.openai.com/v1/responses",
   deepseek: "https://api.deepseek.com/v1/responses",
 };
@@ -42,6 +43,8 @@ function timeoutError() {
 
 type CallAiModelInput = {
   operation: AiOperation;
+  providerOverride?: AiProvider;
+  modelOverride?: AiModelId;
   instructions: string;
   input: string;
   // Some operations have a response size known from their user-selected
@@ -150,10 +153,13 @@ function extractUsage(response: unknown) {
   const outputDetails = usage.output_tokens_details && typeof usage.output_tokens_details === "object"
     ? usage.output_tokens_details as Record<string, unknown>
     : {};
+  const output = Array.isArray(source.output) ? source.output : [];
+  const webSearchCalls = output.filter((item) => item && typeof item === "object"
+    && (item as Record<string, unknown>).type === "web_search_call").length;
   const cachedInputTokens = typeof details.cached_tokens === "number" ? details.cached_tokens : 0;
   const reasoningTokens = typeof outputDetails.reasoning_tokens === "number" ? outputDetails.reasoning_tokens : 0;
   const requestId = typeof source.id === "string" ? source.id : null;
-  return { inputTokens, outputTokens, reasoningTokens, totalTokens, cachedInputTokens, requestId };
+  return { inputTokens, outputTokens, reasoningTokens, totalTokens, cachedInputTokens, webSearchCalls, requestId };
 }
 
 function sleep(ms: number) {
@@ -251,6 +257,7 @@ function postJsonPinnedIPv4(url: string, headers: Record<string, string>, body: 
 // Single call to the OpenAI Responses API for one attempt — no retry/
 // fallback logic here, that lives in callAiModel below.
 async function requestOnce(params: {
+  provider: AiProvider;
   operation: AiOperation;
   model: AiModelId;
   reasoningEffort: ReasoningEffort;
@@ -265,7 +272,7 @@ async function requestOnce(params: {
   toolChoice?: "required";
   includeSources?: boolean;
 }) {
-  const provider = providerForModel(params.model);
+  const provider = params.provider;
   const relayUrl = params.operation.startsWith("dialogue") && provider === "openai"
     ? process.env.KLIO_IMAGE_SERVICE_URL?.trim() : undefined;
   const relayToken = relayUrl ? process.env.KLIO_IMAGE_SERVICE_TOKEN?.trim() : undefined;
@@ -467,7 +474,8 @@ export async function callAiModel<T = Record<string, unknown>>(
   // not a fresh timeout for every attempt.
   const deadline = startedAt + Math.max(1, Math.floor(params.requestTimeoutMs ?? 90_000));
 
-  let attemptModel = config.model;
+  const provider = params.providerOverride ?? providerForModel(params.modelOverride ?? config.model);
+  let attemptModel = params.modelOverride ?? config.model;
   let transientRetries = 0;
   let invalidOutputRetries = 0;
   let fallbackFrom: AiModelId | undefined;
@@ -480,6 +488,7 @@ export async function callAiModel<T = Record<string, unknown>>(
     try {
       if (Date.now() >= deadline) throw timeoutError();
       const outcome = await requestOnce({
+        provider,
         operation: params.operation,
         model: attemptModel,
         reasoningEffort,
@@ -549,7 +558,7 @@ export async function callAiModel<T = Record<string, unknown>>(
           operation: params.operation,
           model: attemptModel,
           reasoningEffort,
-          usage: attemptUsage ?? { inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, reasoningTokens: 0, totalTokens: 0, requestId: null },
+          usage: attemptUsage ?? { inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, reasoningTokens: 0, totalTokens: 0, webSearchCalls: 0, requestId: null },
           durationMs: Date.now() - startedAt,
           retryCount: transientRetries + invalidOutputRetries,
           status: "failed",

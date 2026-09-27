@@ -56,6 +56,10 @@ export type AiModelId =
   | (typeof OPENAI_MODELS)[keyof typeof OPENAI_MODELS]
   | (typeof DEEPSEEK_MODELS)[keyof typeof DEEPSEEK_MODELS];
 
+export function modelForProvider(provider: AiProvider, tier: "CONTENT" | "UTILITY"): AiModelId {
+  return provider === "openai" ? OPENAI_MODELS[tier] : DEEPSEEK_MODELS[tier];
+}
+
 export function providerForModel(model: AiModelId): AiProvider {
   return model === DEEPSEEK_MODELS.CONTENT ? "deepseek" : "openai";
 }
@@ -92,6 +96,10 @@ export const MODEL_PRICING: Record<AiModelId, ModelPricing> = {
   },
 };
 
+// OpenAI hosted web search is priced separately from model tokens at
+// $10 per 1,000 search calls.
+export const WEB_SEARCH_CALL_COST_USD = 0.01;
+
 function isDeepSeekPeakHour(date: Date): boolean {
   const hour = date.getUTCHours();
   return (hour >= 1 && hour < 4) || (hour >= 6 && hour < 10);
@@ -101,6 +109,7 @@ export function estimateCostUsd(model: AiModelId, usage: {
   inputTokens: number;
   cachedInputTokens: number;
   outputTokens: number;
+  webSearchCalls?: number;
 }, at: Date = new Date()): number {
   const base = MODEL_PRICING[model];
   const pricing = base.peak && isDeepSeekPeakHour(at) ? base.peak : base;
@@ -109,6 +118,7 @@ export function estimateCostUsd(model: AiModelId, usage: {
     (uncachedInput / 1_000_000) * pricing.inputPerMillion
     + (usage.cachedInputTokens / 1_000_000) * pricing.cachedInputPerMillion
     + (usage.outputTokens / 1_000_000) * pricing.outputPerMillion
+    + (usage.webSearchCalls ?? 0) * WEB_SEARCH_CALL_COST_USD
   );
 }
 
@@ -137,6 +147,7 @@ export type AiOperation =
   | "revise_content"
   | "analyze_brand_website"
   | "suggest_brand_voice"
+  | "research_content_plan_web"
   // Nano — short formalized steps
   | "normalize_quick_brief"
   | "validate_content"
@@ -203,37 +214,21 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // the rest if it's ever needed): every failure chased on this operation
   // — a reasoning item draft-rejecting-redrafting its own topic list for
   // several turns, then (once reasoning was turned off to stop that) 10
-  // web_search_call rounds narrated with commentary text instead of ever
-  // finishing — is DeepSeek-specific behavior. Routing this operation to
-  // OpenAI instead was tried and reverted the same session: KLIO moved to
-  // DeepSeek specifically so the app doesn't depend on OpenAI, which is
-  // unreliable to reach from Russia without a VPN — not a lever available
-  // here at all, regardless of what it might have fixed. Token-budget and
-  // existingTitles-length tweaks along the way helped a little but never
-  // fixed the actual runaway; a separate research call (any provider) for
-  // extra grounding beyond the brand's own site added a full sequential
-  // round-trip that measurably slowed things down (10 topics ~2min, 13
-  // topics ~3min) for a quality gain the site owner judged not worth it.
-  //
-  // What actually stuck: reasoningEffort "none" and useWebSearch false —
-  // no search tool or reasoning scratchpad left for the model to get lost
-  // in, composing topics from the profile/semantics/geography already in
-  // the request plus the brand's website (readWebsiteContext in content-
-  // plan/route.ts — a direct HTTP read, not an AI call, so it doesn't
-  // share any of this operation's reliability problems).
+  // Keep the long structured generation focused and bounded. A separate
+  // research_content_plan_web operation runs one required OpenAI web search
+  // before generation, while readWebsiteContext supplies the brand site.
+  // Search and site crawling are not repeated for each batch of plan rows.
   // A failed long generation can still have consumed a very large cached
   // prompt at the provider. Do not automatically replay this operation:
   // the user can explicitly retry after seeing the error, while automatic
   // retries turn one malformed/empty provider response into several full
   // billed requests.
   generate_content_plan: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 18_000, structuredOutput: true, retryable: false, useWebSearch: false },
+  research_content_plan_web: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 2_400, structuredOutput: true, retryable: false, useWebSearch: true },
   // Up to 5 selected topics x 3 full alternatives each, each a complete
   // plan row (structure, lsi, evidence, sources...) — genuinely needs a
   // ceiling close to a fresh content plan's, not the generic "small
-  // patch" budget most other revise_* operations get. Reverted alongside
-  // generate_content_plan above — same reasoning: no web search here to
-  // run away with the budget, so the original ceiling was never actually
-  // the problem.
+  // patch" budget most other revise_* operations get.
   revise_content_plan: { model: CONTENT, reasoningEffort: "low", maxOutputTokens: 12_000, structuredOutput: true, retryable: false, useWebSearch: false },
   // Deviation from the spec's illustrative list (which puts keyword
   // extraction on nano): KLIO's semantics module does web-search-driven

@@ -121,8 +121,7 @@ const FACT_SEARCH_KEYWORDS = [
 // model's own training data happened to freeze on. Threaded into
 // researchAdaptationFacts's own `recent` param below, which biases the
 // query toward current events and (for Tavily) sets time_range - same
-// recency mechanism researchContentPlanWeb already uses for its own
-// "текущие новости" case.
+// recency mechanism used by other bounded research queries.
 const RECENT_SEARCH_KEYWORDS = [
   "актуальн", "свеж", "сейчас", "на сегодня", "в этом году", "новост",
   "тренд", "измен", "обновлен", "обновит", "последн",
