@@ -914,7 +914,7 @@ export async function POST(request: Request) {
         .from(dialogueThreads)
         .where(owned(id, user.email))
         .limit(1);
-      if (preview) {
+      if (preview && preview.status !== "processing" && preview.requestId !== requestId) {
         const previewData = dataOf(preview);
         const intent = await inferDialogueIntent(
           clean(p.text, 8000),
