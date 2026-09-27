@@ -2652,6 +2652,10 @@ select:focus-visible {
   background: rgba(255, 255, 255, 0.05);
 }
 
+.generator-mode-switch.is-content-plan-handoff {
+  grid-template-columns: 1fr;
+}
+
 .generator-mode-switch button {
   display: flex;
   align-items: center;

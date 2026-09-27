@@ -96,6 +96,8 @@ type CallAiModelInput = {
   ownerEmail?: string;
   brandId?: string;
   materialId?: string;
+  // Stable id for grouping all model calls made for one user request.
+  requestGroupId?: string;
 };
 
 type CallAiModelResult<T> = {
@@ -203,6 +205,7 @@ async function logUsage(row: {
   retryCount: number;
   status: "success" | "failed";
   fallbackFrom?: AiModelId;
+  requestGroupId?: string;
   errorMessage?: string;
 }) {
   if (!process.env.DATABASE_URL?.trim()) return;
@@ -226,6 +229,7 @@ async function logUsage(row: {
       status: row.status,
       fallbackFrom: row.fallbackFrom ?? null,
       requestId: row.usage.requestId,
+      requestGroupId: row.requestGroupId ?? null,
       errorMessage: row.errorMessage?.slice(0, 500) ?? null,
     });
   } catch (error) {
@@ -536,7 +540,7 @@ export async function callAiModel<T = Record<string, unknown>>(
       });
 
       if (params.ownerEmail) {
-        void logUsage({
+        await logUsage({
           ownerEmail: params.ownerEmail,
           brandId: params.brandId,
           materialId: params.materialId,
@@ -548,6 +552,7 @@ export async function callAiModel<T = Record<string, unknown>>(
           retryCount: transientRetries + invalidOutputRetries,
           status: "success",
           fallbackFrom,
+          requestGroupId: params.requestGroupId,
         });
       }
 
@@ -582,7 +587,7 @@ export async function callAiModel<T = Record<string, unknown>>(
       // table was undercounting real spend on anything that ever retried.
       const attemptUsage = error instanceof AiCallError ? (error as { usage?: ReturnType<typeof extractUsage> }).usage : undefined;
       if (params.ownerEmail) {
-        void logUsage({
+        await logUsage({
           ownerEmail: params.ownerEmail,
           brandId: params.brandId,
           materialId: params.materialId,
@@ -594,6 +599,7 @@ export async function callAiModel<T = Record<string, unknown>>(
           retryCount: transientRetries + invalidOutputRetries,
           status: "failed",
           fallbackFrom,
+          requestGroupId: params.requestGroupId,
           errorMessage: error instanceof AiCallError && error.diagnosticMessage
             ? error.diagnosticMessage
             : error instanceof Error ? error.message : String(error),

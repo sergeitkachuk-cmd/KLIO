@@ -297,6 +297,7 @@ export async function POST(request: Request) {
     }
 
     const identity = await workspaceIdentity();
+    const requestGroupId = crypto.randomUUID();
     let responseBody: unknown;
     let model = "";
     let yandexResults: Citation[] = [];
@@ -374,6 +375,7 @@ export async function POST(request: Request) {
     const selection = await callAiModel<CandidateSelection>({
       operation: "analyze_competitors",
       ownerEmail: identity.email,
+      requestGroupId,
       schemaName: "klio_direct_competitor_selection",
       schema: selectionSchema(readablePool.map((item) => item.id)),
       instructions: [

@@ -2385,6 +2385,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     }
   }
   const [generatorMode, setGeneratorMode] = useState<"quick" | "advanced">("quick");
+  // A content-plan handoff already supplies a complete editorial brief. Keep
+  // the free-form beginner mode out of that path so the user is not asked to
+  // type the same topic again.
+  const [generatorHandoff, setGeneratorHandoff] = useState<"content-plan" | null>(null);
   const [quickPrompt, setQuickPrompt] = useState("");
   const [quickLength, setQuickLength] = useState("auto");
   // Mirrors length/customLength/manualLengthInput below (Advanced mode's
@@ -3610,6 +3614,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setGeneratorUseBrand(true);
     setGeneratorUseSemantics(false);
     setGeneratorUseCompetitors(false);
+    setGeneratorHandoff(null);
     setQuickPrompt("");
     setQuickLength("auto");
     setQuickError("");
@@ -4292,6 +4297,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       return;
     }
     setFormat("seo");
+    setGeneratorHandoff(null);
     setGeneratorMode("advanced");
     setTopic(semanticResult.suggestedTopic || semanticQuery);
     setKeywords(selectedSemanticKeywords.map((item) => item.phrase).join(", "));
@@ -4779,6 +4785,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       ...insightLines,
     ].filter(Boolean).join("\n");
     setFormat("seo");
+    setGeneratorHandoff(null);
     setGeneratorMode("advanced");
     setTopic(competitorQuery);
     setAccent(nextAccent);
@@ -5330,6 +5337,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     const structureLines = item.structure.map((section) => `• ${section}: раскрыть применительно к теме материала и опереться только на подтверждённые факты`);
     const targetFormat = contentPlanFormatToGeneratorFormat[item.format] ?? "seo";
     setFormat(targetFormat);
+    setGeneratorHandoff("content-plan");
     // Профиль бренда включён wins outright over the intent-based guess
     // below — site owner: "если включен профиль бренда то... Авторская
     // позиция всегда по умолчанию стоит От лица бренда". Only falls back
@@ -6047,6 +6055,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setLength(defaultLengthByFormat[format]);
     setCustomLength(false);
     setQuickPrompt("");
+    setGeneratorHandoff(null);
     setQuickLength("auto");
     setQuickError("");
     setGenerationError("");
@@ -7336,9 +7345,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <div className={`studio ${hasGeneratedResult ? "has-result" : ""}`}>
               <aside className="brief-panel">
                 <div className="brief-step"><div className="brief-step-label"><span>Шаг 01</span><b>Бриф материала</b></div><button type="button" className="brief-reset" onClick={resetGeneratorBrief}>Начать заново</button></div>
-                <div className="generator-mode-switch" role="radiogroup" aria-label="Как описать задачу">
-                  <button type="button" className={generatorMode === "quick" ? "active" : ""} onClick={() => setGeneratorMode("quick")} role="radio" aria-checked={generatorMode === "quick"}><i>✦</i><span><b>Одним запросом</b><small>КЛИО сама выберет настройки</small></span></button>
-                  <button type="button" className={generatorMode === "advanced" ? "active" : ""} onClick={() => setGeneratorMode("advanced")} role="radio" aria-checked={generatorMode === "advanced"}><i>≡</i><span><b>По полям</b><small>Формат, ключи и стиль отдельно</small></span></button>
+                <div className={`generator-mode-switch ${generatorHandoff === "content-plan" ? "is-content-plan-handoff" : ""}`} role="radiogroup" aria-label="Как описать задачу">
+                  {generatorHandoff !== "content-plan" && <button type="button" className={generatorMode === "quick" ? "active" : ""} onClick={() => setGeneratorMode("quick")} role="radio" aria-checked={generatorMode === "quick"}><i>✦</i><span><b>Одним запросом</b><small>КЛИО сама выберет настройки</small></span></button>}
+                  <button type="button" className={generatorMode === "advanced" ? "active" : ""} onClick={() => setGeneratorMode("advanced")} role="radio" aria-checked={generatorMode === "advanced"}><i>≡</i><span><b>По полям</b><small>{generatorHandoff === "content-plan" ? "Тема и бриф уже переданы из контент-плана" : "Формат, ключи и стиль отдельно"}</small></span></button>
                 </div>
                 {generatorMode === "quick" && <div className="generator-quick">
                   <label className="field"><span className="field-label-help">Опишите задачу для КЛИО<HelpTip label="Опишите задачу для КЛИО" text="Опишите бренд, сайт или тему и что нужно написать — формат, тон и объём КЛИО определит сама. Если назван реальный бренд или сайт, КЛИО проверит факты в вебе, а не будет их выдумывать."/></span><AutoTextarea rows={6} value={quickPrompt} onChange={(event) => setQuickPrompt(event.target.value)} placeholder="Например: напиши SEO-статью про ORCA (сайт theorca.pro) — платформа для трейдеров с no-code сканерами и стратегиями. Аудитория — активные трейдеры."/><small>{generatorBrandReady ? <>Профиль бренда «{effectiveBrand.name}» включён — КЛИО учтёт его факты и голос, если задача с ним связана.</> : "Профиль бренда сейчас не используется — включите его выше и заполните основу, если хотите писать в голосе бренда без пересказа задачи."}</small></label>

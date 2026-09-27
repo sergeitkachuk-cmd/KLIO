@@ -31,6 +31,7 @@ export async function POST(request: Request) {
   try {
     if (isAiRateLimited(request, "research", 2)) return Response.json({ error: "Слишком много исследований подряд. Подождите минуту и повторите." }, { status: 429 });
     const identity = await workspaceIdentity();
+    const requestGroupId = crypto.randomUUID();
 
     const bytes = await readBoundedBody(request, MAX_PDF_BYTES + 64 * 1024, 60_000);
     const form = await new Response(new Uint8Array(bytes), { headers: { "Content-Type": request.headers.get("content-type") || "" } }).formData();
@@ -90,8 +91,9 @@ export async function POST(request: Request) {
       );
 
       const { result, model } = await callAiModel<BrandAnalysisResult>({
-        operation: "analyze_brand_website",
-        ownerEmail: identity.email,
+      operation: "analyze_brand_website",
+      ownerEmail: identity.email,
+      requestGroupId,
         schemaName: "klio_brand_analysis",
         schema: brandAnalysisSchema(),
         instructions,

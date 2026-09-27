@@ -16,9 +16,11 @@ export async function POST(request: Request) {
     await assertSecondaryQuotaAvailable("research");
     if (!aiConfigured()) throw new AiNotConfiguredError();
     const identity = await workspaceIdentity();
+    const requestGroupId = crypto.randomUUID();
     const { result, model } = await callAiModel<VoiceResult>({
       operation: "suggest_brand_voice",
       ownerEmail: identity.email,
+      requestGroupId,
       requestTimeoutMs: 60_000,
       schemaName: "klio_brand_voice",
       schema: { type: "object", properties: Object.fromEntries(VOICE_FIELDS.map(key => [key, { type: "string" }])), required: [...VOICE_FIELDS], additionalProperties: false },

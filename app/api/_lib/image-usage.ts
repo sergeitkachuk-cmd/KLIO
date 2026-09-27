@@ -8,6 +8,7 @@ export type ImageUsageOperation = "generate_image" | "generate_carousel_image" |
 export async function recordImageUsage(input: {
   ownerEmail: string;
   requestId: string;
+  requestGroupId?: string;
   operation: ImageUsageOperation;
   durationMs: number;
   status: "success" | "failed";
@@ -35,6 +36,7 @@ export async function recordImageUsage(input: {
       status: input.status,
       fallbackFrom: null,
       requestId: input.requestId,
+      requestGroupId: input.requestGroupId ?? input.requestId,
       errorMessage: input.errorMessage?.slice(0, 500) ?? null,
     });
   } catch (error) {

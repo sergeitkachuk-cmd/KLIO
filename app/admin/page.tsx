@@ -19,6 +19,11 @@ import { AdminShell, type AdminSection } from "./admin-shell";
 import { getOpenAiAdminSummary } from "../api/_lib/openai-admin";
 
 export const metadata = { title: "КЛИО / Админка" };
+// Usage data must be read from Postgres on every visit. Without an explicit
+// dynamic marker a server-rendered admin page can be reused from the Next.js
+// router cache, making the newest calls look hours old after a refresh.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 // Keep enough rows to inspect a normal working session without silently
 // hiding calls after the first few minutes. Aggregate totals below still use
@@ -258,6 +263,7 @@ export default async function AdminPage() {
       errorMessage: aiUsage.errorMessage,
       createdAt: aiUsage.createdAt,
       costSource: aiUsage.costSource,
+      requestGroupId: aiUsage.requestGroupId,
     }).from(aiUsage).where(notInArray(aiUsage.operation, imageOperations)).orderBy(desc(aiUsage.createdAt)).limit(RECENT_ACTIVITY_LIMIT),
     // Keep legacy image generation rows as a fallback for requests created
     // before image usage logging existed. Current image/carousel calls are
@@ -284,6 +290,7 @@ export default async function AdminPage() {
       status: aiUsage.status,
       errorMessage: aiUsage.errorMessage,
       requestId: aiUsage.requestId,
+      requestGroupId: aiUsage.requestGroupId,
       createdAt: aiUsage.createdAt,
     }).from(aiUsage).where(inArray(aiUsage.operation, imageOperations)).orderBy(desc(aiUsage.createdAt)).limit(RECENT_ACTIVITY_LIMIT),
     getExternalServiceStatuses(),
@@ -375,6 +382,7 @@ export default async function AdminPage() {
       status: "success",
       errorMessage: null,
       createdAt: row.createdAt,
+      requestGroupId: null,
       activityType: "image" as const,
       topic: row.topic,
     })),
@@ -386,6 +394,18 @@ export default async function AdminPage() {
         : row.operation === "regenerate_carousel_slide" ? "Слайд карусели" : "Изображение",
     })),
   ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, RECENT_ACTIVITY_LIMIT);
+
+  // A single user action can make several model calls (research, generation,
+  // validation and a correction). New rows carry one stable requestGroupId;
+  // legacy rows remain individual because their historical group cannot be
+  // reconstructed safely from timestamps alone.
+  const recentActivityGroups = recentActivityRows.reduce<Array<{ key: string; rows: typeof recentActivityRows }>>((groups, row) => {
+    const key = row.requestGroupId ? `request:${row.requestGroupId}` : `row:${row.id}`;
+    const existing = groups.find((group) => group.key === key);
+    if (existing) existing.rows.push(row);
+    else groups.push({ key, rows: [row] });
+    return groups;
+  }, []);
 
   const usageMap = new Map(usageByUser.map((row) => [row.ownerEmail, row]));
   const brandMap = new Map<string, number>();
@@ -644,32 +664,49 @@ export default async function AdminPage() {
         <div className="admin-block-heading">
           <div>
             <h2>Последние вызовы ИИ</h2>
-            <p>Показаны последние {RECENT_ACTIVITY_LIMIT} вызовов. Для текста показываем расчёт по токенам. Для изображений и каруселей — фактический usage провайдера, а при его отсутствии — расчётную сумму с пометкой «оценка».</p>
+            <p>Показаны последние {RECENT_ACTIVITY_LIMIT} вызовов. Вызовы одной операции собраны в строку: раскройте её, чтобы увидеть модели, повторы и ошибки. Для текста показываем расчёт по токенам. Для изображений и каруселей — фактический usage провайдера, а при его отсутствии — расчётную сумму с пометкой «оценка».</p>
           </div>
         </div>
         <div className="admin-table-scroll">
           <table className="admin-table">
             <thead><tr><th>Время</th><th>Пользователь</th><th>Операция</th><th>Модель</th><th>Размышление</th><th>Длительность</th><th>Токены вход / выход</th><th>Расход, USD</th><th>Статус</th><th>Ошибка</th></tr></thead>
             <tbody>
-              {recentActivityRows.map((row) => (
-                <tr key={row.id}>
-                  <td>{formatDate(row.createdAt)}</td>
-                  <td>{row.ownerEmail}</td>
-                  <td>{row.activityType === "image"
-                    ? row.topic === "Карусель" ? "Генерация карусели"
-                      : row.topic === "Слайд карусели" ? "Перегенерация слайда"
-                        : "Генерация изображения"
-                    : OPERATION_LABELS[row.operation as AiOperation] ?? row.operation}</td>
-                  <td>{row.model}</td>
-                  <td>{row.reasoningEffort}</td>
-                  <td>{num(row.durationMs) > 0 ? formatDuration(row.durationMs) : "—"}</td>
-                  <td>{num(row.inputTokens) > 0 || num(row.outputTokens) > 0 ? `${formatNumber(row.inputTokens)} / ${formatNumber(row.outputTokens)}` : "—"}</td>
-                  <td>{row.estimatedCostUsd === null || row.estimatedCostUsd === undefined ? "—" : `${formatUsd(num(row.estimatedCostUsd))}${row.costSource === "estimate" ? " · оценка" : ""}`}</td>
-                  <td>{row.status === "success" ? "Успешно" : `Ошибка${row.retryCount ? ` · повторов ${row.retryCount}` : ""}`}</td>
-                  <td className="admin-ai-error">{row.errorMessage || "—"}</td>
-                </tr>
-              ))}
-              {!recentActivityRows.length && <tr><td colSpan={10} className="admin-empty-row">Пока нет вызовов ИИ.</td></tr>}
+              {recentActivityGroups.map((group) => {
+                const primary = group.rows[0];
+                const operationLabel = (row: typeof primary) => row.activityType === "image"
+                  ? row.topic === "Карусель" ? "Генерация карусели"
+                    : row.topic === "Слайд карусели" ? "Перегенерация слайда"
+                      : "Генерация изображения"
+                  : OPERATION_LABELS[row.operation as AiOperation] ?? row.operation;
+                const totalDuration = group.rows.reduce((sum, row) => sum + num(row.durationMs), 0);
+                const totalInput = group.rows.reduce((sum, row) => sum + num(row.inputTokens), 0);
+                const totalOutput = group.rows.reduce((sum, row) => sum + num(row.outputTokens), 0);
+                const hasCost = group.rows.some((row) => row.estimatedCostUsd !== null && row.estimatedCostUsd !== undefined);
+                const totalCost = group.rows.reduce((sum, row) => sum + num(row.estimatedCostUsd), 0);
+                const hasFailure = group.rows.some((row) => row.status !== "success");
+                const errors = group.rows.map((row) => row.errorMessage).filter(Boolean);
+                return <tr key={group.key}>
+                  <td>{formatDate(primary.createdAt)}</td>
+                  <td>{primary.ownerEmail}</td>
+                  <td>
+                    <details className="admin-call-group" open={group.rows.length === 1 ? undefined : false}>
+                      <summary>{operationLabel(primary)}{group.rows.length > 1 && <span> · {group.rows.length} вызова</span>}</summary>
+                      {group.rows.length > 1 && <div className="admin-call-group-details">
+                        <b>Вызовы моделей в этом запросе</b>
+                        <ul>{group.rows.map((row) => <li key={row.id}><span>{formatDate(row.createdAt)}</span><span>{operationLabel(row)}</span><span>{row.model}</span><span>{row.status === "success" ? "Успешно" : "Ошибка"}</span>{row.errorMessage && <em>{row.errorMessage}</em>}</li>)}</ul>
+                      </div>}
+                    </details>
+                  </td>
+                  <td>{group.rows.length > 1 ? `${group.rows.length} вызова` : primary.model}</td>
+                  <td>{group.rows.length > 1 ? "—" : primary.reasoningEffort}</td>
+                  <td>{totalDuration > 0 ? formatDuration(totalDuration) : "—"}</td>
+                  <td>{totalInput > 0 || totalOutput > 0 ? `${formatNumber(totalInput)} / ${formatNumber(totalOutput)}` : "—"}</td>
+                  <td>{hasCost ? `${formatUsd(totalCost)}${group.rows.some((row) => row.costSource === "estimate") ? " · оценка" : ""}` : "—"}</td>
+                  <td>{hasFailure ? `Ошибка${group.rows.length > 1 ? ` · ${group.rows.filter((row) => row.status !== "success").length} из ${group.rows.length}` : primary.retryCount ? ` · повторов ${primary.retryCount}` : ""}` : "Успешно"}</td>
+                  <td className="admin-ai-error">{errors.length ? errors.join("; ") : "—"}</td>
+                </tr>;
+              })}
+              {!recentActivityGroups.length && <tr><td colSpan={10} className="admin-empty-row">Пока нет вызовов ИИ.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -1181,6 +1218,17 @@ function AdminStyles() {
       .admin-user-row-new > td:first-child { box-shadow: inset 3px 0 0 #22c55e; }
       .admin-user-row-new > td { background: rgba(34, 197, 94, 0.08); }
       body[data-admin-theme="dark"] .admin-user-row-new > td { background: rgba(34, 197, 94, 0.13); }
+      .admin-call-group summary { cursor: pointer; color: inherit; font-weight: 600; }
+      .admin-call-group summary span { color: #64748b; font-weight: 500; }
+      .admin-call-group-details { min-width: 420px; margin-top: 9px; padding: 10px 12px; border: 1px solid rgba(148,163,184,.24); border-radius: 10px; background: rgba(148,163,184,.06); white-space: normal; }
+      .admin-call-group-details b { display: block; margin-bottom: 7px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #64748b; }
+      .admin-call-group-details ul { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; font-size: 11px; }
+      .admin-call-group-details li { display: grid; grid-template-columns: 118px minmax(150px, 1fr) 100px 70px; gap: 7px; align-items: baseline; }
+      .admin-call-group-details li span:first-child { color: #64748b; }
+      .admin-call-group-details li em { grid-column: 1 / -1; color: #b91c1c; font-style: normal; overflow-wrap: anywhere; }
+      body[data-admin-theme="dark"] .admin-call-group summary span, body[data-admin-theme="dark"] .admin-call-group-details b, body[data-admin-theme="dark"] .admin-call-group-details li span:first-child { color: #9fb8d2; }
+      body[data-admin-theme="dark"] .admin-call-group-details { background: rgba(7,27,49,.64); border-color: rgba(143,184,222,.24); }
+      @media (max-width: 800px) { .admin-call-group-details { min-width: 340px; } .admin-call-group-details li { grid-template-columns: 1fr 1fr; } }
       /* min-width matters as much as max-width here: table-layout:auto is
          free to shrink a wrap-allowed cell all the way down to its longest
          unbreakable word once the other (nowrap) columns' content already

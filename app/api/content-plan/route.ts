@@ -147,6 +147,7 @@ async function researchContentPlanWithOpenAI(
   ownerEmail: string,
   currentIndustryFocus: boolean,
   industryField: string,
+  requestGroupId?: string,
 ): Promise<ContentPlanWebResearch | null> {
   const geography = input.geography.slice(0, 3).map((item) => [item.label, item.detail].filter(Boolean).join(", "));
   const subject = input.requestedQuery || industryField || [input.brand.services, input.brand.products, input.brand.positioning].filter(Boolean).join(", ") || input.query;
@@ -158,6 +159,7 @@ async function researchContentPlanWithOpenAI(
       providerOverride: "openai",
       modelOverride: modelForProvider("openai", "CONTENT"),
       ownerEmail,
+      requestGroupId,
       requestTimeoutMs: 40_000,
       maxOutputTokensOverride: 1_800,
       schemaName: "klio_content_plan_web_research",
@@ -766,7 +768,7 @@ function planClusterCap(requestedCount: number) {
 // field blank and expected the AI to figure it out.
 // Best-effort throughout — failed inference falls back to existingField;
 // it never prevents a content plan from being created.
-async function inferContentPlanIndustryField(brand: BrandInput, website: Awaited<ReturnType<typeof readWebsiteContext>> | null, ownerEmail: string, existingField: string): Promise<string> {
+async function inferContentPlanIndustryField(brand: BrandInput, website: Awaited<ReturnType<typeof readWebsiteContext>> | null, ownerEmail: string, existingField: string, requestGroupId?: string): Promise<string> {
   const brandContext = [brand.description, brand.positioning, brand.advantages, brand.proof].filter(Boolean).join("\n").slice(0, 2000);
   const siteText = website && website.status === "loaded"
     ? website.text.slice(0, PLAN_INDUSTRY_SITE_SNAPSHOT_LIMIT)
@@ -783,6 +785,7 @@ async function inferContentPlanIndustryField(brand: BrandInput, website: Awaited
       // old utility override made every such request fail at the relay.
       modelOverride: modelForProvider("openai", "CONTENT"),
       ownerEmail,
+      requestGroupId,
       schemaName: "klio_industry_keywords",
       schema: {
         type: "object",
@@ -860,12 +863,12 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
   let webResearch: ContentPlanWebResearch | null = null;
   if (currentIndustryFocus && !input.requestedQuery) {
     website = input.brand.website ? await readWebsiteContext(input.brand.website, { fullSite: true }) : null;
-    const industryField = await inferContentPlanIndustryField(input.brand, website, ownerEmail, newsIndustryField);
-    webResearch = await researchContentPlanWithOpenAI(input, ownerEmail, true, industryField);
+    const industryField = await inferContentPlanIndustryField(input.brand, website, ownerEmail, newsIndustryField, jobId);
+    webResearch = await researchContentPlanWithOpenAI(input, ownerEmail, true, industryField, jobId);
   } else {
     [website, webResearch] = await Promise.all([
       input.brand.website ? readWebsiteContext(input.brand.website, { fullSite: true }) : Promise.resolve(null),
-      researchContentPlanWithOpenAI(input, ownerEmail, currentIndustryFocus, newsIndustryField),
+      researchContentPlanWithOpenAI(input, ownerEmail, currentIndustryFocus, newsIndustryField, jobId),
     ]);
   }
   const sources = availablePlanSources(input, website?.status === "loaded", Boolean(webResearch));
@@ -1128,6 +1131,7 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
       maxOutputTokensOverride: contentPlanOutputTokenBudget(neededCount),
       requestTimeoutMs: CONTENT_PLAN_TIMEOUT_MS,
       ownerEmail,
+      requestGroupId: jobId,
       schemaName: "klio_content_plan",
       schema: contentPlanSchema(neededCount),
       instructions: buildInstructions(neededCount, excludeTitles, excludeKeywords, bannedOpeners, bannedFormats, productPillarBanned, bannedClusters),

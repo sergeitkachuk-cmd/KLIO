@@ -121,11 +121,12 @@ export async function POST(request: Request) {
     await assertSecondaryQuotaAvailable("research");
     if (!aiConfigured()) throw new AiNotConfiguredError();
     const identity = await workspaceIdentity();
+    const requestGroupId = crypto.randomUUID();
     const brand = cleanBrand(payload.brand);
     const geography = cleanGeography(payload.geography);
     const searchRegion = await resolveRegions(geography);
     const seedPlan = await callAiModel<{ market: string; seeds: string[] }>({
-      operation: "research_semantics", ownerEmail: identity.email, schemaName: "klio_semantic_growth_seeds", schema: seedSchema(),
+      operation: "research_semantics", ownerEmail: identity.email, requestGroupId, schemaName: "klio_semantic_growth_seeds", schema: seedSchema(),
       instructions: [
         "Ты SEO-стратег. Определи рынок и сформируй 3–5 коротких русскоязычных исходных фраз для поиска НОВОЙ аудитории.",
         "Если исходная тема — бренд, его название нельзя использовать в seeds. Отталкивайся от категории, услуг, географии и задач потенциального клиента.",
@@ -156,7 +157,7 @@ export async function POST(request: Request) {
     // stays at up to 140 — this only trims what's fed to the AI call.
     const classificationCandidates = candidates.slice(0, 80);
     const ai = await callAiModel<Omit<SemanticResult, "primaryQuery" | "dataNote">>({
-      operation: "research_semantics", ownerEmail: identity.email, schemaName: "klio_wordstat_semantic_map", schema: schema(),
+      operation: "research_semantics", ownerEmail: identity.email, requestGroupId, schemaName: "klio_wordstat_semantic_map", schema: schema(),
       instructions: [
         "Ты SEO-стратег. Классифицируй только фразы, переданные из проверенных поисковых данных.",
         "Нельзя придумывать, заменять или перефразировать фразы; частотность не оценивай и не называй.",

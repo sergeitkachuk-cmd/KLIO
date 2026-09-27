@@ -48,6 +48,7 @@ export async function POST(request: Request) {
     await assertSecondaryQuotaAvailable("research");
     if (!aiConfigured()) throw new AiNotConfiguredError();
     const [identity, website] = await Promise.all([workspaceIdentity(), readWebsiteContext(input.website)]);
+    const requestGroupId = crypto.randomUUID();
     if (website.status === "blocked") {
       return Response.json({ error: "Этот адрес сайта отклонён проверкой безопасности. Проверьте ссылку и попробуйте снова." }, { status: 400 });
     }
@@ -62,6 +63,7 @@ export async function POST(request: Request) {
     const { result, model } = await callAiModel<BrandAnalysisResult>({
       operation: "analyze_brand_website",
       ownerEmail: identity.email,
+      requestGroupId,
       schemaName: "klio_brand_analysis",
       schema: brandAnalysisSchema(),
       instructions,

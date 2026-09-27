@@ -275,6 +275,7 @@ async function runAdaptation(input: ReturnType<typeof normalizePayload>, ownerEm
     requestTimeoutMs: budget.timeoutMs(reasoningEffort === "none" ? 62_000 : 78_000),
     maxOutputTokensOverride: adaptationOutputTokenBudget(input.sourceText.length, reasoningEffort),
     ownerEmail,
+    requestGroupId: jobId,
     schemaName: "klio_adapted_material",
     schema: ADAPTED_MATERIAL_SCHEMA,
     instructions: [
@@ -307,6 +308,7 @@ async function runAdaptation(input: ReturnType<typeof normalizePayload>, ownerEm
         requestTimeoutMs: budget.timeoutMs(20_000),
         maxOutputTokensOverride: materialOutputTokenBudget(input.sourceText.length, "revise_content"),
         ownerEmail,
+        requestGroupId: jobId,
         schemaName: "klio_corrected_adaptation",
         schema: ADAPTED_MATERIAL_SCHEMA,
         instructions: [

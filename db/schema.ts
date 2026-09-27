@@ -296,6 +296,9 @@ export const aiUsage = pgTable("ai_usage", {
   // Set when a nano operation fell back to Luna after exhausting retries.
   fallbackFrom: text("fallback_from"),
   requestId: text("request_id"),
+  // Stable id shared by every provider call belonging to one user request.
+  // requestId above remains the provider's individual response id.
+  requestGroupId: text("request_group_id"),
   errorMessage: text("error_message"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [

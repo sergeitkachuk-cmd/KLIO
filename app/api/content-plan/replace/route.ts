@@ -165,6 +165,7 @@ export async function POST(request: Request) {
     // (found during the 2026-09-20 quota rework).
     await assertSecondaryQuotaAvailable("research");
     const identity = await workspaceIdentity();
+    const requestGroupId = crypto.randomUUID();
 
     const instructions = [
       "Ты — выпускающий контент‑стратег платформы КЛИО.",
@@ -181,6 +182,7 @@ export async function POST(request: Request) {
       providerOverride: "openai",
       modelOverride: modelForProvider("openai", "CONTENT"),
       ownerEmail: identity.email,
+      requestGroupId,
       schemaName: "klio_content_plan_replacements",
       schema: replacementSchema(input.selectedItems.map((item) => item.id)),
       instructions,

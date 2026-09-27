@@ -200,6 +200,7 @@ export async function POST(request: Request) {
     if (competitors.length < 2) return Response.json({ error: "Добавьте минимум две страницы конкурентов." }, { status: 400 });
     await assertSecondaryQuotaAvailable("research");
     const identity = await workspaceIdentity();
+    const requestGroupId = crypto.randomUUID();
 
     const [brandWebsite, competitorWebsites] = await Promise.all([
       readWebsiteContext(brand.website),
@@ -242,6 +243,7 @@ export async function POST(request: Request) {
     const { result: aiResult, model } = await callAiModel<AiAnalysis>({
       operation: "analyze_competitors",
       ownerEmail: identity.email,
+      requestGroupId,
       schemaName: "klio_competitor_analysis",
       schema: analysisSchema(sources.map((item) => item.id)),
       instructions,
