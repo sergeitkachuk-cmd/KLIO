@@ -28,6 +28,20 @@ test("theme changes preserve the thread and unsent composer text", async (t) => 
   await ui.click(ui.findButton("Сохранённый диалог"));
   assert.equal(ui.document.querySelector("textarea.klio-aui-input").value, "Мой черновик");
 });
+test("typing in the middle of a dialogue draft keeps the caret after the inserted text", async (t) => {
+  const ui = await mountDialogue(t);
+  const input = ui.document.querySelector("textarea.klio-aui-input");
+  await ui.type("abcdef", input);
+  input.setSelectionRange(3, 3);
+  await React.act(async () => {
+    Object.getOwnPropertyDescriptor(ui.window.HTMLTextAreaElement.prototype, "value").set.call(input, "abcXdef");
+    input.setSelectionRange(4, 4);
+    input.dispatchEvent(new ui.window.Event("input", { bubbles: true }));
+  });
+  assert.equal(input.value, "abcXdef");
+  assert.equal(input.selectionStart, 4);
+  assert.equal(input.selectionEnd, 4);
+});
 test("image mode has compact settings and profile checkbox is independent of logo", async (t) => {
   const ui = await mountDialogue(t, { overrides: { brandId: "brand", brandName: "Киностудия", hasLogo: true, brands: [{ id: "brand", name: "Киностудия" }] } });
   await ui.click(ui.findButton("Открыть меню задач")); await ui.click(ui.findButton("Создать изображение", ui.document.querySelector(".klio-aui-tool-menu")));

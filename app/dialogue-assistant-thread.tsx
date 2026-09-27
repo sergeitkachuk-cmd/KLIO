@@ -55,7 +55,14 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
       if (!sent && !runtime.thread.composer.getState().text) runtime.thread.composer.setText(session.getSnapshot().draft || text);
     },
   });
-  useEffect(() => { runtime.thread.composer.setText(draft); }, [draft, runtime]);
+  useEffect(() => {
+    const composer = runtime.thread.composer;
+    // The composer already owns keystrokes while the user is typing. Writing
+    // the same draft back on every external-store update can reset the native
+    // selection/caret in assistant-ui inputs. Only apply genuinely external
+    // draft changes (thread switches, restored drafts, failed sends).
+    if (composer.getState().text !== draft) composer.setText(draft);
+  }, [draft, runtime]);
   useEffect(() => {
     const justCompleted = wasRunning.current && !running;
     wasRunning.current = running;
@@ -154,7 +161,15 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
             event.preventDefault();
             if (!sendDisabled) void onSend("");
           }}>
-            <ComposerPrimitive.Input ref={input} className="klio-aui-input" aria-label="Сообщение КЛИО" placeholder={activeTool.placeholder} rows={1} maxLength={8000} autoFocus={false} cancelOnEscape={false} addAttachmentOnPaste={false} unstable_insertNewlineOnTouchEnter onChange={(event) => session.setDraft(event.target.value)} />
+            <ComposerPrimitive.Input ref={input} className="klio-aui-input" aria-label="Сообщение КЛИО" placeholder={activeTool.placeholder} rows={1} maxLength={8000} autoFocus={false} cancelOnEscape={false} addAttachmentOnPaste={false} unstable_insertNewlineOnTouchEnter onChange={(event) => {
+              // ComposerPrimitive.Input composes this callback before it writes
+              // the new value to its own store. Deferring our external draft
+              // update prevents an intermediate render with the previous
+              // composer value, which moves the caret to the end in the middle
+              // of an edited message.
+              const nextDraft = event.target.value;
+              queueMicrotask(() => session.setDraft(nextDraft));
+            }} />
             <div className="klio-aui-compose-tools">
               <div className="klio-aui-picker" ref={picker}>
                 <button type="button" className="klio-aui-icon" aria-label="Открыть меню задач" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><svg className="klio-aui-tool-menu-icon" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="7" cy="7" r="4"/><circle cx="17" cy="7" r="4"/><circle cx="7" cy="17" r="4"/><circle cx="17" cy="17" r="4"/></svg></button>
