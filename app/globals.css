@@ -24691,3 +24691,96 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
   background: #f8f9fa;
   box-shadow: none;
 }
+
+/* Image-generation "noise" placeholder (site owner sent a reference GIF -
+   a dark grid of small squares where brightness drifts across the grid in
+   organic blob-shaped patches, like static settling into a picture) shown
+   wherever an image is actively being generated, replacing a plain static
+   icon with something that visibly reads as "working". Recoloured to this
+   app's own generation-button family (--acid, see .button.primary) rather
+   than the reference's plain white-on-black, and kept a shade darker than
+   the literal button throughout so it reads as an ambient background
+   effect, not another clickable control. Two layers do the work: ::before
+   is the fixed dot grid at a dim base colour, ::after is 3 soft blurred
+   blobs animated via transform (cheap, GPU-composited - no canvas/JS
+   needed) and clipped to that same dot grid through mask-image, so only
+   the grid's own dots brighten as a blob drifts across them, never the
+   gaps between. Colours are custom properties so a caller can repoint
+   --gen-noise-bright/-dim/-bg without touching this structural rule -
+   dialogue mode does exactly that, see .klio-gen-noise in dialogue.css,
+   to use its own button colour instead of the professional workspace's. */
+.klio-gen-noise {
+  --gen-noise-bright: color-mix(in srgb, var(--acid) 65%, white);
+  --gen-noise-dim: color-mix(in srgb, var(--acid) 45%, #060a10);
+  --gen-noise-bg: color-mix(in srgb, var(--acid) 8%, #060a10);
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--gen-noise-bg);
+}
+
+.klio-gen-noise::before,
+.klio-gen-noise::after {
+  content: "";
+  position: absolute;
+}
+
+.klio-gen-noise::before {
+  inset: 0;
+  background-image: radial-gradient(var(--gen-noise-dim) 1.1px, transparent 1.6px);
+  background-size: 9px 9px;
+}
+
+.klio-gen-noise::after {
+  inset: -30%;
+  background-image:
+    radial-gradient(circle at 28% 32%, var(--gen-noise-bright), transparent 22%),
+    radial-gradient(circle at 70% 60%, var(--gen-noise-bright), transparent 26%),
+    radial-gradient(circle at 45% 82%, var(--gen-noise-bright), transparent 20%);
+  /* #fff (not #000) so this same gradient works as both an alpha mask
+     (the standard mask-image default) and a luminance mask (what some
+     browsers still use for the -webkit- prefixed property) - transparent
+     has zero of both, white has full of both, so either interpretation
+     clips to the same dot grid. */
+  -webkit-mask-image: radial-gradient(#fff 1.1px, transparent 1.6px);
+  mask-image: radial-gradient(#fff 1.1px, transparent 1.6px);
+  -webkit-mask-size: 9px 9px;
+  mask-size: 9px 9px;
+  animation: klio-gen-noise-drift 7s ease-in-out infinite alternate;
+}
+
+@keyframes klio-gen-noise-drift {
+  0%   { transform: translate(0%, 0%) scale(1); }
+  33%  { transform: translate(-6%, 5%) scale(1.15); }
+  66%  { transform: translate(5%, -4%) scale(0.92); }
+  100% { transform: translate(-4%, -3%) scale(1.08); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .klio-gen-noise::after {
+    animation: none;
+  }
+}
+
+/* Professional mode: fills the same result-slot .image-generator-empty's
+   static icon used to sit in, sized as a clear focal square instead of
+   the old 44px glyph. */
+.klio-gen-noise-panel {
+  width: 100%;
+  max-width: 220px;
+  aspect-ratio: 1;
+}
+
+@media (max-width: 750px) {
+  .klio-gen-noise-panel {
+    max-width: 160px;
+  }
+}
+
+/* Dialogue mode: a chat-bubble-sized thumbnail sitting where the finished
+   image will land once ready - see .klio-chat-image-generating and its
+   caption text in dialogue.css. */
+.klio-gen-noise-thumb {
+  width: 220px;
+  height: 220px;
+}
