@@ -370,7 +370,7 @@ test("quick generation supplies bounded research and keeps the draft when conden
       return json({ output_text: JSON.stringify({ format: "social", topic: "Кофе", tone: "Экспертный", target_length: 1000 }) });
     }
     // The provider returned a valid draft just as the total budget expired.
-    now = 90_000;
+    now = 150_000;
     return json({ output_text: JSON.stringify({ title: "Кофе", body: "Кофе раскрывает аромат после помола. ".repeat(50), subtitle: "", meta_title: "", meta_description: "", editorial_comment: "", format: "social", tone: "Экспертный" }) });
   }, Clock);
   const route = routeHarness(h, true);

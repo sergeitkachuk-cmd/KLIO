@@ -12,11 +12,12 @@ import { assertGenerationQuotaAvailable, getWorkspaceDb, recordGeneration, works
 import { IMAGE_STYLE_OPTIONS } from "../../dialogue-generation-settings";
 import { imageContentType } from "../_lib/image-type";
 import { recordImageUsage } from "../_lib/image-usage";
+import { readWebsiteContext } from "../_lib/website-context";
 import type { ImageProviderUsage } from "../_lib/image-cost";
 import { ImageInputError, ImageRelayUpgradeRequiredError } from "../_lib/image-generation-errors";
 
 export const runtime = "nodejs";
-export const maxDuration = 240;
+export const maxDuration = 360;
 
 async function handleImageRequest(request: Request, onPartial?: (image: string) => void) {
   let failureId: string = randomUUID();
@@ -70,7 +71,7 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
     let brandContext = "";
     let logoKey = "";
     if (brandId) {
-      const [brand] = await db.select({ profileJson: brands.profileJson }).from(brands).where(and(eq(brands.id, brandId), eq(brands.ownerEmail, user.email))).limit(1);
+      const [brand] = await db.select({ profileJson: brands.profileJson, website: brands.website }).from(brands).where(and(eq(brands.id, brandId), eq(brands.ownerEmail, user.email))).limit(1);
       if (!brand) throw new WorkspaceAccessError("Бренд не найден.", 404);
       // The brand-context JSON is the same for every image request for
       // this brand, while the actual per-article prompt is often shorter -
@@ -81,6 +82,10 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
       // is genuinely still needed for style/palette/tone consistency - the
       // fix is telling the model what NOT to keep repeating, not removing it.
       brandContext = `\n\nКонтекст бренда (используй для стиля, палитры и общего тона — не для повторения одной и той же сцены): ${brand.profileJson.slice(0, 4000)}\n\nВажно: сюжет и композиция изображения должны отражать именно тему конкретного запроса выше. Не изображай один и тот же шаблон (например, «рабочий стол с ноутбуком и фирменной кружкой») для каждого запроса этого бренда — придумывай разную визуальную идею под разную тему.`;
+      if (brand.website) {
+        const website = await readWebsiteContext(brand.website, { fullSite: true }).catch(() => null);
+        if (website?.status === "loaded") brandContext += `\n\nФакты и ассортимент на сайте бренда (${website.resolvedUrl}): ${website.text.slice(0, 7_000)}. Используй это для точных фирменных деталей, сохраняя сюжет конкретного запроса.`;
+      }
       if (useLogo) {
         const profile = JSON.parse(brand.profileJson) as { logoKey?: unknown };
         if (typeof profile.logoKey === "string") logoKey = profile.logoKey;

@@ -238,6 +238,37 @@ async function logUsage(row: {
   }
 }
 
+// The Agents SDK performs its own Responses requests, so those calls bypass
+// callAiModel's parser. Keep them visible in the same admin ledger with the
+// provider-reported usage and the same model pricing calculation.
+export async function recordExternalAiUsage(row: {
+  ownerEmail: string;
+  brandId?: string;
+  operation: AiOperation;
+  model: AiModelId;
+  requestGroupId: string;
+  durationMs: number;
+  status?: "success" | "failed";
+  errorMessage?: string;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+    cachedInputTokens: number;
+    reasoningTokens: number;
+    webSearchCalls: number;
+    requestId: string | null;
+  };
+}) {
+  await logUsage({
+    ...row,
+    reasoningEffort: OPERATION_CONFIG[row.operation].reasoningEffort,
+    retryCount: 0,
+    status: row.status ?? "success",
+    errorMessage: row.errorMessage,
+  });
+}
+
 // Timeweb can prefer an unusable IPv6 route for a given external host while
 // its IPv4 endpoint works fine — confirmed for api.telegram.org (see
 // postToTelegramApi in social-publish.ts, same "connect timeout, works over

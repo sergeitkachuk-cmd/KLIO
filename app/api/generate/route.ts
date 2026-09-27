@@ -575,7 +575,7 @@ function materialFromRecord(parsed: Record<string, unknown>): GeneratedMaterial 
 // in the background exactly like content-plan's job, with POST below only
 // claiming the job and GET /api/generate/status polling it — never one
 // long-lived HTTP request held open end to end.
-const MATERIAL_GENERATION_TIMEOUT_MS = 110_000;
+const MATERIAL_GENERATION_TIMEOUT_MS = 200_000;
 
 // Everything the AI actually does for one generation — kicked off from
 // POST below and run in the background (see runMaterialGenerationJob).
@@ -586,9 +586,9 @@ async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>,
   // Keep the whole job below its own UX boundary. Research and website
   // reading happen in parallel before the single full-quality draft; any
   // repair pass must fit inside the same deadline.
-  const budget = createGenerationBudget(input.length <= 2000 ? 75_000 : 110_000);
+  const budget = createGenerationBudget(input.length <= 2000 ? 150_000 : 190_000);
   const [website, webResearch] = await Promise.all([
-    readWebsiteContext(input.useBrand ? input.brand.website : ""),
+    readWebsiteContext(input.useBrand ? input.brand.website : "", { fullSite: true }),
     researchMaterialWeb(input.topic, input.geography),
   ]);
   const operation = FORMAT_OPERATION[input.format];

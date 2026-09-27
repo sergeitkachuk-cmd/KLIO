@@ -20,6 +20,7 @@ import { planRule } from "../../plans";
 import { CORE_SYSTEM_RULES, FINAL_QA_RULES, FORMAT_PLANS, TONE_PLANS, authorPositionRules, sanitizePublicationText, type AuthorPosition, type ContentFormat, type ContentTone } from "../../content-plans";
 import { aiConfigured, OPERATION_CONFIG } from "../_lib/ai-config";
 import { AiCallError, callAiModel } from "../_lib/ai-router";
+import { runDialogueAgent } from "../_lib/dialogue-agent";
 import { ImageRelayUpgradeRequiredError } from "../_lib/image-generation-errors";
 import { readBoundedJson, RequestBodyError } from "../_lib/request-body";
 import { hasUnsafeRequestOrigin } from "../_lib/request-origin";
@@ -132,37 +133,12 @@ function needsWebSearch(text: string): { search: boolean; recent: boolean } {
   const factual = FACT_SEARCH_KEYWORDS.some((word) => lower.includes(word))
     || /\b20\d{2}\b/.test(text)
     || /\d{1,3}\s?%/.test(text);
-  return { search: recent || factual, recent };
+  const asksForExternalSources = /(?:проверь|найди|посмотри|изучи|поищи|сверь|проведи\s+поиск)/iu.test(lower)
+    && /(?:сайт|страниц|интернет|веб|источник|актуаль|свеж|тренд|конкурент)/iu.test(lower);
+  const asksForCurrentInfo = /(?:актуаль|свеж|сейчас|сегодня|последн|новост|тренд|изменил|обновил)/iu.test(lower);
+  return { search: recent || factual || asksForExternalSources, recent: recent || asksForCurrentInfo };
 }
 
-type DialogueIntentAction =
-  | "chat"
-  | "create_text"
-  | "edit_text"
-  | "create_image"
-  | "edit_image"
-  | "create_carousel"
-  | "create_topics";
-type DialogueIntentTarget = "none" | "latest_material" | "latest_image";
-type DialogueIntent = { action: DialogueIntentAction; target: DialogueIntentTarget };
-
-const DIALOGUE_INTENT_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    action: { type: "string", enum: ["chat", "create_text", "edit_text", "create_image", "edit_image", "create_carousel", "create_topics"] },
-    target: { type: "string", enum: ["none", "latest_material", "latest_image"] },
-  },
-  required: ["action", "target"],
-} as const;
-
-// The browser already recognizes the clearest commands. This small server
-// fallback handles natural variants sent by another client or a stale tab,
-// while ordinary questions remain a single chat call and incur no classifier
-// request.
-function looksLikeDialogueAction(text: string) {
-  return /(?:созда|сдела|нарис|напиш|добав|сгенер|собер|подготов|прикреп|встав|исправ|измени|перепиш|карусел|картин|изображ|пост|стать)/iu.test(text);
-}
 
 function latestDialogueImageSource(data: DialogueData) {
   for (const message of [...data.messages].reverse()) {
@@ -183,43 +159,19 @@ async function inferDialogueIntent(
   ownerEmail: string,
   brandId: string | null,
   requestGroupId: string,
-): Promise<DialogueIntent | null> {
-  if (!looksLikeDialogueAction(text)) return null;
-  // Test harnesses and older relay builds can load a config without this
-  // optional operation. In that case the existing deterministic route is the
-  // safe fallback; production config includes it.
-  if (!(OPERATION_CONFIG as Record<string, unknown>).dialogue_intent) return null;
-  if (!aiConfigured("dialogue_intent")) return null;
+  context: Record<string, unknown>,
+) {
   try {
-    const context = dialogueContext(data, selectedId);
-    const result = await callAiModel<DialogueIntent>({
-      operation: "dialogue_intent",
+    return await runDialogueAgent({
+      text,
+      messages: data.messages.map((message) => ({ role: message.role, text: message.text })),
+      context: { ...dialogueContext(data, selectedId), ...context },
       ownerEmail,
-      brandId: brandId ?? undefined,
+      brandId,
       requestGroupId,
-      requestTimeoutMs: 12_000,
-      maxOutputTokensOverride: 180,
-      reasoningEffortOverride: "none",
-      retryableOverride: false,
-      schemaName: "klio_dialogue_intent",
-      schema: DIALOGUE_INTENT_SCHEMA,
-      instructions: [
-        "You are KLIO's server-side intent router.",
-        "Return only the JSON object required by the schema; never answer the user and never invent a material.",
-        "Choose create_image when the user asks to draw or add an image, edit_image when an existing image should be changed, create_text for a new post/article/text, edit_text for a change to an existing material, create_carousel for a carousel, create_topics for a topic list, and chat for discussion or questions.",
-        "Use latest_image only when the request clearly refers to the most recent image. Use latest_material only when it clearly refers to an existing text/material. Otherwise use none.",
-      ].join("\n"),
-      input: JSON.stringify({ request: text.slice(0, 8000), ...context }),
     });
-    const action = result.result?.action;
-    const target = result.result?.target;
-    if (!DIALOGUE_INTENT_SCHEMA.properties.action.enum.includes(action)
-      || !DIALOGUE_INTENT_SCHEMA.properties.target.enum.includes(target)) return null;
-    return { action, target };
   } catch (error) {
-    // Intent routing must never turn a working chat into an error. The main
-    // generation path will continue with the client-selected mode.
-    console.warn("dialogue intent router unavailable", error instanceof Error ? error.message : String(error));
+    console.warn("dialogue agent unavailable", error instanceof Error ? error.message : String(error));
     return null;
   }
 }
@@ -364,6 +316,8 @@ async function runReply(
     carouselIndicatorMode: CarouselSlideIndicatorMode;
     imageSource?: ResolvedDialogueImageSource;
   },
+  agentReply?: string,
+  agentGrounding?: { research: unknown; website: unknown },
 ) {
   try {
     const db = await getWorkspaceDb();
@@ -553,14 +507,12 @@ async function runReply(
     } else {
       const url = last.match(/https?:\/\/[^\s<>]+/i)?.[0];
       const { search, recent } = needsWebSearch(last);
-      const [research, website] = await Promise.all([
-        search
-          ? researchAdaptationFacts(last.slice(0, 800), recent)
-          : Promise.resolve(null),
-        url
-          ? readWebsiteContext(url)
-          : Promise.resolve(null),
-      ]);
+      const [research, website] = agentGrounding
+        ? [agentGrounding.research, agentGrounding.website]
+        : await Promise.all([
+          search ? researchAdaptationFacts(last.slice(0, 800), recent) : Promise.resolve(null),
+          url ? readWebsiteContext(url) : Promise.resolve(null),
+        ]);
       const conversationInput = JSON.stringify({
         ...dialogueContext(data, effectiveSelectedId),
         profile: useBrandContext && brand ? { ...brandProfile, name: brand.name, website: brand.website } : {},
@@ -579,6 +531,9 @@ async function runReply(
       });
       let a: DialogueAnswer;
       if (mode === "chat") {
+        if (agentReply) {
+          a = { reply: agentReply, action: "reply", cards: [], profile: [] };
+        } else {
         // Ordinary conversation needs only text. The provider repeatedly
         // returned completed responses that failed the card/action schema,
         // so never require that schema for this explicitly plain intent.
@@ -615,6 +570,7 @@ async function runReply(
         const reply = plain.result.raw.trim().slice(0, 14_000);
         if (!reply) throw new Error("Диалог вернул пустой ответ.");
         a = { reply, action: "reply", cards: [], profile: [] };
+        }
       } else {
         const answer = await callAiModel<DialogueAnswer>({
         operation: "dialogue",
@@ -905,10 +861,12 @@ export async function POST(request: Request) {
     let selectedId = clean(p.cardId || imageSourceCardId);
     let plannerImageSource: unknown;
 
-    // A stale client can still send the chat mode after the user explicitly
-    // asks for an action. Let the short server planner choose one of the
-    // existing, quota-aware modes before validation and debit checks run.
-    if (action === "send" && mode === "chat" && requestId && clean(p.text, 8000)) {
+    let agentReply: string | undefined;
+    let agentGrounding: { research: unknown; website: unknown } | undefined;
+
+    // Every free-form dialogue message passes through one tool-aware agent.
+    // It can answer normally or dispatch to an existing quota-aware workflow.
+    if (action === "send" && requestId && clean(p.text, 8000)) {
       const [preview] = await db
         .select()
         .from(dialogueThreads)
@@ -916,15 +874,34 @@ export async function POST(request: Request) {
         .limit(1);
       if (preview && preview.status !== "processing" && preview.requestId !== requestId) {
         const previewData = dataOf(preview);
+        const text = clean(p.text, 8000);
+        const brand = p.useBrandContext === true ? await verifyBrand(db, preview.brandId, user.email) : null;
+        let profile: Record<string, unknown> = {};
+        if (brand) {
+          try { profile = { ...JSON.parse(brand.profileJson), name: brand.name, website: brand.website }; } catch { profile = { name: brand.name, website: brand.website }; }
+        }
+        const { search, recent } = needsWebSearch(text);
+        const url = text.match(/https?:\/\/[^\s<>]+/i)?.[0];
+        const websiteTargets = [
+          ...(url ? [{ url, fullSite: false }] : []),
+          ...(brand?.website && brand.website !== url ? [{ url: brand.website, fullSite: true }] : []),
+        ];
+        const [research, websites] = await Promise.all([
+          search ? researchAdaptationFacts(text.slice(0, 800), recent).catch(() => null) : Promise.resolve(null),
+          Promise.all(websiteTargets.slice(0, 2).map((target) => readWebsiteContext(target.url, { fullSite: target.fullSite }).catch(() => null))),
+        ]);
+        const website = websites.filter(Boolean);
+        agentGrounding = { research, website };
         const intent = await inferDialogueIntent(
-          clean(p.text, 8000),
+          text,
           previewData,
           selectedId,
           user.email,
           preview.brandId,
           requestId,
+          { profile, brandContextEnabled: Boolean(brand), research, website, brandWebsiteIncluded: Boolean(brand?.website), searchAttempted: search, today: new Date().toISOString() },
         );
-        if (intent && intent.action !== "chat") {
+        if (intent?.action) {
           mode = intent.action === "create_image" || intent.action === "edit_image"
             ? "image"
             : intent.action === "create_carousel"
@@ -941,6 +918,9 @@ export async function POST(request: Request) {
               plannerImageSource = latestImage;
             }
           }
+        } else if (intent?.reply) {
+          mode = "chat";
+          agentReply = intent.reply;
         }
       }
     }
@@ -1459,6 +1439,8 @@ export async function POST(request: Request) {
         mode,
         resolveBaseUrl(request),
         genSettings,
+        agentReply,
+        agentGrounding,
       );
     return Response.json(result, {
       headers: { "Cache-Control": "private, no-store" },

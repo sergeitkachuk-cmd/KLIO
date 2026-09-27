@@ -2,6 +2,9 @@ import { AiResponseError, openAiErrorResponse } from "../../_lib/openai-response
 import { callAiModel } from "../../_lib/ai-router";
 import { modelForProvider } from "../../_lib/ai-config";
 import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../../_lib/workspace-account";
+import { readWebsiteContext } from "../../_lib/website-context";
+
+export const maxDuration = 120;
 
 type ReplacementPayload = {
   query?: unknown;
@@ -78,6 +81,7 @@ function normalizePayload(raw: ReplacementPayload) {
     comment: clean(raw.comment, 1200),
     brand: {
       name: clean(brandSource.name, 160),
+      website: clean(brandSource.website, 220),
       description: clean(brandSource.description, 1800),
       positioning: clean(brandSource.positioning, 1200),
       audience: clean(brandSource.audience, 1200),
@@ -166,8 +170,10 @@ export async function POST(request: Request) {
     await assertSecondaryQuotaAvailable("research");
     const identity = await workspaceIdentity();
     const requestGroupId = crypto.randomUUID();
+    const website = input.brand.website ? await readWebsiteContext(input.brand.website, { fullSite: true }) : null;
 
     const instructions = [
+      "Use website_snapshot as factual context about the selected brand when available. Build replacements around confirmed products and services; do not claim facts that are absent from the website and brand profile.",
       "Ты — выпускающий контент‑стратег платформы КЛИО.",
       "Для каждой выбранной темы предложи ровно три самостоятельные альтернативы. Остальной контент‑план не меняется.",
       "Альтернативы должны сохранять общую стратегию плана, но не повторять исходный заголовок, другие темы плана и друг друга.",
@@ -193,6 +199,7 @@ export async function POST(request: Request) {
         replacement_preference: input.preference || "Предложить другой сильный ракурс",
         user_comment: input.comment || null,
         brand_profile: input.brand.name ? input.brand : null,
+        website_snapshot: website?.status === "loaded" ? { url: website.resolvedUrl, text: website.text } : null,
       }, null, 2),
     });
 

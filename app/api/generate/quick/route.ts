@@ -9,6 +9,8 @@ import { readWebsiteContext } from "../../_lib/website-context";
 import { aiConfigured } from "../../_lib/ai-config";
 import { publicationCharacters, bodyBudget, trimOverflowBody } from "../../_lib/text-length";
 
+export const maxDuration = 220;
+
 type QuickPayload = { prompt?: unknown; brandId?: unknown; brand?: unknown; lengthHint?: unknown };
 
 type QuickBrandInput = {
@@ -142,7 +144,7 @@ export async function POST(request: Request) {
     const brandId = typeof payload.brandId === "string" ? payload.brandId : undefined;
     // Share the same database-backed owner gate as advanced generation.
     // An existing quick request must not be repeated by another HTTP caller.
-    const job = await claimAsyncJob("material_generation", identity.email, { mode: "quick", input: payload }, 120_000);
+    const job = await claimAsyncJob("material_generation", identity.email, { mode: "quick", input: payload }, 210_000);
     if (job.reused) return Response.json({ error: "Предыдущая генерация ещё выполняется. Дождитесь результата." }, { status: 409 });
     ownedJobId = job.id;
     await markAsyncJobProcessing(job.id);
@@ -161,8 +163,8 @@ export async function POST(request: Request) {
 
     // The free-form brief adds one short normalization call, but the complete
     // pipeline must still finish inside the same sub-two-minute deadline.
-    const budget = createGenerationBudget(lengthHint && lengthHint <= 2000 ? 75_000 : 110_000);
-    const grounding = Promise.all([researchMaterialWeb(prompt.slice(0, 500), []), readWebsiteContext(brand?.website || "")]);
+    const budget = createGenerationBudget(lengthHint && lengthHint <= 2000 ? 150_000 : 190_000);
+    const grounding = Promise.all([researchMaterialWeb(prompt.slice(0, 500), []), readWebsiteContext(brand?.website || "", { fullSite: true })]);
     let brief: QuickBrief;
     try {
       const briefCall = await callAiModel<Record<string, unknown>>({

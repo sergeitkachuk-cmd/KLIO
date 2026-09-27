@@ -142,6 +142,7 @@ test("professional images use owned material titles and the same text and logo c
     "../_lib/image-generation": { imageConfigured: () => true, parseImageGenerationOptions: imageModule.parseImageGenerationOptions, createImage: async (...args) => { calls.push({ logo: false, args }); return "image"; }, createImageFromLogo: async (...args) => { calls.push({ logo: true, args }); return "image"; } },
     "../_lib/image-generation-errors": imageGenerationErrors,
     "../_lib/dialogue-image-prompt": promptModule,
+    "../_lib/website-context": { readWebsiteContext: async () => ({ status: "not_provided", text: "" }) },
     "../_lib/image-usage": { recordImageUsage: async () => {} },
     "../_lib/storage": { downloadBrandLogo: async () => ({ bytes: new Uint8Array(), contentType: "image/png" }), StorageError: class extends Error {} },
     "../_lib/request-body": load("app/api/_lib/request-body.ts"),

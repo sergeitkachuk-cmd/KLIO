@@ -121,7 +121,6 @@ const OPERATION_LABELS: Record<AiOperation, string> = {
   dialogue: "Диалог с КЛИО",
   dialogue_plain: "Диалог с КЛИО: резервный ответ",
   dialogue_deepseek_plain: "Диалог с КЛИО: DeepSeek после ошибки GPT",
-  dialogue_intent: "Диалог: выбор действия",
   generate_seo_article: "Генерация: SEO-статья",
   generate_social_post: "Генерация: соцсети",
   generate_ad_copy: "Генерация: реклама",

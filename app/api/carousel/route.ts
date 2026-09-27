@@ -19,7 +19,7 @@ import { DEFAULT_CAROUSEL_TEMPLATE, isCarouselSlideIndicatorMode, isCarouselTemp
 // hosting platform's own reverse-proxy timeout to stay open end to end, so
 // the route only starts the job and returns a jobId; the actual work runs
 // in runCarouselGeneration, polled via GET below.
-const CAROUSEL_TIMEOUT_MS = 60_000 + CAROUSEL_MAX_SLIDES * 45_000;
+const CAROUSEL_TIMEOUT_MS = 120_000 + CAROUSEL_MAX_SLIDES * 45_000;
 
 type CarouselPayload = {
   generationId?: unknown;

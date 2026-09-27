@@ -89,7 +89,6 @@ const distinctRewriteGoals = new Set<AdaptationGoal>(["rewrite", "seo", "social"
 // search digest. Mechanical modes must preserve the supplied facts, and an
 // unnecessary advanced search made even proofreading wait up to 12 seconds.
 const researchGoals = new Set<AdaptationGoal>(["deepen", "rewrite", "seo", "landing", "review", "cold_email"]);
-const websiteContextGoals = new Set<AdaptationGoal>([...researchGoals, "brand_voice"]);
 
 function coreRulesFor(goal: AdaptationGoal): readonly string[] {
   if (!researchGoals.has(goal)) return ADAPTATION_CORE_RULES;
@@ -209,7 +208,7 @@ function adaptationHasViolation(input: ReturnType<typeof normalizePayload>, mate
 // before DeepSeek finishes — surfacing as a bare network failure or no
 // response at all instead of a real, readable error. Runs in the
 // background; POST only claims the job, GET /api/adapt/status polls it.
-const ADAPTATION_TIMEOUT_MS = 90_000;
+const ADAPTATION_TIMEOUT_MS = 180_000;
 
 // Everything the AI actually does for one editor pass. Throws AiCallError/
 // AiResponseError/WorkspaceAccessError on failure; never returns a
@@ -220,16 +219,16 @@ async function runAdaptation(input: ReturnType<typeof normalizePayload>, ownerEm
   // Fast modes have no reasoning phase and must finish sooner. Research
   // and judgement-heavy modes keep more room, while every editor remains
   // under one deadline including a possible correction pass.
-  const totalBudgetMs = reasoningEffort === "none" ? 70_000 : 90_000;
+  const totalBudgetMs = reasoningEffort === "none" ? 145_000 : 170_000;
   const budget = createGenerationBudget(totalBudgetMs);
-  const brandWebsite = input.useBrand && websiteContextGoals.has(input.goal) ? clean(input.brand.website, 220) : "";
+  const brandWebsite = input.useBrand ? clean(input.brand.website, 220) : "";
   const sourceHeading = input.sourceText.split(/\r?\n/, 1)[0]?.slice(0, 240) ?? "";
   // Leave room for researchAdaptationFacts' evidence qualifiers after
   // tavilySearch applies its 700-character request limit.
   const researchTopic = [sourceHeading, input.instructions, input.keywords].filter(Boolean).join(" ").slice(0, 430)
     || input.sourceText.slice(0, 430);
   const [website, webResearch] = await Promise.all([
-    readWebsiteContext(brandWebsite),
+    readWebsiteContext(brandWebsite, { fullSite: true }),
     researchGoals.has(input.goal) ? researchAdaptationFacts(researchTopic) : Promise.resolve(null),
   ]);
   const plan = ADAPTATION_PLANS[input.goal];

@@ -196,6 +196,7 @@ export async function createDialogueHarness() {
     "./image-cost": imageCost,
     "./image-usage": { recordImageUsage: async () => {} },
     "./storage": { downloadBrandLogo: async () => ({ bytes: new Uint8Array([2]), contentType: "image/png" }) },
+    "./website-context": { readWebsiteContext: async () => ({ status: "loaded", text: "Кофейня" }) },
     "./workspace-account": workspace, "./async-jobs": {}, "../../carousel-templates": carouselTemplates,
   });
   const route = load(
@@ -215,6 +216,7 @@ export async function createDialogueHarness() {
         aiConfigured: () => true,
         OPERATION_CONFIG: { dialogue_plain: { model: "gpt-6-luna" }, dialogue_deepseek_plain: { model: "deepseek-flash" } },
       },
+      "../_lib/dialogue-agent": { runDialogueAgent: async () => null },
       "../_lib/ai-router": {
         AiCallError,
         callAiModel: async (input) => {
