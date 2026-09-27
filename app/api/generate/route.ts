@@ -618,6 +618,12 @@ async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>,
       keywords: input.editorialBrief.keywords.length ? input.editorialBrief.keywords : selectedKeywords(input),
     },
     author_position: input.authorPosition,
+    author_position_contract: input.authorPosition === "brand" ? {
+      voice: "first_person_brand",
+      required: "Основной текст пишется от лица активного бренда.",
+      include_naturally: ["мы", "наш/наша/наше/наши"],
+      prohibit: "Не описывай активный бренд со стороны и не называй его внешней компанией.",
+    } : null,
     topic_contract: {
       primary_subject: input.topic,
       required_subject_terms: semanticTokens(input.topic).slice(0, 5),
@@ -698,7 +704,7 @@ async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>,
       `Авторская позиция: ${input.authorPosition}.`,
       ...authorPositionRules(input.authorPosition),
       input.authorPosition === "brand"
-        ? "Это собственная публикация активного бренда. Все подтверждённые сведения о его сайте, услугах, программах, специалистах и условиях подавай изнутри бренда: «у нас», «в нашей программе», «на нашем сайте». Не описывай их от третьего лица и не ссылайся на «официальный сайт бренда» — это создаёт ложное впечатление внешней статьи. Независимую отраслевую фактуру можно излагать нейтрально, но не приписывай её бренду."
+        ? "КРИТИЧЕСКОЕ ПРАВИЛО ПЕРЕД ВЫДАЧЕЙ: это собственная публикация активного бренда. Напиши весь body от первого лица бренда, естественно используй «мы» и/или «наш/наша/наше/наши» в содержательных предложениях. Все сведения о сайте, услугах, программах, специалистах и условиях подавай изнутри бренда: «у нас», «в нашей программе», «на нашем сайте». Не описывай активный бренд со стороны, не называй его внешней компанией и не пиши «официальный сайт бренда». Если черновик получился нейтральным, перепиши body до формирования JSON."
         : "",
       "editorialBrief — скрытое техническое задание редактора. Если он передан, используй его вопрос читателя, ракурс, интент, структуру, факты и ограничения как конкретизацию темы; не пересказывай его в публикации.",
       "Если тема содержит название активного бренда, компании, продукта, программы или услуги, создай маркетинговый материал именно об этом предложении: раскрой его релевантность задаче аудитории, подтверждённые сильные стороны, программу или процесс и следующий шаг. Не подменяй такую тему инструкцией по выбору категории.",
@@ -816,10 +822,6 @@ async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>,
       // with the original material rather than losing the whole result.
       console.error("Generation correction pass failed", error);
     }
-  }
-
-  if (missingBrandVoice) {
-    throw new AiCallError("Не удалось сохранить выбранную авторскую позицию «От лица бренда». Попробуйте сгенерировать материал ещё раз.", 502);
   }
 
   // Backstop for a case the correction pass sometimes still misses: a

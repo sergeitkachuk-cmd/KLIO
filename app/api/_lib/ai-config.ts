@@ -219,12 +219,10 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // before generation, while readWebsiteContext supplies the brand site.
   // Search and site crawling are not repeated for each batch of plan rows.
   // A failed long generation can still have consumed a very large cached
-  // prompt at the provider. Do not automatically replay this operation:
-  // the user can explicitly retry after seeing the error, while automatic
-  // retries turn one malformed/empty provider response into several full
-  // billed requests.
-  generate_content_plan: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 18_000, structuredOutput: true, retryable: false, useWebSearch: false },
-  research_content_plan_web: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 2_400, structuredOutput: true, retryable: false, useWebSearch: true },
+  // prompt at the provider. Retry only transient transport/provider errors;
+  // malformed output is still surfaced without replaying the full plan.
+  generate_content_plan: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 18_000, structuredOutput: true, retryable: true, useWebSearch: false },
+  research_content_plan_web: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 2_400, structuredOutput: true, retryable: true, useWebSearch: true },
   // Up to 5 selected topics x 3 full alternatives each, each a complete
   // plan row (structure, lsi, evidence, sources...) — genuinely needs a
   // ceiling close to a fresh content plan's, not the generic "small
@@ -275,10 +273,11 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // otherwise falls back to brand name + marketing positioning, which
   // (confirmed against Tavily's own docs, this session) reliably finds
   // nothing for a small/regional brand regardless of search mode. A
-  // small extraction task (read whatever brand context and website
-  // snapshot exist, name the industry and a few concrete product/service
-  // keywords), not creative generation — same tier as normalize_quick_brief.
-  infer_content_plan_industry: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 500, structuredOutput: true, retryable: true, useWebSearch: false },
+  // Small extraction task (read whatever brand context and website snapshot
+  // exists, name the industry and a few concrete product/service keywords).
+  // Keep it on the content tier because the authenticated relay intentionally
+  // accepts that tier; the utility model is not available there.
+  infer_content_plan_industry: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 500, structuredOutput: true, retryable: true, useWebSearch: false },
   normalize_quick_brief: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 800, structuredOutput: true, retryable: true, useWebSearch: false },
   validate_content: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 1_500, structuredOutput: true, retryable: true, useWebSearch: false },
   // Shrinks an already-written, still-too-long article down to its target

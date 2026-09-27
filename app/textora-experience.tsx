@@ -7479,10 +7479,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <span>{contentPlanArchiveStatus === "saving" ? "Сохраняем план в «Материалы»…" : contentPlanArchiveStatus === "saved" ? "План автоматически сохранён в «Материалы»." : contentPlanArchiveStatus === "modified" ? "В плане есть изменения. Сохраните новую версию в «Материалы»." : contentPlanArchiveStatus === "needs-brand" ? "План готов. Выберите бренд, чтобы сохранить его в «Материалы»." : "План готов, но сохранить его не удалось."}</span>
                   {contentPlanArchiveStatus === "failed" && <button type="button" onClick={() => void saveModuleMaterial("content_plan")} disabled={materialSavingType === "content_plan"}>{materialSavingType === "content_plan" ? "Сохраняем…" : "Повторить сохранение"}</button>}
                 </div>}
-                {contentPlanResult.researchSources?.some((source) => /^https?:\/\//i.test(source.url)) && <nav className="content-plan-research-sources" aria-label="Источники веб-поиска">
-                  <span>Источники веб-поиска</span>
-                  {contentPlanResult.researchSources.filter((source) => /^https?:\/\//i.test(source.url)).slice(0, 8).map((source) => <a href={source.url} target="_blank" rel="noreferrer" key={source.url}>{source.title || source.url}<Icon name="arrow"/></a>)}
-                </nav>}
 
                 {/* Right above the (often long, 10-25 item) list so it's seen
                     immediately after the plan appears, not after scrolling
