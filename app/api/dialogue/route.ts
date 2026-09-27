@@ -309,6 +309,7 @@ async function runReply(
     useLogo: boolean;
     logoPlacement: "scene" | "corner" | "both";
     logoPosition: "top-left" | "top-right" | "bottom-left" | "bottom-right";
+    exactLogoOverlay: boolean;
     imageTextMode: "auto" | "none" | "title" | "custom";
     imageText: string;
     slideCount: number;
@@ -391,7 +392,7 @@ async function runReply(
         : last;
       const requestedTitleOnImage = selected && /заголов(?:ок|ка)|название\s+статьи/i.test(last);
       const effectiveImageTextMode = requestedTitleOnImage ? "title" : settings.imageTextMode;
-      let prompt = buildDialogueImagePrompt({ request: imageRequest, selected, brand, useBrandContext, sourcePurpose: settings.imageSource?.purpose, imageTextMode: effectiveImageTextMode });
+      let prompt = buildDialogueImagePrompt({ request: imageRequest, selected, brand, useBrandContext, sourcePurpose: settings.imageSource?.purpose, imageTextMode: effectiveImageTextMode, useLogo: settings.useLogo });
       // The shared image relay accepts 12,000 characters, including logo
       // guidance. Read long profiles in full before producing a bounded brief;
       // never let the image transport truncate the user's request at the end.
@@ -415,7 +416,7 @@ async function runReply(
       const imageOptions = {
         ...(settings.imageAspectRatio ? { aspectRatio: settings.imageAspectRatio } : {}),
         ...(settings.imageOutputFormat ? { outputFormat: settings.imageOutputFormat } : {}),
-        ...(settings.useLogo ? { logoPlacement: settings.logoPlacement, logoPosition: settings.logoPosition } : {}),
+        ...(settings.useLogo ? { logoPlacement: settings.logoPlacement, logoPosition: settings.logoPosition, exactLogoOverlay: settings.exactLogoOverlay } : {}),
       };
       let logoKey = "";
       if (settings.useLogo && brand) {
@@ -974,14 +975,25 @@ export async function POST(request: Request) {
       : "";
     const carouselTemplate = isCarouselTemplateId(settingsRaw.templateId) ? settingsRaw.templateId : DEFAULT_CAROUSEL_TEMPLATE;
     const carouselIndicatorMode = isCarouselSlideIndicatorMode(settingsRaw.indicatorMode) ? settingsRaw.indicatorMode : "numbers";
-    const useLogo = (mode === "image" ? requestedLogoChange(clean(p.text, 8000)) : null) ?? (settingsRaw.useLogo === true);
+    const requestedLogo = mode === "image" ? requestedLogoChange(clean(p.text, 8000)) : null;
+    const useLogo = requestedLogo ?? (settingsRaw.useLogo === true);
+    let profileLogoAvailable = false;
+    if (action === "send" && mode === "image" && useLogo) {
+      const [threadForLogo] = await db.select({ brandId: dialogueThreads.brandId }).from(dialogueThreads).where(owned(id, user.email)).limit(1);
+      const brandForLogo = threadForLogo?.brandId ? await verifyBrand(db, threadForLogo.brandId, user.email) : null;
+      try {
+        const profile = brandForLogo ? JSON.parse(brandForLogo.profileJson) as { logoKey?: unknown } : {};
+        profileLogoAvailable = typeof profile.logoKey === "string" && Boolean(profile.logoKey.trim());
+      } catch { profileLogoAvailable = false; }
+    }
+    const exactLogoOverlay = useLogo && profileLogoAvailable;
     const imageTextMode = settingsRaw.imageTextMode === "none" || settingsRaw.imageTextMode === "title" || settingsRaw.imageTextMode === "custom" ? settingsRaw.imageTextMode : "auto";
     const imageText = clean(settingsRaw.imageText, 201);
     if (action === "send" && mode === "image" && imageTextMode === "custom" && (!imageText || imageText.length > 200))
       throw new WorkspaceAccessError("Введите текст для изображения: от 1 до 200 символов.", 400);
     if (action === "send" && mode === "image" && imageTextMode === "title" && !selectedId)
       throw new WorkspaceAccessError("Выберите материал, заголовок которого нужен на изображении.", 400);
-    const logoPlacement = settingsRaw.logoPlacement === "both" ? "both" as const : settingsRaw.logoPlacement === "corner" || settingsRaw.logoPlacement === "overlay" ? "corner" as const : "scene" as const;
+    const logoPlacement = exactLogoOverlay ? "corner" as const : settingsRaw.logoPlacement === "both" ? "both" as const : settingsRaw.logoPlacement === "corner" || settingsRaw.logoPlacement === "overlay" ? "corner" as const : "scene" as const;
     const logoPosition = settingsRaw.logoPosition === "top-left" || settingsRaw.logoPosition === "top-right" || settingsRaw.logoPosition === "bottom-left" ? settingsRaw.logoPosition : "bottom-right" as const;
     const slideCount = Number(settingsRaw.slideCount ?? 5);
     if (mode === "carousel" && (!Number.isInteger(slideCount) || slideCount < CAROUSEL_MIN_SLIDES || slideCount > CAROUSEL_MAX_SLIDES))
@@ -1002,7 +1014,7 @@ export async function POST(request: Request) {
       imageOutputFormat,
       imageStyle,
       useLogo,
-      logoPlacement, logoPosition, imageTextMode, imageText,
+      logoPlacement, logoPosition, exactLogoOverlay, imageTextMode, imageText,
       slideCount,
       carouselTemplate,
       carouselIndicatorMode,

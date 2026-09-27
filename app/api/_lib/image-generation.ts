@@ -21,6 +21,9 @@ export type ImageGenerationOptions = {
   // "overlay" is a legacy client value; it now means an adapted corner mark.
   logoPlacement?: "scene" | "corner" | "both" | "overlay";
   logoPosition?: LogoPosition;
+  // Preserve the uploaded logo asset by compositing it after model generation.
+  // A model reference alone cannot guarantee faithful reproduction.
+  exactLogoOverlay?: boolean;
 };
 
 // gpt-image-1 only accepts three literal size values - "1024x1024",
@@ -374,8 +377,13 @@ export async function createImageFromLogo(
   onUsage?: ImageUsageHandler,
 ) {
   const corner = options.logoPlacement === "corner" || options.logoPlacement === "both" || options.logoPlacement === "overlay";
-  const guidedPrompt = `${prompt}\n\n${logoPlacementInstruction(options.logoPlacement, options.logoPosition)}`;
-  const { bytes, contentType } = await generateImageBytes(guidedPrompt, requestId, corner ? { ...options, background: "opaque" } : options, logo, model, undefined, onPartial, onUsage);
+  const exactOverlay = options.exactLogoOverlay === true;
+  const guidedPrompt = exactOverlay
+    ? `${prompt}\n\nНе рисуй логотипы, названия бренда, фирменные знаки или водяные знаки. Оставь свободным угол ${logoPositionLabel(options.logoPosition)}: после генерации туда будет помещён исходный файл логотипа без перерисовки.`
+    : `${prompt}\n\n${logoPlacementInstruction(options.logoPlacement, options.logoPosition)}`;
+  const generationOptions = corner || exactOverlay ? { ...options, background: "opaque" as const } : options;
+  const generated = await generateImageBytes(guidedPrompt, requestId, generationOptions, exactOverlay ? undefined : logo, model, undefined, onPartial, onUsage);
+  const { bytes, contentType } = exactOverlay ? await overlayOriginalLogo(generated.bytes, logo, options) : generated;
   const fileName = contentType === "image/jpeg" ? "klio.jpeg" : contentType === "image/webp" ? "klio.webp" : contentType === "image/gif" ? "klio.gif" : "klio.png";
   return uploadPublicationImage(
     new File([bytes], fileName, { type: contentType }),
@@ -489,7 +497,10 @@ export async function createImageFromSource(
     ? "Голубая кисть отмечает единственную область, которую разрешено менять. Выполни запрос внутри выделения; не перемещай новые объекты в другие части кадра. За пределами выделения оставь исходные пиксели без изменений."
     : "";
   const corner = Boolean(logo) && (options.logoPlacement === "corner" || options.logoPlacement === "both" || options.logoPlacement === "overlay");
-  const logoInstruction = logo
+  const exactOverlay = Boolean(logo && options.exactLogoOverlay === true);
+  const logoInstruction = exactOverlay
+    ? `Не рисуй логотипы, названия бренда, фирменные знаки или водяные знаки. Оставь свободным угол ${logoPositionLabel(options.logoPosition)}: после генерации туда будет помещён исходный файл логотипа без перерисовки.`
+    : logo
     ? "Второе изображение — настоящий логотип бренда. Используй именно этот знак и его надпись; не выдумывай другой бренд. Размести его на первом изображении в соответствии с запросом. Прозрачность вокруг знака относится только к файлу логотипа: не переноси её на фотографию и не удаляй под ним или вокруг него исходное изображение."
     : "Логотип бренда не приложен. Не выдумывай фирменные знаки.";
   // With an RGBA logo, automatic background selection can make the entire
@@ -502,13 +513,13 @@ export async function createImageFromSource(
   const backgroundInstruction = editOptions.background === "opaque"
     ? "Результат — цельное непрозрачное изображение. Не добавляй прозрачные участки, полупрозрачные края, виньетку, рамку или подложку под логотип."
     : "";
-  const placementInstruction = logo ? logoPlacementInstruction(options.logoPlacement, options.logoPosition) : "";
+  const placementInstruction = logo && !exactOverlay ? logoPlacementInstruction(options.logoPlacement, options.logoPosition) : "";
   const editModel = purpose === "edit"
     ? process.env.KLIO_IMAGE_EDIT_MODEL?.trim() || "gpt-image-2.5-sunburst"
     : undefined;
   const { bytes, contentType } = await generateImageBytes(`${instruction}\n${maskInstruction}\n${backgroundInstruction}\n\n${prompt}\n\n${logoInstruction}\n${placementInstruction}`, requestId,
     editOptions,
-    logo ? [source, logo] : source, editModel, mask, mask ? undefined : onPartial, onUsage);
+    logo && !exactOverlay ? [source, logo] : source, editModel, mask, mask ? undefined : onPartial, onUsage);
 
   // The provider treats an edit mask as guidance and can still change pixels
   // outside it. Lock those pixels locally: only let generated pixels through
@@ -551,7 +562,44 @@ export async function createImageFromSource(
     return uploadPublicationImage(new File([lockedResult], "klio-edit.png", { type: "image/png" }), email, baseUrl);
   }
 
-  return uploadPublicationImage(new File([bytes], "klio-edit", { type: contentType }), email, baseUrl);
+  const result = exactOverlay && logo ? await overlayOriginalLogo(bytes, logo, options) : { bytes, contentType };
+  return uploadPublicationImage(new File([result.bytes], `klio-edit.${fileExtension(result.contentType)}`, { type: result.contentType }), email, baseUrl);
+}
+
+function logoPositionLabel(position: LogoPosition = "bottom-right") {
+  return { "top-left": "слева вверху", "top-right": "справа вверху", "bottom-left": "слева внизу", "bottom-right": "справа внизу" }[position];
+}
+
+function fileExtension(contentType: string) {
+  return contentType === "image/jpeg" ? "jpg" : contentType === "image/webp" ? "webp" : "png";
+}
+
+async function overlayOriginalLogo(
+  imageBytes: Uint8Array<ArrayBuffer>,
+  logo: ImageInput,
+  options: ImageGenerationOptions,
+): Promise<{ bytes: Uint8Array<ArrayBuffer>; contentType: string }> {
+  const sharp = (await import("sharp")).default;
+  const outputFormat = options.outputFormat || "png";
+  const base = sharp(imageBytes).rotate();
+  const metadata = await base.metadata();
+  if (!metadata.width || !metadata.height) throw new ImageInputError("Не удалось добавить исходный логотип к изображению.");
+  const marginX = Math.max(1, Math.round(metadata.width * 0.04));
+  const marginY = Math.max(1, Math.round(metadata.height * 0.04));
+  const logoBytes = await sharp(logo.bytes)
+    .rotate()
+    .resize({ width: Math.max(1, Math.round(metadata.width * 0.14)), height: Math.max(1, Math.round(metadata.height * 0.14)), fit: "inside", withoutEnlargement: true, kernel: "lanczos3" })
+    .png()
+    .toBuffer();
+  const logoMetadata = await sharp(logoBytes).metadata();
+  if (!logoMetadata.width || !logoMetadata.height) throw new ImageInputError("Не удалось прочитать исходный файл логотипа.");
+  const position = options.logoPosition || "bottom-right";
+  const left = position.endsWith("left") ? marginX : metadata.width - logoMetadata.width - marginX;
+  const top = position.startsWith("top") ? marginY : metadata.height - logoMetadata.height - marginY;
+  const composed = base.composite([{ input: logoBytes, left, top, blend: "over" }]);
+  if (outputFormat === "jpeg") return { bytes: Uint8Array.from(await composed.jpeg({ quality: 95, mozjpeg: true }).toBuffer()), contentType: "image/jpeg" };
+  if (outputFormat === "webp") return { bytes: Uint8Array.from(await composed.webp({ quality: 95, alphaQuality: 100 }).toBuffer()), contentType: "image/webp" };
+  return { bytes: Uint8Array.from(await composed.png().toBuffer()), contentType: "image/png" };
 }
 
 // Each carousel card is generated as a complete raster image by the image

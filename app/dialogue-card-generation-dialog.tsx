@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { DialogueModal } from "./dialogue-modal";
+import { DialogueImageAttachment } from "./dialogue-image-attachment";
 import { ModuleSelect } from "./module-select";
-import { FORMAT_OPTIONS, TONE_OPTIONS, LENGTH_OPTIONS, TEXT_LENGTH_TARGETS, IMAGE_ASPECT_OPTIONS, IMAGE_FORMAT_OPTIONS, IMAGE_TEXT_OPTIONS, LOGO_PLACEMENT_OPTIONS, LOGO_POSITION_OPTIONS, AUTHOR_POSITION_OPTIONS, type GenerationSettings } from "./dialogue-generation-settings";
+import { FORMAT_OPTIONS, TONE_OPTIONS, LENGTH_OPTIONS, TEXT_LENGTH_TARGETS, IMAGE_ASPECT_OPTIONS, IMAGE_FORMAT_OPTIONS, IMAGE_TEXT_OPTIONS, LOGO_POSITION_OPTIONS, AUTHOR_POSITION_OPTIONS, type GenerationSettings } from "./dialogue-generation-settings";
 import { CARD_IMAGE_STYLES, type CardGenerationChoices, type CardGenerationKind } from "./dialogue-card-generation";
 
 export function DialogueCardGenerationDialog({ kind, title, initial, brandName, hasBrand, hasLogo, remaining, onClose, onSubmit }: {
@@ -19,6 +20,7 @@ export function DialogueCardGenerationDialog({ kind, title, initial, brandName, 
 }) {
   const [choices, setChoices] = useState(initial);
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const update = (key: keyof GenerationSettings, value: string | boolean) => setChoices(current => ({ ...current, settings: { ...current.settings, [key]: value } }));
   const image = kind === "image";
@@ -29,7 +31,7 @@ export function DialogueCardGenerationDialog({ kind, title, initial, brandName, 
   return <DialogueModal title={image ? "Создать изображение" : "Создать текст"} busy={busy} onClose={onClose}>
     <form className="klio-card-generation" onSubmit={async event => {
       event.preventDefault();
-      if (busy) return;
+      if (busy || uploading) return;
       if (image && choices.settings.imageTextMode === "custom" && !choices.settings.imageText?.trim()) {
         setError("Введите текст для изображения или выберите «Без текста»."); return;
       }
@@ -40,6 +42,8 @@ export function DialogueCardGenerationDialog({ kind, title, initial, brandName, 
     }}>
       <p className="klio-card-generation-source">{title}</p>
       {image ? <>
+        <DialogueImageAttachment source={choices.imageSource || null} url={choices.imageSource?.uploadUrl || ""} busy={busy || uploading} lockedPurpose="reference"
+          onBusy={setUploading} onChange={source => setChoices(current => ({ ...current, imageSource: source }))} />
         <fieldset><legend>Стиль изображения</legend><div className="klio-card-generation-choices">{CARD_IMAGE_STYLES.map(style => <button type="button" key={style.value} disabled={busy} aria-pressed={(choices.imageStyle || "") === style.value} onClick={() => setChoices(current => ({ ...current, imageStyle: style.value }))}>{style.label}</button>)}</div></fieldset>
         {group("Ориентация", "imageAspectRatio", IMAGE_ASPECT_OPTIONS)}
         {group("Формат файла", "imageOutputFormat", IMAGE_FORMAT_OPTIONS)}
@@ -57,15 +61,12 @@ export function DialogueCardGenerationDialog({ kind, title, initial, brandName, 
       <label className="klio-card-generation-check"><input type="checkbox" disabled={busy || !hasBrand} checked={hasBrand && choices.useBrandContext} onChange={event => setChoices(current => ({ ...current, useBrandContext: event.target.checked }))} /><span>Использовать профиль бренда<small>{hasBrand ? brandName : "Бренд не выбран — можно создать без него"}</small></span></label>
       {image && <label className="klio-card-generation-check"><input type="checkbox" checked={hasLogo && choices.settings.useLogo} disabled={busy || !hasLogo} onChange={event => update("useLogo", event.target.checked)} /><span>Добавить логотип<small>{hasLogo ? "Из профиля выбранного бренда" : "Логотип можно загрузить в «Мой бизнес»"}</small></span></label>}
       {image && hasLogo && choices.settings.useLogo && <>
-        {group("Размещение логотипа", "logoPlacement", LOGO_PLACEMENT_OPTIONS)}
-        {choices.settings.logoPlacement === "corner" || choices.settings.logoPlacement === "both" ? <>
-          {group("Угол для логотипа", "logoPosition", LOGO_POSITION_OPTIONS)}
-        </> : null}
-        <small>{choices.settings.logoPlacement === "both" ? "Один логотип станет частью сцены, второй будет отдельным знаком в выбранном углу." : choices.settings.logoPlacement === "corner" ? "Логотип будет отдельным небольшим знаком в выбранном углу." : "Логотип станет частью сцены."} Модель может немного изменить мелкие детали.</small>
+        {group("Угол для логотипа", "logoPosition", LOGO_POSITION_OPTIONS)}
+        <small>Будет добавлен исходный файл из профиля, без перерисовки.</small>
       </>}
       <p className="klio-card-generation-quota">1 материал из лимита · осталось {remaining}</p>
       {error && <p className="klio-card-generation-error" role="alert">{error}</p>}
-      <footer><button type="button" disabled={busy} onClick={onClose}>Отмена</button><button type="submit" className="klio-card-generation-submit" disabled={busy || remaining <= 0}>{busy ? "Запускаем…" : image ? "Создать изображение" : "Создать текст"}</button></footer>
+      <footer><button type="button" disabled={busy || uploading} onClick={onClose}>Отмена</button><button type="submit" className="klio-card-generation-submit" disabled={busy || uploading || remaining <= 0}>{busy ? "Запускаем…" : image ? "Создать изображение" : "Создать текст"}</button></footer>
     </form>
   </DialogueModal>;
 }

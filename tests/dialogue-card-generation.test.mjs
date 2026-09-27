@@ -44,7 +44,7 @@ test("topic generation waits for confirmation and uses visible size, tone and br
   assert.deepEqual(ui.errors, []);
 });
 
-test("image from text can be cancelled or confirmed with its own orientation, logo and brand toggles", async t => {
+test("image from text can be cancelled and brand context uses the profile logo directly", async t => {
   const ui = await mountDialogue(t, { threads: [thread()], selected: "saved", overrides: props });
   await ui.click(ui.findButton("Создать картинку"));
   let dialog = ui.document.querySelector('[role="dialog"]');
@@ -55,8 +55,9 @@ test("image from text can be cancelled or confirmed with its own orientation, lo
   await ui.click(ui.findButton("Фотореализм", dialog));
   await ui.click(ui.findButton("Портретная", dialog));
   await ui.click(ui.findButton("WEBP", dialog));
+  await ui.click(dialog.querySelectorAll('input[type="checkbox"]')[0]);
+  assert.equal(dialog.querySelectorAll('input[type="checkbox"]')[1].checked, false, "brand context alone must not add a logo");
   await ui.click(dialog.querySelectorAll('input[type="checkbox"]')[1]);
-  await ui.click(ui.findButton("Отдельно в углу", dialog));
   await ui.click(ui.findButton("Слева вверху", dialog));
   await ui.click(ui.findButton("Заголовок статьи", dialog));
   await ui.click(ui.findButton("Создать изображение", dialog));
@@ -70,10 +71,32 @@ test("image from text can be cancelled or confirmed with its own orientation, lo
   assert.equal(sent.settings.logoPlacement, "corner");
   assert.equal(sent.settings.logoPosition, "top-left");
   assert.equal(sent.settings.imageTextMode, "title");
-  assert.equal(sent.useBrandContext, false);
+  assert.equal(sent.useBrandContext, true);
   assert.equal(sent.settings.length, undefined);
   assert.equal(sends(ui).length, 1);
   assert.deepEqual(ui.errors, []);
+});
+
+test("image card generation carries an optional uploaded visual reference and explicit logo choice", () => {
+  const source = { uploadUrl: "https://klio.example/api/uploads/reference.png", purpose: "reference" };
+  const request = cardGenerationRequest("image", card, {
+    useBrandContext: true,
+    imageSource: source,
+    settings: { ...generation.DEFAULT_GENERATION_SETTINGS, imageTextMode: "none", useLogo: true, logoPosition: "top-left" },
+  }, { id: "studio", name: props.brandName, hasLogo: true });
+  assert.deepEqual(request.options.imageSource, source);
+  assert.equal(request.options.settings.useLogo, true);
+  assert.equal(request.options.settings.logoPlacement, "corner");
+  assert.equal(request.options.settings.logoPosition, "top-left");
+});
+
+test("dialogue recognizes natural requests to add or omit the brand logo", () => {
+  const { requestedLogoChange } = load("app/dialogue-starters.ts");
+  assert.equal(requestedLogoChange("Создай картинку к статье и добавь оригинальный логотип из профиля"), true);
+  assert.equal(requestedLogoChange("Сделай изображение с нашим логотипом"), true);
+  assert.equal(requestedLogoChange("Добавь фирменный знак из профиля"), true);
+  assert.equal(requestedLogoChange("Создай изображение без логотипа"), false);
+  assert.equal(requestedLogoChange("Создай изображение для статьи о логотипе компании"), null);
 });
 
 test("custom image text is required before sending and survives the confirmation flow", async t => {

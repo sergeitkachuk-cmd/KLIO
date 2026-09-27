@@ -5,12 +5,13 @@ import { ImagePlus, X } from "lucide-react";
 import type { DialogueImageSource } from "./dialogue-image-source";
 import { ModuleSelect } from "./module-select";
 
-export function DialogueImageAttachment({ source, url, busy, onChange, onBusy }: {
+export function DialogueImageAttachment({ source, url, busy, onChange, onBusy, lockedPurpose }: {
   source: DialogueImageSource | null;
   url: string;
   busy: boolean;
   onChange: (source: DialogueImageSource | null) => void;
   onBusy: (busy: boolean) => void;
+  lockedPurpose?: DialogueImageSource["purpose"];
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
@@ -31,7 +32,7 @@ export function DialogueImageAttachment({ source, url, busy, onChange, onBusy }:
         const response = await fetch("/api/uploads", { method: "POST", body: form, signal: AbortSignal.timeout(60_000) });
         const data = await response.json();
         if (!response.ok || !data.url) throw new Error(data.error || "Не удалось загрузить изображение.");
-        if (current === ticket.current) onChange({ uploadUrl: data.url, purpose: "reference" });
+        if (current === ticket.current) onChange({ uploadUrl: data.url, purpose: lockedPurpose || "reference" });
       } catch (failure) {
         if (current === ticket.current) setError(failure instanceof Error ? failure.message : "Не удалось загрузить изображение.");
       } finally { if (current === ticket.current) onBusy(false); }
@@ -39,12 +40,12 @@ export function DialogueImageAttachment({ source, url, busy, onChange, onBusy }:
     {source && url ? <div className="klio-aui-attachment-preview">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={url} alt="Исходное изображение" />
-      <div className="klio-aui-attachment-purpose">
+      {lockedPurpose ? <small className="klio-aui-attachment-purpose-note">Референс</small> : <div className="klio-aui-attachment-purpose">
         <ModuleSelect variant="chatkit" label="Как использовать изображение" value={source.purpose} disabled={busy} options={[
           { value: "edit", label: "Доработать исходник" },
           { value: "reference", label: "Взять за референс" },
         ]} onChange={(purpose) => onChange({ ...source, purpose: purpose as DialogueImageSource["purpose"] })} />
-      </div>
+      </div>}
       <button type="button" aria-label="Убрать исходное изображение" disabled={busy} onClick={() => onChange(null)}><X size={16} /></button>
     </div> : <button type="button" className="klio-aui-attach-trigger" disabled={busy} onClick={() => input.current?.click()}><ImagePlus size={16} />Референс</button>}
     {busy && <small role="status">Загружаем изображение…</small>}

@@ -5,9 +5,10 @@ type ImageBrief = {
   useBrandContext: boolean;
   sourcePurpose?: "edit" | "reference";
   imageTextMode?: "auto" | "none" | "title" | "custom";
+  useLogo?: boolean;
 };
 
-export function buildDialogueImagePrompt({ request, selected, brand, useBrandContext, sourcePurpose, imageTextMode }: ImageBrief) {
+export function buildDialogueImagePrompt({ request, selected, brand, useBrandContext, sourcePurpose, imageTextMode, useLogo = false }: ImageBrief) {
   const parts = [sourcePurpose === "edit"
     ? "Доработай приложенное изображение по запросу. Сохрани исходную сцену и её детали, кроме явно запрошенных изменений. Профиль бренда не должен заменять исходную сцену."
     : selected
@@ -39,6 +40,9 @@ export function buildDialogueImagePrompt({ request, selected, brand, useBrandCon
       ? "Профиль бренда отключён или не выбран. Внеси только запрошенные изменения в исходник, не подмешивая сведения о компании."
       : "Профиль бренда отключён или не выбран. Создай изображение по запросу и выбранному материалу, не подмешивая сведения о компании.");
   }
+  parts.push(useLogo
+    ? "Используй оригинальный логотип из профиля, если он есть. Не перерисовывай его, не придумывай замену и не добавляй другие знаки: исходный файл будет точно размещён после генерации."
+    : "Не добавляй логотип, фирменный знак, название компании как графический знак или водяной знак. Профиль бренда задаёт контекст и сам по себе не означает, что логотип нужен на изображении.");
   if (selected) parts.push(`Материал: ${selected.title}\n${selected.body}`);
   parts.push(`Запрос пользователя: ${request}`);
   return parts.join("\n\n");

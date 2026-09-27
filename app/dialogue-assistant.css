@@ -133,6 +133,7 @@
 .klio-aui-attachment-preview { display:flex; align-items:center; gap:8px; padding:6px; max-width:100%; border:1px solid var(--ck-line); border-radius:14px; background:var(--ck-panel); }
 .klio-aui-attachment-preview img { width:48px; height:48px; object-fit:contain; border-radius:8px; }
 .klio-aui-attachment-purpose { flex:1; min-width:0; max-width:220px; }
+.klio-aui-attachment-purpose-note { flex:1; min-width:0; color:var(--ck-muted); font-size:12px; }
 .klio-aui-message-source { display:flex; justify-content:flex-end; margin-bottom:6px; }
 
 /* The same short review step for text from a topic and an image from a text. */

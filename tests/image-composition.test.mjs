@@ -68,6 +68,35 @@ test("corner and combined modes send the real logo with placement instructions; 
   assert.equal(uploads.length, 13);
 });
 
+test("exact brand-logo mode generates the scene without a logo reference and composites the original file", async () => {
+  const base = await sharp({ create: { width: 200, height: 120, channels: 3, background: { r: 31, g: 82, b: 146 } } }).png().toBuffer();
+  const logoBytes = await sharp({ create: { width: 40, height: 20, channels: 4, background: { r: 240, g: 30, b: 60, alpha: 1 } } }).png().toBuffer();
+  const logo = { bytes: new Uint8Array(logoBytes), contentType: "image/png" };
+  const requests = [], uploads = [];
+  const image = load("app/api/_lib/image-generation.ts", {
+    "./storage": { storageConfigured: () => true, uploadPublicationImage: async file => { uploads.push(file); return "saved"; } },
+    "./image-type": load("app/api/_lib/image-type.ts"), "./image-generation-errors": imageGenerationErrors, "./image-cost": imageCost,
+    sharp: { default: sharp },
+  }, { FormData, fetch: async (url, options) => {
+    requests.push({ url: String(url), body: options.body });
+    return Response.json({ data: [{ b64_json: base.toString("base64") }] });
+  } });
+  await image.createImageFromLogo("Сцена в санатории", logo, "owner", "https://klio.example", "exact-logo-test", {
+    logoPlacement: "corner", logoPosition: "bottom-right", exactLogoOverlay: true,
+  });
+  assert.match(requests[0].url, /generations$/);
+  const request = JSON.parse(requests[0].body);
+  assert.equal(request.image_b64, undefined, "the model should not be asked to redraw the logo");
+  assert.match(request.prompt, /исходный файл логотипа без перерисовки/);
+  const { data, info } = await sharp(Buffer.from(await uploads[0].arrayBuffer())).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const redPixels = [];
+  for (let y = 80; y < info.height; y += 1) for (let x = 140; x < info.width; x += 1) {
+    const offset = (y * info.width + x) * info.channels;
+    if (data[offset] > 220 && data[offset + 1] < 60 && data[offset + 2] > 40 && data[offset + 2] < 90) redPixels.push([x, y]);
+  }
+  assert.ok(redPixels.length > 20, "the exact red pixels from the uploaded logo should be visible in the selected corner");
+});
+
 test("relay receives the actual source and JPEG logo, while the largest dialogue brief keeps all composition rules", async () => {
   const { base, logo } = await fixtures();
   const jpeg = await sharp(Buffer.from(logo.bytes)).flatten({ background: "#132c52" }).jpeg().toBuffer();
@@ -103,7 +132,7 @@ test("dialogue validates text before billing and preserves choices after a long 
   const h = await createDialogueHarness(); t.after(() => h.close());
   await h.db.insert(h.schema.brands).values({ id: "studio", ownerEmail: h.owner, name: "Студия", profileJson: JSON.stringify({ description: "Съёмочная студия. ".repeat(800), logoKey: "real" }) });
   let thread = await h.create("studio");
-  const send = settings => ({ action: "send", id: thread.id, revision: thread.revision, requestId: randomUUID(), mode: "image", text: "Творческий процесс в студии", useBrandContext: true, settings });
+  const send = (settings, text = "Творческий процесс в студии") => ({ action: "send", id: thread.id, revision: thread.revision, requestId: randomUUID(), mode: "image", text, useBrandContext: true, settings });
   for (const settings of [{ imageTextMode: "custom", imageText: " " }, { imageTextMode: "custom", imageText: "a".repeat(201) }, { imageTextMode: "title" }]) {
     assert.equal((await h.request(send(settings))).status, 400);
   }
@@ -123,8 +152,20 @@ test("dialogue validates text before billing and preserves choices after a long 
   thread = await h.settled(thread.id);
   assert.equal(thread.status, "idle");
   const bothArgs = h.imageCalls.at(-1).args;
-  assert.equal(bothArgs[5].logoPlacement, "both"); assert.equal(bothArgs[5].logoPosition, "top-right");
-  assert.equal((await h.account()).generationsUsed, 3);
+  assert.equal(bothArgs[5].logoPlacement, "corner"); assert.equal(bothArgs[5].logoPosition, "top-right");
+  assert.equal(bothArgs[5].exactLogoOverlay, true);
+  await h.post(send({ imageTextMode: "none" }));
+  thread = await h.settled(thread.id);
+  assert.equal(thread.status, "idle");
+  assert.equal(h.imageCalls.at(-1).logo, false, "brand context alone must not add a logo the user did not ask for");
+  await h.post(send({ imageTextMode: "none" }, "Создай изображение и добавь оригинальный логотип из профиля"));
+  thread = await h.settled(thread.id);
+  assert.equal(thread.status, "idle");
+  const requestedLogoArgs = h.imageCalls.at(-1).args;
+  assert.equal(h.imageCalls.at(-1).logo, true);
+  assert.equal(requestedLogoArgs[5].exactLogoOverlay, true, "an explicit text request should composite the original profile logo");
+  assert.equal(requestedLogoArgs[5].logoPlacement, "corner");
+  assert.equal((await h.account()).generationsUsed, 5);
 });
 
 test("professional images use owned material titles and the same text and logo choices", async t => {

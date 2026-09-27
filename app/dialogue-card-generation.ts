@@ -1,8 +1,9 @@
 import type { DialogueCard } from "./dialogue-model";
+import type { DialogueImageSource } from "./dialogue-image-source";
 import { FORMAT_OPTIONS, IMAGE_STYLE_OPTIONS, settingsForTool, type GenerationSettings } from "./dialogue-generation-settings";
 
 export type CardGenerationKind = "text" | "image";
-export type CardGenerationChoices = { settings: GenerationSettings; useBrandContext: boolean; imageStyle?: string };
+export type CardGenerationChoices = { settings: GenerationSettings; useBrandContext: boolean; imageStyle?: string; imageSource?: DialogueImageSource | null };
 export const CARD_IMAGE_STYLES = IMAGE_STYLE_OPTIONS;
 
 // Card buttons propose defaults; the confirmed choices are the request contract.
@@ -36,8 +37,11 @@ export function cardGenerationRequest(
     options: {
       mode: kind,
       ...(kind === "image" ? { cardId: card.id } : {}),
+      ...(kind === "image" && choices.imageSource ? { imageSource: choices.imageSource } : {}),
       useBrandContext,
-      settings: settingsForTool(kind, choices.settings, brand.hasLogo),
+      settings: settingsForTool(kind, kind === "image" && choices.settings.useLogo
+        ? { ...choices.settings, logoPlacement: "corner" }
+        : choices.settings, brand.hasLogo),
     },
   };
 }

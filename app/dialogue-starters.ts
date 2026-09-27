@@ -62,8 +62,15 @@ export function isMaterialEditRequest(text: string) {
 }
 
 export function requestedLogoChange(text: string): boolean | null {
-  if (!isImageEditRequest(text) || !/логотип|фирменн(?:ый|ого)\s+знак/.test(normalizeDialogueRequest(text))) return null;
-  return !/^(?:убери|удали)/.test(normalizeDialogueRequest(text));
+  const request = normalizeDialogueRequest(text);
+  if (!/логотип|фирменн\p{L}*\s+знак/u.test(request)) return null;
+  const logo = "(?:логотип\\p{L}*|фирменн\\p{L}*\\s+знак)";
+  const start = "(?:^|\\s)";
+  const negative = new RegExp(`(?:${start}без\\s+(?:\\p{L}+\\s+)?логотип\\p{L}*|${start}не\\s+(?:добавляй|добавить|используй|использовать|рисуй|рисовать|ставь|ставить|нужен)(?=\\s|$).{0,80}${logo}|${start}(?:убери|удали|убрать|удалить)(?=\\s|$).{0,40}логотип\\p{L}*|логотип\\p{L}*\\s+не\\s+нужен)`, "u");
+  if (negative.test(request)) return false;
+  const positive = new RegExp(`(?:${start}с\\s+(?:(?:моим|нашим|оригинальным|фирменным)\\s+)?логотип\\p{L}*|${start}(?:добавь|добавить|используй|использовать|подтяни|подтянуть|подтягивай|подтягивался|возьми|вставь|вставить|размести|поставь|приложи|прикрепи)(?=\\s|$).{0,100}${logo})`, "u");
+  if (positive.test(request)) return true;
+  return null;
 }
 
 export function resolveDialogueTool(text: string, selected: string | null, requested?: string, hasImage = false, hasMaterials = false, hasImageSource = false) {
