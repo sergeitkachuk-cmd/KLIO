@@ -37,6 +37,31 @@ export class AiCallError extends Error {
   }
 }
 
+function authFailureDiagnostic(provider: AiProvider, model: AiModelId, status: number, responseText: string): string {
+  let detail: { error?: { code?: unknown; type?: unknown; param?: unknown; message?: unknown } } = {};
+  try {
+    detail = JSON.parse(responseText) as typeof detail;
+  } catch {
+    // Some gateways return a non-JSON response; status/provider/model are
+    // still enough to distinguish it from a content-plan validation issue.
+  }
+
+  const apiError = detail.error;
+  const parts = [`${provider} ${model} HTTP ${status}`];
+  for (const [label, value] of [["code", apiError?.code], ["type", apiError?.type], ["param", apiError?.param]] as const) {
+    if (typeof value === "string" && value.length > 0) parts.push(`${label}=${value.replace(/[\r\n|]/g, " ").slice(0, 100)}`);
+  }
+  if (typeof apiError?.message === "string" && apiError.message.length > 0) {
+    const safeMessage = apiError.message
+      .replace(/\b(?:sk|sess|tok)-[A-Za-z0-9_-]{8,}\b/gi, "[redacted credential]")
+      .replace(/\bBearer\s+\S+/gi, "Bearer [redacted]")
+      .replace(/[\r\n|]/g, " ")
+      .slice(0, 240);
+    parts.push(`message=${safeMessage}`);
+  }
+  return parts.join(" | ").slice(0, 500);
+}
+
 function timeoutError() {
   return new AiCallError("ИИ не успел подготовить ответ за отведённое время. Повторите запрос чуть позже.", 504);
 }
@@ -318,7 +343,10 @@ async function requestOnce(params: {
   }
 
   if (response.status === 401 || response.status === 403) {
-    throw new AiCallError("Ошибка авторизации в AI API.", response.status);
+    const error = new AiCallError("Ошибка авторизации в AI API.", response.status);
+    error.diagnosticMessage = authFailureDiagnostic(provider, params.model, response.status, responseText);
+    console.error("AI provider rejected request", error.diagnosticMessage);
+    throw error;
   }
   if (response.status === 429) {
     const detail = responseText;
