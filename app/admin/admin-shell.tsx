@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 // Splits the admin page into a sidebar + one-section-at-a-time layout,
 // same idea as the workspace module nav (app/textora-experience.tsx) -
@@ -15,6 +15,15 @@ export type AdminSection = { id: string; label: string; badge?: string; content:
 
 export function AdminShell({ sections }: { sections: AdminSection[] }) {
   const [active, setActive] = useState(sections[0]?.id ?? "");
+  useEffect(() => {
+    const applyHashSection = () => {
+      const requested = window.location.hash.slice(1);
+      if (requested && sections.some((section) => section.id === requested)) setActive(requested);
+    };
+    applyHashSection();
+    window.addEventListener("hashchange", applyHashSection);
+    return () => window.removeEventListener("hashchange", applyHashSection);
+  }, [sections]);
   return (
     <div className="admin-shell">
       <aside className="admin-sidebar">
@@ -22,6 +31,7 @@ export function AdminShell({ sections }: { sections: AdminSection[] }) {
           {sections.map((section) => (
             <button type="button" key={section.id} className={section.id === active ? "active" : ""} onClick={() => {
               setActive(section.id);
+              window.history.replaceState(null, "", `#${section.id}`);
               // Sections vary wildly in height ("Пользователи"/"Расход на
               // ИИ" run to hundreds of rows, others are a few lines) - with
               // no scroll reset, switching away from deep inside a tall one

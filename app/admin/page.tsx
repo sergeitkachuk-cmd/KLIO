@@ -20,6 +20,11 @@ import { getOpenAiAdminSummary } from "../api/_lib/openai-admin";
 
 export const metadata = { title: "КЛИО / Админка" };
 
+// Keep enough rows to inspect a normal working session without silently
+// hiding calls after the first few minutes. Aggregate totals below still use
+// the complete ai_usage table.
+const RECENT_ACTIVITY_LIMIT = 200;
+
 // Owner-only usage/spend dashboard — never linked from the visitor-facing
 // UI. Reads accounts + ai_usage (see app/api/_lib/ai-router.ts) directly;
 // no client JS, no separate API route, so there's nothing here for a
@@ -253,7 +258,7 @@ export default async function AdminPage() {
       errorMessage: aiUsage.errorMessage,
       createdAt: aiUsage.createdAt,
       costSource: aiUsage.costSource,
-    }).from(aiUsage).where(notInArray(aiUsage.operation, imageOperations)).orderBy(desc(aiUsage.createdAt)).limit(30),
+    }).from(aiUsage).where(notInArray(aiUsage.operation, imageOperations)).orderBy(desc(aiUsage.createdAt)).limit(RECENT_ACTIVITY_LIMIT),
     // Keep legacy image generation rows as a fallback for requests created
     // before image usage logging existed. Current image/carousel calls are
     // represented by recentImageUsage below, with provider usage or a marked
@@ -263,7 +268,7 @@ export default async function AdminPage() {
       ownerEmail: generations.ownerEmail,
       topic: generations.topic,
       createdAt: generations.createdAt,
-    }).from(generations).where(inArray(generations.topic, ["Изображение", "Карусель"])).orderBy(desc(generations.createdAt)).limit(100),
+    }).from(generations).where(inArray(generations.topic, ["Изображение", "Карусель"])).orderBy(desc(generations.createdAt)).limit(RECENT_ACTIVITY_LIMIT),
     db.select({
       id: aiUsage.id,
       ownerEmail: aiUsage.ownerEmail,
@@ -280,7 +285,7 @@ export default async function AdminPage() {
       errorMessage: aiUsage.errorMessage,
       requestId: aiUsage.requestId,
       createdAt: aiUsage.createdAt,
-    }).from(aiUsage).where(inArray(aiUsage.operation, imageOperations)).orderBy(desc(aiUsage.createdAt)).limit(100),
+    }).from(aiUsage).where(inArray(aiUsage.operation, imageOperations)).orderBy(desc(aiUsage.createdAt)).limit(RECENT_ACTIVITY_LIMIT),
     getExternalServiceStatuses(),
     getOpenAiAdminSummary(),
     // Raw payment attempts (SBP/card quick-pay, not the invoice/УПД flow) —
@@ -380,7 +385,7 @@ export default async function AdminPage() {
         ? "Карусель"
         : row.operation === "regenerate_carousel_slide" ? "Слайд карусели" : "Изображение",
     })),
-  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 30);
+  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, RECENT_ACTIVITY_LIMIT);
 
   const usageMap = new Map(usageByUser.map((row) => [row.ownerEmail, row]));
   const brandMap = new Map<string, number>();
@@ -639,7 +644,7 @@ export default async function AdminPage() {
         <div className="admin-block-heading">
           <div>
             <h2>Последние вызовы ИИ</h2>
-            <p>Для текста показываем расчёт по токенам. Для изображений и каруселей — фактический usage провайдера, а при его отсутствии — расчётную сумму с пометкой «оценка».</p>
+            <p>Показаны последние {RECENT_ACTIVITY_LIMIT} вызовов. Для текста показываем расчёт по токенам. Для изображений и каруселей — фактический usage провайдера, а при его отсутствии — расчётную сумму с пометкой «оценка».</p>
           </div>
         </div>
         <div className="admin-table-scroll">
