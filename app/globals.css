@@ -59,9 +59,13 @@ body {
   .cookie-consent-actions button { width: 100%; min-height: 44px; }
   body:has(.cookie-consent) { padding-bottom: var(--cookie-consent-space, 220px); }
   html:has(.cookie-consent) { scroll-padding-bottom: var(--cookie-consent-space, 220px); }
-  body:has(.workspace-sidebar) .cookie-consent { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
-  body:has(.workspace-sidebar):has(.cookie-consent) { padding-bottom: calc(var(--cookie-consent-space, 220px) + 76px); }
-  html:has(.workspace-sidebar):has(.cookie-consent) { scroll-padding-bottom: calc(var(--cookie-consent-space, 220px) + 76px); }
+  /* Was 76px - the bottom nav now floats 12px clear of the viewport
+     edge instead of sitting flush against it (see .workspace-sidebar
+     nav in the workspace section), so the clearance needed above it
+     grows by that same 12px. */
+  body:has(.workspace-sidebar) .cookie-consent { bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+  body:has(.workspace-sidebar):has(.cookie-consent) { padding-bottom: calc(var(--cookie-consent-space, 220px) + 88px); }
+  html:has(.workspace-sidebar):has(.cookie-consent) { scroll-padding-bottom: calc(var(--cookie-consent-space, 220px) + 88px); }
 }
 
 /* Public use-case gallery: a visual route for business owners who start
@@ -15666,15 +15670,29 @@ input[type="radio"] {
 
   .workspace-sidebar nav {
     position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    /* Floating capsule dock (site owner reference: a screenshot of a
+       rounded pill-shaped bottom bar sitting clear of the screen edges,
+       with a glowing highlight behind the active tab) - was a full-bleed
+       bar flush against all three edges with just a top border. left+
+       right replace the old left:0/right:0/width:100%: with both offsets
+       set, width:auto (not 100%, which would ignore `right` as an
+       over-constrained value and blow past the viewport edge) lets the
+       box resolve to "100vw minus both insets" on its own. The old
+       bottom-padding safe-area compensation (calc(10px + inset)) moves
+       into this bottom offset instead - it was there to push content up
+       above the home-indicator while the bar itself sat flush at 0;
+       now the bar is already lifted off the edge by its own offset, so
+       adding the inset a second time inside the padding would double
+       count it. */
+    left: 12px;
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     z-index: 70;
     display: flex;
     gap: 8px;
-    width: 100%;
+    width: auto;
     margin: 0;
-    padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+    padding: 10px 14px;
     overflow-x: auto; -webkit-overflow-scrolling: touch;
     overscroll-behavior-inline: contain;
     scroll-padding-inline: 14px;
@@ -15689,9 +15707,16 @@ input[type="radio"] {
        losing the settle-on-a-button alignment is a minor tradeoff
        against actually being able to scroll it in one motion. */
     scrollbar-width: none;
-    border-top: 1px solid rgba(151, 190, 234, 0.16);
-    background: linear-gradient(180deg, rgba(4, 12, 24, 0.88), rgba(4, 12, 24, 0.98));
-    box-shadow: 0 -14px 30px rgba(3, 15, 30, 0.35);
+    /* border-radius:999px always resolves to a true stadium shape
+       regardless of the bar's own height (same trick as .button); a
+       fully-set border (not just border-top, now that the bar reads as
+       a standalone floating card rather than a strip glued to the
+       viewport edge) outlines all four rounded sides. overflow-x:auto
+       still clips the scrolling row of tabs to that rounded shape. */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(11, 18, 32, 0.94), rgba(6, 11, 21, 0.98));
+    box-shadow: 0 16px 36px rgba(2, 8, 18, 0.5), inset 0 1px rgba(255, 255, 255, 0.07);
     /* Dropped backdrop-filter (was blur(18px) saturate(140%)) - same
        reasoning as .workspace-header: this bar is position: fixed at
        the bottom of the screen for the ENTIRE duration of any scroll
@@ -15736,7 +15761,22 @@ input[type="radio"] {
   }
 
   .workspace-sidebar nav a.active {
-    border-color: color-mix(in srgb, var(--sidebar-accent) 45%, transparent);
+    border-color: transparent;
+    /* Glowing highlight chip behind the active tab (site owner
+       reference screenshot), replacing the plain border tint above: a
+       stronger accent fill plus a soft accent-coloured halo so the
+       active tab visibly lifts off the bar. Icon/label go full white
+       here (see the two rules below) rather than the desktop sidebar's
+       accent-tinted text (base rule, ~line 5438) - white reads with
+       more contrast against a glowing chip than another shade of the
+       same blue would. */
+    background: linear-gradient(180deg, color-mix(in srgb, var(--sidebar-accent) 42%, transparent), color-mix(in srgb, var(--sidebar-accent) 24%, transparent));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--sidebar-accent) 55%, transparent), 0 6px 18px color-mix(in srgb, var(--sidebar-accent) 48%, transparent);
+  }
+
+  .workspace-sidebar nav a.active i,
+  .workspace-sidebar nav a.active b {
+    color: #fff;
   }
 
   .workspace-sidebar nav i {
@@ -15766,7 +15806,11 @@ input[type="radio"] {
   }
 
   .workspace-content {
-    padding: 26px 14px 130px;
+    /* Was 130px - the bottom nav now floats 12px clear of the viewport
+       edge instead of sitting flush against it (see .workspace-sidebar
+       nav above), so scrolled content needs that same 12px added to
+       keep clearing the bar by the same margin as before. */
+    padding: 26px 14px 142px;
   }
 
   .workspace-heading {
@@ -22439,9 +22483,14 @@ input[type="radio"] {
   /* Same flat, single-accent treatment as the desktop sidebar above -
      borders/gradients removed, one accent instead of one colour per item. */
   [data-theme="light"] .workspace-sidebar nav {
-    border-top-color: rgba(36, 82, 184, 0.18);
-    background: rgba(238, 244, 252, 0.96);
-    box-shadow: 0 -12px 28px rgba(34, 73, 126, 0.14);
+    /* border-top-color -> border-color: the dark-theme base rule now
+       sets a full 4-side border (floating card, not a strip glued to
+       the viewport edge - see the comment there), so a light-only
+       override needs to recolour all four sides too, not just the top
+       one this used to be the only visible edge of. */
+    border-color: rgba(36, 82, 184, 0.16);
+    background: rgba(238, 244, 252, 0.97);
+    box-shadow: 0 16px 36px rgba(34, 73, 126, 0.18), inset 0 1px rgba(255, 255, 255, 0.6);
   }
 
   [data-theme="light"] .workspace-sidebar nav a {
@@ -22459,13 +22508,22 @@ input[type="radio"] {
     color: #173b85;
   }
 
+  /* Glowing highlight chip, matching the dark-theme active tab above -
+     but a translucent glow chip that works on a near-black bar would be
+     nearly invisible on this pale one, so light mode gets a solid accent
+     fill instead (still with the same soft colour-matched halo) and
+     white icon/label for contrast, rather than the accent-tinted text
+     the unconditional light-theme rule above (~line 18420) uses for the
+     desktop sidebar's own flatter active state. */
   [data-theme="light"] .workspace-sidebar nav a.active {
-    color: var(--sidebar-accent);
-    background: color-mix(in srgb, var(--sidebar-accent) 14%, transparent);
+    color: #fff;
+    background: linear-gradient(180deg, var(--sidebar-accent), color-mix(in srgb, var(--sidebar-accent) 82%, black));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--sidebar-accent) 45%, transparent), 0 6px 16px color-mix(in srgb, var(--sidebar-accent) 40%, transparent);
   }
 
+  [data-theme="light"] .workspace-sidebar nav a.active i,
   [data-theme="light"] .workspace-sidebar nav a.active b {
-    color: var(--sidebar-accent);
+    color: #fff;
   }
 }
 
