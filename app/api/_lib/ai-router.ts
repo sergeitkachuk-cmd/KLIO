@@ -298,7 +298,10 @@ async function requestOnce(params: {
   includeSources?: boolean;
 }) {
   const provider = params.provider;
-  const relayUrl = params.operation.startsWith("dialogue") && provider === "openai"
+  // All OpenAI requests use the authenticated Render relay when it is
+  // configured. Timeweb's direct OpenAI egress can be rejected before the
+  // provider starts processing; the relay already carries the eligible key.
+  const relayUrl = provider === "openai"
     ? process.env.KLIO_IMAGE_SERVICE_URL?.trim() : undefined;
   const relayToken = relayUrl ? process.env.KLIO_IMAGE_SERVICE_TOKEN?.trim() : undefined;
   const useRelay = Boolean(relayUrl && relayToken);

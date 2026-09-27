@@ -24,7 +24,7 @@ export const PROVIDER_API_KEY_ENV: Record<AiProvider, string> = {
 // needs the env var's name for its error message.
 export function aiConfigured(operation?: AiOperation): boolean {
   const provider = operation ? providerForModel(OPERATION_CONFIG[operation].model) : activeProvider();
-  if (operation?.startsWith("dialogue") && provider === "openai"
+  if (provider === "openai"
     && process.env.KLIO_IMAGE_SERVICE_URL?.trim() && process.env.KLIO_IMAGE_SERVICE_TOKEN?.trim()) return true;
   return Boolean(process.env[PROVIDER_API_KEY_ENV[provider]]?.trim());
 }
