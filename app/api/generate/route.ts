@@ -490,6 +490,16 @@ function missingKeywords(material: GeneratedMaterial, input: ReturnType<typeof n
   return selectedKeywords(input).filter((keyword) => !isCovered(publication, keyword));
 }
 
+const FIRST_PERSON_BRAND_WORDS = new Set([
+  "мы", "нас", "нам", "нами", "наш", "наша", "наше", "наши", "нашу", "нашего", "нашему", "нашей", "нашим", "нашими", "наших", "нашем",
+]);
+
+function lacksFirstPersonBrandVoice(material: GeneratedMaterial, authorPosition: string) {
+  if (authorPosition !== "brand") return false;
+  const words = material.body.toLocaleLowerCase("ru-RU").match(/[а-яё]+/g) ?? [];
+  return !words.some((word) => FIRST_PERSON_BRAND_WORDS.has(word));
+}
+
 function parseEditorialFocuses(value: string): EditorialFocus[] {
   const lines = value
     .split(/\n+/)
@@ -739,13 +749,16 @@ async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>,
   let subjectCheck = topicCoverage(material, input);
   let missingFocuses = missingEditorialFocuses(material, input);
   let missingKeyPhrases = missingKeywords(material, input);
+  let missingBrandVoice = lacksFirstPersonBrandVoice(material, input.authorPosition);
 
   // The coverage badges already expose small misses without blocking the
   // result. A full second article pass for a missing keyword or a 15%
   // length drift was the main source of two-minute "small" generations.
   // Repair only a genuinely unusable draft; formatting is sanitized below
   // and an overshoot is handled by the deterministic trim backstop.
-  const needsModelCorrection = publicationCharacters(material) < Math.floor(minimumCharacters * 0.55) || !subjectCheck.passes;
+  const needsModelCorrection = publicationCharacters(material) < Math.floor(minimumCharacters * 0.55)
+    || !subjectCheck.passes
+    || missingBrandVoice;
   if (needsModelCorrection && budget.remainingMs() >= 20_000) {
     try {
       const correctionCall = await callAiModel<Record<string, unknown>>({
@@ -769,6 +782,9 @@ async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>,
           ...TONE_SYSTEM_RULES,
           `Сохрани авторскую позицию: ${input.authorPosition}.`,
           ...authorPositionRules(input.authorPosition),
+          input.authorPosition === "brand"
+            ? "КРИТИЧНО: основной текст body должен быть написан от первого лица бренда. Включи хотя бы один содержательный фрагмент с «мы» или «наш/наша/наше». Не описывай компанию, клинику, санаторий или бренд со стороны."
+            : "",
           "Удали весь метатекст о брифе, профиле бренда, аудитории, стиле, ключевых словах и правилах формата. Читатель должен видеть только готовую публикацию по теме.",
           "В body, title, meta_title и meta_description не должно быть URL, доменов, Markdown-ссылок, сносок, HTML и символов # для заголовков. Если нужно сохранить источник для команды, перенеси его только в editorial_comment.",
           !subjectCheck.passes
@@ -794,11 +810,16 @@ async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>,
       subjectCheck = topicCoverage(material, input);
       missingFocuses = missingEditorialFocuses(material, input);
       missingKeyPhrases = missingKeywords(material, input);
+      missingBrandVoice = lacksFirstPersonBrandVoice(material, input.authorPosition);
     } catch (error) {
       // The correction pass is best-effort — if it fails, fall through
       // with the original material rather than losing the whole result.
       console.error("Generation correction pass failed", error);
     }
+  }
+
+  if (missingBrandVoice) {
+    throw new AiCallError("Не удалось сохранить выбранную авторскую позицию «От лица бренда». Попробуйте сгенерировать материал ещё раз.", 502);
   }
 
   // Backstop for a case the correction pass sometimes still misses: a
