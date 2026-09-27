@@ -2456,6 +2456,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // semantics/competitors) so the result-panel scroll effect below can
   // tell "a fresh result just landed" apart from every other re-render.
   const [resultRevealTick, setResultRevealTick] = useState(0);
+  const [imageResultRevealTick, setImageResultRevealTick] = useState(0);
   const [adaptationSource, setAdaptationSource] = useState(workspace ? "" : defaultAdaptationSource);
   const [adaptationGoal, setAdaptationGoal] = useState<AdaptationGoal>("proofread");
   const [adaptationTone, setAdaptationTone] = useState("Экспертный");
@@ -2639,6 +2640,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // stack vertically) scrolls the result into view instead of finishing
   // off-screen below the fold.
   const resultPanelRef = useRef<HTMLDivElement>(null);
+  const imageGeneratorPreviewRef = useRef<HTMLDivElement>(null);
   const geoPickerRef = useRef<HTMLDivElement>(null);
   const brandPickerRef = useRef<HTMLDivElement>(null);
   const dialogueBrandPickerRef = useRef<HTMLDivElement>(null);
@@ -3461,6 +3463,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     if (resultRevealTick === 0) return;
     resultPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [resultRevealTick]);
+
+  useEffect(() => {
+    if (imageResultRevealTick === 0) return;
+    imageGeneratorPreviewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [imageResultRevealTick]);
 
   function showToast(message: string) {
     setToast(message);
@@ -5660,6 +5667,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       } else payload = await safeJson(response) as typeof payload;
       if (!response.ok || !payload.generation) throw new Error(payload.error || "Не удалось создать изображение.");
       setImageResult(payload.generation);
+      setImageResultRevealTick((value) => value + 1);
       setImageStreamPreview("");
       setWorkspaceHistory(current => [payload.generation!, ...current.filter(item => item.id !== payload.generation!.id)].slice(0, 60));
       if (payload.account) setWorkspaceAccount(payload.account);
@@ -5718,6 +5726,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       }>("/api/carousel/status", startPayload.jobId);
       if (!payload.slides || !payload.usage?.archive) throw new Error(payload.error || "Не удалось создать карусель.");
       setCarouselResult({ slides: payload.slides, archive: payload.usage.archive });
+      setImageResultRevealTick((value) => value + 1);
       setWorkspaceHistory(current => [payload.usage!.archive!, ...current.filter(item => item.id !== payload.usage!.archive!.id)].slice(0, 60));
       if (payload.usage.account) setWorkspaceAccount(payload.usage.account);
       openModule("images");
@@ -7225,7 +7234,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </div>
               </div>
               {imageBusy && imageStreamPreview && <div className="image-generator-stream-preview" aria-live="polite"><Image src={imageStreamPreview} alt="Промежуточный вариант изображения" width={1024} height={1024} unoptimized/><span>КЛИО уже рисует — это промежуточный кадр</span></div>}
-              <div className="image-generator-preview" aria-live="polite">
+              <div className="image-generator-preview" ref={imageGeneratorPreviewRef} aria-live="polite">
                 {imageGeneratorMode === "carousel" && carouselResult ? <>
                   <div className="image-generator-carousel-slides">
                     {carouselResult.slides.map((slide, index) => <div className={`image-generator-carousel-slide ${carouselSlideBusy === index ? "is-regenerating" : ""}`} key={`${slide.imageUrl}-${index}`}>

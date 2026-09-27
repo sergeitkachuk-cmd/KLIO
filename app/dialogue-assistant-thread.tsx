@@ -38,6 +38,8 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
   const [menuOpen, setMenuOpen] = useState(false);
   const [copyNotice, setCopyNotice] = useState("");
   const picker = useRef<HTMLDivElement>(null);
+  const viewport = useRef<HTMLDivElement>(null);
+  const wasRunning = useRef(running);
   const input = useRef<HTMLTextAreaElement>(null);
   const messages = useMemo<ThreadMessageLike[]>(() => (thread?.data.messages || []).map((message) => ({
     id: message.id, role: message.role, content: [{ type: "text", text: message.text }],
@@ -53,6 +55,26 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
     },
   });
   useEffect(() => { runtime.thread.composer.setText(draft); }, [draft, runtime]);
+  useEffect(() => {
+    const justCompleted = wasRunning.current && !running;
+    wasRunning.current = running;
+    if (!justCompleted) return;
+    const container = viewport.current;
+    const assistants = container?.querySelectorAll<HTMLElement>(".klio-aui-message.is-assistant");
+    const target = assistants?.[assistants.length - 1];
+    if (!container || !target) return;
+    const frame = window.requestAnimationFrame(() => {
+      const targetOffset = target.getBoundingClientRect().top - container.getBoundingClientRect().top;
+      const top = Math.max(0, container.scrollTop + targetOffset - 12);
+      try {
+        if (typeof container.scrollTo === "function") container.scrollTo({ top, behavior: "smooth" });
+        else container.scrollTop = top;
+      } catch {
+        container.scrollTop = top;
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [running, thread?.id, thread?.revision]);
   useEffect(() => {
     if (!menuOpen) return;
     const close = (event: PointerEvent) => { if (!picker.current?.contains(event.target as Node)) setMenuOpen(false); };
@@ -91,7 +113,7 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
   }
   return <AssistantRuntimeProvider runtime={runtime}>
     <ThreadPrimitive.Root className={`klio-aui-root ${empty ? "is-empty" : ""}`}>
-      <ThreadPrimitive.Viewport className="klio-aui-viewport" autoScroll>
+      <ThreadPrimitive.Viewport ref={viewport} className="klio-aui-viewport" autoScroll>
         {loading && <p className="klio-aui-status" role="status">Загружаем диалог…</p>}
         {empty && <div className="klio-aui-welcome"><h1>Чем я могу помочь?</h1></div>}
         <div className="klio-aui-messages">
