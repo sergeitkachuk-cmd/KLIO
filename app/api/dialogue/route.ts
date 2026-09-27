@@ -135,6 +135,95 @@ function needsWebSearch(text: string): { search: boolean; recent: boolean } {
   return { search: recent || factual, recent };
 }
 
+type DialogueIntentAction =
+  | "chat"
+  | "create_text"
+  | "edit_text"
+  | "create_image"
+  | "edit_image"
+  | "create_carousel"
+  | "create_topics";
+type DialogueIntentTarget = "none" | "latest_material" | "latest_image";
+type DialogueIntent = { action: DialogueIntentAction; target: DialogueIntentTarget };
+
+const DIALOGUE_INTENT_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    action: { type: "string", enum: ["chat", "create_text", "edit_text", "create_image", "edit_image", "create_carousel", "create_topics"] },
+    target: { type: "string", enum: ["none", "latest_material", "latest_image"] },
+  },
+  required: ["action", "target"],
+} as const;
+
+// The browser already recognizes the clearest commands. This small server
+// fallback handles natural variants sent by another client or a stale tab,
+// while ordinary questions remain a single chat call and incur no classifier
+// request.
+function looksLikeDialogueAction(text: string) {
+  return /(?:созда|сдела|нарис|напиш|добав|сгенер|собер|подготов|прикреп|встав|исправ|измени|перепиш|карусел|картин|изображ|пост|стать)/iu.test(text);
+}
+
+function latestDialogueImageSource(data: DialogueData) {
+  for (const message of [...data.messages].reverse()) {
+    if (message.role !== "assistant") continue;
+    for (const cardId of [...(message.cardIds || [])].reverse()) {
+      const card = data.cards.find((item) => item.id === cardId);
+      if (card?.slides?.length) return null;
+      if (card?.imageUrl) return { cardId, purpose: "edit" as const };
+    }
+  }
+  return null;
+}
+
+async function inferDialogueIntent(
+  text: string,
+  data: DialogueData,
+  selectedId: string,
+  ownerEmail: string,
+  brandId: string | null,
+  requestGroupId: string,
+): Promise<DialogueIntent | null> {
+  if (!looksLikeDialogueAction(text)) return null;
+  // Test harnesses and older relay builds can load a config without this
+  // optional operation. In that case the existing deterministic route is the
+  // safe fallback; production config includes it.
+  if (!(OPERATION_CONFIG as Record<string, unknown>).dialogue_intent) return null;
+  if (!aiConfigured("dialogue_intent")) return null;
+  try {
+    const context = dialogueContext(data, selectedId);
+    const result = await callAiModel<DialogueIntent>({
+      operation: "dialogue_intent",
+      ownerEmail,
+      brandId: brandId ?? undefined,
+      requestGroupId,
+      requestTimeoutMs: 12_000,
+      maxOutputTokensOverride: 180,
+      reasoningEffortOverride: "none",
+      retryableOverride: false,
+      schemaName: "klio_dialogue_intent",
+      schema: DIALOGUE_INTENT_SCHEMA,
+      instructions: [
+        "You are KLIO's server-side intent router.",
+        "Return only the JSON object required by the schema; never answer the user and never invent a material.",
+        "Choose create_image when the user asks to draw or add an image, edit_image when an existing image should be changed, create_text for a new post/article/text, edit_text for a change to an existing material, create_carousel for a carousel, create_topics for a topic list, and chat for discussion or questions.",
+        "Use latest_image only when the request clearly refers to the most recent image. Use latest_material only when it clearly refers to an existing text/material. Otherwise use none.",
+      ].join("\n"),
+      input: JSON.stringify({ request: text.slice(0, 8000), ...context }),
+    });
+    const action = result.result?.action;
+    const target = result.result?.target;
+    if (!DIALOGUE_INTENT_SCHEMA.properties.action.enum.includes(action)
+      || !DIALOGUE_INTENT_SCHEMA.properties.target.enum.includes(target)) return null;
+    return { action, target };
+  } catch (error) {
+    // Intent routing must never turn a working chat into an error. The main
+    // generation path will continue with the client-selected mode.
+    console.warn("dialogue intent router unavailable", error instanceof Error ? error.message : String(error));
+    return null;
+  }
+}
+
 async function verifyBrand(
   db: Pick<Db, "select">,
   id: string | null,
@@ -809,11 +898,52 @@ export async function POST(request: Request) {
     }
     const id = clean(p.id);
     const requestId = clean(p.requestId);
-    const mode = clean(p.mode);
+    let mode = clean(p.mode);
     const imageSourceCardId = p.imageSource && typeof p.imageSource === "object" && !Array.isArray(p.imageSource)
       ? (p.imageSource as Record<string, unknown>).cardId
       : "";
-    const selectedId = clean(p.cardId || imageSourceCardId);
+    let selectedId = clean(p.cardId || imageSourceCardId);
+    let plannerImageSource: unknown;
+
+    // A stale client can still send the chat mode after the user explicitly
+    // asks for an action. Let the short server planner choose one of the
+    // existing, quota-aware modes before validation and debit checks run.
+    if (action === "send" && mode === "chat" && requestId && clean(p.text, 8000)) {
+      const [preview] = await db
+        .select()
+        .from(dialogueThreads)
+        .where(owned(id, user.email))
+        .limit(1);
+      if (preview) {
+        const previewData = dataOf(preview);
+        const intent = await inferDialogueIntent(
+          clean(p.text, 8000),
+          previewData,
+          selectedId,
+          user.email,
+          preview.brandId,
+          requestId,
+        );
+        if (intent && intent.action !== "chat") {
+          mode = intent.action === "create_image" || intent.action === "edit_image"
+            ? "image"
+            : intent.action === "create_carousel"
+            ? "carousel"
+            : intent.action === "create_topics"
+            ? "topics"
+            : "text";
+          if (!selectedId && intent.target === "latest_material")
+            selectedId = previewData.cards.at(-1)?.id || "";
+          if (intent.action === "edit_image") {
+            const latestImage = latestDialogueImageSource(previewData);
+            if (latestImage?.cardId) {
+              selectedId = latestImage.cardId;
+              plannerImageSource = latestImage;
+            }
+          }
+        }
+      }
+    }
     // Optional, explicit generation settings (site owner: "они должны быть
     // необязательны... но очень явными, как в chatgpt") - a person can just
     // chat naturally (everything below stays null/default) or pin down
@@ -972,7 +1102,7 @@ export async function POST(request: Request) {
       } else if (action === "send") {
         if (mode === "image") {
           if (imageTextMode === "title" && !card?.title.trim()) throw new WorkspaceAccessError("Материал с заголовком не найден в этом диалоге.", 400);
-          genSettings.imageSource = resolveDialogueImageSource(p.imageSource, data, selectedId ? "" : clean(p.text, 8000), user.email, resolveBaseUrl(request));
+          genSettings.imageSource = resolveDialogueImageSource(plannerImageSource ?? p.imageSource, data, selectedId ? "" : clean(p.text, 8000), user.email, resolveBaseUrl(request));
           if (useLogo) {
             const brand = await verifyBrand(tx, row.brandId, user.email);
             let logoKey = "";

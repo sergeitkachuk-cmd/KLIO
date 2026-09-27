@@ -131,6 +131,10 @@ export type AiOperation =
   | "dialogue"
   | "dialogue_plain"
   | "dialogue_deepseek_plain"
+  // Short server-side intent routing for natural-language commands in the
+  // dialogue. This is deliberately separate from user-facing prose: it
+  // chooses an existing KLIO action and never writes the reply itself.
+  | "dialogue_intent"
   // Luna — user-facing generation
   | "generate_seo_article"
   | "generate_social_post"
@@ -189,6 +193,10 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // structured dialogue schema. Plain text needs no action/card envelope.
   dialogue_plain: { model: DIALOGUE_CONTENT, reasoningEffort: "none", maxOutputTokens: 3_000, structuredOutput: false, retryable: false, useWebSearch: false },
   dialogue_deepseek_plain: { model: DEEPSEEK_MODELS.CONTENT, reasoningEffort: "none", maxOutputTokens: 3_000, structuredOutput: false, retryable: false, useWebSearch: false },
+  // The intent pass is a small, bounded classification call. Keeping it on
+  // the utility tier avoids spending a full Luna generation just to decide
+  // whether the user asked for text, an image, a carousel, or conversation.
+  dialogue_intent: { model: UTILITY, reasoningEffort: "none", maxOutputTokens: 500, structuredOutput: true, retryable: false, useWebSearch: false },
   // Full materials are grounded by one bounded Tavily request in the route,
   // not by a model-owned web tool. DeepSeek can otherwise spend minutes in
   // search/tool loops before it starts writing; a single compact digest keeps
