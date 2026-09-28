@@ -49,10 +49,28 @@ export async function POST(request: Request) {
       const admins = (process.env.ADMIN_EMAILS ?? "").split(",").map((item) => item.trim()).filter(Boolean);
       await Promise.allSettled(admins.map((admin) => sendFeedbackNotificationEmail(admin, { fromEmail: user.email, message })));
     }
+    // Logs which of the two failure shapes actually happened - silently
+    // skipped (adminTelegramAvailable() false, so the env vars aren't what
+    // this running process actually sees, panel display notwithstanding)
+    // vs. attempted and rejected by Telegram/the network (previously
+    // logged as a bare "failed" with the real reason discarded, which made
+    // a real production incident - the notification config looking right
+    // in every way that could be checked, but nothing arriving - undiagnosable
+    // without this).
     if (adminTelegramAvailable()) {
-      await sendAdminTelegramMessage(`Новое обращение в КЛИО\nОт: ${user.email}\n\n${message}`).catch(() => {
-        console.error("Admin Telegram notify failed");
+      await sendAdminTelegramMessage(`Новое обращение в КЛИО\nОт: ${user.email}\n\n${message}`).catch((error) => {
+        // A raw fetch() rejection (network/DNS/timeout, as opposed to
+        // Telegram itself answering with an error body) carries the real
+        // reason in .cause, not .message - same shape already relied on
+        // in social-channels.ts's telegramGetChat failure log.
+        const cause = error instanceof Error ? error.cause : undefined;
+        console.error("Admin Telegram notify failed", {
+          message: error instanceof Error ? error.message : String(error),
+          cause: cause instanceof Error ? cause.message : cause,
+        });
       });
+    } else {
+      console.error("Admin Telegram notify skipped: ADMIN_TELEGRAM_BOT_TOKEN/ADMIN_TELEGRAM_CHAT_ID not seen by this process");
     }
 
     return Response.json({ ok: true });
