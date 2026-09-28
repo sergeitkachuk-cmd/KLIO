@@ -1216,7 +1216,15 @@ function AdminStyles() {
       .admin-feedback-thread-panel { display: grid; align-content: start; gap: 8px; min-width: 0; }
       .admin-feedback-thread-search { width: 100%; min-height: 34px; border: 1px solid #d1d5db; border-radius: 999px; padding: 0 14px; background: #fff; color: #1c1f26; font: inherit; font-size: 12px; }
       .admin-feedback-thread-search:focus { outline: 2px solid rgba(139, 92, 246, 0.25); outline-offset: 1px; border-color: #8b5cf6; }
-      .admin-feedback-thread-list { display: grid; align-content: start; gap: 6px; max-height: 60vh; overflow-y: auto; padding: 3px 4px 4px 0; }
+      /* Same purple/12px scrollbar treatment as .admin-table-scroll -
+         these two panes and the bubbles below are new scrollable areas
+         this feature added, and shipped with the browser's plain default
+         scrollbar instead (site owner screenshot: "некрасиво смотрится
+         ползунки"). */
+      .admin-feedback-thread-list { display: grid; align-content: start; gap: 6px; max-height: 60vh; overflow-y: auto; padding: 3px 4px 4px 0; scrollbar-color: #8b5cf6 transparent; scrollbar-width: auto; }
+      .admin-feedback-thread-list::-webkit-scrollbar { width: 12px; }
+      .admin-feedback-thread-list::-webkit-scrollbar-track { background: rgba(148, 163, 184, 0.12); }
+      .admin-feedback-thread-list::-webkit-scrollbar-thumb { background: #8b5cf6; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
       .admin-feedback-thread-item { display: flex; align-items: flex-start; gap: 8px; padding: 10px 11px; border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 12px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
       .admin-feedback-thread-item:hover { transform: none; background: rgba(148, 163, 184, 0.1); }
       .admin-feedback-thread-item.active { border-color: #8b5cf6; background: rgba(139, 92, 246, 0.1); }
@@ -1226,12 +1234,21 @@ function AdminStyles() {
       .admin-feedback-thread-item-preview { overflow: hidden; color: #6b7280; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
       .admin-feedback-thread-item-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
       .admin-feedback-thread-item-meta time { color: #9ca3af; font-size: 10px; }
-      .admin-feedback-thread { display: grid; align-content: start; gap: 10px; min-width: 0; }
+      /* max-width - without this the pane fills every leftover pixel of
+         .admin-feedback-layout's 1fr column, so on a wide monitor a
+         "start"-aligned client bubble and an "end"-aligned admin bubble
+         end up 1000px+ apart, reading as two disconnected conversations
+         rather than one (site owner screenshot). A real chat app never
+         stretches bubbles across a whole ultrawide window either. */
+      .admin-feedback-thread { display: grid; align-content: start; gap: 10px; min-width: 0; max-width: 720px; }
       .admin-feedback-thread-head { display: flex; align-items: center; gap: 8px; }
       .admin-feedback-thread-head b { display: block; font-size: 13px; }
       .admin-feedback-thread-head small { display: block; color: #6b7280; font-size: 11px; }
       .admin-feedback-empty-thread { margin: 0; padding: 16px; border: 1px dashed rgba(148, 163, 184, 0.35); border-radius: 12px; color: #6b7280; font-size: 12px; }
-      .admin-feedback-bubbles { display: grid; align-content: start; gap: 8px; max-height: 46vh; overflow-y: auto; padding: 3px 4px 4px 0; }
+      .admin-feedback-bubbles { display: grid; align-content: start; gap: 8px; max-height: 46vh; overflow-y: auto; padding: 3px 4px 4px 0; scrollbar-color: #8b5cf6 transparent; scrollbar-width: auto; }
+      .admin-feedback-bubbles::-webkit-scrollbar { width: 12px; }
+      .admin-feedback-bubbles::-webkit-scrollbar-track { background: rgba(148, 163, 184, 0.12); }
+      .admin-feedback-bubbles::-webkit-scrollbar-thumb { background: #8b5cf6; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
       .admin-feedback-bubble-row { display: flex; align-items: flex-end; gap: 6px; min-width: 0; }
       .admin-feedback-bubble-row.is-client { justify-self: start; }
       .admin-feedback-bubble-row.is-admin, .admin-feedback-bubble-row.is-bot { justify-self: end; }
@@ -1309,10 +1326,16 @@ function AdminStyles() {
       .admin-funnel-pct { font-size: 12px; color: #6b7280; white-space: nowrap; }
       .admin-funnel-secondary-heading { margin-top: 28px; }
       @media (max-width: 800px) { .admin-funnel-row { grid-template-columns: 1fr; gap: 4px; } .admin-funnel-count, .admin-funnel-pct { text-align: left; } }
-      .admin-table-scroll { overflow-x: auto; border: 1px solid rgba(148, 163, 184, 0.24); border-radius: 16px; scrollbar-color: #64748b transparent; scrollbar-width: thin; }
-      .admin-table-scroll::-webkit-scrollbar { height: 8px; }
-      .admin-table-scroll::-webkit-scrollbar-track { background: transparent; }
-      .admin-table-scroll::-webkit-scrollbar-thumb { background: #64748b; border-radius: 999px; }
+      /* Purple, not slate, and 12px not 8px - a wide table's horizontal
+         scrollbar (this is how the last column, like Детали, stays
+         reachable at all - see the comment on .admin-ai-error above) needs
+         to actually be noticed at rest, not just be technically present
+         (site owner: "кнопки уезжают за экран" turned out to mean exactly
+         this - they hadn't spotted there was anything to scroll). */
+      .admin-table-scroll { overflow-x: auto; border: 1px solid rgba(148, 163, 184, 0.24); border-radius: 16px; scrollbar-color: #8b5cf6 transparent; scrollbar-width: auto; }
+      .admin-table-scroll::-webkit-scrollbar { height: 12px; }
+      .admin-table-scroll::-webkit-scrollbar-track { background: rgba(148, 163, 184, 0.12); }
+      .admin-table-scroll::-webkit-scrollbar-thumb { background: #8b5cf6; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
       .admin-legacy-user-table { border: 0; overflow: visible; }
       .admin-table-users { min-width: 0; table-layout: auto; }
       .admin-table-users-legacy { display: none; }
