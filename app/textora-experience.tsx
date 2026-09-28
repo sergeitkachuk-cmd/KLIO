@@ -7328,7 +7328,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 {imageGeneratorMode === "carousel" && carouselResult ? <>
                   <div className="image-generator-carousel-slides">
                     {carouselResult.slides.map((slide, index) => <div className={`image-generator-carousel-slide ${carouselSlideBusy === index ? "is-regenerating" : ""}`} key={`${slide.imageUrl}-${index}`}>
-                      <button type="button" className="image-generator-result-trigger" style={{ aspectRatio: typeof slide.aspectRatio === "string" && /^\d+:\d+$/.test(slide.aspectRatio) ? slide.aspectRatio.replace(":", " / ") : "1 / 1" }} aria-label={`Открыть слайд ${index + 1}: ${slide.headline}`} onClick={() => setCarouselLightboxIndex(index)}><Image src={slide.imageUrl} alt={slide.headline} width={480} height={480} unoptimized/></button>
+                      <button type="button" className="image-generator-result-trigger" style={{ aspectRatio: typeof slide.aspectRatio === "string" && /^\d+:\d+$/.test(slide.aspectRatio) ? slide.aspectRatio.replace(":", " / ") : "auto" }} aria-label={`Открыть слайд ${index + 1}: ${slide.headline}`} onClick={() => setCarouselLightboxIndex(index)}><Image src={slide.imageUrl} alt={slide.headline} width={480} height={480} unoptimized/></button>
                       <b>{slide.headline}</b>
                       <div className="image-generator-carousel-slide-actions">
                         <a className="button ghost" href={slide.imageUrl} download aria-label={`Скачать слайд ${index + 1} в формате ${imageFormatLabel(slide.imageUrl)}`} title={`Скачать ${imageFormatLabel(slide.imageUrl)}`}><Icon name="download"/></a>

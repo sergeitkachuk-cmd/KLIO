@@ -23864,7 +23864,17 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 .image-generator-template-picker button:disabled{cursor:wait;opacity:.62}
 .image-generator-preview>.image-generator-carousel-slides{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:100%;overflow:visible}
 .image-generator-carousel-slide{display:flex;min-width:0;flex-direction:column;gap:8px;padding:10px;border:1px solid #34425a;border-radius:12px;background:#101f37}
-.image-generator-carousel-slide .image-generator-result-trigger{display:block;overflow:hidden;width:100%;padding:0;aspect-ratio:1/1;border-radius:8px;background:#08182c}
+/* Was aspect-ratio:1/1 - the JSX always sets its own inline aspect-ratio
+   (which wins over this anyway), but that inline value now falls back to
+   "auto" (not "1/1") when a slide has no valid aspectRatio - true for
+   most SAVED carousels reopened from materials, since readCarouselSlides
+   never required that field when the JSON was first written. A forced
+   square behind a portrait image and object-fit:contain left visible
+   empty #08182c bands above/below every reopened slide (site owner:
+   "над и под картинкой ещё какое-то фоновое поле"). This default only
+   still matters if some future caller renders this class combination
+   without setting its own inline aspect-ratio at all. */
+.image-generator-carousel-slide .image-generator-result-trigger{display:block;overflow:hidden;width:100%;padding:0;aspect-ratio:auto;border-radius:8px;background:#08182c}
 .image-generator-carousel-slide img{display:block;width:100%;height:100%;object-fit:contain}
 .image-generator-carousel-slide-actions{display:grid;grid-template-columns:repeat(2,38px);align-items:center;justify-content:start;gap:6px;margin-top:auto}
 .image-generator-carousel-slide .button{box-sizing:border-box;display:inline-flex;width:38px;min-width:38px;height:38px;min-height:38px;align-items:center;justify-content:center;padding:8px;border-radius:50%;font-size:0;line-height:1}
