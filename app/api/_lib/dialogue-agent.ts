@@ -24,6 +24,32 @@ type DialogueAgentInput = {
 // traces to an external tracing service.
 setTracingDisabled(true);
 
+// The openai SDK's APIError (what @openai/agents throws for a failed HTTP
+// call, e.g. the "400 Invalid text request" the site owner hit) carries
+// status/code/type/param and the full parsed response body on .error -
+// error.message alone ("400 Invalid text request") was all
+// recordExternalAiUsage's errorMessage ever captured, nowhere near enough
+// to tell whether that's raw OpenAI rejecting the request or the relay's
+// own validation, or which field it objects to. Duck-typed (not an
+// instanceof APIError check) since a network-level failure (timeout,
+// DNS, an aborted connection) can reach this same catch block without
+// being an APIError at all, and still has a plain .message worth keeping.
+export function describeAgentError(error: unknown): string {
+  if (!(error instanceof Error)) return String(error);
+  const parts = [error.message];
+  const withFields = error as Error & Record<string, unknown>;
+  if (typeof withFields.status === "number") parts.push(`status=${withFields.status}`);
+  if (typeof withFields.code === "string") parts.push(`code=${withFields.code}`);
+  if (typeof withFields.type === "string") parts.push(`type=${withFields.type}`);
+  if (typeof withFields.param === "string") parts.push(`param=${withFields.param}`);
+  if (typeof withFields.requestID === "string") parts.push(`requestID=${withFields.requestID}`);
+  if (withFields.error !== undefined) {
+    try { parts.push(`body=${JSON.stringify(withFields.error).slice(0, 1_500)}`); } catch { /* unserializable body, skip it */ }
+  }
+  if (withFields.cause instanceof Error) parts.push(`cause=${withFields.cause.message}`);
+  return parts.join(" | ").slice(0, 2_000);
+}
+
 const ACTIONS = ["create_text", "edit_text", "create_image", "edit_image", "create_carousel", "create_topics"] as const;
 const TARGETS = ["none", "latest_material", "latest_image"] as const;
 
@@ -178,7 +204,7 @@ export async function runDialogueAgent(input: DialogueAgentInput): Promise<Dialo
       requestGroupId: input.requestGroupId,
       durationMs: Date.now() - startedAt,
       status: "failed",
-      errorMessage: error instanceof Error ? error.message : String(error),
+      errorMessage: describeAgentError(error),
       usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0, cachedInputTokens: 0, reasoningTokens: 0, webSearchCalls: 0, requestId: null },
     });
     throw error;

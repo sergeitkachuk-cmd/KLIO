@@ -20,7 +20,7 @@ import { planRule } from "../../plans";
 import { CORE_SYSTEM_RULES, FINAL_QA_RULES, FORMAT_PLANS, TONE_PLANS, authorPositionRules, sanitizePublicationText, type AuthorPosition, type ContentFormat, type ContentTone } from "../../content-plans";
 import { aiConfigured, OPERATION_CONFIG } from "../_lib/ai-config";
 import { AiCallError, callAiModel } from "../_lib/ai-router";
-import { runDialogueAgent } from "../_lib/dialogue-agent";
+import { describeAgentError, runDialogueAgent } from "../_lib/dialogue-agent";
 import { ImageRelayUpgradeRequiredError } from "../_lib/image-generation-errors";
 import { readBoundedJson, RequestBodyError } from "../_lib/request-body";
 import { hasUnsafeRequestOrigin } from "../_lib/request-origin";
@@ -171,7 +171,7 @@ async function inferDialogueIntent(
       requestGroupId,
     });
   } catch (error) {
-    console.warn("dialogue agent unavailable", error instanceof Error ? error.message : String(error));
+    console.warn("dialogue agent unavailable", describeAgentError(error));
     return null;
   }
 }
