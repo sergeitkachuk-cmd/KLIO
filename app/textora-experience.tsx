@@ -2652,11 +2652,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [feedbackError, setFeedbackError] = useState("");
   const [feedbackHistory, setFeedbackHistory] = useState<FeedbackMessageRecord[]>([]);
   const [announcements, setAnnouncements] = useState<AnnouncementRecord[]>([]);
-  const [feedbackUnread, setFeedbackUnread] = useState(0);
-  // "Новости" (one-way, from the KLIO team) and "Обращения" (this visitor's
-  // own Q&A) used to share one scrolling feed - split into tabs so a long
-  // announcement doesn't push the actual conversation out of view (site
-  // owner: "все в одну кучу"). selectedFeedbackId null means the compose
+  // Separate counts (and separate account-menu rows below), not one
+  // combined badge - "Новости" (one-way, from the KLIO team) and
+  // "Обращения" (this visitor's own Q&A) are different things with
+  // different unread meanings; site owner asked for them as two rows, not
+  // tabs sharing one entry point ("разными строками в меню лк, а не
+  // разными вкладками в одной").
+  const [feedbackUnreadReplies, setFeedbackUnreadReplies] = useState(0);
+  const [feedbackUnreadNews, setFeedbackUnreadNews] = useState(0);
+  // selectedFeedbackId null means the compose
   // box for a new question; a past id shows that question + reply instead,
   // list+detail like a mail client rather than a running chat transcript.
   const [feedbackTab, setFeedbackTab] = useState<"support" | "news">("support");
@@ -3129,20 +3133,21 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     };
   }, [workspace]);
 
-  // Background load for the "Задать вопрос" unread badge + history, so the
-  // badge is visible before the visitor ever opens the modal — see
-  // submitFeedback/the account-menu button below.
+  // Background load for the "Новости"/"Обращения" unread badges + history,
+  // so both are visible before the visitor ever opens either modal — see
+  // submitFeedback/the account-menu buttons below.
   useEffect(() => {
     if (!workspace) return;
     let cancelled = false;
     void (async () => {
       try {
         const response = await fetch("/api/feedback", { cache: "no-store", headers: { Accept: "application/json" } });
-        const payload = await safeJson(response) as { messages?: FeedbackMessageRecord[]; announcements?: AnnouncementRecord[]; unreadCount?: number };
+        const payload = await safeJson(response) as { messages?: FeedbackMessageRecord[]; announcements?: AnnouncementRecord[]; unreadRepliesCount?: number; unreadAnnouncementsCount?: number };
         if (cancelled || !response.ok) return;
         setFeedbackHistory(Array.isArray(payload.messages) ? payload.messages : []);
         setAnnouncements(Array.isArray(payload.announcements) ? payload.announcements : []);
-        setFeedbackUnread(payload.unreadCount ?? 0);
+        setFeedbackUnreadReplies(payload.unreadRepliesCount ?? 0);
+        setFeedbackUnreadNews(payload.unreadAnnouncementsCount ?? 0);
       } catch {
         // Background badge/history load - not worth surfacing an error for.
       }
@@ -3159,6 +3164,23 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       window.location.assign("/");
     }
   };
+
+  // Shared by both account-menu rows ("Новости"/"Обращения" below) — opens
+  // the same modal already showing the right content, and marks only that
+  // row's own badge as seen (api/feedback/route.ts's PATCH takes `kind` for
+  // exactly this - opening one must never clear the other's unread count).
+  // Optimistic clear so the badge doesn't flash while the request is in flight.
+  function openFeedback(kind: "news" | "support") {
+    setAccountMenuOpen(false);
+    setFeedbackTab(kind);
+    setFeedbackOpen(true);
+    setFeedbackError("");
+    const unread = kind === "news" ? feedbackUnreadNews : feedbackUnreadReplies;
+    if (unread > 0) {
+      if (kind === "news") setFeedbackUnreadNews(0); else setFeedbackUnreadReplies(0);
+      void fetch("/api/feedback", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind }) }).catch(() => {});
+    }
+  }
 
   async function submitFeedback() {
     const message = feedbackMessage.trim();
@@ -6292,7 +6314,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <i>
                 {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary external host (own /api/account/avatar, or Yandex's/VK's own CDN) - not worth a next.config.ts remotePatterns entry for two different providers */}
                 {workspaceAccount.avatarUrl ? <img className="workspace-account-avatar-img" src={workspaceAccount.avatarUrl} alt="" /> : nameInitials(workspaceUserName)}
-                {feedbackUnread > 0 && <em className="workspace-account-badge">{feedbackUnread}</em>}
+                {feedbackUnreadReplies + feedbackUnreadNews > 0 && <em className="workspace-account-badge">{feedbackUnreadReplies + feedbackUnreadNews}</em>}
               </i><b>{workspaceUserName}</b><small>{workspaceAccount.planName} · 1 пользователь</small><em className="ui-chevron" aria-hidden="true" />
             </button>
             {accountMenuOpen && <div className="account-menu-list" role="menu">
@@ -6307,18 +6329,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <button type="button" role="menuitem" className="account-menu-theme-toggle" onClick={() => { toggleTheme(); setAccountMenuOpen(false); }}>
                 <span>{theme === "dark" ? "Светлая тема" : "Тёмная тема"}</span><Icon name={theme === "dark" ? "sun" : "moon"}/>
               </button>
-              <button type="button" role="menuitem" onClick={() => {
-                setAccountMenuOpen(false);
-                setFeedbackOpen(true);
-                setFeedbackError("");
-                // Opening the modal is the "seen" moment — see the PATCH
-                // handler in api/feedback/route.ts. Optimistic clear so the
-                // badge doesn't flash while the request is in flight.
-                if (feedbackUnread > 0) {
-                  setFeedbackUnread(0);
-                  void fetch("/api/feedback", { method: "PATCH" }).catch(() => {});
-                }
-              }}>Задать вопрос{feedbackUnread > 0 && <em className="account-menu-badge">{feedbackUnread}</em>}</button>
+              <button type="button" role="menuitem" onClick={() => openFeedback("news")}>Новости{feedbackUnreadNews > 0 && <em className="account-menu-badge">{feedbackUnreadNews}</em>}</button>
+              <button type="button" role="menuitem" onClick={() => openFeedback("support")}>Обращения{feedbackUnreadReplies > 0 && <em className="account-menu-badge">{feedbackUnreadReplies}</em>}</button>
               <button type="button" role="menuitem" onClick={() => void signOutOfWorkspace()}>Выйти</button>
             </div>}
           </div>
@@ -6331,11 +6343,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <div><span>КЛИО / Обратная связь</span><h2 id="feedback-modal-title">{feedbackTab === "news" ? "Новости" : "Обращения"}</h2></div>
             <div className="archive-editor-head-actions"><button type="button" onClick={() => setFeedbackOpen(false)} aria-label="Закрыть">×</button></div>
           </div>
-          <div className="feedback-modal-tabs" role="tablist" aria-label="Раздел">
-            <button type="button" role="tab" aria-selected={feedbackTab === "support"} className={feedbackTab === "support" ? "active" : ""} onClick={() => setFeedbackTab("support")}>Обращения</button>
-            <button type="button" role="tab" aria-selected={feedbackTab === "news"} className={feedbackTab === "news" ? "active" : ""} onClick={() => setFeedbackTab("news")}>Новости{announcements.length > 0 && <em>{announcements.length}</em>}</button>
-          </div>
-
           {feedbackTab === "news" ? <div className="feedback-news-list">
             {announcements.length > 0 ? announcements.map((item) => (
               <article className="feedback-letter" key={item.id}>

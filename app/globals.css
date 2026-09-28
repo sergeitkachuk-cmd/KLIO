@@ -13101,15 +13101,6 @@ input[type="radio"] {
   line-height: 1.5;
 }
 
-/* "Новости" (one-way, the KLIO team writing to every visitor or one
-   specific one) and "Обращения" (this visitor's own two-way Q&A) used to
-   share one scrolling feed, an announcement pushing the actual
-   conversation out of view (site owner: "все в одну кучу"). Same tab
-   look as .publications-platform-switch elsewhere in this file. */
-.feedback-modal-tabs { display: flex; gap: 6px; padding: 4px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; background: rgba(255, 255, 255, 0.04); }
-.feedback-modal-tabs button { flex: 1 1 0; padding: 9px 12px; border: 0; border-radius: 11px; background: transparent; color: rgba(255, 255, 255, 0.6); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
-.feedback-modal-tabs button.active { background: rgba(255, 255, 255, 0.12); color: #fff; }
-.feedback-modal-tabs button em { margin-left: 6px; padding: 1px 6px; border-radius: 999px; background: #8b5cf6; color: #fff; font-size: 10px; font-style: normal; font-weight: 800; }
 
 /* Read-only "letters" from the KLIO team - same violet "КЛИО is speaking"
    language the old .feedback-modal-announcement used, now a plain list
@@ -13127,8 +13118,18 @@ input[type="radio"] {
    own instead of the whole modal, so a long question list never pushes
    the compose box or an open reply out of view. */
 .feedback-support-layout { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: 16px; min-height: 0; }
-.feedback-support-list { display: grid; align-content: start; gap: 6px; max-height: 60vh; overflow-y: auto; padding-right: 4px; }
+/* padding-top: the global :hover lift (translateY(-1px) on every button
+   site-wide) had nothing to lift into here - a list item flush against
+   this container's own scroll-clipped edge shifted its top border 1px
+   past the clip boundary on hover, reading as the border escaping the
+   field (site owner screenshot). 3px of headroom is enough to absorb the
+   1px lift with room to spare. */
+.feedback-support-list { display: grid; align-content: start; gap: 6px; max-height: 60vh; overflow-y: auto; padding: 3px 4px 0 0; }
 .feedback-support-list-item { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; background: rgba(255, 255, 255, 0.03); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+/* Also opt out of the lift itself, not just pad around it - a list row
+   you click to select doesn't read right "floating" the way a real
+   action button does. */
+.feedback-support-list-item:hover { transform: none; }
 .feedback-support-list-item:hover { background: rgba(255, 255, 255, 0.07); }
 .feedback-support-list-item.active { border-color: rgba(139, 92, 246, 0.55); background: rgba(139, 92, 246, 0.14); }
 .feedback-support-list-item.is-new { color: #cbb8ff; font-weight: 700; }

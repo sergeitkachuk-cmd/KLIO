@@ -19,10 +19,14 @@ export async function GET() {
       db.select().from(feedbackMessages).where(eq(feedbackMessages.ownerEmail, user.email)).orderBy(desc(feedbackMessages.createdAt)).limit(HISTORY_LIMIT),
       db.select().from(announcements).where(or(isNull(announcements.recipientEmail), eq(announcements.recipientEmail, user.email))).orderBy(desc(announcements.createdAt)).limit(ANNOUNCEMENT_LIMIT),
     ]);
-    const unreadReplies = messages.filter((row) => row.reply && !row.readAt).length;
+    const unreadRepliesCount = messages.filter((row) => row.reply && !row.readAt).length;
     const seenAnnouncementsAt = account.lastSeenAnnouncementAt ?? account.createdAt;
-    const unreadAnnouncements = announcementRows.filter((row) => new Date(row.createdAt).getTime() > new Date(seenAnnouncementsAt).getTime()).length;
-    return Response.json({ messages, announcements: announcementRows, unreadCount: unreadReplies + unreadAnnouncements });
+    const unreadAnnouncementsCount = announcementRows.filter((row) => new Date(row.createdAt).getTime() > new Date(seenAnnouncementsAt).getTime()).length;
+    // Separate counts, not one combined total - "Новости" and "Обращения"
+    // are now two distinct account-menu rows (site owner: "разными
+    // строками в меню лк, а не разными вкладками в одной"), each with its
+    // own badge.
+    return Response.json({ messages, announcements: announcementRows, unreadRepliesCount, unreadAnnouncementsCount });
   } catch (error) {
     if (error instanceof WorkspaceAccessError) return Response.json({ error: error.message }, { status: error.status });
     console.error("Feedback history load failed");
@@ -90,23 +94,27 @@ export async function POST(request: Request) {
   }
 }
 
-// Called when the workspace modal is actually opened (not just on the
-// background badge-count fetch above) — that's the "seen" moment that
-// clears the unread badge on "Задать вопрос" for both replies and
-// announcements.
-export async function PATCH() {
+// Called when either modal is actually opened (not just on the background
+// badge-count fetch above) — that's the "seen" moment that clears that
+// specific row's own unread badge. "Новости" and "Обращения" are separate
+// account-menu rows now, so each only ever marks its own kind - opening
+// one must never silently clear the other's badge too.
+export async function PATCH(request: Request) {
   try {
     const user = await workspaceIdentity();
+    const body = await request.json().catch(() => null) as { kind?: unknown } | null;
+    const kind = body?.kind === "news" ? "news" : "support";
     const db = await getWorkspaceDb();
     const now = new Date().toISOString();
-    await Promise.all([
-      db.update(feedbackMessages).set({ readAt: now }).where(and(
+    if (kind === "support") {
+      await db.update(feedbackMessages).set({ readAt: now }).where(and(
         eq(feedbackMessages.ownerEmail, user.email),
         isNotNull(feedbackMessages.reply),
         isNull(feedbackMessages.readAt),
-      )),
-      db.update(accounts).set({ lastSeenAnnouncementAt: now }).where(eq(accounts.email, user.email)),
-    ]);
+      ));
+    } else {
+      await db.update(accounts).set({ lastSeenAnnouncementAt: now }).where(eq(accounts.email, user.email));
+    }
     return Response.json({ ok: true });
   } catch (error) {
     if (error instanceof WorkspaceAccessError) return Response.json({ error: error.message }, { status: error.status });
