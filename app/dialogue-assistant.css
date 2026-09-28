@@ -91,6 +91,8 @@
 .klio-aui-card .klio-result-actions { margin-top:10px; padding:0; }
 .klio-aui-card .klio-result-actions-buttons { justify-content:flex-start; gap:6px; }
 .klio-aui-card .klio-result-actions-buttons :is(button,a) { padding:6px 10px; min-height:32px; font-size:12px; }
+.klio-aui-card .klio-result-actions-buttons .klio-result-action-icon { width:32px; min-width:32px; padding:0; }
+.klio-aui-card .klio-result-actions-buttons .klio-result-action-icon svg { width:15px; height:15px; }
 .klio-aui-copy { margin-top:6px; color:var(--ck-muted); }
 .klio-aui-error { margin:12px 0; border:1px solid var(--ck-line); border-radius:14px; padding:12px; color:var(--ck-text); }
 .klio-aui-error p { margin:0 0 8px; }

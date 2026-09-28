@@ -23872,6 +23872,16 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 .image-generator-carousel-slide-actions small{grid-column:1/-1;color:#aebbd0;font-size:10px;line-height:1.2}
 .carousel-slide-regeneration{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
 .carousel-slide-regeneration small{color:#aebbd0;font-size:10px;line-height:1}
+/* Compact icon row under a single generated image (site owner: "вместо
+   громоздких кнопок... значками они будут компактнее"), same round
+   38px/18px-icon convention as .image-generator-carousel-slide .button
+   above rather than a new one - own class (not a modifier on
+   .image-generator-result-actions) because that class is also used a few
+   lines below in the JSX for the single "В публикацию" fallback button,
+   which stays full-width text, not an icon square. */
+.image-generator-result-icons{display:flex;gap:8px;margin-top:4px}
+.image-generator-result-icons .button{box-sizing:border-box;display:inline-flex;width:38px;min-width:38px;height:38px;min-height:38px;align-items:center;justify-content:center;padding:8px;border-radius:50%;font-size:0;line-height:1}
+.image-generator-result-icons .button svg{width:18px;height:18px}
 .image-generator-carousel-slide b{font-size:15px;font-weight:700;line-height:1.35;color:#eef2fa}
 .image-generator-carousel-slide.is-regenerating{border-color:#83aee8;box-shadow:0 0 0 1px rgba(131,174,232,.24),0 8px 24px rgba(3,18,37,.2)}
 .image-generator-carousel-slide .carousel-slide-regenerate:disabled{opacity:.58}

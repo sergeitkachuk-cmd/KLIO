@@ -965,6 +965,20 @@ html[data-theme="light"] .klio-chatkit-toast.is-error {
 .klio-result-actions .klio-result-actions-buttons > button:disabled { opacity: .55; cursor: default; }
 .klio-result-actions .klio-result-actions-buttons > [data-action="klio.publish"] { background: var(--ck-text); color: var(--ck-bg); }
 .klio-result-actions .klio-result-actions-buttons > [data-action="klio.publish"]:hover:not(:disabled) { background: var(--ck-text); opacity: .88; }
+/* Image-specific actions (download/refine) are icon-only circles, same
+   height as the pill buttons above so they sit level in the row, rather
+   than a labelled pill like the rest of this list (site owner: "значками
+   действия с картинками... компактнее", matching the same treatment
+   given to the professional workspace's own image result). */
+.klio-result-actions .klio-result-actions-buttons > .klio-result-action-icon {
+  width: 38px;
+  min-width: 38px;
+  padding: 0;
+}
+.klio-result-actions .klio-result-actions-buttons > .klio-result-action-icon svg {
+  width: 18px;
+  height: 18px;
+}
 .klio-result-actions p { margin: 10px 0 0; color: var(--ck-muted); overflow-wrap: anywhere; }
 .klio-result-actions .klio-result-action-error { color: #ffafb7; }
 html[data-theme="light"] .klio-result-actions .klio-result-action-error { color: #b42332; }
