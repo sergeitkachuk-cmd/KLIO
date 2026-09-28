@@ -54,6 +54,47 @@ test("relay forwards authenticated bounded dialogue requests without exposing it
   assert.equal(JSON.parse(calls[2].options.body).model, "gpt-5.4-nano");
 });
 
+// The Agents SDK-based dialogue router (app/api/_lib/dialogue-agent.ts)
+// always sends input as an array of role-tagged items for its multi-turn,
+// tool-using calls, never a bare string, and its own Responses API call
+// doesn't always carry a top-level instructions string either. Every one
+// of its calls got rejected as "Invalid text request" until this relay
+// accepted that shape too (site owner: reproduced live, "gpt-6-luna ...
+// 400 Invalid text request" in the admin usage table for every dialogue
+// call) - this is what actually exercises that fix, not just the
+// pre-existing single-string-input case above.
+test("relay accepts the Agents SDK's array-shaped input and optional instructions", async t => {
+  const token = "test-only-token-with-at-least-32-characters";
+  const calls = [];
+  const server = imageService({ token, apiKey: "fixture-provider-key", providerFetch: async (url, options) => {
+    calls.push({ url, options });
+    return Response.json({ status: "completed", output: [{ type: "message", content: [{ type: "output_text", text: "ok" }] }] });
+  } });
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const endpoint = `http://127.0.0.1:${server.address().port}/responses`;
+  const post = payload => fetch(endpoint, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
+
+  const arrayInput = [
+    { role: "user", content: "КОНТЕКСТ KLIO: {}" },
+    { role: "assistant", status: "completed", content: [{ type: "output_text", text: "Привет" }] },
+    { role: "user", content: "Нарисуй картинку" },
+  ];
+  const withArrayInput = await post({ model: "gpt-6-luna", store: false, max_output_tokens: 2400, input: arrayInput });
+  assert.equal(withArrayInput.status, 200, await withArrayInput.clone().text());
+  assert.deepEqual(JSON.parse(calls.at(-1).options.body).input, arrayInput);
+  assert.equal(JSON.parse(calls.at(-1).options.body).instructions, undefined);
+
+  // store must still be exactly false - conversations stay unstored on
+  // OpenAI's end regardless of caller, this relay's one privacy guarantee,
+  // not something the shape fix should loosen.
+  assert.equal((await post({ model: "gpt-6-luna", store: true, max_output_tokens: 100, input: arrayInput })).status, 400);
+  // Still rejects garbage, not "anything goes now that input can be an array".
+  assert.equal((await post({ model: "gpt-6-luna", store: false, max_output_tokens: 100, input: [] })).status, 400);
+  assert.equal((await post({ model: "gpt-6-luna", store: false, max_output_tokens: 100, input: ["not an object"] })).status, 400);
+  assert.equal((await post({ model: "gpt-6-luna", store: false, max_output_tokens: 100, input: "Привет", instructions: 12345 })).status, 400);
+});
+
 test("image service forwards the caller's size, quality and format instead of hardcoding them", async t => {
   const requests = [];
   const token = "test-only-token-with-at-least-32-characters";

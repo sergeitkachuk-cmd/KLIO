@@ -77,9 +77,30 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", pro
         payload = JSON.parse(Buffer.concat(chunks).toString("utf8"));
       } catch { return reply(400, { error: "Invalid request" }); }
       finally { clearTimeout(timer); }
+      // input was required to be a plain string - true for every caller
+      // until the Agents SDK-based dialogue router (@openai/agents)
+      // started sending it, which for any multi-turn/tool-using call (that
+      // router's only mode) is always an array of role-tagged items per
+      // the Responses API's own shape, never a bare string. Every one of
+      // those calls got rejected here with exactly this "Invalid text
+      // request" - regardless of model, prompt or anything else - which
+      // is what every failing "Диалог с КЛИО" admin-table row actually
+      // was. Item shape isn't deep-validated beyond "plain object" - the
+      // 128KB raw-body cap above already bounds total size regardless of
+      // whether input is a string or an array.
+      const inputValid = typeof payload.input === "string"
+        ? payload.input.length <= 65_000
+        : Array.isArray(payload.input) && payload.input.length > 0 && payload.input.length <= 64
+          && payload.input.every((item) => item !== null && typeof item === "object" && !Array.isArray(item));
+      // instructions is likewise now optional - the SDK's own Responses
+      // API calls don't always carry a top-level instructions string
+      // (system guidance can live inside input's own items instead); a
+      // caller that does send one is still bounded the same as before.
+      const instructionsValid = payload.instructions === undefined
+        || (typeof payload.instructions === "string" && payload.instructions.length <= 45_000);
       if (!payload || !ALLOWED_TEXT_MODELS.has(payload.model)
-        || typeof payload.input !== "string" || payload.input.length > 65_000
-        || typeof payload.instructions !== "string" || payload.instructions.length > 45_000
+        || !inputValid
+        || !instructionsValid
         || !Number.isInteger(payload.max_output_tokens) || payload.max_output_tokens < 1 || payload.max_output_tokens > 16_000
         || payload.store !== false) return reply(400, { error: "Invalid text request" });
       textRunning++;
