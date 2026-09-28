@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { accounts } from "../../../../../db/schema";
 import { resolveBaseUrl } from "../../../_lib/base-url";
 import { safeReturnPath } from "../../../_lib/safe-return-path";
-import { YANDEX_TOKEN_URL, YANDEX_USER_INFO_URL, yandexOAuthConfigured, type YandexUserInfo } from "../../../_lib/yandex-oauth";
+import { YANDEX_TOKEN_URL, YANDEX_USER_INFO_URL, yandexAvatarUrl, yandexOAuthConfigured, type YandexUserInfo } from "../../../_lib/yandex-oauth";
 import { ensureAccount, getWorkspaceDb, workspaceDatabaseAvailable } from "../../../_lib/workspace-account";
 import { createSiteSession } from "../../../../site-auth";
 
@@ -69,13 +69,23 @@ export async function GET(request: Request) {
     const displayName = info.real_name || info.display_name || info.login || email.split("@")[0];
     const account = await ensureAccount({ email, displayName, fullName: displayName }, "yandex");
 
-    if (!account.emailVerified) {
+    // Re-checked on every sign-in, not just the first — a person who adds
+    // or changes their Yandex photo later should see that reflected next
+    // time they log in, the same reasoning ensureAccount already applies
+    // to displayName on its own quota-rollover path. Never overwrites a
+    // custom upload: accountSummary() prefers avatarKey over this field
+    // whenever both are set, so refreshing it here is harmless either way.
+    const avatarUrl = yandexAvatarUrl(info);
+    if (!account.emailVerified || avatarUrl !== account.providerAvatarUrl) {
       // Yandex has already vetted this address as belonging to the visitor
       // who just signed in — trust it outright, the same way the ChatGPT
       // embed's header-based identity is trusted, with no confirmation
       // link of our own to send.
       const db = await getWorkspaceDb();
-      await db.update(accounts).set({ emailVerified: true }).where(eq(accounts.email, email));
+      await db.update(accounts).set({
+        ...(account.emailVerified ? {} : { emailVerified: true }),
+        ...(avatarUrl !== account.providerAvatarUrl ? { providerAvatarUrl: avatarUrl } : {}),
+      }).where(eq(accounts.email, email));
     }
 
     await createSiteSession(email);

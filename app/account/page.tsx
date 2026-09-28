@@ -5,6 +5,7 @@ import { getDb } from "../../db";
 import { brands } from "../../db/schema";
 import { accountSummary, ensureAccount, workspaceDatabaseAvailable } from "../api/_lib/workspace-account";
 import { LAUNCH_DISCOUNT_PERCENT } from "../billing-pricing";
+import { AccountAvatar } from "./account-avatar";
 import BillingActions from "./billing-actions";
 import InvoiceDocuments from "./invoice-documents";
 import PaymentHistory from "./payment-history";
@@ -98,7 +99,7 @@ export default async function AccountPage() {
       <div className="account-content">
         <header className="account-header">
           <Link className="account-back" href="/workspace">← В рабочее пространство</Link>
-          <div className="account-who"><i>{(user.displayName || "К").trim().charAt(0).toLocaleUpperCase("ru-RU")}</i><span><b>{user.displayName}</b><small>{user.email}</small></span></div>
+          <div className="account-who"><AccountAvatar initials={(user.displayName || "К").trim().charAt(0).toLocaleUpperCase("ru-RU")} avatarUrl={summary.avatarUrl} hasCustomAvatar={Boolean(account.avatarKey)} /><span><b>{user.displayName}</b><small>{user.email}</small></span></div>
         </header>
 
         <div className="account-title"><p>Личный кабинет</p><h1>Тариф и данные аккаунта</h1></div>

@@ -4760,7 +4760,7 @@ footer nav a {
 
 .workspace-account {
   display: grid;
-  grid-template-columns: 36px auto 16px;
+  grid-template-columns: 44px auto 16px;
   grid-template-rows: auto auto;
   align-items: center;
   gap: 1px 10px;
@@ -4779,13 +4779,17 @@ footer nav a {
   grid-row: 1 / 3;
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  overflow: hidden;
+  /* Was 36px on web - site owner asked for a bigger circle now that a
+     real photo (upload or Yandex/VK) can show here, not just initials;
+     mobile keeps its own smaller 34px override (below) untouched. */
+  width: 44px;
+  height: 44px;
   border: 1px solid rgba(255, 255, 255, 0.38);
   border-radius: 50%;
   color: #fff;
   background: rgba(255, 255, 255, 0.1);
-  font-size: 13px;
+  font-size: 15px;
   font-style: normal;
   font-weight: 700;
   backdrop-filter: blur(7px);
@@ -4798,6 +4802,17 @@ footer nav a {
   border-radius: 50%;
   object-fit: contain;
   background: linear-gradient(145deg, #dce5f5 0%, #bfcee7 52%, #aebfdd 100%);
+}
+
+/* cover, not contain like the brand logo above - a face photo should fill
+   the circle edge to edge; a logo shouldn't get cropped, a photo cropping
+   slightly at the edges reads as normal (every avatar UI does this). */
+.workspace-account-avatar-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 /* Site owner: the unread-reply count only lived inside the account

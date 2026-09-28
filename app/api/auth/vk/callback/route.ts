@@ -81,13 +81,21 @@ export async function GET(request: Request) {
     const displayName = [info.user?.first_name, info.user?.last_name].filter(Boolean).join(" ").trim() || email.split("@")[0];
     const account = await ensureAccount({ email, displayName, fullName: displayName }, "vk");
 
-    if (!account.emailVerified) {
+    // Re-checked every sign-in, same reasoning as the Yandex callback's own
+    // avatar refresh - a changed VK photo should show up on the next login,
+    // and this never overwrites a custom upload (accountSummary() prefers
+    // avatarKey whenever it's set).
+    const avatarUrl = info.user?.avatar || null;
+    if (!account.emailVerified || avatarUrl !== account.providerAvatarUrl) {
       // VK has already vetted this address as belonging to the visitor who
       // just signed in — trust it outright, the same way Yandex's and the
       // ChatGPT embed's own identities are trusted, with no confirmation
       // link of our own to send.
       const db = await getWorkspaceDb();
-      await db.update(accounts).set({ emailVerified: true }).where(eq(accounts.email, email));
+      await db.update(accounts).set({
+        ...(account.emailVerified ? {} : { emailVerified: true }),
+        ...(avatarUrl !== account.providerAvatarUrl ? { providerAvatarUrl: avatarUrl } : {}),
+      }).where(eq(accounts.email, email));
     }
 
     await createSiteSession(email);

@@ -286,6 +286,10 @@ type WorkspaceAccount = {
   // accountSummary() in api/_lib/workspace-account.ts for the eligibility
   // rule (launch window still open, discount not already used).
   launchDiscountAvailable: boolean;
+  // Own upload (served through /api/account/avatar) or an auto-captured
+  // Yandex/VK photo - see accountSummary()'s own comment for which wins.
+  // Null falls back to the initials circle, same as before this existed.
+  avatarUrl: string | null;
 };
 
 // Mirrors a row of feedbackMessages (db/schema.ts) — one "Задать вопрос"
@@ -2505,6 +2509,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     seatLimit: 1,
     period: "",
     launchDiscountAvailable: false,
+    avatarUrl: null,
   });
   const [workspaceBrands, setWorkspaceBrands] = useState<WorkspaceBrand[]>([]);
   const workspaceSaveQueue = useRef(createWorkspaceSaveQueue());
@@ -6284,7 +6289,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           <a className="telegram-header-link" href="https://t.me/kliopress" target="_blank" rel="noreferrer" aria-label="Telegram КЛИО"><Icon name="telegram"/><span className="telegram-header-link-text">Telegram КЛИО</span></a>
           <div className={`account-menu ${accountMenuOpen ? "is-open" : ""}`} ref={accountMenuRef}>
             <button type="button" className="workspace-account" onClick={() => setAccountMenuOpen((value) => !value)} aria-label={`Меню аккаунта: ${workspaceUserName}`} aria-haspopup="menu" aria-expanded={accountMenuOpen}>
-              <i>{nameInitials(workspaceUserName)}{feedbackUnread > 0 && <em className="workspace-account-badge">{feedbackUnread}</em>}</i><b>{workspaceUserName}</b><small>{workspaceAccount.planName} · 1 пользователь</small><em className="ui-chevron" aria-hidden="true" />
+              <i>
+                {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary external host (own /api/account/avatar, or Yandex's/VK's own CDN) - not worth a next.config.ts remotePatterns entry for two different providers */}
+                {workspaceAccount.avatarUrl ? <img className="workspace-account-avatar-img" src={workspaceAccount.avatarUrl} alt="" /> : nameInitials(workspaceUserName)}
+                {feedbackUnread > 0 && <em className="workspace-account-badge">{feedbackUnread}</em>}
+              </i><b>{workspaceUserName}</b><small>{workspaceAccount.planName} · 1 пользователь</small><em className="ui-chevron" aria-hidden="true" />
             </button>
             {accountMenuOpen && <div className="account-menu-list" role="menu">
               <Link href="/account" role="menuitem">Личный кабинет</Link>

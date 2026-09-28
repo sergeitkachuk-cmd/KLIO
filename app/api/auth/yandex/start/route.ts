@@ -36,7 +36,7 @@ export async function GET(request: Request) {
   authorizeUrl.searchParams.set("response_type", "code");
   authorizeUrl.searchParams.set("client_id", process.env.YANDEX_OAUTH_CLIENT_ID!.trim());
   authorizeUrl.searchParams.set("redirect_uri", redirectUri);
-  authorizeUrl.searchParams.set("scope", "login:email login:info");
+  authorizeUrl.searchParams.set("scope", "login:email login:info login:avatar");
   authorizeUrl.searchParams.set("state", state);
 
   const response = NextResponse.redirect(authorizeUrl.toString());

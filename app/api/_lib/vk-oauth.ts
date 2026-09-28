@@ -62,12 +62,19 @@ export function pkceChallengeFromVerifier(verifier: string): string {
 // access_token with HTTP 200 and this shape instead of a 4xx, so callers
 // MUST check `error` before assuming a missing `user.email` means "this
 // VK account just has no email" rather than "the token itself was bad".
+// avatar (added later than the rest of this type - confirmed against the
+// same shipped .d.ts, dist-sdk/types/auth/types.d.ts's UserData) is only
+// actually populated when the app's "Фото профиля" registration-data
+// toggle is on (VK ID app dashboard → Авторизация → Данные для
+// регистрации - site owner confirmed this is already enabled for this
+// app). A URL straight from VK's own CDN, safe to use as-is.
 export type VkUserInfo = {
   user?: {
     user_id: string;
     first_name?: string;
     last_name?: string;
     email?: string;
+    avatar?: string;
   };
   error?: string;
   error_description?: string;

@@ -13,6 +13,24 @@ export const accounts = pgTable("accounts", {
   email: text("email").primaryKey(),
   displayName: text("display_name").notNull().default("Пользователь"),
   workspaceMode: text("workspace_mode").notNull().default(""),
+  // Own-uploaded avatar (api/account/avatar/route.ts) - same private-S3-key
+  // pattern as brands.profileJson's logoKey (see api/_lib/storage.ts):
+  // never a public URL, only ever read back by our own server for the
+  // account menu's <img>. Takes priority over providerAvatarUrl below when
+  // both are present - a person who bothered to upload their own picture
+  // presumably wants that one shown, not whatever Yandex/VK has on file.
+  avatarKey: text("avatar_key"),
+  avatarFileName: text("avatar_file_name"),
+  // Best-effort, auto-captured at sign-in from Yandex (default_avatar_id,
+  // see api/_lib/yandex-oauth.ts) or VK (photo_200 via a classic-API
+  // users.get call, see api/_lib/vk-oauth.ts — VK ID's own user_info has no
+  // avatar field at all, confirmed against a real VK ID 2.1 Socialite
+  // provider's source, so this needs that extra call and may simply stay
+  // null if it fails). Already a public CDN URL from the provider, so —
+  // unlike avatarKey — safe to hand straight to the client and to hotlink
+  // directly, no proxying through our own server needed.
+  providerAvatarUrl: text("provider_avatar_url"),
+
   // Null for accounts that only ever authenticated via the ChatGPT embed
   // (no site password was ever set for them).
   passwordHash: text("password_hash"),

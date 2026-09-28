@@ -231,6 +231,12 @@ export function accountSummary(account: typeof accounts.$inferSelect, brandCount
     // either the account has already used it or the launch window has
     // closed, so the banner disappears on its own without a dismiss button.
     launchDiscountAvailable: launchDiscountWindowOpen() && !account.launchDiscountUsedAt,
+    // A custom upload (api/account/avatar/route.ts) wins over an
+    // auto-captured provider one — see the comment on accounts.avatarKey in
+    // db/schema.ts. The former is served through our own endpoint (the S3
+    // key itself is never exposed to the client); the latter is already a
+    // public provider CDN URL, safe to hand over and hotlink directly.
+    avatarUrl: account.avatarKey ? "/api/account/avatar" : (account.providerAvatarUrl || null),
   };
 }
 

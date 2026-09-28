@@ -67,11 +67,16 @@ export async function POST(request: Request) {
     const displayName = [info.user?.first_name, info.user?.last_name].filter(Boolean).join(" ").trim() || email.split("@")[0];
     const account = await ensureAccount({ email, displayName, fullName: displayName }, "vk");
 
-    if (!account.emailVerified) {
+    // Same avatar-refresh reasoning as the plain-link VK callback.
+    const avatarUrl = info.user?.avatar || null;
+    if (!account.emailVerified || avatarUrl !== account.providerAvatarUrl) {
       // VK has already vetted this address — trust it outright, same as
       // the plain-link VK flow and Yandex's.
       const db = await getWorkspaceDb();
-      await db.update(accounts).set({ emailVerified: true }).where(eq(accounts.email, email));
+      await db.update(accounts).set({
+        ...(account.emailVerified ? {} : { emailVerified: true }),
+        ...(avatarUrl !== account.providerAvatarUrl ? { providerAvatarUrl: avatarUrl } : {}),
+      }).where(eq(accounts.email, email));
     }
 
     await createSiteSession(email);

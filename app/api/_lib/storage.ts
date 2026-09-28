@@ -311,3 +311,53 @@ export async function downloadBrandLogo(key: string): Promise<{ bytes: Uint8Arra
     throw new StorageError("Не удалось прочитать файл из хранилища.", 502);
   }
 }
+
+const MAX_ACCOUNT_AVATAR_BYTES = 5 * 1024 * 1024;
+
+// Same private-key pattern as uploadBrandLogo above, own prefix
+// ("account-avatars/") so the two never collide — see api/account/avatar/
+// route.ts for the only caller. Removing an avatar (that route's DELETE)
+// just clears accounts.avatarKey, the same "never actually delete the S3
+// object" choice uploadBrandLogo's own removal path already makes —
+// consistent, and an orphaned object costs nothing anyone notices.
+export async function uploadAccountAvatar(file: File, ownerEmail: string): Promise<{ key: string; contentType: string }> {
+  if (!storageConfigured()) {
+    throw new StorageError("Загрузка файлов пока не настроена на сервере.", 503);
+  }
+  if (file.size > MAX_ACCOUNT_AVATAR_BYTES) {
+    throw new StorageError(`Файл больше ${Math.round(MAX_ACCOUNT_AVATAR_BYTES / 1024 / 1024)} МБ — уменьшите файл и попробуйте снова.`, 400);
+  }
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const contentType = imageContentType(bytes);
+  if (!contentType) throw new StorageError("Поддерживаются только картинки JPEG, PNG, WEBP или GIF.", 400);
+  const extension = ALLOWED_CONTENT_TYPES[contentType] || "png";
+
+  const ownerKey = createHash("sha256").update(ownerEmail.trim().toLowerCase()).digest("hex");
+  const key = `account-avatars/${ownerKey}/${crypto.randomUUID()}.${extension}`;
+
+  try {
+    await client().send(new PutObjectCommand({
+      Bucket: requiredEnv("S3_BUCKET"),
+      Key: key,
+      Body: bytes,
+      ContentType: contentType,
+    }), { abortSignal: AbortSignal.timeout(40_000) });
+  } catch (error) {
+    if (error instanceof StorageError) throw error;
+    console.error("S3 account-avatar upload failed", error instanceof Error ? error.message : error);
+    throw new StorageError("Не удалось загрузить файл в хранилище.");
+  }
+
+  return { key, contentType };
+}
+
+export async function downloadAccountAvatar(key: string): Promise<{ bytes: Uint8Array<ArrayBuffer>; contentType: string }> {
+  if (!storageConfigured()) throw new StorageError("Хранилище файлов пока не настроено на сервере.", 503);
+  try {
+    return await getObjectBytes(key);
+  } catch (error) {
+    if (error instanceof StorageError) throw error;
+    console.error("S3 account-avatar download failed", error instanceof Error ? error.message : error);
+    throw new StorageError("Не удалось прочитать файл из хранилища.", 502);
+  }
+}
