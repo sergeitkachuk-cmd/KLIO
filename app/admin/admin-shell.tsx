@@ -11,7 +11,10 @@ import { useEffect, useState, type ReactNode } from "react";
 // layout put every table on screen at once - "Пользователи" and
 // "Последние вызовы ИИ" alone ran to hundreds of rows, so finding
 // anything meant scrolling past everything else first.
-export type AdminSection = { id: string; label: string; badge?: string; content: ReactNode };
+// attention: true paints the badge as something needing a look (currently
+// only "Обращения" with at least one reply-less row - see feedbackUnreadCount
+// in page.tsx), distinct from badge's own plain count-so-far meaning.
+export type AdminSection = { id: string; label: string; badge?: string; attention?: boolean; content: ReactNode };
 
 export function AdminShell({ sections }: { sections: AdminSection[] }) {
   const [active, setActive] = useState(sections[0]?.id ?? "");
@@ -43,7 +46,7 @@ export function AdminShell({ sections }: { sections: AdminSection[] }) {
               window.scrollTo(0, 0);
             }}>
               <span>{section.label}</span>
-              {section.badge !== undefined && <em>{section.badge}</em>}
+              {section.badge !== undefined && <em className={section.attention ? "admin-badge-attention" : undefined}>{section.badge}</em>}
             </button>
           ))}
         </nav>

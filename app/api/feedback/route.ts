@@ -38,7 +38,8 @@ export async function POST(request: Request) {
     if (!message) return Response.json({ error: "Напишите сообщение." }, { status: 400 });
 
     const db = await getWorkspaceDb();
-    await db.insert(feedbackMessages).values({ id: randomUUID(), ownerEmail: user.email, message });
+    const feedbackId = randomUUID();
+    await db.insert(feedbackMessages).values({ id: feedbackId, ownerEmail: user.email, message });
 
     // Best-effort — the message is already durably stored above, so a
     // notification failure (missing config, provider outage) must not turn
@@ -58,17 +59,24 @@ export async function POST(request: Request) {
     // in every way that could be checked, but nothing arriving - undiagnosable
     // without this).
     if (adminTelegramAvailable()) {
-      await sendAdminTelegramMessage(`Новое обращение в КЛИО\nОт: ${user.email}\n\n${message}`).catch((error) => {
-        // A raw fetch() rejection (network/DNS/timeout, as opposed to
-        // Telegram itself answering with an error body) carries the real
-        // reason in .cause, not .message - same shape already relied on
-        // in social-channels.ts's telegramGetChat failure log.
-        const cause = error instanceof Error ? error.cause : undefined;
-        console.error("Admin Telegram notify failed", {
-          message: error instanceof Error ? error.message : String(error),
-          cause: cause instanceof Error ? cause.message : cause,
+      // Saving telegramMessageId is what lets api/telegram/admin-webhook
+      // match a reply typed in Telegram back to this exact row (Telegram
+      // echoes it as reply_to_message.message_id) - worth a second small
+      // write, not worth blocking/failing the visitor's submission over if
+      // it doesn't happen.
+      await sendAdminTelegramMessage(`Новое обращение в КЛИО\nОт: ${user.email}\n\n${message}`)
+        .then(({ messageId }) => db.update(feedbackMessages).set({ telegramMessageId: String(messageId) }).where(eq(feedbackMessages.id, feedbackId)))
+        .catch((error) => {
+          // A raw fetch() rejection (network/DNS/timeout, as opposed to
+          // Telegram itself answering with an error body) carries the real
+          // reason in .cause, not .message - same shape already relied on
+          // in social-channels.ts's telegramGetChat failure log.
+          const cause = error instanceof Error ? error.cause : undefined;
+          console.error("Admin Telegram notify failed", {
+            message: error instanceof Error ? error.message : String(error),
+            cause: cause instanceof Error ? cause.message : cause,
+          });
         });
-      });
     } else {
       console.error("Admin Telegram notify skipped: ADMIN_TELEGRAM_BOT_TOKEN/ADMIN_TELEGRAM_CHAT_ID not seen by this process");
     }

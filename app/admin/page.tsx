@@ -510,6 +510,10 @@ export default async function AdminPage() {
   // separate query rather than folded into the big Promise.all above since
   // it's not part of the per-user usage rollup, just its own small list.
   const feedbackRows = await db.select().from(feedbackMessages).orderBy(desc(feedbackMessages.createdAt)).limit(200);
+  // No separate "admin has seen this" column - a row with no reply yet is
+  // exactly the set that needs the owner's attention, so it doubles as the
+  // unread signal for the sidebar badge below without new state to track.
+  const feedbackUnreadCount = feedbackRows.filter((row) => !row.reply).length;
   // Admin-authored messages to clients (see app/api/admin/announcements/
   // route.ts) — the opposite direction of feedbackRows above.
   const announcementRows = await db.select().from(announcements).orderBy(desc(announcements.createdAt)).limit(200);
@@ -971,9 +975,10 @@ export default async function AdminPage() {
     id: "feedback",
     label: "Обращения",
     badge: String(feedbackRows.length),
+    attention: feedbackUnreadCount > 0,
     content: (
       <section className="admin-block">
-        <h2>Обращения ({feedbackRows.length})</h2>
+        <h2>Обращения ({feedbackRows.length}){feedbackUnreadCount > 0 && <> · <span className="admin-badge-attention admin-badge-attention-inline">{feedbackUnreadCount} без ответа</span></>}</h2>
         <p className="admin-note">«Задать вопрос» из рабочего пространства. Ответ виден отправителю прямо там же, в модальном окне.</p>
         <AdminFeedbackTable rows={feedbackRows.map((item) => ({
           id: item.id,
@@ -1378,6 +1383,19 @@ function AdminStyles() {
       body[data-admin-theme="light"] .admin-refresh, body[data-admin-theme="light"] .admin-theme-toggle { background: rgba(255,255,255,.8); border-color: rgba(90, 133, 179, .28); color: #173552; }
       @media (max-width: 900px) { .admin-page { padding: 14px 12px 84px; } .admin-header { border-radius: 18px; padding: 16px; } .admin-block { padding: 14px; border-radius: 18px; } }
       @media (prefers-reduced-motion: reduce) { .admin-sidebar button, .admin-refresh, .admin-details-toggle { transition: none; } }
+      /* "Needs a look" signal (site owner: подсветка непрочитанных
+         обращений фиолетовым) - deliberately !important. The two theme
+         blocks above already fight over .admin-sidebar button em's
+         background/color at different specificities (bare rule, then a
+         body[data-admin-theme] one with higher specificity, twice, once
+         per theme redesign generation) - a plain new class here would
+         lose to whichever of those happens to win, in a way that's fragile
+         to which theme is active. This is a semantically distinct state
+         (something needs a reply), not another shade of the passive count
+         badge, so it should read the same regardless of theme rather than
+         inherit either palette's tint. */
+      .admin-badge-attention { background: #8b5cf6 !important; color: #fff !important; }
+      .admin-badge-attention-inline { display: inline-flex; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; vertical-align: 2px; }
     `}</style>
   );
 }

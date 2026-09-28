@@ -159,6 +159,14 @@ export const feedbackMessages = pgTable("feedback_messages", {
   // not just the reply existing) — drives the unread badge on "Задать
   // вопрос" in the account menu without a separate notifications table.
   readAt: text("read_at"),
+  // The Telegram message_id of the admin-notify ping sent for this row
+  // (see api/_lib/admin-notify.ts) — lets api/telegram/admin-webhook match
+  // the owner's in-Telegram *reply* (Telegram's own reply_to_message.
+  // message_id) back to the right row, so replying to the notification
+  // from a phone works the same as typing a reply in /admin. Null for a
+  // row created before this existed, or when the Telegram ping itself
+  // failed/was skipped.
+  telegramMessageId: text("telegram_message_id"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
   index("feedback_messages_created_idx").on(table.createdAt),

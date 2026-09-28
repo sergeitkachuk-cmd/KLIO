@@ -3,6 +3,27 @@ import { accounts, payments } from "../../../db/schema";
 import { getDb } from "../../../db";
 import { nextQuotaPeriodEnd, subscriptionExpiry } from "./subscription";
 import type { BillingPeriod } from "../../billing-pricing";
+import { planRule } from "../../plans";
+import { billingDescription } from "../../billing-pricing";
+import { adminTelegramAvailable, sendAdminTelegramMessage } from "./admin-notify";
+
+function notifyAdminOfPayment(payment: typeof payments.$inferSelect) {
+  if (!adminTelegramAvailable()) return;
+  const rubles = (payment.amountKopecks / 100).toLocaleString("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  const text = [
+    "Новая оплата в КЛИО",
+    `От: ${payment.ownerEmail}`,
+    `Тариф: ${planRule(payment.planId).name} (${billingDescription(payment.billing as BillingPeriod)})`,
+    `Сумма: ${rubles} ₽`,
+    payment.discountApplied ? "Со скидкой запуска" : null,
+  ].filter(Boolean).join("\n");
+  // Fire-and-forget, deliberately outside the transaction below (see its
+  // own call site) - a slow or failed Telegram call must never hold open
+  // or roll back the DB work that actually grants access.
+  sendAdminTelegramMessage(text).catch((error) => {
+    console.error("Admin payment notify failed", error instanceof Error ? error.message : error);
+  });
+}
 
 /** Applies one approved Tochka payment exactly once. */
 export async function confirmTochkaPayment(
@@ -12,7 +33,14 @@ export async function confirmTochkaPayment(
   options: { grantAccess?: boolean; amountKopecks?: number } = {},
 ) {
   const now = new Date();
-  return db.transaction(async (tx) => {
+  // Set from inside the transaction only on the branch that just performed
+  // a real pending -> paid transition (not the early-return "was already
+  // paid/refunded" branch a couple of lines below, which returns the exact
+  // same "paid" string but must never re-notify on a duplicate webhook
+  // delivery) - read back after the transaction settles so the Telegram
+  // call happens post-commit, never inside the open transaction.
+  let justConfirmed: typeof payments.$inferSelect | null = null;
+  const result = await db.transaction(async (tx) => {
     const [current] = await tx.select().from(payments).where(eq(payments.id, paymentId)).limit(1).for("update");
     if (!current) return "unknown" as const;
     if (current.status === "paid" || current.status === "refunded") return current.status as "paid" | "refunded";
@@ -39,6 +67,7 @@ export async function confirmTochkaPayment(
       updatedAt: now.toISOString(),
     }).where(and(eq(payments.id, paymentId), eq(payments.status, "pending"))).returning();
     if (!confirmedPayment) return current.status;
+    justConfirmed = confirmedPayment;
 
     if (grantAccess) {
       await tx.update(accounts).set({
@@ -59,4 +88,6 @@ export async function confirmTochkaPayment(
     }
     return "paid" as const;
   });
+  if (justConfirmed) notifyAdminOfPayment(justConfirmed);
+  return result;
 }
