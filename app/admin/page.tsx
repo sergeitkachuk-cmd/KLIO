@@ -1284,6 +1284,18 @@ function AdminStyles() {
       .admin-duration-field input { flex: 1 1 auto; min-width: 0; }
       .admin-duration-field select { flex: 0 0 auto; }
       .admin-client-picker { display: grid; gap: 6px; }
+      .admin-client-picker-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 40px; padding: 5px 6px; border: 1px solid #d1d5db; border-radius: 10px; background: #fff; }
+      .admin-client-picker-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 5px 4px 10px; border-radius: 999px; background: #eef0ff; color: #4338ca; font-size: 12px; font-weight: 700; white-space: nowrap; }
+      .admin-client-picker-chip.is-all { padding: 5px 10px; background: #f3f4f6; color: #4b5563; }
+      .admin-client-picker-chip button { display: grid; place-items: center; width: 16px; height: 16px; border: 0; border-radius: 50%; background: transparent; color: inherit; font: inherit; font-size: 13px; line-height: 1; cursor: pointer; }
+      .admin-client-picker-chip button:hover { background: rgba(67, 56, 202, 0.14); }
+      .admin-client-picker-search { position: relative; flex: 1 1 160px; min-width: 160px; }
+      .admin-client-picker-search input { width: 100%; border: 0; padding: 5px 2px; background: transparent; color: #1c1f26; font: inherit; font-size: 13px; outline: none; }
+      .admin-client-picker-suggestions { position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; display: grid; gap: 2px; width: max(240px, 100%); max-height: 220px; overflow-y: auto; padding: 6px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fff; box-shadow: 0 14px 30px rgba(15, 23, 42, 0.14); }
+      .admin-client-picker-suggestions button { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; padding: 6px 8px; border: 0; border-radius: 7px; background: transparent; color: #1c1f26; font: inherit; text-align: left; cursor: pointer; }
+      .admin-client-picker-suggestions button:hover { background: #f3f4f6; }
+      .admin-client-picker-suggestions b { font-size: 12px; font-weight: 700; }
+      .admin-client-picker-suggestions small { color: #6b7280; font-size: 11px; }
       .admin-control-actions { display: flex; gap: 8px; }
       .admin-control-actions button:first-child { background: #4f46e5; border-color: #4f46e5; color: #fff; }
       .admin-danger-button { color: #b91c1c !important; }
@@ -1368,6 +1380,15 @@ function AdminStyles() {
       body[data-admin-theme="dark"] .admin-refresh, body[data-admin-theme="dark"] .admin-theme-toggle, body[data-admin-theme="dark"] .admin-controls-grid select, body[data-admin-theme="dark"] .admin-controls-grid input, body[data-admin-theme="dark"] .admin-users-toolbar input { background: #102f50; border-color: rgba(139, 187, 235, .3); color: #e8f1fb; }
       body[data-admin-theme="dark"] .admin-announcement-row { background: #102b49; border-color: rgba(139, 187, 235, .22); }
       body[data-admin-theme="dark"] .admin-announcement-row-head, body[data-admin-theme="dark"] .admin-integration a { color: #91b9ec; }
+      body[data-admin-theme="dark"] .admin-client-picker-chips { background: #102f50; border-color: rgba(139, 187, 235, .3); }
+      body[data-admin-theme="dark"] .admin-client-picker-chip { background: rgba(139, 187, 235, .16); color: #cfe3f7; }
+      body[data-admin-theme="dark"] .admin-client-picker-chip.is-all { background: rgba(143, 184, 222, .12); color: #9fb8d2; }
+      body[data-admin-theme="dark"] .admin-client-picker-chip button:hover { background: rgba(139, 187, 235, .26); }
+      body[data-admin-theme="dark"] .admin-client-picker-search input { color: #e8f1fb; }
+      body[data-admin-theme="dark"] .admin-client-picker-suggestions { background: #102f50; border-color: rgba(139, 187, 235, .3); box-shadow: 0 22px 45px rgba(5, 16, 31, .45); }
+      body[data-admin-theme="dark"] .admin-client-picker-suggestions button { color: #e8f1fb; }
+      body[data-admin-theme="dark"] .admin-client-picker-suggestions button:hover { background: rgba(139, 187, 235, .14); }
+      body[data-admin-theme="dark"] .admin-client-picker-suggestions small { color: #9fb8d2; }
       body[data-admin-theme="dark"] .admin-funnel-track { background: rgba(139, 187, 235, .12); }
       body[data-admin-theme="dark"] .admin-user-details { background: rgba(7, 27, 49, .7); color: #d3e2f2; }
       body[data-admin-theme="light"] { background: radial-gradient(ellipse at 95% 0%, rgba(122, 169, 223, .16), transparent 36%), linear-gradient(145deg, #f4f8fd, #eaf1fa 55%, #f7faff) fixed; }

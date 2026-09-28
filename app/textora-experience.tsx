@@ -2648,6 +2648,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [feedbackHistory, setFeedbackHistory] = useState<FeedbackMessageRecord[]>([]);
   const [announcements, setAnnouncements] = useState<AnnouncementRecord[]>([]);
   const [feedbackUnread, setFeedbackUnread] = useState(0);
+  // "Новости" (one-way, from the KLIO team) and "Обращения" (this visitor's
+  // own Q&A) used to share one scrolling feed - split into tabs so a long
+  // announcement doesn't push the actual conversation out of view (site
+  // owner: "все в одну кучу"). selectedFeedbackId null means the compose
+  // box for a new question; a past id shows that question + reply instead,
+  // list+detail like a mail client rather than a running chat transcript.
+  const [feedbackTab, setFeedbackTab] = useState<"support" | "news">("support");
+  const [selectedFeedbackId, setSelectedFeedbackId] = useState<string | null>(null);
   const [newBrandName, setNewBrandName] = useState("");
   const [brandSwitchBusy, setBrandSwitchBusy] = useState(false);
   // Scroll target for resultRevealTick below - the top of the result
@@ -6311,34 +6319,54 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       {feedbackOpen && <div className="archive-editor-overlay" onMouseDown={handleOverlayBackdropDown} onClick={(event) => handleOverlayBackdropClick(event, () => { if (!feedbackBusy) setFeedbackOpen(false); })}>
         <section className="feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-modal-title">
           <div className="archive-editor-head">
-            <div><span>КЛИО / Обратная связь</span><h2 id="feedback-modal-title">Задать вопрос</h2></div>
+            <div><span>КЛИО / Обратная связь</span><h2 id="feedback-modal-title">{feedbackTab === "news" ? "Новости" : "Обращения"}</h2></div>
             <div className="archive-editor-head-actions"><button type="button" onClick={() => setFeedbackOpen(false)} aria-label="Закрыть">×</button></div>
           </div>
-          <p className="feedback-modal-lead">Вопрос, пожелание или что-то не работает — напишите здесь, мы ответим вам прямо в этом окне.</p>
-          {announcements.length > 0 && <div className="feedback-modal-announcements">
-            {announcements.map((item) => (
-              <div className="feedback-modal-announcement" key={item.id}>
-                <span className="feedback-modal-announcement-badge">КЛИО</span>
-                <p>{item.message}</p>
-              </div>
-            ))}
-          </div>}
-          {feedbackHistory.length > 0 && <div className="feedback-modal-history">
-            {feedbackHistory.map((item) => (
-              <div className="feedback-modal-entry" key={item.id}>
-                <p className="feedback-modal-entry-question"><b>Вы:</b> {item.message}</p>
-                {item.reply ? <p className="feedback-modal-entry-answer"><b>КЛИО:</b> {item.reply}</p> : <p className="feedback-modal-entry-pending">Ожидает ответа…</p>}
-              </div>
-            ))}
-          </div>}
-          <label className="publications-editor-field">
-            <span>Новое сообщение</span>
-            <textarea rows={4} value={feedbackMessage} onChange={(event) => setFeedbackMessage(event.target.value)} placeholder="Опишите вопрос или пожелание…"/>
-          </label>
-          {feedbackError && <p className="generation-error" role="alert">{feedbackError}</p>}
-          <div className="publications-editor-actions">
-            <button type="button" className="button primary" disabled={feedbackBusy} onClick={() => void submitFeedback()}>{feedbackBusy ? "Отправляем…" : "Отправить"}</button>
+          <div className="feedback-modal-tabs" role="tablist" aria-label="Раздел">
+            <button type="button" role="tab" aria-selected={feedbackTab === "support"} className={feedbackTab === "support" ? "active" : ""} onClick={() => setFeedbackTab("support")}>Обращения</button>
+            <button type="button" role="tab" aria-selected={feedbackTab === "news"} className={feedbackTab === "news" ? "active" : ""} onClick={() => setFeedbackTab("news")}>Новости{announcements.length > 0 && <em>{announcements.length}</em>}</button>
           </div>
+
+          {feedbackTab === "news" ? <div className="feedback-news-list">
+            {announcements.length > 0 ? announcements.map((item) => (
+              <article className="feedback-letter" key={item.id}>
+                <header><span className="feedback-letter-badge">КЛИО</span><time>{new Date(item.createdAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}</time></header>
+                <p>{item.message}</p>
+              </article>
+            )) : <p className="feedback-modal-empty">Пока новостей нет — здесь будут появляться обновления и объявления от команды КЛИО.</p>}
+          </div> : <div className="feedback-support-layout">
+            <div className="feedback-support-list">
+              <button type="button" className={`feedback-support-list-item is-new ${!selectedFeedbackId ? "active" : ""}`} onClick={() => setSelectedFeedbackId(null)}>+ Новое обращение</button>
+              {feedbackHistory.map((item) => (
+                <button type="button" key={item.id} className={`feedback-support-list-item ${selectedFeedbackId === item.id ? "active" : ""}`} onClick={() => setSelectedFeedbackId(item.id)}>
+                  <span className="feedback-support-list-item-preview">{item.message}</span>
+                  <span className="feedback-support-list-item-meta">
+                    <time>{new Date(item.createdAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}</time>
+                    <em className={item.reply ? "is-answered" : "is-pending"}>{item.reply ? "Отвечено" : "Ожидает"}</em>
+                  </span>
+                </button>
+              ))}
+              {feedbackHistory.length === 0 && <p className="feedback-modal-empty">Обращений пока не было.</p>}
+            </div>
+            <div className="feedback-support-detail">
+              {selectedFeedbackId && feedbackHistory.some((item) => item.id === selectedFeedbackId) ? <div className="feedback-modal-entry">
+                <p className="feedback-modal-entry-question"><b>Вы:</b> {feedbackHistory.find((item) => item.id === selectedFeedbackId)!.message}</p>
+                {feedbackHistory.find((item) => item.id === selectedFeedbackId)!.reply
+                  ? <p className="feedback-modal-entry-answer"><b>КЛИО:</b> {feedbackHistory.find((item) => item.id === selectedFeedbackId)!.reply}</p>
+                  : <p className="feedback-modal-entry-pending">Ожидает ответа…</p>}
+              </div> : <>
+                <p className="feedback-modal-lead">Вопрос, пожелание или что-то не работает — напишите здесь, мы ответим вам прямо в этом окне.</p>
+                <label className="publications-editor-field">
+                  <span>Новое сообщение</span>
+                  <textarea rows={7} value={feedbackMessage} onChange={(event) => setFeedbackMessage(event.target.value)} placeholder="Опишите вопрос или пожелание…"/>
+                </label>
+                {feedbackError && <p className="generation-error" role="alert">{feedbackError}</p>}
+                <div className="publications-editor-actions">
+                  <button type="button" className="button primary" disabled={feedbackBusy} onClick={() => void submitFeedback()}>{feedbackBusy ? "Отправляем…" : "Отправить"}</button>
+                </div>
+              </>}
+            </div>
+          </div>}
         </section>
       </div>}
 

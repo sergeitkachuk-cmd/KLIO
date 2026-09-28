@@ -13054,8 +13054,9 @@ input[type="radio"] {
   /* Was 560px - a long message/reply wrapped into a tall, narrow column
      of short lines (site owner: "если будет много текста, то будет
      длинно слишком"). Wider gives the same text noticeably fewer, longer
-     lines instead. */
-  width: min(760px, 100%);
+     lines instead. 900px (was 760px): fits the list+detail layout below
+     without the list column feeling cramped. */
+  width: min(900px, 100%);
   max-height: calc(100svh - 44px);
   padding: 25px;
   overflow: auto; -webkit-overflow-scrolling: touch;
@@ -13075,13 +13076,54 @@ input[type="radio"] {
   font-size: 14px;
   line-height: 1.5;
 }
-.feedback-modal-history {
-  display: grid;
-  gap: 12px;
-  max-height: 260px;
-  overflow-y: auto;
-  padding-right: 4px;
+.feedback-modal-empty {
+  margin: 0;
+  padding: 16px;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 13px;
+  line-height: 1.5;
 }
+
+/* "Новости" (one-way, the KLIO team writing to every visitor or one
+   specific one) and "Обращения" (this visitor's own two-way Q&A) used to
+   share one scrolling feed, an announcement pushing the actual
+   conversation out of view (site owner: "все в одну кучу"). Same tab
+   look as .publications-platform-switch elsewhere in this file. */
+.feedback-modal-tabs { display: flex; gap: 6px; padding: 4px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; background: rgba(255, 255, 255, 0.04); }
+.feedback-modal-tabs button { flex: 1 1 0; padding: 9px 12px; border: 0; border-radius: 11px; background: transparent; color: rgba(255, 255, 255, 0.6); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.feedback-modal-tabs button.active { background: rgba(255, 255, 255, 0.12); color: #fff; }
+.feedback-modal-tabs button em { margin-left: 6px; padding: 1px 6px; border-radius: 999px; background: #8b5cf6; color: #fff; font-size: 10px; font-style: normal; font-weight: 800; }
+
+/* Read-only "letters" from the KLIO team - same violet "КЛИО is speaking"
+   language the old .feedback-modal-announcement used, now a plain list
+   instead of interleaved with the Q&A history. */
+.feedback-news-list { display: grid; gap: 10px; max-height: 60vh; overflow-y: auto; padding-right: 4px; }
+.feedback-letter { padding: 14px 16px; border: 1px solid rgba(109, 125, 148, 0.35); border-radius: 14px; background: linear-gradient(135deg, rgba(91, 107, 130, 0.18), rgba(91, 107, 130, 0.06)); }
+.feedback-letter header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.feedback-letter-badge { padding: 3px 9px; border-radius: 999px; background: #5c7591; color: #fff; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+.feedback-letter time { color: rgba(255, 255, 255, 0.5); font-size: 11px; }
+.feedback-letter p { margin: 0; color: #f7f8f9; font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
+
+/* Mail-client layout: a list of past questions on the left (plus the
+   compose entry point), the selected one's full text - or the compose
+   box, if nothing's selected - on the right. Each pane scrolls on its
+   own instead of the whole modal, so a long question list never pushes
+   the compose box or an open reply out of view. */
+.feedback-support-layout { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: 16px; min-height: 0; }
+.feedback-support-list { display: grid; align-content: start; gap: 6px; max-height: 60vh; overflow-y: auto; padding-right: 4px; }
+.feedback-support-list-item { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; background: rgba(255, 255, 255, 0.03); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.feedback-support-list-item:hover { background: rgba(255, 255, 255, 0.07); }
+.feedback-support-list-item.active { border-color: rgba(139, 92, 246, 0.55); background: rgba(139, 92, 246, 0.14); }
+.feedback-support-list-item.is-new { color: #cbb8ff; font-weight: 700; }
+.feedback-support-list-item-preview { overflow: hidden; font-size: 12px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.feedback-support-list-item-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.feedback-support-list-item-meta time { color: rgba(255, 255, 255, 0.45); font-size: 10px; }
+.feedback-support-list-item-meta em { font-size: 10px; font-style: normal; font-weight: 700; }
+.feedback-support-list-item-meta .is-answered { color: #7ee6d8; }
+.feedback-support-list-item-meta .is-pending { color: rgba(255, 255, 255, 0.45); }
+.feedback-support-detail { display: grid; align-content: start; gap: 12px; min-width: 0; }
 .feedback-modal-entry {
   display: grid;
   gap: 6px;
@@ -13094,34 +13136,6 @@ input[type="radio"] {
 .feedback-modal-entry-question { color: rgba(255, 255, 255, 0.82); }
 .feedback-modal-entry-answer { color: #86a6d5; }
 .feedback-modal-entry-pending { color: rgba(255, 255, 255, 0.5); font-style: italic; }
-
-/* Same violet "КЛИО is speaking" language as .advice-tip elsewhere in the
-   workspace — one-way announcements read as the site owner talking to the
-   visitor, distinct from the neutral Q&A history below it. */
-.feedback-modal-announcements { display: grid; gap: 10px; }
-.feedback-modal-announcement {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: start;
-  gap: 10px;
-  padding: 12px 14px;
-  border: 1px solid rgba(109, 125, 148, 0.35);
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgba(91, 107, 130, 0.18), rgba(91, 107, 130, 0.06));
-}
-.feedback-modal-announcement-badge {
-  flex: 0 0 auto;
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: #5c7591;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
-.feedback-modal-announcement p { margin: 0; color: #f7f8f9; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
 
 .publications-editor-modal::-webkit-scrollbar,
 .publications-channel-modal::-webkit-scrollbar { width: 10px; }
