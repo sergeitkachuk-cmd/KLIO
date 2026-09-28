@@ -44,8 +44,36 @@ export type VkCredentials = {
   // site so every other piece of code can work with the plain, positive id
   // VK's own UI shows).
   groupId: string;
-  // Community service token used for wall.post and the VK photo-upload flow.
+  // Community service token. Used for wall.post (always) and the
+  // docs.getWallUploadServer image fallback below when no photoAccessToken
+  // is set. This is the only credential the manual "Подключить канал" form
+  // asks for — see the design comment above for why it can't do real photos.
   accessToken: string;
+  // A real VK user token (id.vk.com OAuth, "Войти через VK" on an already-
+  // connected channel — see api/auth/vk/publish/*), used ONLY for
+  // photos.getWallUploadServer/photos.saveWallPhoto: the two methods a
+  // community token gets rejected from (error 27 - "Group authorization
+  // failed: method is unavailable with group auth" - confirmed against the
+  // real API; photos.getMessagesUploadServer was tried as a same-token
+  // workaround and also failed, error 901, no conversation permission on
+  // communities without messaging set up). wall.post itself always still
+  // goes through the plain community accessToken above, never this one -
+  // this app's own VK ID tokens have separately been found to be rejected
+  // by wall.post ("Method is not available for this profile type"), so
+  // routing the actual post through a user token is not just unnecessary
+  // here, it would reintroduce a different failure. Absent for a channel
+  // that hasn't connected photo access; social-publish.ts falls back to
+  // the document-upload path in that case exactly as it does today.
+  photoAccessToken?: string;
+  // 1 hour lived (VK's own limit since their June 2024 policy change - see
+  // the site owner's own support thread), refreshed automatically via
+  // photoRefreshToken (180 days) before each publish that needs it — see
+  // ensureFreshVkPhotoToken in social-channels.ts. ISO 8601.
+  photoTokenExpiresAt?: string;
+  photoRefreshToken?: string;
+  // VK-issued at the original OAuth exchange, echoed back on every refresh
+  // — see refreshVkAccessToken in vk-oauth.ts.
+  photoDeviceId?: string;
 };
 
 export type ChannelCredentials =

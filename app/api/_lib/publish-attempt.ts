@@ -10,8 +10,9 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { generations, publications, socialChannels } from "../../../db/schema";
 import { publishToChannel, PublishError } from "./social-publish";
-import { MAX_PUBLISH_RETRIES, publicationTextFields } from "./publishing-config";
+import { MAX_PUBLISH_RETRIES, publicationTextFields, type ChannelCredentials } from "./publishing-config";
 import { emailDeliveryAvailable, sendPublicationFailedEmail } from "./email";
+import { ensureFreshVkPhotoToken } from "./social-channels";
 
 export type PublishAttemptResult =
   | { status: "published"; providerPostId: string }
@@ -77,10 +78,38 @@ export async function attemptPublish(publicationId: string, ownerEmail: string, 
     errorMessage: null, updatedAt: sql`CURRENT_TIMESTAMP`,
   }).where(and(eq(publications.id, publicationId), eq(publications.ownerEmail, ownerEmail), eq(publications.status, "publishing")));
   try {
+    // A VK channel's photo access token (see ensureFreshVkPhotoToken) is
+    // only good for ~1h - refresh and persist it here, before the actual
+    // publish call, so a rotated refresh_token is never lost even if the
+    // publish itself then fails for an unrelated reason (VK ID rotates it
+    // on every refresh; losing the new one would strand the channel on a
+    // refresh_token VK has already invalidated).
+    let credentialsJson = channel.credentialsJson;
+    if (channel.platform === "vk") {
+      try {
+        const parsed = JSON.parse(credentialsJson) as ChannelCredentials;
+        if (parsed.platform === "vk") {
+          const { vk: refreshedVk, refreshed } = await ensureFreshVkPhotoToken(parsed.vk);
+          if (refreshed) {
+            credentialsJson = JSON.stringify({ platform: "vk", vk: refreshedVk });
+            await db.update(socialChannels).set({ credentialsJson, updatedAt: sql`CURRENT_TIMESTAMP` }).where(eq(socialChannels.id, channel.id));
+          }
+        }
+      } catch (refreshError) {
+        // A failed refresh (expired/revoked refresh_token, VK outage) must
+        // not block a text-only or already-working publish - fall through
+        // with the channel's last-known credentials, exactly as if this
+        // channel had never connected photo access. The image-specific
+        // upload call below is what actually surfaces the real problem to
+        // the owner, with a message they can act on.
+        console.error("VK photo token refresh failed", refreshError instanceof Error ? refreshError.message : refreshError);
+      }
+    }
+
     const publicationText = publicationTextFields(generation);
     const result = await publishToChannel({
       platform: channel.platform,
-      credentialsJson: channel.credentialsJson,
+      credentialsJson,
       text: `${publicationText.title}\n\n${publicationText.body}`.trim(),
       imageUrls: resolveImageUrls(generation, publication.telegramDeliveryMode),
     });

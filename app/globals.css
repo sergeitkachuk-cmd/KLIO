@@ -12694,6 +12694,33 @@ input[type="radio"] {
   background: rgba(255, 255, 255, 0.14);
 }
 
+.publications-channel-chip-photo {
+  color: var(--acid);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.publications-channel-chip-photo-connect {
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.publications-channel-chip-photo-connect:hover {
+  border-color: var(--acid);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
 .publications-channel-limit {
   color: rgba(255, 255, 255, 0.5);
   font-size: 12px;
@@ -20101,6 +20128,17 @@ input[type="radio"] {
 }
 
 [data-theme="light"] .publications-channel-chip button:hover {
+  color: #0d1b31;
+  background: rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="light"] .publications-channel-chip-photo-connect {
+  border-color: rgba(15, 23, 42, 0.16);
+  color: rgba(13, 27, 49, 0.65);
+  background: rgba(15, 23, 42, 0.04);
+}
+
+[data-theme="light"] .publications-channel-chip-photo-connect:hover {
   color: #0d1b31;
   background: rgba(15, 23, 42, 0.1);
 }

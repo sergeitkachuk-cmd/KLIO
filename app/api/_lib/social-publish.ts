@@ -377,17 +377,91 @@ async function uploadImageDocumentForWall(creds: VkCredentials, imageUrl: string
   return `doc${savedDocument.owner_id}_${savedDocument.id}${accessKey}`;
 }
 
+// The real photos.* wall-upload flow - only reachable with a user token
+// (creds.photoAccessToken), never the community accessToken, which VK
+// rejects here with error 27 (see the comment on VkCredentials.
+// photoAccessToken in publishing-config.ts for the two things already
+// confirmed not to work). Structurally the same three-call dance as
+// uploadImageDocumentForWall (get an upload server, POST the bytes, save
+// the result), just against the photo-specific endpoints and returning a
+// real `photo<owner>_<id>` attachment instead of `doc<owner>_<id>` - VK
+// renders this inline as an actual wall photo, with its own preview/
+// lightbox/album entry, not a downloadable file.
+async function uploadImagePhotoForWall(creds: VkCredentials, imageUrl: string): Promise<string> {
+  const accessToken = (creds.photoAccessToken ?? "").trim();
+  const uploadServer = await vkCall("photos.getWallUploadServer", {
+    group_id: String(vkGroupIdNumber(creds.groupId)),
+    access_token: accessToken,
+  });
+  const uploadUrl = uploadServer.upload_url;
+  if (typeof uploadUrl !== "string") throw new PublishError("VK не выдал адрес для загрузки фото.", true);
+
+  const image = await fetchImageBytes(imageUrl);
+  const imageBlob = new Blob([new Uint8Array(image.bytes)], { type: image.contentType });
+  const form = new FormData();
+  const extension = image.contentType === "image/png" ? "png" : image.contentType === "image/webp" ? "webp" : image.contentType === "image/gif" ? "gif" : "jpg";
+  form.append("photo", imageBlob, `post-image.${extension}`);
+
+  let uploadResponse: Response;
+  try {
+    uploadResponse = await fetch(uploadUrl, { method: "POST", body: form, signal: AbortSignal.timeout(25_000) });
+  } catch {
+    throw new PublishError("Не удалось загрузить картинку на сервер VK.", true);
+  }
+  const uploadResult = await uploadResponse.json().catch(() => null) as
+    | { server?: number; photo?: string; hash?: string; error?: string | { error_msg?: string } }
+    | null;
+  if (!uploadResponse.ok || !uploadResult?.photo || uploadResult.photo === "[]" || !uploadResult.hash) {
+    const providerMessage = typeof uploadResult?.error === "string"
+      ? uploadResult.error.trim().slice(0, 300)
+      : typeof uploadResult?.error?.error_msg === "string"
+        ? uploadResult.error.error_msg.trim().slice(0, 300)
+        : "";
+    console.error("VK photo upload rejected", {
+      status: uploadResponse.status,
+      contentType: image.contentType,
+      byteLength: image.bytes.length,
+      hasPhoto: Boolean(uploadResult?.photo && uploadResult.photo !== "[]"),
+      hasHash: Boolean(uploadResult?.hash),
+      providerMessage,
+    });
+    const retryable = uploadResponse.status === 429 || uploadResponse.status >= 500;
+    throw new PublishError(`VK не принял загруженное фото${providerMessage ? `: ${providerMessage}` : ""}.`, retryable);
+  }
+
+  const saved = await vkCall("photos.saveWallPhoto", {
+    group_id: String(vkGroupIdNumber(creds.groupId)),
+    photo: uploadResult.photo,
+    server: String(uploadResult.server ?? ""),
+    hash: uploadResult.hash,
+    access_token: accessToken,
+  });
+  const savedPhoto = Array.isArray(saved) ? saved[0] as Record<string, unknown> : undefined;
+  if (!savedPhoto || typeof savedPhoto.id !== "number" || typeof savedPhoto.owner_id !== "number") {
+    throw new PublishError("VK не подтвердил сохранение фото.", true);
+  }
+  const accessKey = typeof savedPhoto.access_key === "string" && savedPhoto.access_key.trim()
+    ? `_${savedPhoto.access_key.trim()}`
+    : "";
+  return `photo${savedPhoto.owner_id}_${savedPhoto.id}${accessKey}`;
+}
+
 async function publishToVk(creds: VkCredentials, text: string, imageUrls: string[]): Promise<{ providerPostId: string }> {
   const photos = imageUrls.slice(0, 10);
   const hasImage = photos.length > 0;
+  const hasRealPhotoAccess = Boolean(creds.photoAccessToken?.trim());
   // Sequential, not Promise.all - each image is its own
-  // getWallUploadServer + upload + docs.save, and VK's per-second rate limit
-  // for a community token is tight enough that bursting up to 8 of these
-  // at once risked tripping it. wall.post itself still runs exactly once,
-  // after every upload has succeeded - same invariant the single-image
-  // path already relied on for its retry classification below.
+  // getWallUploadServer + upload + docs.save/saveWallPhoto, and VK's
+  // per-second rate limit for a community token is tight enough that
+  // bursting up to 8 of these at once risked tripping it. wall.post itself
+  // still runs exactly once, after every upload has succeeded - same
+  // invariant the single-image path already relied on for its retry
+  // classification below. wall.post always authenticates with the
+  // community accessToken, never photoAccessToken - see the comment on
+  // VkCredentials.photoAccessToken for why that's deliberate, not an
+  // oversight.
   const attachments: string[] = [];
-  for (const url of photos) attachments.push(await uploadImageDocumentForWall(creds, url));
+  for (const url of photos) attachments.push(await (hasRealPhotoAccess ? uploadImagePhotoForWall : uploadImageDocumentForWall)(creds, url));
 
   const result = await vkCall("wall.post", {
     // wall.post addresses a community by its *negative* owner_id — every

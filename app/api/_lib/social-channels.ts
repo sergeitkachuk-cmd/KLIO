@@ -10,6 +10,7 @@ import { request as httpsRequest } from "node:https";
 import { VK_API_VERSION, type ChannelCredentials, type VkCredentials } from "./publishing-config";
 import { socialChannels } from "../../../db/schema";
 import { telegramApiBase } from "./telegram-proxy";
+import { refreshVkAccessToken } from "./vk-oauth";
 
 export class ChannelValidationError extends Error {}
 
@@ -202,6 +203,47 @@ export async function describeChannel(credentials: ChannelCredentials): Promise<
   return describeVkChannel(credentials.vk);
 }
 
+// Called right before a publish that will need photoAccessToken (see
+// publish-attempt.ts). Refreshes only when the token is missing that
+// safety margin, not on every call - the 1h lifetime means most publishes
+// hit a still-good token, and hitting VK's token endpoint unconditionally
+// on every post would be one more avoidable network round trip and one
+// more thing that can fail. A community-token-only channel (no
+// photoRefreshToken at all) is untouched and reported as not refreshed.
+const VK_PHOTO_TOKEN_REFRESH_MARGIN_MS = 5 * 60_000;
+
+export async function ensureFreshVkPhotoToken(vk: VkCredentials): Promise<{ vk: VkCredentials; refreshed: boolean }> {
+  if (!vk.photoRefreshToken || !vk.photoDeviceId) return { vk, refreshed: false };
+  const expiresAt = vk.photoTokenExpiresAt ? Date.parse(vk.photoTokenExpiresAt) : 0;
+  if (Number.isFinite(expiresAt) && expiresAt - Date.now() > VK_PHOTO_TOKEN_REFRESH_MARGIN_MS) {
+    return { vk, refreshed: false };
+  }
+  const exchange = await refreshVkAccessToken(vk.photoRefreshToken, vk.photoDeviceId);
+  return {
+    vk: {
+      ...vk,
+      photoAccessToken: exchange.accessToken,
+      photoRefreshToken: exchange.refreshToken,
+      photoTokenExpiresAt: new Date(Date.now() + exchange.expiresInSeconds * 1000).toISOString(),
+    },
+    refreshed: true,
+  };
+}
+
+// Never expose the token itself (see the comment on credentialsJson in
+// db/schema.ts) - just whether one is on file, so the channel chip can show
+// a "real photos connected" state and offer the "Войти через VK" button
+// only when it's actually missing.
+function vkPhotoReady(row: typeof socialChannels.$inferSelect): boolean {
+  if (row.platform !== "vk") return false;
+  try {
+    const credentials = JSON.parse(row.credentialsJson) as ChannelCredentials;
+    return credentials.platform === "vk" && Boolean(credentials.vk.photoAccessToken?.trim());
+  } catch {
+    return false;
+  }
+}
+
 export function socialChannelSummary(row: typeof socialChannels.$inferSelect) {
   return {
     id: row.id,
@@ -210,7 +252,28 @@ export function socialChannelSummary(row: typeof socialChannels.$inferSelect) {
     label: row.label,
     avatarUrl: row.avatarUrl,
     createdAt: row.createdAt,
+    vkPhotoReady: vkPhotoReady(row),
   };
+}
+
+// Same groups.getById validation describeVkChannel already does for a
+// community token, reused here with a real user token (api/auth/vk/publish/
+// callback) - the method doesn't care which kind of token it's handed, it
+// just confirms the token works at all and that this group actually exists
+// from VK's own point of view. Doesn't confirm photos.getWallUploadServer
+// specifically will accept it (that's only provable by the first real
+// publish), just that the OAuth round trip produced something usable.
+export async function verifyVkUserToken(accessToken: string, groupId: string): Promise<void> {
+  const response = await fetch("https://api.vk.com/method/groups.getById", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ group_id: groupId, access_token: accessToken, v: VK_API_VERSION }),
+    signal: AbortSignal.timeout(15_000),
+  }).catch(() => { throw new ChannelValidationError("Не удалось связаться с VK для проверки токена."); });
+  const payload = await response.json().catch(() => null) as { response?: unknown; error?: { error_msg: string } } | null;
+  if (!payload || payload.error) {
+    throw new ChannelValidationError(payload?.error ? `VK отклонил токен: ${payload.error.error_msg}` : "VK вернул пустой ответ при проверке токена.");
+  }
 }
 
 // A publication stores Telegram's message_id after a successful send.  Turn

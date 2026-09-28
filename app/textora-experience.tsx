@@ -1369,7 +1369,7 @@ function sleep(ms: number) {
 // calendar effect below calls these directly without listing them as
 // dependencies, which is only safe for react-hooks/exhaustive-deps because
 // they're free module-scope bindings, not closures recreated every render.
-type PubChannel = { id: string; brandId: string; platform: "telegram" | "vk"; label: string; avatarUrl: string; createdAt: string };
+type PubChannel = { id: string; brandId: string; platform: "telegram" | "vk"; label: string; avatarUrl: string; createdAt: string; vkPhotoReady?: boolean };
 
 function PublicationPlatformIcon({ platform }: { platform: PubChannel["platform"] }) {
   if (platform === "telegram") {
@@ -3228,6 +3228,29 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     openFromHash();
     window.addEventListener("hashchange", openFromHash);
     return () => window.removeEventListener("hashchange", openFromHash);
+  }, [workspace]);
+
+  // Lands here once, after the full-page redirect round trip through VK's
+  // consent screen and back (api/auth/vk/publish/callback) — a query param,
+  // not a hash, so it survives alongside #publications (openFromHash above
+  // only ever reads the hash). No explicit refetch needed: the redirect's
+  // #publications hash already drives openFromHash to activeModule
+  // "publications", and the existing auto-load effect further below (keyed
+  // on activeModule) picks up the freshly connected channel on its own.
+  // Stripped from the URL immediately after showing the toast so a later
+  // refresh of this same page doesn't re-show a stale result.
+  useEffect(() => {
+    if (!workspace) return;
+    const params = new URLSearchParams(window.location.search);
+    const vkPhoto = params.get("vk_photo");
+    if (!vkPhoto) return;
+    showToast(vkPhoto === "connected"
+      ? "VK подключён — изображения будут публиковаться как настоящие фото"
+      : params.get("vk_photo_message") || "Не удалось подключить фото VK. Попробуйте ещё раз.");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("vk_photo");
+    url.searchParams.delete("vk_photo_message");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   }, [workspace]);
 
   useEffect(() => {
@@ -7606,13 +7629,16 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </div>
 
             {!activeBrandId ? <p className="publications-empty-note">Сначала выберите или создайте бренд слева — каналы и календарь публикаций привязаны к нему.</p> : <>
-              <p className="publications-vk-note"><b>Telegram:</b> текст и изображения. <b>VK:</b> текст и изображения при включённом разделе «Документы» и соответствующем праве ключа.</p>
+              <p className="publications-vk-note"><b>Telegram:</b> текст и изображения. <b>VK:</b> текст всегда; изображения — как документ по умолчанию, или как настоящее фото после кнопки «+ фото» на подключённом канале VK.</p>
               {pubChannels.length === 0 && workspaceAccount.lifetimeGenerationsUsed > 0 && renderAdviceTip("publications-connect-channel", <>У вас уже есть готовые материалы, а канал ещё не подключён — нажмите «+ Подключить канал» ниже, и я смогу ставить публикации в календарь прямо в VK или Telegram.</>)}
               <div className="publications-channels-bar">
                 <div className="publications-channels-list">
                   {pubChannels.map((channel) => <span className={`publications-channel-chip publications-channel-chip-${channel.platform}`} key={channel.id}>
                     {channel.avatarUrl ? <Image unoptimized width={28} height={28} src={channel.avatarUrl} alt=""/> : <i>{channel.platform === "vk" ? "VK" : "TG"}</i>}
                     <b>{channel.label}</b>
+                    {channel.platform === "vk" && (channel.vkPhotoReady
+                      ? <em className="publications-channel-chip-photo" title="Изображения публикуются как настоящие фото VK">фото ✓</em>
+                      : <a className="publications-channel-chip-photo-connect" href={`/api/auth/vk/publish/start?channelId=${encodeURIComponent(channel.id)}`} title="Войти через VK, чтобы изображения публиковались как настоящие фото, а не документы">+ фото</a>)}
                     <button type="button" onClick={() => void removePubChannel(channel.id, channel.label)} aria-label={`Отключить канал «${channel.label}»`}>×</button>
                   </span>)}
                   <span className="publications-channel-limit">{pubChannels.length} из {pubChannelLimit} {pubChannelLimit === 1 ? "канала" : "каналов"} на тарифе «{workspaceAccount.planName}»</span>
