@@ -4813,9 +4813,21 @@ footer nav a {
 
 /* cover, not contain like the brand logo above - a face photo should fill
    the circle edge to edge; a logo shouldn't get cropped, a photo cropping
-   slightly at the edges reads as normal (every avatar UI does this). */
+   slightly at the edges reads as normal (every avatar UI does this).
+   position: absolute + inset: 0 (not just width/height: 100%) - .workspace-
+   account i is a centered grid item (place-items: center) with no
+   overflow: hidden (removed for the unread badge, see that rule's own
+   comment), and a plain width/height: 100% on a non-stretched grid item
+   doesn't reliably resolve against the grid area in every engine - a tall
+   photo ended up sized by its own intrinsic aspect ratio instead and spilt
+   out past the circle (site owner screenshot: "аватарка не вылезает за
+   круг"). Taking the img out of grid flow with absolute positioning makes
+   width/height: 100% resolve against .workspace-account i's own box
+   unambiguously, the same as any ordinary positioned element. */
 .workspace-account-avatar-img {
   display: block;
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   border-radius: 50%;

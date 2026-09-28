@@ -3,7 +3,7 @@
 import { Fragment, useMemo, useState } from "react";
 
 export type AdminUserRow = {
-  email: string; displayName: string; emailStatus: string; createdAt: string; planName: string; planExpires: string;
+  email: string; displayName: string; avatarUrl: string | null; emailStatus: string; createdAt: string; planName: string; planExpires: string;
   planExpiryState: "soon" | "critical" | "expired" | "missing" | "normal"; generations: string; research: string; editor: string; dialogue: string;
   brandCount: number; totalCost: string; lastCallAt: string; invoiceRefs: string; transactionRefs: string; payerNames: string;
   // Detailed usage breakdown (site owner: "чтобы это было не общее
@@ -19,6 +19,13 @@ export type AdminUserRow = {
 };
 type Props = { users: AdminUserRow[] };
 const listValue = (value: string) => value.trim() || "—";
+// Same two-initial fallback as nameInitials() in textora-experience.tsx -
+// duplicated rather than imported, this file has no existing pattern of
+// pulling from that module (see the BrandProfile mirror comment there).
+function initials(value: string) {
+  const parts = value.trim().split(/\s+/).filter(Boolean);
+  return (parts.slice(0, 2).map((item) => item[0]?.toLocaleUpperCase("ru-RU") || "").join("") || "К").slice(0, 2);
+}
 
 export function AdminUsersTable({ users }: Props) {
   const [query, setQuery] = useState("");
@@ -41,7 +48,8 @@ export function AdminUsersTable({ users }: Props) {
         <thead><tr><th>Email</th><th>Имя</th><th>Тариф</th><th>Действует до</th><th>Генерации</th><th>Изображения</th><th>Семантика</th><th>Редактор</th><th>Диалог</th><th>Брендов</th><th>Расход</th><th>Детали</th></tr></thead>
         <tbody>
           {filteredUsers.map((item) => { const expanded = expandedEmail === item.email; return <Fragment key={item.email}>
-            <tr className={item.registeredToday ? "admin-user-row-new" : undefined}><td>{item.email}</td><td><span>{item.displayName}</span><small className="admin-user-muted">{item.emailStatus} · {item.createdAt}</small></td><td>{item.planName}</td>
+            {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary external host (own /api/admin/account-avatar, or Yandex's/VK's own CDN) - not worth a next.config.ts remotePatterns entry for two different providers */}
+            <tr className={item.registeredToday ? "admin-user-row-new" : undefined}><td>{item.email}</td><td><div className="admin-user-name-cell"><span className="admin-avatar-circle">{item.avatarUrl ? <img src={item.avatarUrl} alt="" /> : initials(item.displayName)}</span><span><span>{item.displayName}</span><small className="admin-user-muted">{item.emailStatus} · {item.createdAt}</small></span></div></td><td>{item.planName}</td>
               <td className={`admin-plan-expiry admin-plan-expiry-${item.planExpiryState}`}>{item.planExpires}</td><td>{item.generations}</td><td>{item.imagesGenerated}</td><td>{item.research}</td><td>{item.editor}</td><td>{item.dialogue}</td><td>{item.brandCount}</td><td>{item.totalCost}</td>
               <td><button type="button" className="admin-details-toggle" onClick={() => setExpandedEmail(expanded ? null : item.email)}>{expanded ? "Свернуть" : "Подробнее"}</button></td></tr>
             {expanded && <tr className="admin-user-details-row"><td colSpan={12}><div className="admin-user-details">

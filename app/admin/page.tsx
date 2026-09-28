@@ -457,6 +457,14 @@ export default async function AdminPage() {
     return {
       email: account.email,
       displayName: account.displayName,
+      // Same resolution order as accountSummary() in api/_lib/workspace-
+      // account.ts (a custom upload wins over an auto-captured Yandex/VK
+      // one) - just keyed by email instead of the current session, since
+      // admin needs to show *other* people's avatars, not its own. The
+      // custom-upload branch can't reuse /api/account/avatar (that route
+      // only ever serves whoever is signed in) - see the new admin-only
+      // api/admin/account-avatar/route.ts this points at instead.
+      avatarUrl: account.avatarKey ? `/api/admin/account-avatar?email=${encodeURIComponent(account.email)}` : (account.providerAvatarUrl || null),
       emailVerified: account.emailVerified,
       signupMethod: account.signupMethod,
       registeredToday: isToday(account.createdAt),
@@ -847,6 +855,7 @@ export default async function AdminPage() {
           <AdminUsersTable users={activeUsers.map((item): AdminUserRow => ({
             email: item.email,
             displayName: item.displayName,
+            avatarUrl: item.avatarUrl,
             emailStatus: item.emailVerified ? "\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0430" : "\u041d\u0435 \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0430",
             createdAt: formatDate(item.createdAt),
             planName: item.planName,
@@ -992,15 +1001,21 @@ export default async function AdminPage() {
     content: (
       <section className="admin-block">
         <h2>Обращения ({feedbackThreadCount}){feedbackUnreadCount > 0 && <> · <span className="admin-badge-attention admin-badge-attention-inline">{feedbackUnreadCount} без ответа</span></>}</h2>
-        <p className="admin-note">«Задать вопрос» из рабочего пространства. Ответ виден отправителю прямо там же, в модальном окне.</p>
-        <AdminFeedbackTable rows={feedbackRows.map((item) => ({
-          id: item.id,
-          ownerEmail: item.ownerEmail,
-          sender: item.sender as "client" | "admin" | "bot",
-          body: item.body,
-          createdAt: item.createdAt,
-          readAt: item.readAt,
-        }))} />
+        <p className="admin-note">Личные диалоги с клиентами — как «Задать вопрос» из рабочего пространства, так и написанные отсюда первыми. Виден отправителю прямо там же, в модальном окне.</p>
+        <AdminFeedbackTable
+          rows={feedbackRows.map((item) => ({
+            id: item.id,
+            ownerEmail: item.ownerEmail,
+            sender: item.sender as "client" | "admin" | "bot",
+            body: item.body,
+            createdAt: item.createdAt,
+            readAt: item.readAt,
+          }))}
+          // Full users (not just activeUsers below) - admin can search up
+          // and message any registered account, not just ones that already
+          // wrote in, and not just ones with a verified email.
+          accounts={users.map((item) => ({ email: item.email, displayName: item.displayName, avatarUrl: item.avatarUrl }))}
+        />
       </section>
     ),
   });
@@ -1197,29 +1212,42 @@ function AdminStyles() {
          customer, most recently active on top; the selected customer's
          full message history as bubbles on the right, reply box pinned
          under it. */
-      .admin-feedback-layout { display: grid; grid-template-columns: minmax(0, 240px) minmax(0, 1fr); gap: 16px; min-height: 0; }
-      .admin-feedback-thread-list { display: grid; align-content: start; gap: 6px; max-height: 65vh; overflow-y: auto; padding: 3px 4px 4px 0; }
-      .admin-feedback-thread-item { display: grid; gap: 4px; padding: 10px 11px; border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 12px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+      .admin-feedback-layout { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 16px; min-height: 0; }
+      .admin-feedback-thread-panel { display: grid; align-content: start; gap: 8px; min-width: 0; }
+      .admin-feedback-thread-search { width: 100%; min-height: 34px; border: 1px solid #d1d5db; border-radius: 999px; padding: 0 14px; background: #fff; color: #1c1f26; font: inherit; font-size: 12px; }
+      .admin-feedback-thread-search:focus { outline: 2px solid rgba(139, 92, 246, 0.25); outline-offset: 1px; border-color: #8b5cf6; }
+      .admin-feedback-thread-list { display: grid; align-content: start; gap: 6px; max-height: 60vh; overflow-y: auto; padding: 3px 4px 4px 0; }
+      .admin-feedback-thread-item { display: flex; align-items: flex-start; gap: 8px; padding: 10px 11px; border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 12px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
       .admin-feedback-thread-item:hover { transform: none; background: rgba(148, 163, 184, 0.1); }
       .admin-feedback-thread-item.active { border-color: #8b5cf6; background: rgba(139, 92, 246, 0.1); }
+      .admin-feedback-thread-item .admin-avatar-circle { margin-top: 1px; }
+      .admin-feedback-thread-item-text { display: grid; gap: 4px; min-width: 0; flex: 1; }
       .admin-feedback-thread-item-email { overflow: hidden; font-weight: 700; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
       .admin-feedback-thread-item-preview { overflow: hidden; color: #6b7280; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
       .admin-feedback-thread-item-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
       .admin-feedback-thread-item-meta time { color: #9ca3af; font-size: 10px; }
       .admin-feedback-thread { display: grid; align-content: start; gap: 10px; min-width: 0; }
-      .admin-feedback-thread-head { font-weight: 700; font-size: 13px; }
+      .admin-feedback-thread-head { display: flex; align-items: center; gap: 8px; }
+      .admin-feedback-thread-head b { display: block; font-size: 13px; }
+      .admin-feedback-thread-head small { display: block; color: #6b7280; font-size: 11px; }
+      .admin-feedback-empty-thread { margin: 0; padding: 16px; border: 1px dashed rgba(148, 163, 184, 0.35); border-radius: 12px; color: #6b7280; font-size: 12px; }
       .admin-feedback-bubbles { display: grid; align-content: start; gap: 8px; max-height: 46vh; overflow-y: auto; padding: 3px 4px 4px 0; }
-      .admin-feedback-bubble { display: grid; gap: 3px; max-width: min(80%, 460px); padding: 9px 12px; border-radius: 14px; font-size: 13px; }
+      .admin-feedback-bubble-row { display: flex; align-items: flex-end; gap: 6px; min-width: 0; }
+      .admin-feedback-bubble-row.is-client { justify-self: start; }
+      .admin-feedback-bubble-row.is-admin, .admin-feedback-bubble-row.is-bot { justify-self: end; }
+      .admin-feedback-bubble { display: grid; gap: 3px; min-width: 0; max-width: 380px; padding: 9px 12px; border-radius: 14px; font-size: 13px; }
       .admin-feedback-bubble-sender { font-size: 10px; font-weight: 700; opacity: 0.65; }
       .admin-feedback-bubble p { margin: 0; line-height: 1.5; white-space: pre-wrap; }
       .admin-feedback-bubble time { display: block; margin-top: 1px; color: inherit; opacity: 0.55; font-size: 10px; }
-      .admin-feedback-bubble.is-client { justify-self: start; border-bottom-left-radius: 4px; background: #f3f4f6; }
-      .admin-feedback-bubble.is-admin, .admin-feedback-bubble.is-bot { justify-self: end; border-bottom-right-radius: 4px; background: #ede9fe; }
+      .admin-feedback-bubble.is-client { border-bottom-left-radius: 4px; background: #f3f4f6; }
+      .admin-feedback-bubble.is-admin, .admin-feedback-bubble.is-bot { border-bottom-right-radius: 4px; background: #ede9fe; }
       .admin-feedback-reply { display: grid; gap: 6px; }
       .admin-feedback-reply textarea { width: 100%; min-height: 64px; border: 1px solid #d1d5db; border-radius: 9px; padding: 8px 10px; background: #fff; color: #1c1f26; font: inherit; font-size: 13px; resize: vertical; }
       .admin-feedback-reply-actions { display: flex; gap: 8px; margin-top: 6px; }
       .admin-feedback-reply-error { margin: 6px 0 0; color: #b91c1c; font-size: 12px; }
       body[data-admin-theme="dark"] .admin-feedback-thread-item { border-color: rgba(139, 110, 255, 0.25); }
+      body[data-admin-theme="dark"] .admin-feedback-thread-search { background: #171d3d; border-color: rgba(139, 110, 255, 0.3); color: #e5e7eb; }
+      body[data-admin-theme="dark"] .admin-feedback-thread-head small { color: #94a3b8; }
       body[data-admin-theme="dark"] .admin-feedback-bubble.is-client { background: #1f2540; color: #e5e7eb; }
       body[data-admin-theme="dark"] .admin-feedback-bubble.is-admin, body[data-admin-theme="dark"] .admin-feedback-bubble.is-bot { background: #322a5c; color: #ede9fe; }
       body[data-admin-theme="dark"] .admin-feedback-reply textarea { background: #171d3d; border-color: rgba(139, 110, 255, 0.3); color: #e5e7eb; }
@@ -1290,6 +1318,17 @@ function AdminStyles() {
       .admin-table-users-legacy { display: none; }
       .admin-table-users td { vertical-align: middle; }
       .admin-user-muted { display: block; margin-top: 3px; color: #94a3b8; font-size: 11px; white-space: nowrap; }
+      .admin-user-name-cell { display: flex; align-items: center; gap: 8px; }
+      /* Shared with .admin-feedback-thread-item/.admin-feedback-bubble below
+         - one small circle style for every "whose picture is this" spot in
+         /admin. position: absolute + inset: 0 on the img (not just width/
+         height: 100%), same reasoning as .workspace-account-avatar-img in
+         globals.css: a percentage size on a centered grid item doesn't
+         reliably resolve in every engine, and a tall photo can render at
+         its own intrinsic size instead and spill past the circle. */
+      .admin-avatar-circle { position: relative; display: grid; place-items: center; flex-shrink: 0; overflow: hidden; width: 28px; height: 28px; border-radius: 50%; background: #e5e7eb; color: #6b7280; font-size: 11px; font-weight: 700; }
+      .admin-avatar-circle img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+      body[data-admin-theme="dark"] .admin-avatar-circle { background: #1f2540; color: #94a3b8; }
       .admin-details-toggle { border: 1px solid #94a3b8; border-radius: 999px; padding: 6px 11px; background: transparent; color: inherit; cursor: pointer; font: inherit; font-size: 12px; white-space: nowrap; }
       .admin-details-toggle:hover { border-color: #8b5cf6; color: #8b5cf6; }
       .admin-user-details-row td { padding-top: 0 !important; }
