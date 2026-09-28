@@ -136,7 +136,17 @@ export async function runDialogueAgent(input: DialogueAgentInput): Promise<Dialo
   const agent = new Agent({
     name: "KLIO Dialogue",
     model,
-    modelSettings: { maxTokens: 2_400, reasoning: { effort: "low" } },
+    // store defaults to true in the SDK (see ModelSettings.store) - the
+    // Responses API would then keep this call server-side on OpenAI for
+    // later retrieval, which every "400 Invalid text request" failure
+    // traces back to: our own relay (services/klio-images/server.mjs)
+    // rejects any /responses call that doesn't have store===false outright
+    // (found by reading its actual validation, not by guessing). Setting
+    // it explicitly also matches this file's own stated intent already -
+    // "conversations are private application data" (setTracingDisabled
+    // above) - not storing them a second time server-side on OpenAI's end
+    // is the same policy, not a workaround for the relay's sake alone.
+    modelSettings: { maxTokens: 2_400, reasoning: { effort: "low" }, store: false },
     toolUseBehavior: "stop_on_first_tool",
     tools: [dispatchTool],
     instructions: [
