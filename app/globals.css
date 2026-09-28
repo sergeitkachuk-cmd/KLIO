@@ -4803,7 +4803,12 @@ footer nav a {
 /* Site owner: the unread-reply count only lived inside the account
    dropdown, invisible until opened ("не видно пока не раскроешь верхнее
    меню") - this sits on the always-visible avatar in the header instead;
-   the count next to "Задать вопрос" inside the open menu stays too. */
+   the count next to "Задать вопрос" inside the open menu stays too.
+   Violet, not --acid: matches the same "needs a look" treatment as the
+   admin sidebar's own unread badge (.admin-badge-attention in
+   app/admin/page.tsx) - one color for "something needs a reply" across
+   both surfaces, distinct from --acid's use as the general link/hover
+   accent everywhere else in this file. */
 .workspace-account-badge {
   position: absolute;
   top: -3px;
@@ -4814,8 +4819,8 @@ footer nav a {
   height: 16px;
   padding: 0 4px;
   border-radius: 999px;
-  background: var(--acid);
-  color: var(--night);
+  background: #8b5cf6;
+  color: #fff;
   font-size: 10px;
   font-weight: 800;
   font-style: normal;
@@ -4916,8 +4921,8 @@ footer nav a {
   margin-left: auto;
   padding: 0 5px;
   border-radius: 999px;
-  background: var(--acid);
-  color: var(--night);
+  background: #8b5cf6;
+  color: #fff;
   font-size: 11px;
   font-weight: 800;
   font-style: normal;
