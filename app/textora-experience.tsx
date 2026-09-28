@@ -6351,9 +6351,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <span aria-hidden="true">＋</span> Диалоги
           </button>
           <nav>
-            <button type="button" className={activeModule === "brand" ? "is-active" : ""} onClick={() => openModule("brand")}>Мой бизнес</button>
-            <button type="button" className={activeModule === "history" ? "is-active" : ""} onClick={() => openModule("history")}>Материалы</button>
-            <button type="button" className={activeModule === "publications" ? "is-active" : ""} onClick={() => openModule("publications")}>Публикации</button>
+            <button type="button" className={activeModule === "brand" ? "is-active" : ""} onClick={() => openModule("brand")}><i><Icon name="building"/></i><span><b>Мой бизнес</b></span></button>
+            <button type="button" className={activeModule === "history" ? "is-active" : ""} onClick={() => openModule("history")}><i><Icon name="folder"/></i><span><b>Материалы</b></span></button>
+            <button type="button" className={activeModule === "publications" ? "is-active" : ""} onClick={() => openModule("publications")}><i><Icon name="calendar"/></i><span><b>Публикации</b></span></button>
           </nav>
           <div className="dialogue-module-rail-spacer" />
           <div className="klio-chatkit-brand">

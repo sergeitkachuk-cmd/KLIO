@@ -435,6 +435,30 @@
   text-transform: uppercase;
 }
 
+/* Icon glyphs on the 3 module buttons (Мой бизнес/Материалы/Публикации -
+   same building/folder/calendar icons the professional sidebar uses for
+   the equivalent modules), added for visual parity with that redesigned
+   nav - this rail's buttons had text only before. Scoped to nav button's
+   own <i> so .klio-chatkit-new (the "+ Диалоги" button, no icon element)
+   is untouched. */
+.workspace-shell.is-dialogue .klio-chatkit-rail nav button i {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  color: var(--ck-muted);
+}
+
+.workspace-shell.is-dialogue .klio-chatkit-rail nav button i svg {
+  width: 13px;
+  height: 13px;
+}
+
+.workspace-shell.is-dialogue .klio-chatkit-rail nav button.is-active i {
+  color: inherit;
+}
+
 .workspace-shell.is-dialogue .klio-chatkit-rail :is(.klio-chatkit-new, nav button):hover,
 .workspace-shell.is-dialogue .klio-chatkit-rail .klio-chatkit-account:hover,
 .workspace-shell.is-dialogue .klio-chatkit-rail .klio-chatkit-brand-select > button:hover {
@@ -768,6 +792,25 @@ html[data-theme="light"] .workspace-shell.is-dialogue .klio-chatkit-brand-select
     gap: 4px;
   }
 
+  /* Matches the professional nav's own mobile treatment exactly (same
+     rgba values, same reasoning): a faint chip fill on every resting
+     item, not just the active one, or a tightly packed horizontal row
+     of icon+label pairs reads as one continuous strip instead of
+     separate buttons. Also drops this rail's own desktop-sized 15px
+     label down to the professional nav's compact mobile 12px, now that
+     each button also carries an icon and needs to stay narrow enough
+     for all three to fit without excess scrolling. */
+  .workspace-shell.is-dialogue .dialogue-module-rail > nav button {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.045);
+    font-size: 12px;
+  }
+
+  html[data-theme="light"] .workspace-shell.is-dialogue .dialogue-module-rail > nav button {
+    border-color: rgba(15, 23, 42, 0.12);
+    background: rgba(15, 23, 42, 0.035);
+  }
+
   .workspace-shell.is-dialogue .dialogue-module-rail .dialogue-module-rail-spacer,
   .workspace-shell.is-dialogue .dialogue-module-rail .klio-chatkit-brand,
   .workspace-shell.is-dialogue .dialogue-module-rail .klio-chatkit-account {
@@ -782,6 +825,7 @@ html[data-theme="light"] .workspace-shell.is-dialogue .klio-chatkit-brand-select
      .button.primary and .klio-gen-noise in this same file) rather than
      the professional sidebar's --acid blue. */
   .workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .dialogue-module-rail nav button.is-active {
+    border-color: transparent;
     border-radius: 999px;
     background: linear-gradient(180deg, #d7e4f1, #cbdbec) !important;
     box-shadow: 0 0 0 1px rgba(203, 219, 236, 0.55), 0 6px 16px rgba(203, 219, 236, 0.3);
