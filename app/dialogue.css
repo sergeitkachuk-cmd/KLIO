@@ -599,21 +599,6 @@
     opacity: 0.3;
   }
 }
-/* Recolours the shared .klio-gen-noise component (globals.css - the
-   animated placeholder shown while an image generates) to this theme's own
-   "selected/primary" colour (same #254263/#cbdbec pair as .button.primary
-   and the redesigned bottom nav's active tab above) instead of the
-   professional workspace's --acid blue, same reasoning as those. */
-[data-theme="light"] .workspace-shell.is-dialogue .klio-gen-noise {
-  --gen-noise-bright: color-mix(in srgb, #254263 70%, white);
-  --gen-noise-dim: color-mix(in srgb, #254263 45%, #0a0f16);
-  --gen-noise-bg: color-mix(in srgb, #254263 10%, #0a0f16);
-}
-[data-theme="dark"] .workspace-shell.is-dialogue .klio-gen-noise {
-  --gen-noise-bright: color-mix(in srgb, #cbdbec 70%, white);
-  --gen-noise-dim: color-mix(in srgb, #cbdbec 45%, #0a0f16);
-  --gen-noise-bg: color-mix(in srgb, #cbdbec 10%, #0a0f16);
-}
 .klio-chat-profile {
   background: var(--chat-side);
   border: 1px solid var(--chat-line);

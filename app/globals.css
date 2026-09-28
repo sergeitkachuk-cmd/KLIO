@@ -24697,22 +24697,30 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
    organic blob-shaped patches, like static settling into a picture) shown
    wherever an image is actively being generated, replacing a plain static
    icon with something that visibly reads as "working". Recoloured to this
-   app's own generation-button family (--acid, see .button.primary) rather
-   than the reference's plain white-on-black, and kept a shade darker than
-   the literal button throughout so it reads as an ambient background
-   effect, not another clickable control. Two layers do the work: ::before
-   is the fixed dot grid at a dim base colour, ::after is 3 soft blurred
-   blobs animated via transform (cheap, GPU-composited - no canvas/JS
-   needed) and clipped to that same dot grid through mask-image, so only
-   the grid's own dots brighten as a blob drifts across them, never the
-   gaps between. Colours are custom properties so a caller can repoint
-   --gen-noise-bright/-dim/-bg without touching this structural rule -
-   dialogue mode does exactly that, see .klio-gen-noise in dialogue.css,
-   to use its own button colour instead of the professional workspace's. */
+   app's own generation-button colours - NOT --acid/.button.primary's flat
+   blue (tried that first; site owner: "кнопка не синяя, кнопка во время
+   генерации переливается разными цветами" - the button everywhere on this
+   site actually turns teal/purple/blue/lilac and animates through them
+   while busy, see .button.generation-action.is-busy and its
+   klioGenerationFlow keyframes a few rules up - same colours here, kept a
+   shade darker throughout so it reads as an ambient background effect,
+   not another clickable control. This palette is shared by every
+   generation button on the site regardless of mode, so dialogue mode
+   needs no colour override of its own (unlike the redesigned bottom nav,
+   which does - that one has no site-wide equivalent to match). Two
+   layers do the work: ::before is the fixed dot grid at a dim base
+   colour, ::after is 3 soft blurred blobs - one per gradient colour -
+   animated via transform (cheap, GPU-composited - no canvas/JS needed)
+   and clipped to that same dot grid through mask-image, so only the
+   grid's own dots brighten as a blob drifts across them, never the gaps
+   between; the three different hues drifting and overlapping independently
+   is what gives the shimmering, multi-colour quality, not a single tint. */
 .klio-gen-noise {
-  --gen-noise-bright: color-mix(in srgb, var(--acid) 65%, white);
-  --gen-noise-dim: color-mix(in srgb, var(--acid) 45%, #060a10);
-  --gen-noise-bg: color-mix(in srgb, var(--acid) 8%, #060a10);
+  --gen-noise-c1: #7ee6d8;
+  --gen-noise-c2: #a8a0ff;
+  --gen-noise-c3: #70d8ff;
+  --gen-noise-dim: color-mix(in srgb, var(--gen-noise-c2) 55%, #060a10);
+  --gen-noise-bg: color-mix(in srgb, var(--gen-noise-c2) 16%, #060a10);
   position: relative;
   overflow: hidden;
   border-radius: 18px;
@@ -24734,9 +24742,9 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 .klio-gen-noise::after {
   inset: -30%;
   background-image:
-    radial-gradient(circle at 28% 32%, var(--gen-noise-bright), transparent 22%),
-    radial-gradient(circle at 70% 60%, var(--gen-noise-bright), transparent 26%),
-    radial-gradient(circle at 45% 82%, var(--gen-noise-bright), transparent 20%);
+    radial-gradient(circle at 28% 32%, var(--gen-noise-c1), transparent 22%),
+    radial-gradient(circle at 70% 60%, var(--gen-noise-c2), transparent 26%),
+    radial-gradient(circle at 45% 82%, var(--gen-noise-c3), transparent 20%);
   /* #fff (not #000) so this same gradient works as both an alpha mask
      (the standard mask-image default) and a luminance mask (what some
      browsers still use for the -webkit- prefixed property) - transparent
@@ -24777,9 +24785,11 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
   }
 }
 
-/* Dialogue mode: a chat-bubble-sized thumbnail sitting where the finished
-   image will land once ready - see .klio-chat-image-generating and its
-   caption text in dialogue.css. */
+/* Chat-bubble-sized thumbnail variant, for wherever a generated image
+   would land inline at roughly this size once ready. Not wired into the
+   dialogue chat shell yet - that UI was rewritten wholesale (NativeWorkspace
+   / klio-chatkit-*) after this was first built against the older one, and
+   redoing it against the new component tree is its own separate task. */
 .klio-gen-noise-thumb {
   width: 220px;
   height: 220px;
