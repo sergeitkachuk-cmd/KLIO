@@ -292,10 +292,11 @@ type WorkspaceAccount = {
   avatarUrl: string | null;
 };
 
-// Mirrors a row of feedbackMessages (db/schema.ts) — one "Задать вопрос"
-// submission plus whatever reply it has so far (null until the site owner
-// answers it from /admin).
-type FeedbackMessageRecord = { id: string; message: string; reply: string | null; createdAt: string; repliedAt: string | null };
+// Mirrors a row of feedbackMessages (db/schema.ts) — one message in this
+// visitor's own "Задать вопрос" thread, tagged by who sent it. Ordered
+// oldest-first by the API (see api/feedback/route.ts's GET) for a
+// Telegram-style top-to-bottom read.
+type FeedbackMessageRecord = { id: string; sender: "client" | "admin" | "bot"; body: string; createdAt: string };
 
 // Mirrors a row of announcements (db/schema.ts) — the opposite direction of
 // FeedbackMessageRecord above (site owner writing to clients, not replying
@@ -2660,11 +2661,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // разными вкладками в одной").
   const [feedbackUnreadReplies, setFeedbackUnreadReplies] = useState(0);
   const [feedbackUnreadNews, setFeedbackUnreadNews] = useState(0);
-  // selectedFeedbackId null means the compose
-  // box for a new question; a past id shows that question + reply instead,
-  // list+detail like a mail client rather than a running chat transcript.
   const [feedbackTab, setFeedbackTab] = useState<"support" | "news">("support");
-  const [selectedFeedbackId, setSelectedFeedbackId] = useState<string | null>(null);
+  const feedbackThreadRef = useRef<HTMLDivElement | null>(null);
   const [newBrandName, setNewBrandName] = useState("");
   const [brandSwitchBusy, setBrandSwitchBusy] = useState(false);
   // Scroll target for resultRevealTick below - the top of the result
@@ -3198,7 +3196,16 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "Не удалось отправить сообщение.");
-      setFeedbackHistory((current) => [{ id: `local-${Date.now()}`, message, reply: null, repliedAt: null, createdAt: new Date().toISOString() }, ...current]);
+      // Appended, not prepended - the thread reads oldest-first now, newest
+      // bubble at the bottom. The bot's ack rides along in the same
+      // response (see api/feedback/route.ts's POST) so it shows up in the
+      // same tick as the visitor's own message, not on a later refetch.
+      const botMessage = payload.botMessage as FeedbackMessageRecord | null | undefined;
+      setFeedbackHistory((current) => [
+        ...current,
+        { id: `local-${Date.now()}`, sender: "client", body: message, createdAt: new Date().toISOString() },
+        ...(botMessage ? [botMessage] : []),
+      ]);
       setFeedbackMessage("");
       showToast("Сообщение отправлено");
     } catch (error) {
@@ -3207,6 +3214,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setFeedbackBusy(false);
     }
   }
+
+  // Keeps the open thread scrolled to its newest bubble, like a real chat -
+  // on first opening it and every time a message is appended (the
+  // visitor's own submitFeedback above, or a fresh background refetch).
+  useEffect(() => {
+    if (!feedbackOpen || feedbackTab !== "support") return;
+    const node = feedbackThreadRef.current;
+    if (node) node.scrollTop = node.scrollHeight;
+  }, [feedbackOpen, feedbackTab, feedbackHistory]);
 
   useEffect(() => {
     if (workspace) return;
@@ -6350,37 +6366,23 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <p>{item.message}</p>
               </article>
             )) : <p className="feedback-modal-empty">Пока новостей нет — здесь будут появляться обновления и объявления от команды КЛИО.</p>}
-          </div> : <div className="feedback-support-layout">
-            <div className="feedback-support-list">
-              <button type="button" className={`feedback-support-list-item is-new ${!selectedFeedbackId ? "active" : ""}`} onClick={() => setSelectedFeedbackId(null)}>+ Новое обращение</button>
+          </div> : <div className="feedback-thread">
+            <div className="feedback-thread-bubbles" ref={feedbackThreadRef}>
+              {feedbackHistory.length === 0 && <p className="feedback-modal-empty">Вопрос, пожелание или что-то не работает — напишите ниже, мы ответим вам прямо в этом окне.</p>}
               {feedbackHistory.map((item) => (
-                <button type="button" key={item.id} className={`feedback-support-list-item ${selectedFeedbackId === item.id ? "active" : ""}`} onClick={() => setSelectedFeedbackId(item.id)}>
-                  <span className="feedback-support-list-item-preview">{item.message}</span>
-                  <span className="feedback-support-list-item-meta">
-                    <time>{new Date(item.createdAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}</time>
-                    <em className={item.reply ? "is-answered" : "is-pending"}>{item.reply ? "Отвечено" : "Ожидает"}</em>
-                  </span>
-                </button>
-              ))}
-              {feedbackHistory.length === 0 && <p className="feedback-modal-empty">Обращений пока не было.</p>}
-            </div>
-            <div className="feedback-support-detail">
-              {selectedFeedbackId && feedbackHistory.some((item) => item.id === selectedFeedbackId) ? <div className="feedback-modal-entry">
-                <p className="feedback-modal-entry-question"><b>Вы:</b> {feedbackHistory.find((item) => item.id === selectedFeedbackId)!.message}</p>
-                {feedbackHistory.find((item) => item.id === selectedFeedbackId)!.reply
-                  ? <p className="feedback-modal-entry-answer"><b>КЛИО:</b> {feedbackHistory.find((item) => item.id === selectedFeedbackId)!.reply}</p>
-                  : <p className="feedback-modal-entry-pending">Ожидает ответа…</p>}
-              </div> : <>
-                <p className="feedback-modal-lead">Вопрос, пожелание или что-то не работает — напишите здесь, мы ответим вам прямо в этом окне.</p>
-                <label className="publications-editor-field">
-                  <span>Новое сообщение</span>
-                  <textarea rows={7} value={feedbackMessage} onChange={(event) => setFeedbackMessage(event.target.value)} placeholder="Опишите вопрос или пожелание…"/>
-                </label>
-                {feedbackError && <p className="generation-error" role="alert">{feedbackError}</p>}
-                <div className="publications-editor-actions">
-                  <button type="button" className="button primary" disabled={feedbackBusy} onClick={() => void submitFeedback()}>{feedbackBusy ? "Отправляем…" : "Отправить"}</button>
+                <div key={item.id} className={`feedback-bubble is-${item.sender}`}>
+                  <p>{item.body}</p>
+                  <time>{new Date(item.createdAt).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</time>
                 </div>
-              </>}
+              ))}
+            </div>
+            <label className="publications-editor-field">
+              <span>Новое сообщение</span>
+              <textarea rows={3} value={feedbackMessage} onChange={(event) => setFeedbackMessage(event.target.value)} placeholder="Опишите вопрос или пожелание…"/>
+            </label>
+            {feedbackError && <p className="generation-error" role="alert">{feedbackError}</p>}
+            <div className="publications-editor-actions">
+              <button type="button" className="button primary" disabled={feedbackBusy} onClick={() => void submitFeedback()}>{feedbackBusy ? "Отправляем…" : "Отправить"}</button>
             </div>
           </div>}
         </section>

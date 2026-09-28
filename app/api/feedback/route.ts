@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, isNotNull, isNull, or } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, or } from "drizzle-orm";
 import { accounts, announcements, feedbackMessages } from "../../../db/schema";
 import { readBoundedJson, RequestBodyError } from "../_lib/request-body";
 import { ensureAccount, getWorkspaceDb, WorkspaceAccessError, workspaceIdentity } from "../_lib/workspace-account";
@@ -10,16 +10,27 @@ const MAX_MESSAGE_LENGTH = 4000;
 const HISTORY_LIMIT = 50;
 const ANNOUNCEMENT_LIMIT = 30;
 
+// Shown immediately after a client message is saved, its own row right
+// behind it - site owner: "после оформления сообщения клиенту отвечает
+// клио, что сейчас передаст обращение оператору". Not a reply from a human
+// yet, just an acknowledgment that the message made it through.
+const BOT_ACK_MESSAGE = "Спасибо за обращение! Уже передала его оператору — ответим здесь же, в этом окне.";
+
 export async function GET() {
   try {
     const user = await workspaceIdentity();
     const account = await ensureAccount(user);
     const db = await getWorkspaceDb();
-    const [messages, announcementRows] = await Promise.all([
+    const [recentMessages, announcementRows] = await Promise.all([
       db.select().from(feedbackMessages).where(eq(feedbackMessages.ownerEmail, user.email)).orderBy(desc(feedbackMessages.createdAt)).limit(HISTORY_LIMIT),
       db.select().from(announcements).where(or(isNull(announcements.recipientEmail), eq(announcements.recipientEmail, user.email))).orderBy(desc(announcements.createdAt)).limit(ANNOUNCEMENT_LIMIT),
     ]);
-    const unreadRepliesCount = messages.filter((row) => row.reply && !row.readAt).length;
+    // Oldest first for the thread view (Telegram-style: reads top to
+    // bottom, newest bubble at the bottom) - the query above is DESC only
+    // so ".limit(HISTORY_LIMIT)" means "the most recent N messages", not
+    // "the first N ever sent".
+    const messages = recentMessages.slice().reverse();
+    const unreadRepliesCount = messages.filter((row) => row.sender !== "client" && !row.readAt).length;
     const seenAnnouncementsAt = account.lastSeenAnnouncementAt ?? account.createdAt;
     const unreadAnnouncementsCount = announcementRows.filter((row) => new Date(row.createdAt).getTime() > new Date(seenAnnouncementsAt).getTime()).length;
     // Separate counts, not one combined total - "Новости" and "Обращения"
@@ -43,7 +54,17 @@ export async function POST(request: Request) {
 
     const db = await getWorkspaceDb();
     const feedbackId = randomUUID();
-    await db.insert(feedbackMessages).values({ id: feedbackId, ownerEmail: user.email, message });
+    await db.insert(feedbackMessages).values({ id: feedbackId, ownerEmail: user.email, sender: "client", body: message });
+
+    // Own row, own (later) createdAt so it sorts right after the client's
+    // message in the thread - not a reply from a human, just confirmation
+    // the message made it through while an operator picks it up.
+    const [botMessage] = await db.insert(feedbackMessages).values({
+      id: randomUUID(),
+      ownerEmail: user.email,
+      sender: "bot",
+      body: BOT_ACK_MESSAGE,
+    }).returning();
 
     // Best-effort — the message is already durably stored above, so a
     // notification failure (missing config, provider outage) must not turn
@@ -85,7 +106,7 @@ export async function POST(request: Request) {
       console.error("Admin Telegram notify skipped: ADMIN_TELEGRAM_BOT_TOKEN/ADMIN_TELEGRAM_CHAT_ID not seen by this process");
     }
 
-    return Response.json({ ok: true });
+    return Response.json({ ok: true, botMessage: botMessage ?? null });
   } catch (error) {
     if (error instanceof RequestBodyError) return Response.json({ error: error.message }, { status: error.status });
     if (error instanceof WorkspaceAccessError) return Response.json({ error: error.message }, { status: error.status });
@@ -107,9 +128,12 @@ export async function PATCH(request: Request) {
     const db = await getWorkspaceDb();
     const now = new Date().toISOString();
     if (kind === "support") {
+      // Not-client, i.e. admin or bot: both are "the other side spoke" from
+      // this visitor's point of view, same as isNotNull(reply) meant before
+      // the per-message rewrite.
       await db.update(feedbackMessages).set({ readAt: now }).where(and(
         eq(feedbackMessages.ownerEmail, user.email),
-        isNotNull(feedbackMessages.reply),
+        ne(feedbackMessages.sender, "client"),
         isNull(feedbackMessages.readAt),
       ));
     } else {

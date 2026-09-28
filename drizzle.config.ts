@@ -1,5 +1,5 @@
 import { defineConfig } from "drizzle-kit";
-import { getDatabaseSchemaName } from "./db/namespace";
+import { getDatabaseSchemaName } from "./db/namespace.mjs";
 import { parseDatabaseConnection } from "./db/connection.mjs";
 
 // Render's managed Postgres (and most hosted providers) require SSL.

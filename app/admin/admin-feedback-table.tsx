@@ -1,23 +1,66 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
-export type AdminFeedbackRow = {
+export type AdminFeedbackMessage = {
   id: string;
   ownerEmail: string;
-  message: string;
-  reply: string | null;
+  sender: "client" | "admin" | "bot";
+  body: string;
   createdAt: string;
-  repliedAt: string | null;
+  readAt: string | null;
 };
 
-function ReplyRow({ row }: { row: AdminFeedbackRow }) {
-  const [draft, setDraft] = useState(row.reply ?? "");
-  const [saved, setSaved] = useState(row.reply);
-  const [savedAt, setSavedAt] = useState(row.repliedAt);
+type Thread = {
+  ownerEmail: string;
+  messages: AdminFeedbackMessage[];
+  lastAt: string;
+  needsReply: boolean;
+};
+
+function formatDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("ru-RU", { timeZone: "Europe/Moscow", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+function senderLabel(sender: AdminFeedbackMessage["sender"]): string {
+  if (sender === "client") return "Клиент";
+  if (sender === "bot") return "КЛИО (бот)";
+  return "Вы";
+}
+
+// Groups the flat, newest-first query result (see app/admin/page.tsx) into
+// one thread per customer, each sorted oldest-first for a chat-style read.
+// needsReply skips bot rows on purpose - the bot always answers a client
+// message immediately (see app/api/feedback/route.ts's BOT_ACK_MESSAGE),
+// so "last message is from the bot" must not read as "already answered".
+function buildThreads(rows: AdminFeedbackMessage[]): Thread[] {
+  const byOwner = new Map<string, AdminFeedbackMessage[]>();
+  for (const row of rows) {
+    const list = byOwner.get(row.ownerEmail);
+    if (list) list.push(row); else byOwner.set(row.ownerEmail, [row]);
+  }
+  const threads: Thread[] = [];
+  for (const [ownerEmail, messages] of byOwner) {
+    messages.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const lastNonBot = [...messages].reverse().find((item) => item.sender !== "bot");
+    threads.push({
+      ownerEmail,
+      messages,
+      lastAt: messages[messages.length - 1].createdAt,
+      needsReply: lastNonBot?.sender === "client",
+    });
+  }
+  threads.sort((a, b) => b.lastAt.localeCompare(a.lastAt));
+  return threads;
+}
+
+function ThreadPane({ thread }: { thread: Thread }) {
+  const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [editing, setEditing] = useState(!row.reply);
+  const [sent, setSent] = useState<AdminFeedbackMessage[]>([]);
 
   async function send() {
     const reply = draft.trim();
@@ -31,13 +74,12 @@ function ReplyRow({ row }: { row: AdminFeedbackRow }) {
       const response = await fetch("/api/admin/feedback", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: row.id, reply }),
+        body: JSON.stringify({ ownerEmail: thread.ownerEmail, reply }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "Не удалось отправить ответ.");
-      setSaved(payload.feedback?.reply ?? reply);
-      setSavedAt(payload.feedback?.repliedAt ?? new Date().toISOString());
-      setEditing(false);
+      if (payload.feedback) setSent((current) => [...current, payload.feedback]);
+      setDraft("");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Не удалось отправить ответ.");
     } finally {
@@ -45,42 +87,64 @@ function ReplyRow({ row }: { row: AdminFeedbackRow }) {
     }
   }
 
+  const messages = [...thread.messages, ...sent];
+
   return (
-    <tr>
-      <td>{row.createdAt}</td>
-      <td>{row.ownerEmail}</td>
-      <td className="admin-feedback-message">{row.message}</td>
-      <td className="admin-feedback-reply">
-        {!editing ? (
-          <>
-            <p className="admin-feedback-message">{saved}</p>
-            <button type="button" className="admin-details-toggle" onClick={() => { setDraft(saved ?? ""); setEditing(true); }}>Изменить ответ</button>
-          </>
-        ) : (
-          <>
-            <textarea rows={3} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Введите ответ…" />
-            <div className="admin-feedback-reply-actions">
-              <button type="button" className="admin-details-toggle" disabled={busy} onClick={() => void send()}>{busy ? "Отправляем…" : "Отправить"}</button>
-              {saved && <button type="button" className="admin-details-toggle" disabled={busy} onClick={() => { setDraft(saved ?? ""); setEditing(false); setError(""); }}>Отмена</button>}
-            </div>
-            {error && <p className="admin-feedback-reply-error">{error}</p>}
-          </>
-        )}
-      </td>
-    </tr>
+    <div className="admin-feedback-thread">
+      <div className="admin-feedback-thread-head">{thread.ownerEmail}</div>
+      <div className="admin-feedback-bubbles">
+        {messages.map((item) => (
+          <div key={item.id} className={`admin-feedback-bubble is-${item.sender}`}>
+            <span className="admin-feedback-bubble-sender">{senderLabel(item.sender)}</span>
+            <p>{item.body}</p>
+            <time>{formatDateTime(item.createdAt)}</time>
+          </div>
+        ))}
+      </div>
+      <div className="admin-feedback-reply">
+        <textarea rows={3} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Введите ответ…" />
+        <div className="admin-feedback-reply-actions">
+          <button type="button" className="admin-details-toggle" disabled={busy} onClick={() => void send()}>{busy ? "Отправляем…" : "Отправить"}</button>
+        </div>
+        {error && <p className="admin-feedback-reply-error">{error}</p>}
+      </div>
+    </div>
   );
 }
 
-export function AdminFeedbackTable({ rows }: { rows: AdminFeedbackRow[] }) {
+export function AdminFeedbackTable({ rows }: { rows: AdminFeedbackMessage[] }) {
+  const threads = useMemo(() => buildThreads(rows), [rows]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const activeEmail = selected && threads.some((item) => item.ownerEmail === selected) ? selected : (threads[0]?.ownerEmail ?? null);
+  const activeThread = threads.find((item) => item.ownerEmail === activeEmail) ?? null;
+
+  if (!threads.length) {
+    return <p className="admin-empty-row">Обращений пока не было.</p>;
+  }
+
   return (
-    <div className="admin-table-scroll">
-      <table className="admin-table admin-table-feedback">
-        <thead><tr><th>Когда</th><th>От кого</th><th>Сообщение</th><th>Ответ</th></tr></thead>
-        <tbody>
-          {rows.map((row) => <ReplyRow row={row} key={row.id} />)}
-          {!rows.length && <tr><td colSpan={4} className="admin-empty-row">Обращений пока не было.</td></tr>}
-        </tbody>
-      </table>
+    <div className="admin-feedback-layout">
+      <div className="admin-feedback-thread-list">
+        {threads.map((thread) => {
+          const last = thread.messages[thread.messages.length - 1];
+          return (
+            <button
+              type="button"
+              key={thread.ownerEmail}
+              className={`admin-feedback-thread-item ${thread.ownerEmail === activeEmail ? "active" : ""}`}
+              onClick={() => setSelected(thread.ownerEmail)}
+            >
+              <span className="admin-feedback-thread-item-email">{thread.ownerEmail}</span>
+              <span className="admin-feedback-thread-item-preview">{last.body}</span>
+              <span className="admin-feedback-thread-item-meta">
+                <time>{formatDateTime(thread.lastAt)}</time>
+                {thread.needsReply && <em className="admin-badge-attention admin-badge-attention-inline">ждёт ответа</em>}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {activeThread && <ThreadPane thread={activeThread} key={activeThread.ownerEmail} />}
     </div>
   );
 }

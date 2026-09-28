@@ -1,7 +1,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
-import { getDatabaseSchemaName } from "./namespace";
+import { getDatabaseSchemaName } from "./namespace.mjs";
 import { parseDatabaseConnection } from "./connection.mjs";
 
 let client: ReturnType<typeof postgres> | undefined;

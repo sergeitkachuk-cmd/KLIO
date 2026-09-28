@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     }
 
     const db = getDb();
-    const [row] = await db.select({ id: feedbackMessages.id, ownerEmail: feedbackMessages.ownerEmail })
+    const [row] = await db.select({ ownerEmail: feedbackMessages.ownerEmail })
       .from(feedbackMessages).where(eq(feedbackMessages.telegramMessageId, String(replyToId))).limit(1);
     if (!row) {
       await sendAdminTelegramMessage("Не нашёл обращение для этого сообщения — похоже, это ответ не на уведомление, а на что-то другое.").catch(() => {});
@@ -90,8 +90,8 @@ export async function POST(request: Request) {
     }
 
     const baseUrl = resolveBaseUrl(request);
-    const updated = await applyFeedbackReply(row.id, text, baseUrl);
-    await sendAdminTelegramMessage(updated ? `Ответ отправлен клиенту ${row.ownerEmail}.` : "Не удалось сохранить ответ — обращение уже не найдено.").catch(() => {});
+    const inserted = await applyFeedbackReply(row.ownerEmail, text, baseUrl);
+    await sendAdminTelegramMessage(inserted ? `Ответ отправлен клиенту ${row.ownerEmail}.` : "Не удалось сохранить ответ — попробуйте ещё раз.").catch(() => {});
     return new Response(null, { status: 200 });
   } catch (error) {
     if (error instanceof RequestBodyError) return new Response(null, { status: error.status });

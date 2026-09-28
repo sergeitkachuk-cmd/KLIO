@@ -7,6 +7,9 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import * as orm from "drizzle-orm";
 import * as pg from "drizzle-orm/pg-core";
+import { getDatabaseSchemaName } from "../../db/namespace.mjs";
+
+export { getDatabaseSchemaName };
 
 const root = new URL("../../", import.meta.url);
 export const imageCost = {
@@ -54,7 +57,7 @@ export async function createDialogueHarness() {
   const schema = load("db/schema.ts", {
     "drizzle-orm": orm,
     "drizzle-orm/pg-core": pg,
-    "./namespace": load("db/namespace.ts"),
+    "./namespace.mjs": { getDatabaseSchemaName },
   });
   const dialect = new pg.PgDialect();
   const literal = (value) =>

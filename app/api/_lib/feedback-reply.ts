@@ -1,33 +1,39 @@
-// Applying a reply to a "Задать вопрос" row - shared by the admin panel's
-// own reply box (api/admin/feedback/route.ts) and a reply typed straight
-// into Telegram (api/telegram/admin-webhook/route.ts), so the two entry
-// points can't drift into different behavior (e.g. one clearing readAt to
-// re-surface the unread badge and the other forgetting to).
-import { eq } from "drizzle-orm";
+// Applying an admin reply to a "Задать вопрос" thread - shared by the admin
+// panel's own reply box (api/admin/feedback/route.ts) and a reply typed
+// straight into Telegram (api/telegram/admin-webhook/route.ts), so the two
+// entry points can't drift into different behavior. Keyed by ownerEmail
+// (the thread), not a message id - a reply is now its own new row in that
+// customer's conversation, same shape as every other message in it, not an
+// update to one specific row (see feedbackMessages in db/schema.ts for why:
+// the whole point of the redesign is an ordered thread, not disconnected
+// Q&A pairs).
+import { randomUUID } from "node:crypto";
 import { getDb } from "../../../db";
 import { feedbackMessages } from "../../../db/schema";
 import { emailDeliveryAvailable, sendFeedbackRepliedEmail } from "./email";
 
 const MAX_REPLY_LENGTH = 4000;
 
-export async function applyFeedbackReply(id: string, rawReply: string, baseUrl: string) {
-  const reply = rawReply.trim().slice(0, MAX_REPLY_LENGTH);
-  if (!id || !reply) return null;
+export async function applyFeedbackReply(ownerEmail: string, rawReply: string, baseUrl: string) {
+  const body = rawReply.trim().slice(0, MAX_REPLY_LENGTH);
+  if (!ownerEmail || !body) return null;
 
   const db = getDb();
-  // readAt: null re-lights the customer's unread-reply badge on "Задать
-  // вопрос" - same effect a fresh reply should have regardless of which
-  // side (admin panel or Telegram) it came from.
-  const [updated] = await db.update(feedbackMessages).set({ reply, repliedAt: new Date().toISOString(), readAt: null }).where(eq(feedbackMessages.id, id)).returning();
-  if (!updated) return null;
+  const [inserted] = await db.insert(feedbackMessages).values({
+    id: randomUUID(),
+    ownerEmail,
+    sender: "admin",
+    body,
+  }).returning();
+  if (!inserted) return null;
 
   // Best-effort — the reply is already saved above regardless of whether
   // this notification goes out.
   if (emailDeliveryAvailable()) {
-    await sendFeedbackRepliedEmail(updated.ownerEmail, `${baseUrl}/workspace`).catch(() => {
+    await sendFeedbackRepliedEmail(ownerEmail, `${baseUrl}/workspace`).catch(() => {
       console.error("Feedback reply notification failed");
     });
   }
 
-  return updated;
+  return inserted;
 }

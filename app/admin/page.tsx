@@ -510,10 +510,23 @@ export default async function AdminPage() {
   // separate query rather than folded into the big Promise.all above since
   // it's not part of the per-user usage rollup, just its own small list.
   const feedbackRows = await db.select().from(feedbackMessages).orderBy(desc(feedbackMessages.createdAt)).limit(200);
-  // No separate "admin has seen this" column - a row with no reply yet is
-  // exactly the set that needs the owner's attention, so it doubles as the
-  // unread signal for the sidebar badge below without new state to track.
-  const feedbackUnreadCount = feedbackRows.filter((row) => !row.reply).length;
+  // Threads, not rows: a customer "needs a reply" until an admin (not the
+  // bot's own auto-ack) has spoken after their last message. feedbackRows
+  // is already newest-first, so the first non-bot row seen per ownerEmail
+  // while walking it is that thread's latest real word.
+  const latestNonBotSenderByOwner = new Map<string, string>();
+  for (const row of feedbackRows) {
+    if (row.sender === "bot" || latestNonBotSenderByOwner.has(row.ownerEmail)) continue;
+    latestNonBotSenderByOwner.set(row.ownerEmail, row.sender);
+  }
+  const feedbackUnreadCount = [...latestNonBotSenderByOwner.values()].filter((sender) => sender === "client").length;
+  // Every thread has at least one non-bot (client) row, so this map's size
+  // is the customer/thread count - what "Обращения (N)" meant before the
+  // per-message rewrite too, back when one row was one whole exchange.
+  // feedbackRows.length now counts individual messages instead (roughly
+  // 2-3x more, one row each for the client, the bot ack, and any replies),
+  // which would silently reflate this visible count if used here instead.
+  const feedbackThreadCount = latestNonBotSenderByOwner.size;
   // Admin-authored messages to clients (see app/api/admin/announcements/
   // route.ts) — the opposite direction of feedbackRows above.
   const announcementRows = await db.select().from(announcements).orderBy(desc(announcements.createdAt)).limit(200);
@@ -974,19 +987,19 @@ export default async function AdminPage() {
   sections.push({
     id: "feedback",
     label: "Обращения",
-    badge: String(feedbackRows.length),
+    badge: String(feedbackThreadCount),
     attention: feedbackUnreadCount > 0,
     content: (
       <section className="admin-block">
-        <h2>Обращения ({feedbackRows.length}){feedbackUnreadCount > 0 && <> · <span className="admin-badge-attention admin-badge-attention-inline">{feedbackUnreadCount} без ответа</span></>}</h2>
+        <h2>Обращения ({feedbackThreadCount}){feedbackUnreadCount > 0 && <> · <span className="admin-badge-attention admin-badge-attention-inline">{feedbackUnreadCount} без ответа</span></>}</h2>
         <p className="admin-note">«Задать вопрос» из рабочего пространства. Ответ виден отправителю прямо там же, в модальном окне.</p>
         <AdminFeedbackTable rows={feedbackRows.map((item) => ({
           id: item.id,
           ownerEmail: item.ownerEmail,
-          message: item.message,
-          reply: item.reply,
-          repliedAt: item.repliedAt,
-          createdAt: formatDate(item.createdAt),
+          sender: item.sender as "client" | "admin" | "bot",
+          body: item.body,
+          createdAt: item.createdAt,
+          readAt: item.readAt,
         }))} />
       </section>
     ),
@@ -1178,23 +1191,37 @@ function AdminStyles() {
       .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
       .admin-table th, .admin-table td { text-align: left; padding: 9px 10px; border-bottom: 1px solid rgba(148, 163, 184, 0.18); white-space: nowrap; }
       .admin-table th { color: #6b7280; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
-      /* The base ".admin-table td" rule's white-space: nowrap (above) is
-         what actually stopped this from wrapping — a plain .admin-feedback-
-         message override (specificity 0,1,0) silently lost to that rule
-         (0,1,1); table-layout: fixed with per-column pixel widths was a
-         first attempt at working around that, but it broke on mobile
-         (fixed columns wider than the 390px viewport squeezed the message
-         column down to a single narrow one-word-per-line strip instead of
-         a readable paragraph). min-width keeps this column from being
-         squeezed that way — on a narrow screen the table just ends up
-         wider than the viewport, same as the "Пользователи" table's own
-         many columns, and scrolls horizontally via .admin-table-scroll
-         exactly like that one already does, rather than reflowing. */
-      .admin-table-feedback .admin-feedback-message { min-width: 260px; white-space: normal; word-break: break-word; }
-      .admin-feedback-reply { min-width: 260px; vertical-align: top; }
+      /* Threaded like Telegram, not a flat table of disconnected Q&A rows
+         (site owner: "нет истории переписки... давай сделаем в режиме
+         диалога по типу телеграма") - a chat list on the left, one row per
+         customer, most recently active on top; the selected customer's
+         full message history as bubbles on the right, reply box pinned
+         under it. */
+      .admin-feedback-layout { display: grid; grid-template-columns: minmax(0, 240px) minmax(0, 1fr); gap: 16px; min-height: 0; }
+      .admin-feedback-thread-list { display: grid; align-content: start; gap: 6px; max-height: 65vh; overflow-y: auto; padding: 3px 4px 4px 0; }
+      .admin-feedback-thread-item { display: grid; gap: 4px; padding: 10px 11px; border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 12px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+      .admin-feedback-thread-item:hover { transform: none; background: rgba(148, 163, 184, 0.1); }
+      .admin-feedback-thread-item.active { border-color: #8b5cf6; background: rgba(139, 92, 246, 0.1); }
+      .admin-feedback-thread-item-email { overflow: hidden; font-weight: 700; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+      .admin-feedback-thread-item-preview { overflow: hidden; color: #6b7280; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+      .admin-feedback-thread-item-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+      .admin-feedback-thread-item-meta time { color: #9ca3af; font-size: 10px; }
+      .admin-feedback-thread { display: grid; align-content: start; gap: 10px; min-width: 0; }
+      .admin-feedback-thread-head { font-weight: 700; font-size: 13px; }
+      .admin-feedback-bubbles { display: grid; align-content: start; gap: 8px; max-height: 46vh; overflow-y: auto; padding: 3px 4px 4px 0; }
+      .admin-feedback-bubble { display: grid; gap: 3px; max-width: min(80%, 460px); padding: 9px 12px; border-radius: 14px; font-size: 13px; }
+      .admin-feedback-bubble-sender { font-size: 10px; font-weight: 700; opacity: 0.65; }
+      .admin-feedback-bubble p { margin: 0; line-height: 1.5; white-space: pre-wrap; }
+      .admin-feedback-bubble time { display: block; margin-top: 1px; color: inherit; opacity: 0.55; font-size: 10px; }
+      .admin-feedback-bubble.is-client { justify-self: start; border-bottom-left-radius: 4px; background: #f3f4f6; }
+      .admin-feedback-bubble.is-admin, .admin-feedback-bubble.is-bot { justify-self: end; border-bottom-right-radius: 4px; background: #ede9fe; }
+      .admin-feedback-reply { display: grid; gap: 6px; }
       .admin-feedback-reply textarea { width: 100%; min-height: 64px; border: 1px solid #d1d5db; border-radius: 9px; padding: 8px 10px; background: #fff; color: #1c1f26; font: inherit; font-size: 13px; resize: vertical; }
       .admin-feedback-reply-actions { display: flex; gap: 8px; margin-top: 6px; }
       .admin-feedback-reply-error { margin: 6px 0 0; color: #b91c1c; font-size: 12px; }
+      body[data-admin-theme="dark"] .admin-feedback-thread-item { border-color: rgba(139, 110, 255, 0.25); }
+      body[data-admin-theme="dark"] .admin-feedback-bubble.is-client { background: #1f2540; color: #e5e7eb; }
+      body[data-admin-theme="dark"] .admin-feedback-bubble.is-admin, body[data-admin-theme="dark"] .admin-feedback-bubble.is-bot { background: #322a5c; color: #ede9fe; }
       body[data-admin-theme="dark"] .admin-feedback-reply textarea { background: #171d3d; border-color: rgba(139, 110, 255, 0.3); color: #e5e7eb; }
       .admin-announcement-field { display: grid; gap: 6px; margin-bottom: 14px; color: #6b7280; font-size: 12px; font-weight: 700; }
       .admin-announcement-field textarea { width: 100%; min-height: 90px; border: 1px solid #d1d5db; border-radius: 9px; padding: 8px 10px; background: #fff; color: #1c1f26; font: inherit; font-size: 13px; resize: vertical; }

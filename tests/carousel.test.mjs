@@ -9,6 +9,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import * as orm from "drizzle-orm";
 import * as pg from "drizzle-orm/pg-core";
+import { getDatabaseSchemaName } from "../db/namespace.mjs";
 
 // Same VM-transpile-and-load approach as tests/helpers/dialogue-harness.mjs
 // and tests/generation-persistence.test.mjs - real workspace-account.ts and
@@ -34,7 +35,7 @@ function load(path, dependencies = {}, globals = {}) {
 
 async function createCarouselHarness() {
   const client = new PGlite();
-  const schema = load("db/schema.ts", { "drizzle-orm": orm, "drizzle-orm/pg-core": pg, "./namespace": load("db/namespace.ts") });
+  const schema = load("db/schema.ts", { "drizzle-orm": orm, "drizzle-orm/pg-core": pg, "./namespace.mjs": { getDatabaseSchemaName } });
   const dialect = new pg.PgDialect();
   const literal = value => typeof value === "string" ? `'${value.replaceAll("'", "''")}'` : String(value);
   for (const table of Object.values(schema)) {

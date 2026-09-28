@@ -6,29 +6,35 @@ import * as orm from "drizzle-orm";
 import * as pg from "drizzle-orm/pg-core";
 import { defineConfig } from "drizzle-kit";
 import { pushSchema } from "drizzle-kit/api";
-import { load } from "./helpers/dialogue-harness.mjs";
+import { load, getDatabaseSchemaName } from "./helpers/dialogue-harness.mjs";
 import * as connection from "../db/connection.mjs";
 
 const name = "klio_preview_chatkit";
 
 function configuration(env = {}) {
   const globals = { process: { env } };
-  const namespace = load("db/namespace.ts", {}, globals);
+  // A plain closure, not a sandboxed load() of namespace.mjs - it's real,
+  // loader-free JS now (see db/namespace.mjs's own comment for why), so it
+  // can be imported directly; this wrapper only exists to bind schema.ts's
+  // and drizzle.config.ts's own no-arg getDatabaseSchemaName() calls (each
+  // running in their own separate sandbox below) to this configuration()
+  // call's specific env, the way each used to get its own freshly
+  // sandboxed copy of namespace.ts pre-bound the same way.
+  const namespace = { getDatabaseSchemaName: () => getDatabaseSchemaName(env) };
   const schema = load("db/schema.ts", {
     "drizzle-orm": orm,
     "drizzle-orm/pg-core": pg,
-    "./namespace": namespace,
+    "./namespace.mjs": namespace,
   }, globals);
   const config = load("drizzle.config.ts", {
     "drizzle-kit": { defineConfig },
-    "./db/namespace": namespace,
+    "./db/namespace.mjs": namespace,
     "./db/connection.mjs": connection,
   }, globals).default;
   return { namespace, schema, config, globals };
 }
 
 test("preview schema rejects public, system schemas and SQL fragments", () => {
-  const { getDatabaseSchemaName } = load("db/namespace.ts");
   assert.equal(getDatabaseSchemaName({}), "public");
   assert.equal(getDatabaseSchemaName({ KLIO_PREVIEW_SCHEMA: name }), name);
   for (const value of ["public", "pg_catalog", "klio_preview_", "klio_preview_x, public", "klio_preview_x;DROP SCHEMA public", "klio_preview_" + "x".repeat(41)]) {
@@ -47,7 +53,7 @@ test("both PostgreSQL URL paths keep preview search_path free of public fallback
       "drizzle-orm/postgres-js": { drizzle: () => ({}) },
       postgres: { default: postgres },
       "./schema": setup.schema,
-      "./namespace": setup.namespace,
+      "./namespace.mjs": setup.namespace,
       "./connection.mjs": connection,
     }, { process: { env: { ...env, DATABASE_URL: connectionString } } });
     getDb();

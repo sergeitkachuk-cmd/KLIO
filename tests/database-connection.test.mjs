@@ -4,8 +4,8 @@ import net from "node:net";
 import postgres from "postgres";
 import { defineConfig } from "drizzle-kit";
 import { parseDatabaseConnection } from "../db/connection.mjs";
-import { checkDatabaseConnection, databaseErrorCode, prepareDatabase, preparationFailureCode, preparationSucceeded } from "../scripts/prepare-database.mjs";
-import { load } from "./helpers/dialogue-harness.mjs";
+import { checkDatabaseConnection, databaseErrorCode, migrateFeedbackThreads, prepareDatabase, preparationFailureCode, preparationSucceeded } from "../scripts/prepare-database.mjs";
+import { load, getDatabaseSchemaName } from "./helpers/dialogue-harness.mjs";
 
 test("raw and encoded managed-DB passwords work in the app and Drizzle configuration", async () => {
   const passwords = ["ordinary", "p#ss/<word^@?", "100%raw", "already%encoded", "p:a@b!$&=+"];
@@ -18,7 +18,7 @@ test("raw and encoded managed-DB passwords work in the app and Drizzle configura
       assert.equal(parsed.host, "localhost");
       const config = load("drizzle.config.ts", {
         "drizzle-kit": { defineConfig },
-        "./db/namespace": load("db/namespace.ts", {}, { process: { env } }),
+        "./db/namespace.mjs": { getDatabaseSchemaName: () => getDatabaseSchemaName(env) },
         "./db/connection.mjs": { parseDatabaseConnection },
       }, { process: { env } }).default;
       assert.equal(config.dbCredentials.password, password);
@@ -134,13 +134,41 @@ test("real PostgreSQL connection refusal is surfaced instead of Drizzle's silent
   assert.ok(!logs.join("\n").includes("secret-value"));
 });
 
-test("schema preparation starts only after the connection check and still needs Drizzle success", async () => {
+test("schema preparation starts only after the connection check, runs the feedback-thread migration last, and still needs Drizzle success", async () => {
   const events = [];
   assert.equal(await prepareDatabase({
     env: {},
     check: async () => { events.push("connection"); },
     run: () => { events.push("schema"); return { status: 0, stdout: "No changes detected" }; },
+    migrate: async () => { events.push("migrate"); },
     log: () => {},
   }), true);
-  assert.deepEqual(events, ["connection", "schema"]);
+  assert.deepEqual(events, ["connection", "schema", "migrate"]);
+});
+
+test("feedback-thread migration failure blocks startup the same way a Drizzle push failure does", async () => {
+  const logs = [];
+  assert.equal(await prepareDatabase({
+    env: {},
+    check: async () => {},
+    run: () => ({ status: 0, stdout: "No changes detected" }),
+    migrate: async () => { throw Object.assign(new Error("secret-value"), { code: "42P01" }); },
+    log: line => logs.push(line),
+  }), false);
+  assert.ok(logs.some(line => line.includes("Feedback thread migration failed: 42P01")));
+  assert.ok(!logs.join("\n").includes("secret-value"));
+});
+
+test("feedback-thread migration targets the preview schema, not public, when KLIO_PREVIEW_SCHEMA is set", async () => {
+  for (const [env, expected] of [[{}, "public"], [{ KLIO_PREVIEW_SCHEMA: "klio_preview_chatkit" }, "klio_preview_chatkit"]]) {
+    let options;
+    await migrateFeedbackThreads({
+      env,
+      connect: (opts) => {
+        options = opts;
+        return { begin: async () => {}, end: async () => {} };
+      },
+    });
+    assert.equal(options.connection.search_path, expected);
+  }
 });

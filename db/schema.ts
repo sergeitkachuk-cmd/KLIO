@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { boolean, index, integer, pgSchema, pgTable as publicTable, real, text, type PgTableFn } from "drizzle-orm/pg-core";
-import { getDatabaseSchemaName } from "./namespace";
+import { getDatabaseSchemaName } from "./namespace.mjs";
 
 const databaseSchemaName = getDatabaseSchemaName();
 // Export the namespace as well as its tables so Drizzle creates it on first push.
@@ -164,24 +164,46 @@ export const invoices = pgTable("invoices", {
 
 // "Задать вопрос" in the workspace account menu — the site owner replies
 // from /admin ("Обращения"), and the reply shows up back in the same
-// workspace modal (not by email — see reply/repliedAt below). Kept as one
-// message + one reply per row rather than a real threaded conversation:
-// asking again just creates another row.
+// workspace modal (not by email — see reply/repliedAt below).
+// One row per *message*, not per Q&A pair - a whole thread with one
+// customer is every row sharing its ownerEmail, ordered by createdAt, each
+// tagged with who sent it. Replaced the old "one row holds both the
+// client's message and the admin's reply" shape (site owner: opening a
+// second message from the same person used to create a second, unrelated
+// row with no visible connection to the first - "не видно истории
+// переписки, если будет много сообщений от разных клиентов"; screenshotted
+// the admin table showing exactly that, four disconnected rows for one
+// email). message/reply/repliedAt below are the old columns, kept
+// (nullable, never written by new code) rather than dropped - scripts/
+// prepare-database.mjs's migrateFeedbackThreads() converts every
+// pre-existing row into this shape once, idempotently, at container
+// startup; keeping the old columns around costs nothing and is a safety
+// net if that migration ever needs re-inspecting.
 export const feedbackMessages = pgTable("feedback_messages", {
   id: text("id").primaryKey(),
   ownerEmail: text("owner_email").notNull(),
-  message: text("message").notNull(),
+  // "client" | "admin" | "bot" (bot: the canned "передали оператору"
+  // auto-reply — see api/feedback/route.ts's POST).
+  sender: text("sender").notNull().default("client"),
+  body: text("body").notNull().default(""),
+  // Legacy shape, pre-threading - see the table comment above.
+  message: text("message"),
   reply: text("reply"),
   repliedAt: text("replied_at"),
-  // Set once the owner has actually seen a reply (workspace modal open,
-  // not just the reply existing) — drives the unread badge on "Задать
-  // вопрос" in the account menu without a separate notifications table.
+  // Set once the *other* side has actually seen this specific message
+  // (workspace/admin modal open, not just the message existing) - drives
+  // the unread badges without a separate notifications table. Meaning
+  // depends on sender: a sender:"client" row's readAt is when the admin
+  // saw it (drives /admin's own indicator, not built yet); a sender:
+  // "admin"/"bot" row's readAt is when the customer saw it (drives the
+  // "Обращения" badge in the account menu).
   readAt: text("read_at"),
   // The Telegram message_id of the admin-notify ping sent for this row
   // (see api/_lib/admin-notify.ts) — lets api/telegram/admin-webhook match
   // the owner's in-Telegram *reply* (Telegram's own reply_to_message.
-  // message_id) back to the right row, so replying to the notification
-  // from a phone works the same as typing a reply in /admin. Null for a
+  // message_id) back to the right thread, so replying to the notification
+  // from a phone works the same as typing a reply in /admin. Only ever set
+  // on sender:"client" rows (only those get a Telegram ping). Null for a
   // row created before this existed, or when the Telegram ping itself
   // failed/was skipped.
   telegramMessageId: text("telegram_message_id"),
