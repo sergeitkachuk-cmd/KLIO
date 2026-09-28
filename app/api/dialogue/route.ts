@@ -41,7 +41,7 @@ import { resolveBaseUrl } from "../_lib/base-url";
 import { createImage, createImageFromLogo, createImageFromSource, imageConfigured, type ImageAspectRatio, type ImageOutputFormat } from "../_lib/image-generation";
 import { downloadBrandLogo, downloadPublicationImage } from "../_lib/storage";
 import { DialogueImageSourceError, resolveDialogueImageSource, type ResolvedDialogueImageSource } from "../_lib/dialogue-image-source";
-import { requestedLogoChange } from "../../dialogue-starters";
+import { inferDialogueTool, requestedLogoChange } from "../../dialogue-starters";
 import { IMAGE_STYLE_OPTIONS, TEXT_LENGTH_TARGETS } from "../../dialogue-generation-settings";
 import { DEFAULT_CAROUSEL_TEMPLATE, isCarouselSlideIndicatorMode, isCarouselTemplateId, type CarouselSlideIndicatorMode, type CarouselTemplateId } from "../../carousel-templates";
 import { buildDialogueImagePrompt, dialogueImageTextInstruction } from "../_lib/dialogue-image-prompt";
@@ -922,6 +922,19 @@ export async function POST(request: Request) {
         } else if (intent?.reply) {
           mode = "chat";
           agentReply = intent.reply;
+        } else if (!intent) {
+          // The agent returned null - unsupported model, no provider
+          // configured, or the call itself failed (all three are silent by
+          // design, see runDialogueAgent's own comments) - a plain-text
+          // "нарисуй картинку" would otherwise fall through to ordinary
+          // chat with no generation at all and no visible error (site
+          // owner: "я просто попросил его сгенерировать картинку, а он не
+          // понял"). inferDialogueTool is the same explicit-command-only
+          // matcher the client already uses to pre-select a mode locally
+          // (dialogue-starters.ts) - reused here as a narrow safety net,
+          // not a replacement for the agent's own broader understanding.
+          const fallbackTool = inferDialogueTool(text);
+          if (fallbackTool) mode = fallbackTool;
         }
       }
     }
