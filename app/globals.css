@@ -2976,6 +2976,22 @@ select:focus-visible {
   cursor: pointer;
 }
 
+/* The trigger's own label (.module-select-trigger b, above) already
+   truncates with an ellipsis instead of wrapping when it's too narrow to
+   fit - but the option list's label never got the same treatment, so a
+   narrow trigger (e.g. the compact chat attachment's 220px-capped
+   variant) would show a clean one-line ellipsis when closed and then
+   wrap the very same text onto two lines the moment it opened (site
+   owner screenshot: "Доработать исходник" as "Доработать" / "исходник").
+   min-width: 0 lets the span actually shrink inside the button's flex
+   row instead of forcing the row wider than its trigger. */
+.module-select-list > button > span {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .module-select-list > button:hover,
 .module-select-list > button.active {
   border-color: rgba(167, 178, 194, 0.24);
@@ -2988,6 +3004,7 @@ select:focus-visible {
 }
 
 .module-select-list > button > em {
+  flex: 0 0 auto;
   color: var(--acid);
   font-size: 13px;
   font-style: normal;

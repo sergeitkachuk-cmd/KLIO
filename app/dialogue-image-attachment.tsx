@@ -43,7 +43,7 @@ export function DialogueImageAttachment({ source, url, busy, onChange, onBusy, l
       {lockedPurpose ? <small className="klio-aui-attachment-purpose-note">Референс</small> : <div className="klio-aui-attachment-purpose">
         <ModuleSelect variant="chatkit" label="Как использовать изображение" value={source.purpose} disabled={busy} options={[
           { value: "edit", label: "Доработать исходник" },
-          { value: "reference", label: "Взять за референс" },
+          { value: "reference", label: "Взять за основу" },
         ]} onChange={(purpose) => onChange({ ...source, purpose: purpose as DialogueImageSource["purpose"] })} />
       </div>}
       <button type="button" aria-label="Убрать исходное изображение" disabled={busy} onClick={() => onChange(null)}><X size={16} /></button>
