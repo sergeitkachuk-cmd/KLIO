@@ -122,7 +122,7 @@ export function resolveImageGenerationOptions(options: ImageGenerationOptions = 
   // как будто низкое"). Defaulting to "high" and always sending it
   // (below) removes that ambiguity instead of hoping "auto" picks well.
   const quality = options.quality && ["low", "medium", "high", "xhigh", "max"].includes(options.quality) ? options.quality : "high";
-  const outputFormat = options.outputFormat && ["png", "jpeg", "webp"].includes(options.outputFormat) ? options.outputFormat : "png";
+  const outputFormat = options.outputFormat && ["png", "jpeg", "webp"].includes(options.outputFormat) ? options.outputFormat : "jpeg";
   const background = options.background && ["auto", "transparent", "opaque"].includes(options.background) ? options.background : "auto";
 
   return {
@@ -653,7 +653,7 @@ async function overlayOriginalLogo(
   options: ImageGenerationOptions,
 ): Promise<{ bytes: Uint8Array<ArrayBuffer>; contentType: string }> {
   const sharp = (await import("sharp")).default;
-  const outputFormat = options.outputFormat || "png";
+  const outputFormat = options.outputFormat || "jpeg";
   const base = sharp(imageBytes).rotate();
   const metadata = await base.metadata();
   if (!metadata.width || !metadata.height) throw new ImageInputError("Не удалось добавить исходный логотип к изображению.");

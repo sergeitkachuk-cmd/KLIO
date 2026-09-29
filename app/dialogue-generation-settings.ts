@@ -102,7 +102,7 @@ export type GenerationSettings = {
 
 export const DEFAULT_GENERATION_SETTINGS: GenerationSettings = {
   format: "", tone: "", length: "", topicCount: "5",
-  imageAspectRatio: "4:3", imageOutputFormat: "png", imageStyle: "", useLogo: false,
+  imageAspectRatio: "4:3", imageOutputFormat: "jpeg", imageStyle: "", useLogo: false,
   imageKind: "single", carouselSlideCount: "5",
   carouselTemplate: DEFAULT_CAROUSEL_TEMPLATE,
   carouselIndicatorMode: "numbers",
@@ -118,7 +118,7 @@ export function settingsForTool(tool: string, settings: Partial<GenerationSettin
   if (tool === "topic-article") return { format: "seo", tone: settings.tone, length: "long", authorPosition: settings.authorPosition || "brand" };
   if (tool === "carousel" || tool === "image" || tool.startsWith("image-card:")) return {
     imageAspectRatio: settings.imageAspectRatio || "4:3",
-    imageOutputFormat: settings.imageOutputFormat || "png",
+    imageOutputFormat: settings.imageOutputFormat || "jpeg",
     imageStyle: settings.imageStyle || "",
     useLogo: hasLogo && settings.useLogo === true,
     ...(tool !== "carousel" ? {
