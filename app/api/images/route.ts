@@ -25,7 +25,7 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
     if (hasUnsafeRequestOrigin(request)) return Response.json({ error: "Недопустимый источник запроса." }, { status: 403 });
     const user = await workspaceIdentity();
     const input = await readBoundedJson(request, 5 * 1024 * 1024);
-    const prompt = typeof input.prompt === "string" ? input.prompt.trim().slice(0, 1800) : "";
+    let prompt = typeof input.prompt === "string" ? input.prompt.trim().slice(0, 1800) : "";
     const localOperation = typeof input.localOperation === "string" && (["auto-correction", "denoise", "sharpen", "portrait-enhance"] as const).includes(input.localOperation as LocalImageEditOperation)
       ? input.localOperation as LocalImageEditOperation
       : undefined;
@@ -46,6 +46,9 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
     const imageStyle = typeof input.imageStyle === "string"
       ? IMAGE_STYLE_OPTIONS.find(option => option.value === input.imageStyle)?.instruction || ""
       : "";
+    if (!prompt && sourceImagePurpose === "reference" && (sourceImageGenerationId || sourceImageUrl)) {
+      prompt = "Создай новое изображение на основе выбранного визуального референса. Сохрани его главный объект и композиционный смысл, применив выбранный стиль изображения.";
+    }
     const useLogo = input.useLogo === true;
     let editMask: { bytes: Uint8Array<ArrayBuffer>; contentType: string } | undefined;
     if (typeof input.imageEditMask === "string" && input.imageEditMask) {
@@ -135,7 +138,10 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
     if (additionalImages.length && !sourceImage) throw new WorkspaceAccessError("Сначала выберите основное изображение, затем добавьте референс.", 400);
     if (localOperation && (!sourceImage || sourceImagePurpose !== "edit")) throw new ImageInputError("Technical enhancement requires a selected source image.");
     if (useLogo && !logoKey) throw new WorkspaceAccessError("Добавьте логотип в профиль бренда или отключите его использование.", 400);
-    const finalPrompt = `${prompt}${brandContext}${imageStyle ? `\n\nСтиль изображения: ${imageStyle}` : ""}\n\n${dialogueImageTextInstruction(imageTextMode, imageTextMode === "title" ? sourceTitle : imageText, Boolean(sourceImage) && sourceImagePurpose === "edit", useLogo)}`;
+    const visualReferenceStyleInstruction = sourceImage && sourceImagePurpose === "reference" && imageStyle
+      ? "\n\nКЛЮЧЕВОЕ ТРЕБОВАНИЕ К СТИЛЮ: исходное изображение является референсом самого объекта и его содержания. Сохрани именно этот объект, его силуэт, пропорции, ракурс и ключевые детали — не заменяй его другим предметом и не меняй его назначение. Одновременно не оставляй исходную фотореалистичную подачу и не просто помещай объект в новую сцену: измени только визуальную подачу под выбранный стиль — материалы, освещение, цвет, контуры, фактуру, объём и степень детализации. Результат должен явно выглядеть как выбранная стилизация, при этом объект оставаться узнаваемым и тем же самым."
+      : "";
+    const finalPrompt = `${prompt}${brandContext}${imageStyle ? `\n\nСтиль изображения: ${imageStyle}` : ""}${visualReferenceStyleInstruction}\n\n${dialogueImageTextInstruction(imageTextMode, imageTextMode === "title" ? sourceTitle : imageText, Boolean(sourceImage) && sourceImagePurpose === "edit", useLogo)}`;
     const imageStartedAt = Date.now();
     let imageUsage: ImageProviderUsage | undefined;
     let imageUrl: string;
