@@ -397,6 +397,7 @@ export async function createImage(prompt: string, email: string, baseUrl: string
     new File([bytes], fileName, { type: contentType }),
     email,
     baseUrl,
+    { optimizeOversized: true },
   );
 }
 
@@ -427,6 +428,7 @@ export async function createImageFromLogo(
     new File([bytes], fileName, { type: contentType }),
     email,
     baseUrl,
+    { optimizeOversized: true },
   );
 }
 
@@ -630,11 +632,11 @@ export async function createImageFromSource(
       .composite([{ input: generatedLayer, left: 0, top: 0, blend: "over" }])
       .png()
       .toBuffer();
-    return uploadPublicationImage(new File([lockedResult], "klio-edit.png", { type: "image/png" }), email, baseUrl);
+    return uploadPublicationImage(new File([lockedResult], "klio-edit.png", { type: "image/png" }), email, baseUrl, { optimizeOversized: true });
   }
 
   const result = exactOverlay && logo ? await overlayOriginalLogo(bytes, logo, options) : { bytes, contentType };
-  return uploadPublicationImage(new File([result.bytes], `klio-edit.${fileExtension(result.contentType)}`, { type: result.contentType }), email, baseUrl);
+  return uploadPublicationImage(new File([result.bytes], `klio-edit.${fileExtension(result.contentType)}`, { type: result.contentType }), email, baseUrl, { optimizeOversized: true });
 }
 
 function logoPositionLabel(position: LogoPosition = "bottom-right") {
@@ -698,7 +700,7 @@ export async function createLocalImageEdit(
   // PNG/WebP keep an existing transparent background. JPEG would flatten it,
   // so local edits always use PNG as the lossless archival format.
   const bytes = await pipeline.png().toBuffer();
-  return uploadPublicationImage(new File([bytes], "klio-local-edit.png", { type: "image/png" }), email, baseUrl);
+  return uploadPublicationImage(new File([bytes], "klio-local-edit.png", { type: "image/png" }), email, baseUrl, { optimizeOversized: true });
 }
 
 // Each carousel card is generated as a complete raster image by the image
@@ -733,6 +735,7 @@ export async function createCarouselSlideImage(
     new File([bytes], fileName, { type: contentType }),
     email,
     baseUrl,
+    { optimizeOversized: true },
   );
   return { url, bytes, contentType };
 }

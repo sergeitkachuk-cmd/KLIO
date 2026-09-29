@@ -2659,6 +2659,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [imageStreamPreview, setImageStreamPreview] = useState("");
   const [imageReferenceBusy, setImageReferenceBusy] = useState(false);
   const [imageReferenceError, setImageReferenceError] = useState("");
+  const imageErrorRef = useRef<HTMLParagraphElement | null>(null);
+  const imageReferenceErrorRef = useRef<HTMLElement | null>(null);
   const [imageAdditionalReferences, setImageAdditionalReferences] = useState<Array<{ url: string; title: string; purpose: "object" | "style" }>>([]);
   const imageReferenceInputRef = useRef<HTMLInputElement | null>(null);
   const imageAdditionalReferenceInputRef = useRef<HTMLInputElement | null>(null);
@@ -5971,6 +5973,16 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     }
   }
 
+  useEffect(() => {
+    const target = imageError ? imageErrorRef.current : imageReferenceError ? imageReferenceErrorRef.current : null;
+    if (!target) return;
+    const frame = window.requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (target instanceof HTMLElement) target.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [imageError, imageReferenceError]);
+
   const canGenerateFromVisualReference = imageGeneratorMode !== "carousel"
     && imageReferencePurpose === "reference"
     && Boolean(imageReferenceUrl || imageReferenceSourceId || imageEditSourceId);
@@ -7585,7 +7597,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   {imageAdditionalReferences.length > 0 && <div className="image-generator-additional-reference-list">
                     {imageAdditionalReferences.map(reference => <div className="image-generator-additional-reference" key={reference.url}><Image src={reference.url} alt={reference.title || "Дополнительный референс"} width={96} height={72} unoptimized/><span>{reference.title || "Дополнительный референс"}</span><ModuleSelect label="Назначение" value={reference.purpose} onChange={value => setImageAdditionalReferences(current => current.map(item => item.url === reference.url ? { ...item, purpose: value as "object" | "style" } : item))} options={[{ value: "style", label: "Стиль обработки" }, { value: "object", label: "Объект для добавления" }]}/><button type="button" className="button ghost" onClick={() => setImageAdditionalReferences(current => current.filter(item => item.url !== reference.url))}>Убрать</button></div>)}
                   </div>}
-                  {imageReferenceError && <small className="generation-error" role="alert">{imageReferenceError}</small>}
+                  {imageReferenceError && <small ref={imageReferenceErrorRef} className="generation-error" role="alert" tabIndex={-1}>{imageReferenceError}</small>}
                 </div>
                 <div className="image-generator-settings">
                   <div className="image-generator-style-field">
@@ -7632,7 +7644,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   {useBrand && brand.logoKey && useLogoInImage && <small>{logoPlacement === "corner" ? "Логотип будет отдельным небольшим знаком в выбранном углу." : logoPlacement === "both" ? "Один логотип станет частью сцены, второй будет отдельным знаком в выбранном углу." : "Логотип станет частью сцены."} Модель может немного изменить мелкие детали знака.</small>}
                   </fieldset>
                 </details>
-                {imageError && <p className="generation-error" role="alert">{imageError}</p>}
+                {imageError && <p ref={imageErrorRef} className="generation-error" role="alert" tabIndex={-1}>{imageError}</p>}
                 <button className={`button primary large generation-action ${imageBusy ? "is-busy" : ""}`} style={{ display: imageGeneratorMode === "carousel" ? "none" : undefined }} type="button" onClick={() => void generateProfessionalImage()} disabled={imageBusy || carouselBusy || !workspaceReady || (!canGenerateFromVisualReference && imagePrompt.trim().length < 8) || workspaceAccount.generationsRemaining <= 0}><Icon name="image"/>{imageBusy ? "Создаём изображение…" : workspaceAccount.generationsRemaining <= 0 ? "Лимит генераций исчерпан" : imageGeneratorMode === "edit" ? "Применить изменения" : "Создать изображение"}</button>
                 <div className="image-generator-carousel" style={{ display: imageGeneratorMode === "carousel" ? undefined : "none" }}>
                   <div><span>Карусель</span><h3>Несколько слайдов из этого текста<span className="klio-mark-dot">.</span></h3><p>КЛИО выделит главные мысли и создаст для каждого слайда отдельную сцену с коротким текстом внутри изображения. Весь введённый текст учитывается; один слайд — одна генерация.</p></div>

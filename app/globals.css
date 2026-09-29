@@ -3118,6 +3118,7 @@ select:focus-visible {
 }
 
 .generation-error {
+  scroll-margin: 24px;
   margin: -4px 0 15px;
   padding: 11px 12px;
   border: 1px solid rgba(255, 132, 146, 0.28);
@@ -3127,6 +3128,7 @@ select:focus-visible {
   font-size: 13px;
   line-height: 1.45;
 }
+.generation-error:focus { outline: 2px solid rgba(255, 174, 184, 0.65); outline-offset: 3px; }
 
 .generation-progress {
   width: 100%;

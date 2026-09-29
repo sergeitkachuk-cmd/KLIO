@@ -117,23 +117,65 @@ const ALLOWED_CONTENT_TYPES: Record<string, string> = {
 // about one upload staying reasonable, not about the bucket running out).
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 
+type PublicationImageUploadOptions = {
+  // Provider generated PNGs can be larger than the upload cap even when the
+  // user's source image was small. Optimize those results before saving;
+  // direct browser uploads remain subject to the explicit 8 MB limit.
+  optimizeOversized?: boolean;
+};
+
+async function optimizeOversizedImage(bytes: Uint8Array<ArrayBuffer>) {
+  const sharp = (await import("sharp")).default;
+  const input = Buffer.from(bytes);
+  const metadata = await sharp(input).metadata();
+  if (!metadata.width || !metadata.height) return null;
+  let scale = 1;
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const width = Math.max(1, Math.floor(metadata.width * scale));
+    const height = Math.max(1, Math.floor(metadata.height * scale));
+    const pipeline = sharp(input).rotate().resize(width, height, { fit: "inside", withoutEnlargement: true, kernel: "lanczos3" });
+    // Keep transparency when the generated PNG has it. Opaque results use
+    // JPEG to avoid rejecting an otherwise valid generated image solely
+    // because PNG compression is inefficient for that scene.
+    const hasAlpha = metadata.hasAlpha === true;
+    const optimized = hasAlpha
+      ? await pipeline.webp({ quality: 92, alphaQuality: 100, effort: 4 }).toBuffer()
+      : await pipeline.jpeg({ quality: 92, mozjpeg: true }).toBuffer();
+    if (optimized.byteLength <= MAX_UPLOAD_BYTES) {
+      return {
+        bytes: Uint8Array.from(optimized),
+        contentType: hasAlpha ? "image/webp" : "image/jpeg",
+      };
+    }
+    scale *= Math.min(0.82, Math.sqrt(MAX_UPLOAD_BYTES / optimized.byteLength) * 0.92);
+  }
+  return null;
+}
+
 // baseUrl (api/uploads/route.ts passes resolveBaseUrl(request)) becomes
 // the returned URL's own domain — see the file-level comment on why this
 // is api/uploads/[...key] on our own domain rather than a raw S3 URL.
-export async function uploadPublicationImage(file: File, ownerEmail: string, baseUrl: string): Promise<string> {
+export async function uploadPublicationImage(file: File, ownerEmail: string, baseUrl: string, options: PublicationImageUploadOptions = {}): Promise<string> {
   if (!storageConfigured()) {
     throw new StorageError("Загрузка картинок пока не настроена на сервере.", 503);
   }
-  const extension = ALLOWED_CONTENT_TYPES[file.type];
+  let contentType = file.type;
+  let extension = ALLOWED_CONTENT_TYPES[contentType];
   if (!extension) {
     throw new StorageError("Поддерживаются только картинки JPEG, PNG, WEBP или GIF.", 400);
   }
-  if (file.size > MAX_UPLOAD_BYTES) {
-    throw new StorageError(`Картинка больше ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} МБ — уменьшите файл и попробуйте снова.`, 400);
+  let bytes = new Uint8Array(await file.arrayBuffer());
+  if (bytes.byteLength > MAX_UPLOAD_BYTES) {
+    if (!options.optimizeOversized) {
+      throw new StorageError(`Картинка больше ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)} МБ — уменьшите файл и попробуйте снова.`, 400);
+    }
+    const optimized = await optimizeOversizedImage(bytes);
+    if (!optimized) throw new StorageError("Сгенерированное изображение не удалось уменьшить до допустимого размера.", 502);
+    bytes = optimized.bytes;
+    contentType = optimized.contentType;
+    extension = ALLOWED_CONTENT_TYPES[contentType];
   }
-
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  if (imageContentType(bytes) !== file.type) throw new StorageError("Содержимое файла не соответствует формату картинки.", 400);
+  if (!extension || imageContentType(bytes) !== contentType) throw new StorageError("Содержимое файла не соответствует формату картинки.", 400);
   // Namespaced by owner so two accounts can never collide or overwrite
   // each other's file, without needing a database lookup to check.
   const ownerKey = createHash("sha256").update(ownerEmail.trim().toLowerCase()).digest("hex");
@@ -144,7 +186,7 @@ export async function uploadPublicationImage(file: File, ownerEmail: string, bas
       Bucket: requiredEnv("S3_BUCKET"),
       Key: key,
       Body: bytes,
-      ContentType: file.type,
+      ContentType: contentType,
     }), { abortSignal: AbortSignal.timeout(40_000) });
   } catch (error) {
     if (error instanceof StorageError) throw error;
