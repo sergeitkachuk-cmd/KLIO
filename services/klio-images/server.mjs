@@ -26,7 +26,7 @@ function resolveSize(value) {
   if (pixels < 655_360 || pixels > 8_294_400) return "1024x1024";
   return value;
 }
-const ALLOWED_QUALITY = new Set(["low", "medium", "high", "auto"]);
+const ALLOWED_QUALITY = new Set(["low", "medium", "high", "xhigh", "max", "auto"]);
 const ALLOWED_FORMAT = new Set(["png", "jpeg", "webp"]);
 const ALLOWED_BACKGROUND = new Set(["auto", "transparent", "opaque"]);
 const ALLOWED_TEXT_MODELS = new Set(["gpt-5.4-nano", "gpt-5.6-luna", "gpt-6-luna"]);
@@ -220,10 +220,32 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", pro
               })
             : await providerFetch("https://api.openai.com/v1/images/generations", {
                 method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-                body: JSON.stringify({ model, prompt: body.prompt, n: 1, size: resolvedSize, quality, output_format: outputFormat, ...(background ? { background } : {}) }),
+                body: JSON.stringify({ model: requestedModel, prompt: body.prompt, n: 1, size: resolvedSize, quality, output_format: outputFormat, ...(background ? { background } : {}) }),
                 signal: AbortSignal.timeout(150_000),
               });
-          if (!upstream.ok) return { status: upstream.status === 400 ? 400 : 502, body: { error: "Image provider did not complete the request" } };
+          if (!upstream.ok) {
+            let providerError;
+            try {
+              const payload = await upstream.clone().json();
+              const error = payload?.error;
+              providerError = {
+                code: typeof error?.code === "string" ? error.code.slice(0, 100) : undefined,
+                type: typeof error?.type === "string" ? error.type.slice(0, 100) : undefined,
+                message: typeof error?.message === "string" ? error.message.slice(0, 400) : undefined,
+              };
+            } catch { providerError = undefined; }
+            console.error("Image provider rejected request", { requestId: id, status: upstream.status, model: requestedModel, quality, ...providerError });
+            return {
+              status: upstream.status === 400 ? 400 : 502,
+              body: {
+                error: {
+                  ...(providerError?.code ? { code: providerError.code } : {}),
+                  ...(providerError?.type ? { type: providerError.type } : {}),
+                  message: providerError?.message || "Image provider did not complete the request",
+                },
+              },
+            };
+          }
           const reader = upstream.body.getReader(); const chunks = []; let size = 0;
           try {
             while (true) { const part = await reader.read(); if (part.done) break; size += part.value.length; if (size > 12_000_000) { await reader.cancel(); throw new Error("Image response too large"); } chunks.push(part.value); }
@@ -231,7 +253,10 @@ export function imageService({ token, apiKey, model = "gpt-image-2.5-flare", pro
           const data = JSON.parse(Buffer.concat(chunks).toString("utf8"));
           if (typeof data.data?.[0]?.b64_json !== "string") throw new Error("Missing image");
           return { status: 200, body: { data: [{ b64_json: data.data[0].b64_json }], usage: data.usage } };
-        } catch { return { status: 502, body: { error: "Image request failed" } }; }
+        } catch (error) {
+          console.error("Image relay request failed", { requestId: id, error: error instanceof Error ? error.message.slice(0, 400) : "unknown" });
+          return { status: 502, body: { error: "Image request failed" } };
+        }
         finally { running--; job.done = true; }
       })();
       jobs.set(id, job);

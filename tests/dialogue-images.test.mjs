@@ -120,6 +120,26 @@ test("image service forwards the caller's size, quality and format instead of ha
   assert.deepEqual(requests[3], { model: "gpt-image-2.5-flare", prompt: "Кофейня", n: 1, size: "1024x1024", quality: "medium", output_format: "png" });
 });
 
+test("image generation forwards the selected model and max quality", async t => {
+  let forwarded;
+  const token = "test-only-token-with-at-least-32-characters";
+  const server = imageService({ token, apiKey: "fixture-provider-key", providerFetch: async (_url, options) => {
+    forwarded = JSON.parse(options.body);
+    return Response.json({ data: [{ b64_json: "fixture-image" }] });
+  } });
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const url = `http://127.0.0.1:${server.address().port}/generate`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Idempotency-Key": "test-image-model-quality-0001" },
+    body: JSON.stringify({ model: "gpt-image-2.5-sunburst", prompt: "A clinic", quality: "max" }),
+  });
+  assert.equal(response.status, 200);
+  assert.equal(forwarded.model, "gpt-image-2.5-sunburst");
+  assert.equal(forwarded.quality, "max");
+});
+
 test("image service routes a reference image through the edit endpoint with no mask", async t => {
   const calls = [];
   const token = "test-only-token-with-at-least-32-characters";
