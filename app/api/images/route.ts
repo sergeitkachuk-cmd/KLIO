@@ -20,6 +20,7 @@ export const maxDuration = 360;
 
 async function handleImageRequest(request: Request, onPartial?: (image: string) => void) {
   let failureId: string = randomUUID();
+  const requestStartedAt = Date.now();
   try {
     if (hasUnsafeRequestOrigin(request)) return Response.json({ error: "Недопустимый источник запроса." }, { status: 403 });
     const user = await workspaceIdentity();
@@ -56,9 +57,11 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
     const [existing] = await db.select().from(generations).where(and(eq(generations.id, requestId), eq(generations.ownerEmail, user.email))).limit(1);
     if (existing) return Response.json({ generation: existing });
     if (sourceImageGenerationId && sourceImageUrl) return Response.json({ error: "Выберите сохранённое изображение или загрузите файл, но не оба источника сразу." }, { status: 400 });
+    let inheritedBrandId = "";
     if (typeof input.sourceGenerationId === "string" && input.sourceGenerationId) {
-      const [source] = await db.select({ title: generations.title }).from(generations).where(and(eq(generations.id, input.sourceGenerationId), eq(generations.ownerEmail, user.email))).limit(1);
+      const [source] = await db.select({ title: generations.title, brandId: generations.brandId }).from(generations).where(and(eq(generations.id, input.sourceGenerationId), eq(generations.ownerEmail, user.email))).limit(1);
       if (!source) throw new WorkspaceAccessError("Исходный материал не найден.", 404);
+      inheritedBrandId = source.brandId || "";
       // The review can contain a manually edited title not yet saved to Materials.
       // Verify ownership, but keep the exact title the person saw and confirmed.
       sourceTitle = sourceTitle || source.title.slice(0, 500);
@@ -90,12 +93,13 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
     let sourceImage: { bytes: Uint8Array<ArrayBuffer>; contentType: string } | undefined;
     let resolvedSourceImageUrl = sourceImageUrl;
     if (sourceImageGenerationId) {
-      const [source] = await db.select({ imageUrl: generations.imageUrl })
+      const [source] = await db.select({ imageUrl: generations.imageUrl, brandId: generations.brandId })
         .from(generations)
         .where(and(eq(generations.id, sourceImageGenerationId), eq(generations.ownerEmail, user.email)))
         .limit(1);
       if (!source?.imageUrl) throw new WorkspaceAccessError("Сохранённое исходное изображение не найдено.", 404);
       resolvedSourceImageUrl = source.imageUrl;
+      inheritedBrandId = inheritedBrandId || source.brandId || "";
     }
     if (resolvedSourceImageUrl) {
       let parsed: URL;
@@ -134,9 +138,10 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
     // duplicate of the source article (site owner screenshot: garbled
     // title, body cut off mid-word). sourceTitle carries the real title
     // separately so this material can be labeled sensibly instead.
+    const archiveStartedAt = Date.now();
     const usage = await recordGeneration({
       id: requestId,
-      brandId: brandId || undefined,
+      brandId: brandId || inheritedBrandId || undefined,
       format: "external",
       topic: "Изображение",
       title: (sourceTitle ? `Обложка: ${sourceTitle}` : prompt).slice(0, 100),
@@ -151,6 +156,12 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
       imageUrl,
     });
     if (!usage) throw new Error("Не удалось сохранить изображение.");
+    console.info("Image generation timings", {
+      requestId,
+      providerAndUploadMs: archiveStartedAt - imageStartedAt,
+      materialSaveMs: Date.now() - archiveStartedAt,
+      totalMs: Date.now() - requestStartedAt,
+    });
     return Response.json({ generation: usage.archive, account: usage.account });
   } catch (error) {
     if (error instanceof RequestBodyError) return Response.json({ error: error.message }, { status: error.status });

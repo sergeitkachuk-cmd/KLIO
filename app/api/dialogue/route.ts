@@ -690,8 +690,11 @@ async function runReply(
       );
     await db.transaction(async tx => {
       const [active] = await tx.select().from(dialogueThreads).where(and(owned(row.id, row.ownerEmail), eq(dialogueThreads.status, "processing"), eq(dialogueThreads.requestId, row.requestId))).for("update").limit(1);
+      // The image is already generated and the assistant tells the user it
+      // was saved. Preserve it even if the dialogue request lost its
+      // processing lease before this final transaction.
+      if (pendingMaterial) await tx.insert(generations).values(pendingMaterial).onConflictDoNothing();
       if (!active) return;
-      if (pendingMaterial) await tx.insert(generations).values(pendingMaterial);
       if (saveRequested && selected) {
         await saveCard(tx, row.ownerEmail, active.brandId, selected);
         data.messages.at(-1)!.text = "Материал сохранён. Он доступен в разделе «Материалы».";

@@ -78,7 +78,7 @@ export function resolveImageGenerationOptions(options: ImageGenerationOptions = 
   // defaults to "auto" specifically, not "high" (site owner: "качество
   // как будто низкое"). Defaulting to "high" and always sending it
   // (below) removes that ambiguity instead of hoping "auto" picks well.
-  const quality = options.quality && ["low", "medium", "high", "xhigh", "max"].includes(options.quality) ? options.quality : "max";
+  const quality = options.quality && ["low", "medium", "high", "xhigh", "max"].includes(options.quality) ? options.quality : "high";
   const outputFormat = options.outputFormat && ["png", "jpeg", "webp"].includes(options.outputFormat) ? options.outputFormat : "png";
   const background = options.background && ["auto", "transparent", "opaque"].includes(options.background) ? options.background : "auto";
 

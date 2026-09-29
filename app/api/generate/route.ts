@@ -587,9 +587,24 @@ async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>,
   // reading happen in parallel before the single full-quality draft; any
   // repair pass must fit inside the same deadline.
   const budget = createGenerationBudget(input.length <= 2000 ? 150_000 : 190_000);
+  const needsExternalResearch = input.format === "seo" || input.format === "landing"
+    || /актуальн|сейчас|сегодня|последн|новост|проверь|проверьте|найди|найдите|по данным|статистик|исследован|изменил(?:ось|ись)|свеж(?:ая|ие|ую) информац|медицин|лечени|реабилитац|здоров/i.test(`${input.topic}\n${input.accent}`);
+  let websiteMs = 0;
+  let webResearchMs = 0;
   const [website, webResearch] = await Promise.all([
-    readWebsiteContext(input.useBrand ? input.brand.website : "", { fullSite: true }),
-    researchMaterialWeb(input.topic, input.geography),
+    (async () => {
+      const startedAt = Date.now();
+      const result = await readWebsiteContext(input.useBrand ? input.brand.website : "", { fullSite: true });
+      websiteMs = Date.now() - startedAt;
+      return result;
+    })(),
+    (async () => {
+      if (!needsExternalResearch) return null;
+      const startedAt = Date.now();
+      const result = await researchMaterialWeb(input.topic, input.geography);
+      webResearchMs = Date.now() - startedAt;
+      return result;
+    })(),
   ]);
   const operation = FORMAT_OPERATION[input.format];
   const formatPlan = FORMAT_PLANS[input.format];
@@ -683,6 +698,7 @@ async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>,
     web_research: webResearch ? webResearch.results.slice(0, 5).map((item) => ({ title: item.title, url: item.url, fact: item.content })) : null,
   }, null, 2);
 
+  const modelStartedAt = Date.now();
   const call = await callAiModel<Record<string, unknown>>({
     operation,
     maxOutputTokensOverride: materialOutputTokenBudget(input.length, operation),
@@ -742,6 +758,16 @@ async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>,
       ...FINAL_QA_RULES,
     ].join("\n"),
     input: `Подготовь материал по этому брифу:\n${userBrief}`,
+  });
+  console.info("Material generation timings", {
+    jobId,
+    websiteMs,
+    webResearchMs,
+    modelMs: Date.now() - modelStartedAt,
+    externalResearch: needsExternalResearch,
+    researchProvider: webResearch?.provider || "none",
+    websiteStatus: website.status,
+    websiteCharacters: website.text.length,
   });
   let material: GeneratedMaterial = materialFromRecord(call.result);
   let usedModel = call.model;
