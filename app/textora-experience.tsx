@@ -409,6 +409,8 @@ const IMAGE_FORMAT_PRESETS = [
   { id: "article-cover", label: "Обложка статьи", size: "1536x1024" },
   { id: "marketplace-card", label: "Карточка маркетплейса", size: "1024x1024" },
   { id: "banner", label: "Баннер", size: "1536x864" },
+  { id: "landscape", label: "Альбомный", size: "1536x1024" },
+  { id: "portrait", label: "Портретный", size: "1024x1536" },
 ] as const;
 
 function isSupportedImageCanvasSize(value: string) {
@@ -7561,25 +7563,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                       {IMAGE_STYLE_OPTIONS.map(option => <button key={option.value || "auto"} type="button" className={imageStyle === option.value ? "is-selected" : ""} role="radio" aria-checked={imageStyle === option.value} title={option.instruction} disabled={imageBusy || carouselBusy} onClick={() => setImageStyle(option.value)}><span>{option.label}</span>{imageStyle === option.value && <i aria-hidden="true">✓</i>}</button>)}
                     </div>
                   </div>
-                  {/* gpt-image-1 only renders three real sizes (square/
-                      landscape/portrait, see _lib/image-generation.ts) -
-                      offering 5 distinctly-labelled ratios that collapse
-                      into the same 3 actual outputs was exactly the
-                      confusion site owner caught here ("ты говорил, что
-                      там всего 3 соотношения, а тут пять и они разные").
-                      One representative value per real size; the stored
-                      value is still one of ImageAspectRatio's 5 literals,
-                      just picked to be honest about what comes back. */}
-                  {imageGeneratorMode !== "carousel" && <ModuleSelect
-                    label="Соотношение"
-                    value={imageAspectRatio}
-                    onChange={(value) => { setImageAspectRatio(value as "1:1" | "4:3" | "4:5" | "16:9" | "9:16"); setImageCanvasSize(""); }}
-                    options={[
-                      { value: "1:1", label: "Квадрат" },
-                      { value: "4:3", label: "Альбомная" },
-                      { value: "9:16", label: "Портретная" },
-                    ]}
-                  />}
                   {imageGeneratorMode !== "carousel" && <ModuleSelect
                     label="Формат файла"
                     value={imageOutputFormat}
