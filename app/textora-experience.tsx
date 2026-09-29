@@ -407,7 +407,7 @@ const IMAGE_FORMAT_PRESETS = [
   { id: "social-post", label: "Пост VK / Telegram", size: "1024x1024" },
   { id: "story", label: "Сторис", size: "1024x1824" },
   { id: "article-cover", label: "Обложка статьи", size: "1536x1024" },
-  { id: "marketplace-card", label: "Карточка маркетплейса", size: "1024x1024" },
+  { id: "marketplace-card", label: "Карточка маркетплейса", size: "1024x1365" },
   { id: "banner", label: "Баннер", size: "1536x864" },
   { id: "landscape", label: "Альбомный", size: "1536x1024" },
   { id: "portrait", label: "Портретный", size: "1024x1536" },
@@ -420,8 +420,7 @@ function isSupportedImageCanvasSize(value: string) {
   const width = Number(match[1]);
   const height = Number(match[2]);
   const ratio = Math.max(width, height) / Math.min(width, height);
-  return width % 16 === 0 && height % 16 === 0
-    && width <= 3840 && height <= 3840
+  return width <= 3840 && height <= 3840
     && width * height >= 655_360 && width * height <= 8_294_400
     && ratio <= 3;
 }
@@ -2638,7 +2637,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }, [pubEditor?.generationId, pubEditor?.imageUrl, workspaceHistory]);
   const [imagePrompt, setImagePrompt] = useState("");
   const [imageSourceTitle, setImageSourceTitle] = useState("");
-  const [imageAspectRatio, setImageAspectRatio] = useState<"1:1" | "4:3" | "4:5" | "16:9" | "9:16">("4:3");
+  const [imageAspectRatio, setImageAspectRatio] = useState<"1:1" | "3:4" | "4:3" | "4:5" | "16:9" | "9:16">("4:3");
   const [imageCanvasSize, setImageCanvasSize] = useState("");
   const [imageOutputFormat, setImageOutputFormat] = useState<"png" | "jpeg" | "webp">("png");
   const [imageBackground, setImageBackground] = useState<"auto" | "transparent">("auto");
@@ -2665,7 +2664,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const imageAdditionalReferenceInputRef = useRef<HTMLInputElement | null>(null);
   const [carouselSlideCount, setCarouselSlideCount] = useState("5");
   const [carouselIndicatorMode, setCarouselIndicatorMode] = useState<CarouselSlideIndicatorMode>("numbers");
-  const [carouselAspectRatio, setCarouselAspectRatio] = useState<"1:1" | "4:3" | "4:5" | "16:9" | "9:16">("1:1");
+  const [carouselAspectRatio, setCarouselAspectRatio] = useState<"1:1" | "3:4" | "4:3" | "4:5" | "16:9" | "9:16">("1:1");
   const [carouselTemplate, setCarouselTemplate] = useState<CarouselTemplateId>(DEFAULT_CAROUSEL_TEMPLATE);
   const [carouselBusy, setCarouselBusy] = useState(false);
   const [carouselSlideBusy, setCarouselSlideBusy] = useState<number | null>(null);
@@ -3904,6 +3903,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   function openArchiveItem(item: GenerationArchiveItem) {
     if (!item.brandId || item.brandId !== activeBrandId) {
       showToast("Этот материал относится к другому кабинету бренда");
+      return;
+    }
+    if (item.imageUrl && item.topic === "Изображение") {
+      openImageEditorForSource(item);
       return;
     }
     const editable = { ...item };
@@ -5869,10 +5872,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setCarouselError("");
     setImageBackground(preset.background || "auto");
     if (preset.background === "transparent") setImageOutputFormat("png");
+    const localOperation = ["auto-correction", "denoise", "sharpen", "portrait-enhance"].includes(preset.id)
+      ? preset.id as "auto-correction" | "denoise" | "sharpen" | "portrait-enhance"
+      : undefined;
     void generateProfessionalImage({
       prompt: preset.prompt,
       background: preset.background || "auto",
       outputFormat: preset.background === "transparent" ? "png" : undefined,
+      localOperation,
     });
   }
 
@@ -5966,12 +5973,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     background?: "auto" | "transparent";
     outputFormat?: "png" | "jpeg" | "webp";
     size?: string;
+    localOperation?: "auto-correction" | "denoise" | "sharpen" | "portrait-enhance";
   }) {
     const prompt = (overrides?.prompt ?? imagePrompt).trim();
     if (prompt.length < 8 || imageBusy) return;
     const requestedSize = (overrides?.size ?? imageCanvasSize).trim();
     if (requestedSize && !isSupportedImageCanvasSize(requestedSize)) {
-      setImageError("Укажите размер, кратный 16, например 1536x864. Допустимый диапазон — от 655 360 до 8 294 400 пикселей.");
+      setImageError("Укажите ширину и высоту от 300 до 3840 пикселей. Допустимый диапазон — от 655 360 до 8 294 400 пикселей.");
       return;
     }
     if (imageTextMode === "custom" && !imageText.trim()) { setImageError("Введите текст для изображения или выберите «Без текста»."); return; }
@@ -5995,6 +6003,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           sourceImagePurpose: imageEditSourceId || imageReferenceSourceId || imageReferenceUrl ? imageReferencePurpose : undefined,
           referenceImageUrls: imageAdditionalReferences.map(reference => reference.url),
           imageEditMask: imageEditMask || undefined,
+          localOperation: overrides?.localOperation,
           // The active brand owns the material even when the person turns
           // off brand context for the prompt.  `useBrand` controls style,
           // site facts and logo guidance; it must not make a generated or
@@ -6207,10 +6216,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     void openPublicationDraft({ title: "", body: "", generationId: null, imageUrl: imageResult.imageUrl });
   }
 
-  function startImageEdit() {
-    if (!imageResult?.imageUrl) return;
+  function openImageEditorForSource(source: GenerationArchiveItem) {
+    if (!source.imageUrl) return;
     setImageGeneratorMode("edit");
-    setImageEditSourceId(imageResult.id);
+    setImageEditSourceId(source.id);
     setImageReferenceUrl("");
     setImageReferenceSourceId("");
     setImageReferencePurpose("edit");
@@ -6223,11 +6232,20 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     // brush edit is opened; resetting to auto makes the provider render an
     // opaque replacement (often black) around the masked object.
     setImagePrompt("");
-    setImageSourceTitle(imageResult.title);
+    // Standalone image materials keep the original generation prompt in their
+    // title/body for legacy archive compatibility. It must not become the
+    // title of the next edited image or reappear in the image editor.
+    setImageSourceTitle(source.topic === "Изображение" ? "" : source.title);
+    setImageResult({ ...source });
     setPendingCarouselSource(null);
     setImageError("");
     setCarouselError("");
     openModule("images");
+  }
+
+  function startImageEdit() {
+    if (!imageResult?.imageUrl) return;
+    openImageEditorForSource(imageResult);
   }
 
   function openMaterialImage(item: GenerationArchiveItem) {
@@ -7627,7 +7645,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     <ModuleSelect
                       label="Формат слайда"
                       value={carouselAspectRatio}
-                      onChange={value => setCarouselAspectRatio(value as "1:1" | "4:3" | "4:5" | "16:9" | "9:16")}
+                      onChange={value => setCarouselAspectRatio(value as "1:1" | "3:4" | "4:3" | "4:5" | "16:9" | "9:16")}
                       options={[
                         { value: "1:1", label: "Квадрат" },
                         { value: "4:3", label: "Альбомный" },

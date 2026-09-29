@@ -33,6 +33,7 @@ export const TOPIC_COUNT_OPTIONS = [3, 5, 8, 10].map((n) => ({ value: String(n),
 // One option per actual output size supported by the existing image service.
 export const IMAGE_ASPECT_OPTIONS = [
   { value: "1:1", label: "Квадрат" },
+  { value: "3:4", label: "Маркетплейс 3:4" },
   { value: "4:3", label: "Альбомная" },
   { value: "9:16", label: "Портретная" },
 ];

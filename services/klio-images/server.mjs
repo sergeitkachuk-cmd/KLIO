@@ -11,6 +11,7 @@ import { pathToFileURL } from "node:url";
 // of the three real sizes.
 const IMAGE_SIZE_BY_RATIO = {
   "1:1": "1024x1024",
+  "3:4": "1024x1536",
   "4:3": "1536x1024",
   "16:9": "1536x1024",
   "4:5": "1024x1536",

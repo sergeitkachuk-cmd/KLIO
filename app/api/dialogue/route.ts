@@ -976,7 +976,7 @@ export async function POST(request: Request) {
     // настраивать?") - the professional Генератор already exposes these
     // two on its own image form; dialogue mode called createImage() with
     // no options at all, always landing on the 4:3/png defaults.
-    const IMAGE_ASPECT_RATIOS: readonly ImageAspectRatio[] = ["1:1", "4:3", "4:5", "16:9", "9:16"];
+    const IMAGE_ASPECT_RATIOS: readonly ImageAspectRatio[] = ["1:1", "3:4", "4:3", "4:5", "16:9", "9:16"];
     const imageAspectRatio: ImageAspectRatio | null =
       typeof settingsRaw.imageAspectRatio === "string" && (IMAGE_ASPECT_RATIOS as readonly string[]).includes(settingsRaw.imageAspectRatio)
         ? settingsRaw.imageAspectRatio as ImageAspectRatio

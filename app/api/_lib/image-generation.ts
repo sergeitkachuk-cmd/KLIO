@@ -5,11 +5,12 @@ import type { CarouselSlideIndicatorMode, CarouselTemplateId } from "../../carou
 import { carouselSlideIndicatorInstruction, carouselTemplateInstruction } from "../../carousel-templates";
 import { normalizeImageUsage, type ImageProviderUsage } from "./image-cost";
 
-export type ImageAspectRatio = "1:1" | "4:3" | "4:5" | "16:9" | "9:16";
+export type ImageAspectRatio = "1:1" | "3:4" | "4:3" | "4:5" | "16:9" | "9:16";
 export type ImageOutputFormat = "png" | "jpeg" | "webp";
 export type ImageQuality = "low" | "medium" | "high" | "xhigh" | "max";
 export type LogoPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 export type ImageInput = { bytes: Uint8Array<ArrayBuffer>; contentType: string };
+export type LocalImageEditOperation = "auto-correction" | "denoise" | "sharpen" | "portrait-enhance";
 type ImagePartialHandler = (dataUrl: string) => void;
 type ImageUsageHandler = (usage: ImageProviderUsage) => void;
 export type ImageGenerationOptions = {
@@ -35,11 +36,51 @@ export type ImageGenerationOptions = {
 // requested ratio now snaps to the nearest of the three real sizes.
 const IMAGE_SIZE_BY_RATIO: Record<ImageAspectRatio, string> = {
   "1:1": "1024x1024",
+  // Marketplace cards use the common 3:4 canvas (Ozon 1200x1600 and WB
+  // 900x1200). The provider still receives its supported portrait canvas;
+  // the final file is fitted to the requested target size below.
+  "3:4": "1024x1365",
   "4:3": "1536x1024",
   "16:9": "1536x1024",
   "4:5": "1024x1536",
   "9:16": "1024x1536",
 };
+const PROVIDER_IMAGE_SIZES = new Set(["1024x1024", "1536x1024", "1024x1536", "auto"]);
+
+function providerSizeForTarget(size: string) {
+  if (PROVIDER_IMAGE_SIZES.has(size)) return size;
+  const match = /^(\d+)x(\d+)$/.exec(size);
+  if (!match) return "1024x1024";
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  if (width === height) return "1024x1024";
+  return width > height ? "1536x1024" : "1024x1536";
+}
+
+async function fitImageToRequestedCanvas(
+  bytes: Uint8Array<ArrayBuffer>,
+  targetSize: string,
+  outputFormat: ImageOutputFormat,
+  background: "auto" | "transparent" | "opaque",
+) {
+  if (!/^\d+x\d+$/.test(targetSize) || PROVIDER_IMAGE_SIZES.has(targetSize)) return bytes;
+  const match = /^(\d+)x(\d+)$/.exec(targetSize);
+  if (!match) return bytes;
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  const sharp = (await import("sharp")).default;
+  // Contain keeps the whole generated composition and adds only a small
+  // canvas margin when the provider's nearest supported canvas has another
+  // ratio. This is deliberate: a marketplace card must be 3:4 without
+  // cutting off a face, logo or text near the edge.
+  const canvasBackground = background === "transparent"
+    ? { r: 0, g: 0, b: 0, alpha: 0 }
+    : { r: 255, g: 255, b: 255, alpha: 1 };
+  const pipeline = sharp(bytes).rotate().resize(width, height, { fit: "contain", background: canvasBackground });
+  if (outputFormat === "jpeg") return Uint8Array.from(await pipeline.jpeg({ quality: 92, mozjpeg: true }).toBuffer());
+  if (outputFormat === "webp") return Uint8Array.from(await pipeline.webp({ quality: 92, alphaQuality: 100 }).toBuffer());
+  return Uint8Array.from(await pipeline.png().toBuffer());
+}
 
 // Narrows raw request-body values (typeof-checked strings, but not yet
 // known to be one of the accepted union members) into ImageGenerationOptions.
@@ -48,7 +89,7 @@ const IMAGE_SIZE_BY_RATIO: Record<ImageAspectRatio, string> = {
 // back to sane defaults for anything missing, so a typo/garbage value from
 // the client just gets the default treatment instead of a 400.
 export function parseImageGenerationOptions(input: Record<string, unknown>): ImageGenerationOptions {
-  const aspectRatio = typeof input.aspectRatio === "string" && (["1:1", "4:3", "4:5", "16:9", "9:16"] as const).includes(input.aspectRatio as ImageAspectRatio)
+  const aspectRatio = typeof input.aspectRatio === "string" && (["1:1", "3:4", "4:3", "4:5", "16:9", "9:16"] as const).includes(input.aspectRatio as ImageAspectRatio)
     ? (input.aspectRatio as ImageAspectRatio) : undefined;
   const quality = typeof input.quality === "string" && (["low", "medium", "high", "xhigh", "max"] as const).includes(input.quality as ImageQuality)
     ? (input.quality as ImageQuality) : undefined;
@@ -70,6 +111,7 @@ export function parseImageGenerationOptions(input: Record<string, unknown>): Ima
 export function resolveImageGenerationOptions(options: ImageGenerationOptions = {}) {
   const ratio = options.aspectRatio && IMAGE_SIZE_BY_RATIO[options.aspectRatio] ? options.aspectRatio : "4:3";
   const size = options.size && (options.size === "auto" || /^\d+x\d+$/.test(options.size)) ? options.size : IMAGE_SIZE_BY_RATIO[ratio];
+  const providerSize = providerSizeForTarget(size);
   // Was "medium", and only ever sent to the provider when a caller
   // explicitly set options.quality - which nothing in this app actually
   // does (no quality picker anywhere in the UI), so every real request
@@ -85,6 +127,7 @@ export function resolveImageGenerationOptions(options: ImageGenerationOptions = 
   return {
     aspectRatio: ratio,
     size,
+    providerSize,
     quality,
     outputFormat,
     background,
@@ -215,7 +258,7 @@ async function generateImageBytes(
       // size already sent, that recomputation can't be fixed here. Not
       // sending aspectRatio at all removes that option: the relay only ever
       // sees the already-correct, already-resolved size.
-      ...(options.size || options.aspectRatio ? { size: resolved.size } : {}),
+      ...(options.size || options.aspectRatio ? { size: resolved.providerSize } : {}),
       quality: resolved.quality,
       ...(onPartial && (!serviceUrl || relayStreaming) ? { stream: true, partial_images: 2 } : {}),
       ...(mask ? { mask_b64: Buffer.from(mask.bytes).toString("base64"), mask_type: mask.contentType } : {}),
@@ -231,7 +274,7 @@ async function generateImageBytes(
     form.append("model", resolvedModel);
     form.append("prompt", prompt.slice(0, 12000));
     form.append("n", "1");
-    if (options.size || options.aspectRatio) form.append("size", resolved.size);
+    if (options.size || options.aspectRatio) form.append("size", resolved.providerSize);
     form.append("quality", resolved.quality);
     if (onPartial && (!serviceUrl || relayStreaming)) { form.append("stream", "true"); form.append("partial_images", "2"); }
     if (options.outputFormat) form.append("output_format", resolved.outputFormat);
@@ -244,7 +287,7 @@ async function generateImageBytes(
       model: resolvedModel,
       prompt: prompt.slice(0, 12000),
       n: 1,
-      ...(options.size || options.aspectRatio ? { size: resolved.size } : {}),
+      ...(options.size || options.aspectRatio ? { size: resolved.providerSize } : {}),
       quality: resolved.quality,
       ...(onPartial && (!serviceUrl || relayStreaming) ? { stream: true, partial_images: 2 } : {}),
       ...(options.outputFormat ? { output_format: resolved.outputFormat } : {}),
@@ -288,13 +331,14 @@ async function generateImageBytes(
     model: resolvedModel,
     promptCharacters: prompt.length,
     referenceImageCount: images.length,
-    size: resolved.size,
+    size: resolved.providerSize,
     quality: resolved.quality,
     partialImages: onPartial && (!serviceUrl || relayStreaming) ? 2 : 0,
   }));
   if (!encoded || encoded.length > 12_000_000)
     throw new Error("Сервис изображений вернул некорректный файл.");
-  const bytes = new Uint8Array(Buffer.from(encoded, "base64"));
+  const providerBytes = new Uint8Array(Buffer.from(encoded, "base64"));
+  const bytes = await fitImageToRequestedCanvas(providerBytes, resolved.size, resolved.outputFormat, resolved.background);
   // Detected from the actual bytes, not assumed from resolved.outputFormat
   // (site owner: generation "didn't work at all for jpg, only png worked").
   // The relay is a separate deployment this repo doesn't control - it
@@ -305,14 +349,7 @@ async function generateImageBytes(
   // выбрал, всё равно png"). Trusting the request for either would mean
   // this file's declared type mismatched what actually came back.
   //
-  // Deliberately NOT cropping or re-encoding to force a match here anymore:
-  // cropping can cut off in-image content (text, a logo, anything near the
-  // edge) that the model placed assuming the full square canvas - site
-  // owner rejected that trade explicitly ("Обрезать ничего не надо! Там же
-  // в картинке может быть текст и он уйдет тогда за края или обрежется!").
-  // The real fix has to be the relay honoring size/output_format, or a
-  // properly-configured direct OpenAI call - see the API research notes
-  // this repo's PR/commit message links, not a client-side workaround.
+  // Non-canonical requested canvases are fitted above without cropping the composition.
   const detectedType = imageContentType(bytes) || "image/png";
   return { bytes, contentType: detectedType, resolved };
 }
@@ -631,6 +668,34 @@ async function overlayOriginalLogo(
   if (outputFormat === "jpeg") return { bytes: Uint8Array.from(await composed.jpeg({ quality: 95, mozjpeg: true }).toBuffer()), contentType: "image/jpeg" };
   if (outputFormat === "webp") return { bytes: Uint8Array.from(await composed.webp({ quality: 95, alphaQuality: 100 }).toBuffer()), contentType: "image/webp" };
   return { bytes: Uint8Array.from(await composed.png().toBuffer()), contentType: "image/png" };
+}
+
+// Technical enhancement buttons must not send the whole photograph through a
+// generative edit: that can redraw faces, hair and other identity-bearing
+// details. Keep these operations pixel-preserving and deterministic with
+// Sharp. Creative operations (background replacement, object removal, sky
+// replacement) continue through the image model below.
+export async function createLocalImageEdit(
+  source: ImageInput,
+  operation: LocalImageEditOperation,
+  email: string,
+  baseUrl: string,
+) {
+  const sharp = (await import("sharp")).default;
+  let pipeline = sharp(source.bytes).rotate();
+  if (operation === "auto-correction") {
+    pipeline = pipeline.normalize().modulate({ brightness: 1.03, saturation: 1.03 }).sharpen({ sigma: 0.55, m1: 0.35, m2: 1.1 });
+  } else if (operation === "denoise") {
+    pipeline = pipeline.median(3).sharpen({ sigma: 0.45, m1: 0.3, m2: 0.9 });
+  } else if (operation === "sharpen") {
+    pipeline = pipeline.sharpen({ sigma: 1, m1: 0.7, m2: 1.6 });
+  } else {
+    pipeline = pipeline.modulate({ brightness: 1.02, saturation: 1.01 }).sharpen({ sigma: 0.55, m1: 0.3, m2: 1 });
+  }
+  // PNG/WebP keep an existing transparent background. JPEG would flatten it,
+  // so local edits always use PNG as the lossless archival format.
+  const bytes = await pipeline.png().toBuffer();
+  return uploadPublicationImage(new File([bytes], "klio-local-edit.png", { type: "image/png" }), email, baseUrl);
 }
 
 // Each carousel card is generated as a complete raster image by the image

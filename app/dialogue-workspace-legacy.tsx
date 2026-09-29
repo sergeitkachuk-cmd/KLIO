@@ -44,10 +44,11 @@ const TOPIC_COUNT_OPTIONS = [3, 5, 8, 10].map((n) => ({ value: String(n), label:
 // that collapse into the same 3 actual outputs was exactly the confusion
 // site owner caught here ("ты говорил, что там всего 3 соотношения, а тут
 // пять и они разные"). One representative value per real size; the stored
-// value is still one of ImageAspectRatio's 5 literals, just picked to be
+// value is still one of ImageAspectRatio's supported literals, just picked to be
 // honest about what comes back.
 const IMAGE_ASPECT_OPTIONS = [
   { value: "1:1", label: "Квадрат" },
+  { value: "3:4", label: "Маркетплейс 3:4" },
   { value: "4:3", label: "Альбомная" },
   { value: "9:16", label: "Портретная" },
 ];
