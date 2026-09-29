@@ -5924,7 +5924,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         body: JSON.stringify({
           ...source,
           slideCount,
-          brandId: useBrand ? activeBrandId || undefined : undefined,
+          // Keep the saved carousel under the active brand even when brand
+          // context is disabled for the content prompt.
+          brandId: activeBrandId || undefined,
           useLogo: useBrand && Boolean(brand.logoKey) && useLogoInImage,
           aspectRatio: carouselAspectRatio,
           outputFormat: imageOutputFormat,
