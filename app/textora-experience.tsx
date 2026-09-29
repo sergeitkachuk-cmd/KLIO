@@ -2659,7 +2659,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [imageStreamPreview, setImageStreamPreview] = useState("");
   const [imageReferenceBusy, setImageReferenceBusy] = useState(false);
   const [imageReferenceError, setImageReferenceError] = useState("");
-  const [imageAdditionalReferences, setImageAdditionalReferences] = useState<Array<{ url: string; title: string }>>([]);
+  const [imageAdditionalReferences, setImageAdditionalReferences] = useState<Array<{ url: string; title: string; purpose: "object" | "style" }>>([]);
   const imageReferenceInputRef = useRef<HTMLInputElement | null>(null);
   const imageAdditionalReferenceInputRef = useRef<HTMLInputElement | null>(null);
   const [carouselSlideCount, setCarouselSlideCount] = useState("5");
@@ -5865,6 +5865,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setImageError("Добавьте второе изображение, чтобы объединить несколько референсов.");
       return;
     }
+    if (preset.id === "combine-references") {
+      setImageAdditionalReferences(current => current.map(reference => ({ ...reference, purpose: "object" })));
+    }
     setImageGeneratorMode("edit");
     setImageSourceTitle("");
     setPendingCarouselSource(null);
@@ -5951,14 +5954,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setImageReferenceBusy(true);
     setImageReferenceError("");
     try {
-      const uploaded: Array<{ url: string; title: string }> = [];
+      const uploaded: Array<{ url: string; title: string; purpose: "object" | "style" }> = [];
       for (const file of selected) {
         const form = new FormData();
         form.append("file", file);
         const response = await fetch("/api/uploads", { method: "POST", body: form, signal: AbortSignal.timeout(60_000) });
         const payload = await safeJson(response) as { error?: string; url?: string };
         if (!response.ok || !payload.url) throw new Error(payload.error || "Не удалось загрузить дополнительный референс.");
-        uploaded.push({ url: payload.url, title: file.name });
+      uploaded.push({ url: payload.url, title: file.name, purpose: "object" });
       }
       setImageAdditionalReferences(current => [...current, ...uploaded].slice(0, 1));
     } catch (error) {
@@ -6002,6 +6005,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           sourceImageUrl: imageReferenceSourceId || imageEditSourceId ? undefined : imageReferenceUrl || undefined,
           sourceImagePurpose: imageEditSourceId || imageReferenceSourceId || imageReferenceUrl ? imageReferencePurpose : undefined,
           referenceImageUrls: imageAdditionalReferences.map(reference => reference.url),
+          referenceImageRoles: imageAdditionalReferences.map(reference => reference.purpose),
           imageEditMask: imageEditMask || undefined,
           localOperation: overrides?.localOperation,
           // The active brand owns the material even when the person turns
@@ -7526,7 +7530,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </div>}
                 {imageGeneratorMode === "carousel" && <small className="image-generator-source-count">{imagePrompt.length.toLocaleString("ru-RU")} / {MAX_CAROUSEL_SOURCE_CHARACTERS.toLocaleString("ru-RU")} символов</small>}
                 <div className="image-generator-reference" style={{ display: imageGeneratorMode === "carousel" ? "none" : undefined }}>
-                  <div className="image-generator-reference-heading"><strong>{imageGeneratorMode === "edit" ? "Исходное изображение и референс" : "Добавить референс"} <em>(необязательно)</em></strong><small>{imageGeneratorMode === "edit" ? "Выберите исходник для доработки и при необходимости добавьте ещё одну фотографию, стиль или объект для объединения." : "Добавьте фотографию, стиль или объект как визуальный ориентир для новой генерации."}</small></div>
+                  <div className="image-generator-reference-heading"><strong>{imageGeneratorMode === "edit" ? "Исходное изображение и референс" : "Добавить референс"} <em>(необязательно)</em></strong><small>{imageGeneratorMode === "edit" ? "Выберите исходник для доработки и при необходимости добавьте фотографию. Для добавленного файла отдельно укажите: стиль обработки или объект." : "Добавьте исходник и при необходимости референс стиля обработки или объект для новой генерации."}</small></div>
                   <div className="image-generator-reference-actions">
                     <label className={`button ghost image-generator-reference-upload ${imageReferenceBusy ? "is-busy" : ""}`}>
                       {imageReferenceBusy ? "Загрузка…" : imageReferenceUrl ? "Заменить исходник" : "Загрузить исходник"}
@@ -7549,16 +7553,16 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                         setImageReferenceError("");
                       }}
                     />}
-                    {imageGeneratorMode !== "edit" && <label className={`button ghost image-generator-reference-upload ${imageReferenceBusy ? "is-busy" : ""}`}>
-                      {imageReferenceBusy ? "Загрузка…" : "Добавить референс"}
+                    {imageGeneratorMode !== "edit" && <label className={`button ghost image-generator-reference-upload ${imageReferenceBusy ? "is-busy" : ""}`} title={!imageReferenceUrl ? "Сначала загрузите исходник" : "Загрузите референс стиля или объект для добавления"}>
+                      {imageReferenceBusy ? "Загрузка…" : imageReferenceUrl ? "Загрузить референс стиля / объект" : "Загрузить референс после исходника"}
                       <input ref={imageAdditionalReferenceInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden disabled={imageReferenceBusy || imageBusy || carouselBusy || imageAdditionalReferences.length >= 1 || !imageReferenceUrl} onChange={event => {
                         const files = Array.from(event.target.files || []);
                         event.target.value = "";
                         if (files.length) void uploadAdditionalImageReferences(files);
                       }}/>
                     </label>}
-                    {(imageReferenceUrl || imageEditSourceId) && imageGeneratorMode === "edit" && <label className={`button ghost image-generator-reference-upload ${imageReferenceBusy ? "is-busy" : ""}`}>
-                      {imageReferenceBusy ? "Загрузка…" : "Добавить референс"}
+                    {(imageReferenceUrl || imageEditSourceId) && imageGeneratorMode === "edit" && <label className={`button ghost image-generator-reference-upload ${imageReferenceBusy ? "is-busy" : ""}`} title="Загрузите референс стиля или объект для добавления">
+                      {imageReferenceBusy ? "Загрузка…" : "Загрузить референс стиля / объект"}
                       <input ref={imageAdditionalReferenceInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden disabled={imageReferenceBusy || imageBusy || carouselBusy || imageAdditionalReferences.length >= 1} onChange={event => {
                         const files = Array.from(event.target.files || []);
                         event.target.value = "";
@@ -7573,7 +7577,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   </div>}
                   {(imageReferencePurpose === "edit") && (imageReferenceUrl || imageEditSourceId) && (imageReferenceUrl || imageResult?.imageUrl) && <ImageMaskEditor key={imageReferenceUrl || imageEditSourceId || "image-edit"} src={(imageReferenceUrl || imageResult?.imageUrl) as string} onMaskChange={mask => { setImageEditMask(mask); if (mask) setUseLogoInImage(false); }}/>}
                   {imageAdditionalReferences.length > 0 && <div className="image-generator-additional-reference-list">
-                    {imageAdditionalReferences.map(reference => <div className="image-generator-additional-reference" key={reference.url}><Image src={reference.url} alt={reference.title || "Дополнительный референс"} width={96} height={72} unoptimized/><span>{reference.title || "Дополнительный референс"}</span><button type="button" className="button ghost" onClick={() => setImageAdditionalReferences(current => current.filter(item => item.url !== reference.url))}>Убрать</button></div>)}
+                    {imageAdditionalReferences.map(reference => <div className="image-generator-additional-reference" key={reference.url}><Image src={reference.url} alt={reference.title || "Дополнительный референс"} width={96} height={72} unoptimized/><span>{reference.title || "Дополнительный референс"}</span><ModuleSelect label="Назначение" value={reference.purpose} onChange={value => setImageAdditionalReferences(current => current.map(item => item.url === reference.url ? { ...item, purpose: value as "object" | "style" } : item))} options={[{ value: "style", label: "Стиль обработки" }, { value: "object", label: "Объект для добавления" }]}/><button type="button" className="button ghost" onClick={() => setImageAdditionalReferences(current => current.filter(item => item.url !== reference.url))}>Убрать</button></div>)}
                   </div>}
                   {imageReferenceError && <small className="generation-error" role="alert">{imageReferenceError}</small>}
                 </div>

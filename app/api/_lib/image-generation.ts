@@ -10,6 +10,7 @@ export type ImageOutputFormat = "png" | "jpeg" | "webp";
 export type ImageQuality = "low" | "medium" | "high" | "xhigh" | "max";
 export type LogoPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 export type ImageInput = { bytes: Uint8Array<ArrayBuffer>; contentType: string };
+export type ImageReferenceRole = "object" | "style";
 export type LocalImageEditOperation = "auto-correction" | "denoise" | "sharpen" | "portrait-enhance";
 type ImagePartialHandler = (dataUrl: string) => void;
 type ImageUsageHandler = (usage: ImageProviderUsage) => void;
@@ -434,7 +435,7 @@ export async function createImageFromLogo(
 // first input always remains the source for edits.
 export async function createImageFromSource(
   prompt: string, source: ImageInput, purpose: "edit" | "reference", logo: ImageInput | undefined,
-  email: string, baseUrl: string, requestId: string, options: ImageGenerationOptions = {}, mask?: ImageInput, onPartial?: ImagePartialHandler, onUsage?: ImageUsageHandler, references: ImageInput[] = [],
+  email: string, baseUrl: string, requestId: string, options: ImageGenerationOptions = {}, mask?: ImageInput, onPartial?: ImagePartialHandler, onUsage?: ImageUsageHandler, references: ImageInput[] = [], referenceRoles: ImageReferenceRole[] = [],
 ) {
   const maxInputBytes = 8 * 1024 * 1024;
   if (references.length > 1) throw new ImageInputError("Можно добавить только один дополнительный референс к исходному изображению.");
@@ -559,7 +560,9 @@ export async function createImageFromSource(
     ? process.env.KLIO_IMAGE_EDIT_MODEL?.trim() || "gpt-image-2.5-sunburst"
     : undefined;
   const referenceInstruction = references.length
-    ? "Второе изображение — дополнительный визуальный референс. Используй его только для объекта, стиля или деталей, указанных в запросе; не копируй его фон целиком и не заменяй им основную сцену."
+    ? referenceRoles[0] === "style"
+      ? "Второе изображение — референс стиля обработки. Перенеси на исходник визуальный язык референса: свет, цвет, контраст, фактуру, глубину резкости и характер съёмки. Не копируй из него людей, предметы, фон или композицию, если пользователь явно этого не попросил. Исходный объект и его форма должны остаться основой результата."
+      : "Второе изображение — дополнительный визуальный референс объекта. Используй его только для объекта, стиля или деталей, указанных в запросе; не копируй его фон целиком и не заменяй им основную сцену."
     : "";
   const providerInputs = [source, ...references, ...(logo && !exactOverlay ? [logo] : [])];
   if (providerInputs.length > 2) throw new ImageInputError("Для этого запуска можно использовать исходник и один дополнительный референс. Отключите логотип или уберите лишнее изображение.");

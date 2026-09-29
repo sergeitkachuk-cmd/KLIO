@@ -38,6 +38,9 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
     const referenceImageUrls = Array.isArray(input.referenceImageUrls)
       ? input.referenceImageUrls.filter((value): value is string => typeof value === "string").map(value => value.trim().slice(0, 600)).filter(Boolean).slice(0, 1)
       : [];
+    const referenceImageRoles = Array.isArray(input.referenceImageRoles)
+      ? input.referenceImageRoles.map(value => value === "object" ? "object" : "style").slice(0, referenceImageUrls.length) as Array<"object" | "style">
+      : [];
     const sourceImagePurpose = input.sourceImagePurpose === "reference" ? "reference" : "edit";
     const imageOptions = parseImageGenerationOptions(input);
     const imageStyle = typeof input.imageStyle === "string"
@@ -142,7 +145,7 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
         : sourceImage
           ? await createImageFromSource(finalPrompt, sourceImage, sourceImagePurpose,
             useLogo && logoKey ? await downloadBrandLogo(logoKey) : undefined,
-            user.email, baseUrl, requestId, imageOptions, editMask, onPartial, usage => { imageUsage = usage; }, additionalImages)
+            user.email, baseUrl, requestId, imageOptions, editMask, onPartial, usage => { imageUsage = usage; }, additionalImages, referenceImageRoles)
           : useLogo && logoKey
             ? await createImageFromLogo(finalPrompt, await downloadBrandLogo(logoKey), user.email, baseUrl, requestId, imageOptions, undefined, onPartial, usage => { imageUsage = usage; })
             : await createImage(finalPrompt, user.email, baseUrl, requestId, imageOptions, undefined, onPartial, usage => { imageUsage = usage; });
