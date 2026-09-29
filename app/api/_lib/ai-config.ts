@@ -147,7 +147,6 @@ export type AiOperation =
   | "revise_content"
   | "analyze_brand_website"
   | "suggest_brand_voice"
-  | "research_content_plan_web"
   // Nano — short formalized steps
   | "normalize_quick_brief"
   | "validate_content"
@@ -215,14 +214,13 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // — a reasoning item draft-rejecting-redrafting its own topic list for
   // several turns, then (once reasoning was turned off to stop that) 10
   // Keep the long structured generation focused and bounded. A separate
-  // research_content_plan_web operation runs one required OpenAI web search
+  // Search is done separately through Tavily
   // before generation, while readWebsiteContext supplies the brand site.
   // Search and site crawling are not repeated for each batch of plan rows.
   // A failed long generation can still have consumed a very large cached
   // prompt at the provider. Retry only transient transport/provider errors;
   // malformed output is still surfaced without replaying the full plan.
   generate_content_plan: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 18_000, structuredOutput: true, retryable: true, useWebSearch: false },
-  research_content_plan_web: { model: CONTENT, reasoningEffort: "none", maxOutputTokens: 2_400, structuredOutput: true, retryable: true, useWebSearch: true },
   // Up to 5 selected topics x 3 full alternatives each, each a complete
   // plan row (structure, lsi, evidence, sources...) — genuinely needs a
   // ceiling close to a fresh content plan's, not the generic "small

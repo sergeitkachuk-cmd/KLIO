@@ -45,7 +45,7 @@ function cacheKey(topic: string, geography: Geography[]) {
 }
 
 async function tavilySearch(query: string, maxResults: number, cacheNamespace: string, options?: {
-  depth?: "advanced";
+  depth?: "basic" | "advanced";
   contentLength?: number;
   timeoutMs?: number;
   // Was days:number, a parameter Tavily's /search endpoint doesn't
@@ -71,7 +71,7 @@ async function tavilySearch(query: string, maxResults: number, cacheNamespace: s
     const response = await fetch("https://api.tavily.com/search", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ query: normalizedQuery, topic: "general", search_depth: options?.depth ?? "fast", ...(options?.depth === "advanced" ? { chunks_per_source: 3 } : {}), ...(options?.timeRange ? { time_range: options.timeRange } : {}), max_results: maxResults, include_answer: false, include_raw_content: false, include_images: false, exclude_domains: LOW_AUTHORITY_DOMAINS }),
+      body: JSON.stringify({ query: normalizedQuery, topic: "general", search_depth: options?.depth ?? "basic", ...(options?.depth === "advanced" ? { chunks_per_source: 3 } : {}), ...(options?.timeRange ? { time_range: options.timeRange } : {}), max_results: maxResults, include_answer: false, include_raw_content: false, include_images: false, exclude_domains: LOW_AUTHORITY_DOMAINS }),
       signal: AbortSignal.timeout(options?.timeoutMs ?? 8_000),
     });
     if (!response.ok) {
@@ -222,7 +222,8 @@ export async function researchContentPlanWeb(topic: string, geography: Geography
   const newsSubject = industryField || topic;
   if (!currentIndustryFocus) {
     const query = `${topic}${geographyHint ? ` ${geographyHint}` : ""} актуальная информация, вопросы аудитории и критерии выбора`;
-    return tavilySearch(query, 5, `content-plan:${cacheKey(topic, geography)}`);
+    return await tavilySearch(query, 5, `content-plan:${cacheKey(topic, geography)}`)
+      ?? yandexResearch(query, 5);
   }
   // Kept short and keyword-like rather than a long descriptive sentence —
   // closer to how a person would actually type this into a search box.
@@ -240,7 +241,8 @@ export async function researchContentPlanWeb(topic: string, geography: Geography
   // clearly labeled via freshNews:false so the caller's dataNote doesn't
   // claim it found actual current news.
   const fallbackQuery = `${newsSubject} тренды и практики отрасли`;
-  const fallback = await tavilySearch(fallbackQuery, 5, `content-plan:${cacheKey(newsSubject, [])}`);
+  const fallback = await tavilySearch(fallbackQuery, 5, `content-plan:${cacheKey(newsSubject, [])}`)
+    ?? await yandexResearch(fallbackQuery, 5);
   if (fallback) return { ...fallback, freshNews: false };
   // Both attempts failing is unusual enough to log explicitly with the
   // actual subject searched — tavilySearch's own warnings only fire on a
@@ -259,10 +261,10 @@ export async function researchContentPlanWeb(topic: string, geography: Geography
 // Writing needs substantive facts, not topic-discovery snippets. Keep one
 // bounded external search with up to three relevant passages per source.
 // Article research uses a small, bounded budget and falls back to Yandex.
-export async function researchMaterialWeb(topic: string, geography: Geography[]): Promise<TavilyResearch | null> {
+export async function researchMaterialWeb(topic: string, geography: Geography[], depth: "basic" | "advanced" = "basic"): Promise<TavilyResearch | null> {
   const geographyHint = geography.slice(0, 2).map((item) => clean(item.label, 60)).join(", ");
   const query = `${clean(topic, 450)} ${geographyHint} первоисточники, подтверждённые факты, исследования, конкретные объяснения и практические нюансы`;
-  return await tavilySearch(query, 5, "material-facts-v1", { depth: "advanced", contentLength: 1800, timeoutMs: 12_000 })
+  return await tavilySearch(query, 5, `material-facts-${depth}-v1`, { depth, contentLength: depth === "advanced" ? 1800 : 800, timeoutMs: depth === "advanced" ? 12_000 : 8_000 })
     ?? yandexResearch(query, 5);
 }
 

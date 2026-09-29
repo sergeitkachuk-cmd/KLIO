@@ -601,7 +601,9 @@ async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>,
     (async () => {
       if (!needsExternalResearch) return null;
       const startedAt = Date.now();
-      const result = await researchMaterialWeb(input.topic, input.geography);
+      const deepResearch = input.format === "seo" || input.format === "landing"
+        || /медицин|лечени|реабилитац|здоров|статистик|исследован|норматив|стандарт|закон/i.test(`${input.topic}\n${input.accent}`);
+      const result = await researchMaterialWeb(input.topic, input.geography, deepResearch ? "advanced" : "basic");
       webResearchMs = Date.now() - startedAt;
       return result;
     })(),

@@ -287,9 +287,9 @@ export async function POST(request: Request) {
       return Response.json({ error: "Укажите тему либо заполните описание и позиционирование бренда." }, { status: 400 });
     }
 
-    // Two real Luna calls (one with forced web_search) plus a Yandex Search
-    // call and up to 20 page fetches per request — metered like every other
-    // research route so this endpoint can't be looped for unbounded spend.
+    // Tavily and Yandex collect candidate pages, followed by up to 20 page
+    // reads for verification. The route is metered like every other research
+    // endpoint so it cannot be looped for unbounded spend.
     await assertSecondaryQuotaAvailable("research");
 
     if (!aiConfigured()) {
@@ -303,28 +303,10 @@ export async function POST(request: Request) {
     let yandexResults: Citation[] = [];
     let tavilyResults: Citation[] = [];
     try {
-      // yandexSearch never throws (it catches internally and resolves to
-      // []), so Promise.all's rejection can only come from callAiModel —
-      // the catch below keeps the exact same AiCallError handling as before,
-      // it just no longer waits for the AI call before starting the
-      // independent Yandex Search request.
+      // Both search providers resolve to empty results on ordinary service
+      // failures, so one provider being unavailable does not hide the other.
       const [call, yandex, tavily] = await Promise.all([
-        Promise.resolve({ rawResponse: null, model: "" }), /* Legacy DeepSeek web search removed:
-          operation: "discover_competitors",
-          ownerEmail: identity.email,
-          toolChoice: "required",
-          includeSources: true,
-          instructions: [
-            "Ты находишь прямых контентных конкурентов для сравнительной матрицы КЛИО.",
-            "Обязательно выполни веб‑поиск по категории, услуге и поисковому интенту, а не только по названию бренда. Найди 5–10 открытых страниц реальных компаний по той же теме.",
-            "Нужны именно страницы продуктов, услуг, программ или содержательные тематические страницы прямых конкурентов.",
-            "Не предлагай сайт бренда, его зеркала, страницы с упоминанием бренда, поисковую выдачу, агрегаторы, каталоги, карты, соцсети, энциклопедии, отзывы, новости и редакционные публикации.",
-            "Если география указана, используй её как территорию целевого спроса, а не как неподтверждённое местонахождение бренда.",
-            "Для каждого кандидата напиши отдельный короткий пункт: название страницы и почему она релевантна. Каждый пункт обязан содержать кликабельную веб‑цитату.",
-            "Не придумывай адреса и не перечисляй страницы, которые не были найдены веб‑поиском.",
-          ].join("\n"),
-          input: `Найди страницы конкурентов по этому брифу:\n${brief}`,
-        */
+        Promise.resolve({ rawResponse: null, model: "" }),
         yandexSearch(marketQuery(query, brand)),
         discoverTavilyWeb([marketQuery(query, brand), geography.slice(0, 2).map((item) => [item.label, item.detail].filter(Boolean).join(" ")).filter(Boolean).join(" "), "прямые конкуренты официальный сайт услуги"].filter(Boolean).join(" ")),
       ]);
