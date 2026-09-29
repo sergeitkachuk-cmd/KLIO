@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 // Splits the admin page into a sidebar + one-section-at-a-time layout,
@@ -17,6 +18,7 @@ import { useEffect, useState, type ReactNode } from "react";
 export type AdminSection = { id: string; label: string; badge?: string; attention?: boolean; content: ReactNode };
 
 export function AdminShell({ sections }: { sections: AdminSection[] }) {
+  const router = useRouter();
   const [active, setActive] = useState(sections[0]?.id ?? "");
   useEffect(() => {
     const applyHashSection = () => {
@@ -27,6 +29,25 @@ export function AdminShell({ sections }: { sections: AdminSection[] }) {
     window.addEventListener("hashchange", applyHashSection);
     return () => window.removeEventListener("hashchange", applyHashSection);
   }, [sections]);
+  useEffect(() => {
+    const refreshIntervalMs = 2 * 60 * 1000;
+    let lastRefreshAt = Date.now();
+    const refreshIfDue = () => {
+      if (document.visibilityState !== "visible" || Date.now() - lastRefreshAt < refreshIntervalMs) return;
+      lastRefreshAt = Date.now();
+      // Re-fetch server-rendered admin data while preserving the selected
+      // section and client state (search fields, expanded groups, scroll).
+      router.refresh();
+    };
+    const interval = window.setInterval(refreshIfDue, 30_000);
+    document.addEventListener("visibilitychange", refreshIfDue);
+    window.addEventListener("focus", refreshIfDue);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshIfDue);
+      window.removeEventListener("focus", refreshIfDue);
+    };
+  }, [router]);
   return (
     <div className="admin-shell">
       <aside className="admin-sidebar">

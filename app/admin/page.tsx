@@ -603,7 +603,7 @@ export default async function AdminPage() {
         <div className="admin-block-heading">
           <div>
             <h2>Внешние сервисы</h2>
-            <p>Данные запрашиваются заново при открытии этой страницы. Ключи и токены остаются только на сервере.</p>
+            <p>Клиенты и вызовы обновляются автоматически раз в 2 минуты. Можно обновить вручную.</p>
           </div>
           <a className="admin-refresh" href="/admin">Обновить</a>
         </div>
