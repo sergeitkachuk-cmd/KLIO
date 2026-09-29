@@ -188,7 +188,7 @@ async function generateImageBytes(
   // environment variables still allow an explicit override.
   const resolvedModel = model?.trim() || (mask
     ? process.env.KLIO_IMAGE_EDIT_MODEL?.trim() || "gpt-image-2.5-sunburst"
-    : process.env.KLIO_IMAGE_MODEL?.trim() || "gpt-image-2.5-sunburst");
+    : process.env.KLIO_IMAGE_MODEL?.trim() || "gpt-image-2.5-flare");
   let requestBody: string | FormData;
   let contentTypeHeader: string | undefined;
   if (serviceUrl) {
