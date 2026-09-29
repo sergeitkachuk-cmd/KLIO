@@ -129,27 +129,22 @@ async function optimizeOversizedImage(bytes: Uint8Array<ArrayBuffer>) {
   const input = Buffer.from(bytes);
   const metadata = await sharp(input).metadata();
   if (!metadata.width || !metadata.height) return null;
+  const sourceFormat = metadata.format === "jpeg" ? "jpeg" : metadata.format === "webp" ? "webp" : "png";
+  const sourceContentType = sourceFormat === "jpeg" ? "image/jpeg" : sourceFormat === "webp" ? "image/webp" : "image/png";
   let scale = 1;
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const width = Math.max(1, Math.floor(metadata.width * scale));
     const height = Math.max(1, Math.floor(metadata.height * scale));
     const pipeline = sharp(input).rotate().resize(width, height, { fit: "inside", withoutEnlargement: true, kernel: "lanczos3" });
-    // First try to keep the original PNG losslessly. Generated photos can be
-    // larger than the storage cap simply because PNG is inefficient for them;
-    // converting every oversized result straight to JPEG was visibly softening
-    // skin, hair and fabric in edited images.
-    const hasAlpha = metadata.hasAlpha === true;
-    if (attempt === 0 && metadata.format === "png") {
-      const losslessPng = await pipeline.png({ compressionLevel: 9, adaptiveFiltering: true }).toBuffer();
-      if (losslessPng.byteLength <= MAX_UPLOAD_BYTES) {
-        return { bytes: Uint8Array.from(losslessPng), contentType: "image/png" };
-      }
-    }
-    const optimized = hasAlpha
-      ? await pipeline.webp({ lossless: true, effort: 6 }).toBuffer()
-      : await pipeline.webp({ quality: 100, effort: 6 }).toBuffer();
+    // Keep the source format. In particular, never turn a JPG into WebP:
+    // clients and publication exports rely on the selected file format.
+    const optimized = sourceFormat === "png"
+      ? await pipeline.png({ compressionLevel: 9, adaptiveFiltering: true }).toBuffer()
+      : sourceFormat === "jpeg"
+        ? await pipeline.jpeg({ quality: 98, mozjpeg: true }).toBuffer()
+        : await pipeline.webp({ quality: 100, lossless: metadata.hasAlpha === true, effort: 6 }).toBuffer();
     if (optimized.byteLength <= MAX_UPLOAD_BYTES) {
-      return { bytes: Uint8Array.from(optimized), contentType: "image/webp" };
+      return { bytes: Uint8Array.from(optimized), contentType: sourceContentType };
     }
     scale *= Math.min(0.82, Math.sqrt(MAX_UPLOAD_BYTES / optimized.byteLength) * 0.92);
   }
