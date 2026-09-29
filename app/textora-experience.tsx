@@ -5884,7 +5884,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     void generateProfessionalImage({
       prompt: preset.prompt,
       background: preset.background || "auto",
-      outputFormat: preset.background === "transparent" ? "png" : undefined,
+      // Editing an existing photo is detail-sensitive: use the provider's
+      // highest quality and lossless output for skin, hair and fabric detail.
+      quality: "max",
+      outputFormat: "png",
       sourcePurpose: "edit",
     });
   }
@@ -5992,6 +5995,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     prompt?: string;
     background?: "auto" | "transparent";
     outputFormat?: "png" | "jpeg" | "webp";
+    quality?: "low" | "medium" | "high" | "xhigh" | "max";
     size?: string;
     sourcePurpose?: "edit" | "reference";
   }) {
@@ -6038,6 +6042,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           aspectRatio: imageAspectRatio,
           size: requestedSize || undefined,
           outputFormat: overrides?.outputFormat || imageOutputFormat,
+          quality: overrides?.quality,
           background: overrides?.background || imageBackground,
           imageStyle,
           useLogo: useBrand && Boolean(brand.logoKey) && useLogoInImage && imageAdditionalReferences.length === 0,
