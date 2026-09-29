@@ -1884,6 +1884,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // so an editor result can be saved as a real next version, not merely
   // offered for copying.
   const [generatedArchiveId, setGeneratedArchiveId] = useState<string | null>(null);
+  const [generatedResultSnapshot, setGeneratedResultSnapshot] = useState<Pick<GenerationArchiveItem, "title" | "body" | "subtitle" | "metaTitle" | "metaDescription" | "editorialComment" | "tone"> | null>(null);
+  const [generatedResultSaving, setGeneratedResultSaving] = useState(false);
 
   const pubGridDays = useMemo(() => {
     const start = pubView === "week" ? startOfWeek(pubCursor) : startOfWeek(startOfMonth(pubCursor));
@@ -2680,6 +2682,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // body: Telegram and other channels receive the headline and hook too.
   const characters = useMemo(() => [title, subtitle, body].filter(Boolean).join("\n\n").trim().length, [body, subtitle, title]);
   const hasGeneratedResult = Boolean(title.trim() || body.trim() || generationMode === "ai" || generationMode === "demo");
+  const generatedResultDirty = Boolean(generatedArchiveId && generatedResultSnapshot && (
+    title !== generatedResultSnapshot.title || body !== generatedResultSnapshot.body ||
+    subtitle !== generatedResultSnapshot.subtitle || metaTitle !== generatedResultSnapshot.metaTitle ||
+    metaDescription !== generatedResultSnapshot.metaDescription
+  ));
   const foundationReady = Boolean(
     brand.name.trim()
     && brand.description.trim()
@@ -4510,7 +4517,63 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setEditorNote(material.editorialComment);
     setGenerationMode(mode);
     setGeneratedArchiveId(archiveId);
+    setGeneratedResultSnapshot(archiveId ? {
+      title: material.title,
+      body: material.body,
+      subtitle: material.subtitle,
+      metaTitle: material.metaTitle,
+      metaDescription: material.metaDescription,
+      editorialComment: material.editorialComment,
+      tone,
+    } : null);
     setResultRevealTick((value) => value + 1);
+  }
+
+  async function saveGeneratedResult() {
+    if (!generatedArchiveId || !generatedResultSnapshot || generatedResultSaving || !generatedResultDirty) return;
+    if (!title.trim() || !body.trim()) {
+      showToast("Для сохранения нужны заголовок и текст материала.");
+      return;
+    }
+    setGeneratedResultSaving(true);
+    try {
+      const response = await fetch("/api/workspace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update_generation",
+          expectedGeneration: generatedResultSnapshot,
+          generation: {
+            id: generatedArchiveId,
+            title,
+            body,
+            subtitle,
+            metaTitle,
+            metaDescription,
+            editorialComment: generatedResultSnapshot.editorialComment,
+            tone: generatedResultSnapshot.tone,
+          },
+        }),
+      });
+      const payload = await safeJson(response) as { error?: string; generation?: GenerationArchiveItem };
+      if (!response.ok || !payload.generation) throw new Error(payload.error || "Не удалось сохранить изменения.");
+      const saved = payload.generation;
+      setWorkspaceHistory((current) => current.map((item) => item.id === saved.id ? saved : item));
+      setGeneratedResultSnapshot({
+        title: saved.title,
+        body: saved.body,
+        subtitle: saved.subtitle,
+        metaTitle: saved.metaTitle,
+        metaDescription: saved.metaDescription,
+        editorialComment: saved.editorialComment,
+        tone: saved.tone,
+      });
+      showToast("Изменения сохранены в текущем материале.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Не удалось сохранить изменения.");
+    } finally {
+      setGeneratedResultSaving(false);
+    }
   }
 
   async function generateFromSemantics() {
@@ -6112,6 +6175,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setEditorNote("");
     setGenerationMode("example");
     setGeneratedArchiveId(null);
+    setGeneratedResultSnapshot(null);
   }
 
   function clearGeneratedResult() {
@@ -6534,7 +6598,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 const isImageOnly = item.topic === "Изображение";
                 const isCarousel = item.topic === "Карусель";
                 const hasImage = Boolean(item.imageUrl);
-                return <article className={`material-card material-article ${isImageOnly ? "is-image-only" : hasImage ? "is-text-with-image" : ""} ${isCarousel ? "is-carousel-material" : ""} ${item.origin === "editor" ? "is-editor" : ""} ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><div className="material-card-badges"><span className="material-format-badge">{formatLabel}</span>{item.origin === "editor" && <span className="material-origin-badge">РЕД</span>}</div><small>{archiveDate(item.createdAt)}</small></div>{!isImageOnly && <><h3>{item.title}</h3><p>{item.topic}</p></>}{item.imageUrl && <button type="button" className="image-generator-result-trigger" aria-label={isCarousel ? "Открыть карусель" : "Открыть изображение крупнее"} onClick={() => openMaterialImage(item)}><Image className="material-card-image" src={item.imageUrl} alt={item.title || "Изображение КЛИО"} width={720} height={720} unoptimized/></button>}<footer><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал" title="Удалить материал"><Icon name="trash"/></button><button type="button" className="material-archive" onClick={() => void archiveArchiveItem(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" className="material-publish" onClick={() => openPublicationDraftForMaterial(item)}>Публикация</button>{item.imageUrl && <a className="material-export" href={item.imageUrl} download>Скачать {imageFormatLabel(item.imageUrl)}</a>}{item.topic !== "Изображение" && item.topic !== "Карусель" && <><button type="button" onClick={() => prepareImageGeneration({ generationId: item.id }, buildArticleImagePrompt(item.title, item.subtitle, item.body), item.title)}>Создать картинку</button><button type="button" onClick={() => prepareImageGeneration({ text: buildArticleCarouselSource(item.title, item.subtitle, item.body) }, buildArticleCarouselSource(item.title, item.subtitle, item.body), item.title, "carousel")}>Создать карусель</button></>}<button type="button" onClick={() => void openMaterialInDialogue(item.id)}>В диалог</button><button type="button" onClick={() => item.topic === "Карусель" ? openCarouselResult(item) : openArchiveItem(item)}>Редактор <Icon name="arrow"/></button></div></footer></article>;
+                const materialPreview = item.body.replace(/\s+/g, " ").trim();
+                const materialExcerpt = materialPreview.length > 180 ? `${materialPreview.slice(0, 180).trimEnd()}…` : materialPreview;
+                return <article className={`material-card material-article ${isImageOnly ? "is-image-only" : hasImage ? "is-text-with-image" : ""} ${isCarousel ? "is-carousel-material" : ""} ${item.origin === "editor" ? "is-editor" : ""} ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><div className="material-card-badges"><span className="material-format-badge">{formatLabel}</span>{item.origin === "editor" && <span className="material-origin-badge">РЕД</span>}</div><small>{archiveDate(item.createdAt)}</small></div>{!isImageOnly && <><h3>{item.title}</h3>{materialExcerpt && <p>{materialExcerpt}</p>}</>}{item.imageUrl && <button type="button" className="image-generator-result-trigger" aria-label={isCarousel ? "Открыть карусель" : "Открыть изображение крупнее"} onClick={() => openMaterialImage(item)}><Image className="material-card-image" src={item.imageUrl} alt={item.title || "Изображение КЛИО"} width={720} height={720} unoptimized/></button>}<footer><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал" title="Удалить материал"><Icon name="trash"/></button><button type="button" className="material-archive" onClick={() => void archiveArchiveItem(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" className="material-publish" onClick={() => openPublicationDraftForMaterial(item)}>Публикация</button>{item.imageUrl && <a className="material-export" href={item.imageUrl} download>Скачать {imageFormatLabel(item.imageUrl)}</a>}{item.topic !== "Изображение" && item.topic !== "Карусель" && <><button type="button" onClick={() => prepareImageGeneration({ generationId: item.id }, buildArticleImagePrompt(item.title, item.subtitle, item.body), item.title)}>Создать картинку</button><button type="button" onClick={() => prepareImageGeneration({ text: buildArticleCarouselSource(item.title, item.subtitle, item.body) }, buildArticleCarouselSource(item.title, item.subtitle, item.body), item.title, "carousel")}>Создать карусель</button></>}<button type="button" onClick={() => void openMaterialInDialogue(item.id)}>В диалог</button><button type="button" onClick={() => item.topic === "Карусель" ? openCarouselResult(item) : openArchiveItem(item)}>Редактор <Icon name="arrow"/></button></div></footer></article>;
               }
               const typeLabel = item.type === "content_plan" ? "Контент‑план" : item.type === "semantics" ? "Семантика" : "Анализ конкурентов";
               // Full items (not just title strings) so each topic can be sent
@@ -7501,7 +7567,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     past the editor note and SEO passport - site owner asked
                     for exactly this once already; the SEO passport fields
                     added afterward pushed these back down below them. */}
-                <div className="result-footer"><span>Материал уже сохранён в «Материалы» — вернуться к нему и продолжить редактирование можно в любой момент</span><div className="result-footer-actions"><button type="button" className="button ghost" onClick={clearGeneratedResult} disabled={!title && !body}><Icon name="erase"/> Очистить</button><button type="button" className="button ghost" onClick={copyResult} disabled={!title && !body}><Icon name="copy"/> Копировать</button><button type="button" className="button ghost" onClick={() => void openPublicationDraft({ title, body: [subtitle, body].filter(Boolean).join("\n\n"), generationId: generatedArchiveId })} disabled={!title && !body}>В публикацию</button><button type="button" className="button ghost" onClick={() => prepareImageGeneration(generatedArchiveId ? { generationId: generatedArchiveId } : { text: buildArticleImagePrompt(title, subtitle, body) }, buildArticleImagePrompt(title, subtitle, body), title)} disabled={!title && !body}>Создать картинку</button><button type="button" className="button ghost" onClick={() => prepareImageGeneration({ text: buildArticleCarouselSource(title, subtitle, body) }, buildArticleCarouselSource(title, subtitle, body), title, "carousel")} disabled={!title && !body}>Создать карусель</button><button type="button" className="button primary" onClick={sendResultToAdaptation} disabled={!title && !body}>Адаптировать под площадку <Icon name="arrow"/></button></div></div>
+                <div className="result-footer"><span>Материал уже сохранён в «Материалы» — вернуться к нему и продолжить редактирование можно в любой момент</span><div className="result-footer-actions">{generatedArchiveId && <button type="button" className="button primary" onClick={() => void saveGeneratedResult()} disabled={!generatedResultDirty || generatedResultSaving}>{generatedResultSaving ? "\u0421\u043e\u0445\u0440\u0430\u043d\u044f\u0435\u043c\u2026" : "\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u044f"}</button>}<button type="button" className="button ghost" onClick={clearGeneratedResult} disabled={!title && !body}><Icon name="erase"/> Очистить</button><button type="button" className="button ghost" onClick={copyResult} disabled={!title && !body}><Icon name="copy"/> Копировать</button><button type="button" className="button ghost" onClick={() => void openPublicationDraft({ title, body: [subtitle, body].filter(Boolean).join("\n\n"), generationId: generatedArchiveId })} disabled={!title && !body}>В публикацию</button><button type="button" className="button ghost" onClick={() => prepareImageGeneration(generatedArchiveId ? { generationId: generatedArchiveId } : { text: buildArticleImagePrompt(title, subtitle, body) }, buildArticleImagePrompt(title, subtitle, body), title)} disabled={!title && !body}>Создать картинку</button><button type="button" className="button ghost" onClick={() => prepareImageGeneration({ text: buildArticleCarouselSource(title, subtitle, body) }, buildArticleCarouselSource(title, subtitle, body), title, "carousel")} disabled={!title && !body}>Создать карусель</button><button type="button" className="button primary" onClick={sendResultToAdaptation} disabled={!title && !body}>Адаптировать под площадку <Icon name="arrow"/></button></div></div>
                 <aside className="editor-note"><span>Комментарий к материалу</span><p>{editorNote || "Служебный комментарий появится после генерации и не попадёт в скопированный текст."}</p><small>Не входит в текст и не копируется</small></aside>
                 <div className="seo-passport">
                   <div className="seo-passport-head"><span>SEO‑паспорт</span><small>Служебные поля для публикации</small></div>
