@@ -5885,6 +5885,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       background: preset.background || "auto",
       outputFormat: preset.background === "transparent" ? "png" : undefined,
       localOperation,
+      sourcePurpose: localOperation ? "edit" : undefined,
     });
   }
 
@@ -5993,6 +5994,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     outputFormat?: "png" | "jpeg" | "webp";
     size?: string;
     localOperation?: "auto-correction" | "denoise" | "sharpen" | "portrait-enhance";
+    sourcePurpose?: "edit" | "reference";
   }) {
     const prompt = (overrides?.prompt ?? imagePrompt).trim() || (canGenerateFromVisualReference
       ? "Создай новое изображение на основе выбранного визуального референса. Сохрани его главный объект и композиционный смысл, применив выбранный стиль изображения."
@@ -6021,7 +6023,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           sourceGenerationId: pendingCarouselSource && "generationId" in pendingCarouselSource ? pendingCarouselSource.generationId : undefined,
           sourceImageGenerationId: imageEditSourceId || imageReferenceSourceId || undefined,
           sourceImageUrl: imageReferenceSourceId || imageEditSourceId ? undefined : imageReferenceUrl || undefined,
-          sourceImagePurpose: imageEditSourceId || imageReferenceSourceId || imageReferenceUrl ? imageReferencePurpose : undefined,
+          sourceImagePurpose: imageEditSourceId || imageReferenceSourceId || imageReferenceUrl
+            ? overrides?.sourcePurpose || imageReferencePurpose
+            : undefined,
           referenceImageUrls: imageAdditionalReferences.map(reference => reference.url),
           referenceImageRoles: imageAdditionalReferences.map(reference => reference.purpose),
           imageEditMask: imageEditMask || undefined,

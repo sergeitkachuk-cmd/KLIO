@@ -702,7 +702,13 @@ export async function createLocalImageEdit(
   } else if (operation === "sharpen") {
     pipeline = pipeline.sharpen({ sigma: 1, m1: 0.7, m2: 1.6 });
   } else {
-    pipeline = pipeline.modulate({ brightness: 1.02, saturation: 1.01 }).sharpen({ sigma: 0.55, m1: 0.3, m2: 1 });
+    // Portrait enhancement must be visible on an already well exposed photo,
+    // while remaining pixel preserving.  The previous 2%/1% adjustment was
+    // effectively indistinguishable and looked like a no-op to the user.
+    pipeline = pipeline
+      .modulate({ brightness: 1.05, saturation: 1.08 })
+      .linear(1.04, -4)
+      .sharpen({ sigma: 1.05, m1: 0.65, m2: 1.45 });
   }
   // PNG/WebP keep an existing transparent background. JPEG would flatten it,
   // so local edits always use PNG as the lossless archival format.

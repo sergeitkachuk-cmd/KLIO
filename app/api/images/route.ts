@@ -41,7 +41,14 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
     const referenceImageRoles = Array.isArray(input.referenceImageRoles)
       ? input.referenceImageRoles.map(value => value === "object" ? "object" : "style").slice(0, referenceImageUrls.length) as Array<"object" | "style">
       : [];
-    const sourceImagePurpose = input.sourceImagePurpose === "reference" ? "reference" : "edit";
+    // The quick technical enhancements always operate on the selected photo
+    // itself.  The UI can briefly retain the previous "reference" value when
+    // switching from create to edit mode; allowing that stale value here made
+    // the buttons either reject the request or route it through the wrong
+    // image path.  A local operation is unambiguously an edit.
+    const sourceImagePurpose = localOperation
+      ? "edit"
+      : input.sourceImagePurpose === "reference" ? "reference" : "edit";
     const imageOptions = parseImageGenerationOptions(input);
     const imageStyle = typeof input.imageStyle === "string"
       ? IMAGE_STYLE_OPTIONS.find(option => option.value === input.imageStyle)?.instruction || ""
