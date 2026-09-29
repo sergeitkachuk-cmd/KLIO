@@ -197,7 +197,7 @@ export default async function AdminPage() {
       totalCostUsd: sql<number>`coalesce(sum(${aiUsage.estimatedCostUsd}), 0)`,
       totalCalls: sql<number>`count(*)`,
       totalTokens: sql<number>`coalesce(sum(${aiUsage.totalTokens}), 0)`,
-      lastCallAt: sql<string>`max(${aiUsage.createdAt})`,
+      lastCallAt: sql<string>`max(${aiUsage.createdAt}::timestamptz)::text`,
     }).from(aiUsage).where(notInArray(aiUsage.operation, imageOperations)).groupBy(aiUsage.ownerEmail),
     // Full profileJson per brand (not just a count) — needed for the
     // "% заполнен профиль бренда" breakdown below. brandMap (count) and
@@ -264,7 +264,7 @@ export default async function AdminPage() {
       createdAt: aiUsage.createdAt,
       costSource: aiUsage.costSource,
       requestGroupId: aiUsage.requestGroupId,
-    }).from(aiUsage).where(notInArray(aiUsage.operation, imageOperations)).orderBy(desc(aiUsage.createdAt)).limit(RECENT_ACTIVITY_LIMIT),
+    }).from(aiUsage).where(notInArray(aiUsage.operation, imageOperations)).orderBy(sql`${aiUsage.createdAt}::timestamptz desc`).limit(RECENT_ACTIVITY_LIMIT),
     // Keep legacy image generation rows as a fallback for requests created
     // before image usage logging existed. Current image/carousel calls are
     // represented by recentImageUsage below, with provider usage or a marked
@@ -274,7 +274,7 @@ export default async function AdminPage() {
       ownerEmail: generations.ownerEmail,
       topic: generations.topic,
       createdAt: generations.createdAt,
-    }).from(generations).where(inArray(generations.topic, ["Изображение", "Карусель"])).orderBy(desc(generations.createdAt)).limit(RECENT_ACTIVITY_LIMIT),
+    }).from(generations).where(inArray(generations.topic, ["Изображение", "Карусель"])).orderBy(sql`${generations.createdAt}::timestamptz desc`).limit(RECENT_ACTIVITY_LIMIT),
     db.select({
       id: aiUsage.id,
       ownerEmail: aiUsage.ownerEmail,
@@ -292,7 +292,7 @@ export default async function AdminPage() {
       requestId: aiUsage.requestId,
       requestGroupId: aiUsage.requestGroupId,
       createdAt: aiUsage.createdAt,
-    }).from(aiUsage).where(inArray(aiUsage.operation, imageOperations)).orderBy(desc(aiUsage.createdAt)).limit(RECENT_ACTIVITY_LIMIT),
+    }).from(aiUsage).where(inArray(aiUsage.operation, imageOperations)).orderBy(sql`${aiUsage.createdAt}::timestamptz desc`).limit(RECENT_ACTIVITY_LIMIT),
     getExternalServiceStatuses(),
     getOpenAiAdminSummary(),
     // Raw payment attempts (SBP/card quick-pay, not the invoice/УПД flow) —
