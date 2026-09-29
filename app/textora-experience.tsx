@@ -2639,7 +2639,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [imageSourceTitle, setImageSourceTitle] = useState("");
   const [imageAspectRatio, setImageAspectRatio] = useState<"1:1" | "3:4" | "4:3" | "4:5" | "16:9" | "9:16">("4:3");
   const [imageCanvasSize, setImageCanvasSize] = useState("");
-  const [imageOutputFormat, setImageOutputFormat] = useState<"png" | "jpeg" | "webp">("jpeg");
+  const [imageOutputFormat, setImageOutputFormat] = useState<"png" | "jpeg" | "webp">("png");
   const [imageBackground, setImageBackground] = useState<"auto" | "transparent">("auto");
   const [imageStyle, setImageStyle] = useState("");
   const [imageGeneratorMode, setImageGeneratorMode] = useState<ImageGeneratorMode>("create");
@@ -5884,9 +5884,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     void generateProfessionalImage({
       prompt: preset.prompt,
       background: preset.background || "auto",
-      // Editing an existing photo is detail-sensitive: use the provider's
-      // highest quality and lossless output for skin, hair and fabric detail.
-      quality: "max",
+      // Editing keeps the normal high quality setting; PNG preserves the
+      // provider's detail without adding JPEG compression.
       outputFormat: "png",
       sourcePurpose: "edit",
     });

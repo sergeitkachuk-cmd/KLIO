@@ -158,7 +158,7 @@ export function LegacyDialogueWorkspace(props: DialogueWorkspaceProps) {
   const [genLength, setGenLength] = useState("");
   const [topicCount, setTopicCount] = useState("5");
   const [imageAspectRatio, setImageAspectRatio] = useState("4:3");
-  const [imageOutputFormat, setImageOutputFormat] = useState("jpeg");
+  const [imageOutputFormat, setImageOutputFormat] = useState("png");
   const [useLogoInImage, setUseLogoInImage] = useState(false);
   // Replaces one always-visible settings panel (site owner: "мы реально
   // путаем человека предлагая ему кучу настроек разом") with a ChatGPT-

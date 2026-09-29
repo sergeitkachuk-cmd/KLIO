@@ -134,18 +134,22 @@ async function optimizeOversizedImage(bytes: Uint8Array<ArrayBuffer>) {
     const width = Math.max(1, Math.floor(metadata.width * scale));
     const height = Math.max(1, Math.floor(metadata.height * scale));
     const pipeline = sharp(input).rotate().resize(width, height, { fit: "inside", withoutEnlargement: true, kernel: "lanczos3" });
-    // Keep transparency when the generated PNG has it. Opaque results use
-    // JPEG to avoid rejecting an otherwise valid generated image solely
-    // because PNG compression is inefficient for that scene.
+    // First try to keep the original PNG losslessly. Generated photos can be
+    // larger than the storage cap simply because PNG is inefficient for them;
+    // converting every oversized result straight to JPEG was visibly softening
+    // skin, hair and fabric in edited images.
     const hasAlpha = metadata.hasAlpha === true;
+    if (attempt === 0 && metadata.format === "png") {
+      const losslessPng = await pipeline.png({ compressionLevel: 9, adaptiveFiltering: true }).toBuffer();
+      if (losslessPng.byteLength <= MAX_UPLOAD_BYTES) {
+        return { bytes: Uint8Array.from(losslessPng), contentType: "image/png" };
+      }
+    }
     const optimized = hasAlpha
-      ? await pipeline.webp({ quality: 92, alphaQuality: 100, effort: 4 }).toBuffer()
-      : await pipeline.jpeg({ quality: 92, mozjpeg: true }).toBuffer();
+      ? await pipeline.webp({ lossless: true, effort: 6 }).toBuffer()
+      : await pipeline.webp({ quality: 100, effort: 6 }).toBuffer();
     if (optimized.byteLength <= MAX_UPLOAD_BYTES) {
-      return {
-        bytes: Uint8Array.from(optimized),
-        contentType: hasAlpha ? "image/webp" : "image/jpeg",
-      };
+      return { bytes: Uint8Array.from(optimized), contentType: "image/webp" };
     }
     scale *= Math.min(0.82, Math.sqrt(MAX_UPLOAD_BYTES / optimized.byteLength) * 0.92);
   }

@@ -141,7 +141,7 @@ export async function generateCarouselSlides(jobId: string, input: CarouselInput
     } catch (error) {
       throw new Error(`Не удалось создать слайд ${index + 1} из ${count} — генерация карусели остановлена. ${error instanceof Error ? error.message : ""}`.trim());
     }
-    slides.push({ headline: slide.headline, subtext: slide.subtext, visual: slide.visual, imageUrl: generated.url, templateId, indicatorMode, aspectRatio: input.imageOptions?.aspectRatio ?? "1:1", outputFormat: input.imageOptions?.outputFormat ?? "jpeg" });
+    slides.push({ headline: slide.headline, subtext: slide.subtext, visual: slide.visual, imageUrl: generated.url, templateId, indicatorMode, aspectRatio: input.imageOptions?.aspectRatio ?? "1:1", outputFormat: input.imageOptions?.outputFormat ?? "png" });
   }
 
   return slides;
@@ -229,7 +229,7 @@ export async function runCarouselSlideRegeneration(jobId: string, input: { gener
       ownerEmail,
       input.baseUrl,
       `${jobId}-${input.slideIndex}`,
-      { aspectRatio: slide.aspectRatio ?? "4:3", outputFormat: slide.outputFormat ?? "jpeg" },
+      { aspectRatio: slide.aspectRatio ?? "4:3", outputFormat: slide.outputFormat ?? "png" },
       CAROUSEL_IMAGE_MODEL,
       { headline: slide.headline, subtext: slide.subtext, templateId, indicatorMode, slideIndex: input.slideIndex, slideTotal: slides.length },
       usage => { imageUsage = usage; },
