@@ -76,7 +76,8 @@ export async function GET(request: Request) {
     // custom upload: accountSummary() prefers avatarKey over this field
     // whenever both are set, so refreshing it here is harmless either way.
     const avatarUrl = yandexAvatarUrl(info);
-    if (!account.emailVerified || avatarUrl !== account.providerAvatarUrl) {
+    const hasAvatarData = typeof info.default_avatar_id === "string" || typeof info.is_avatar_empty === "boolean";
+    if (!account.emailVerified || (hasAvatarData && avatarUrl !== account.providerAvatarUrl)) {
       // Yandex has already vetted this address as belonging to the visitor
       // who just signed in — trust it outright, the same way the ChatGPT
       // embed's header-based identity is trusted, with no confirmation
@@ -84,7 +85,7 @@ export async function GET(request: Request) {
       const db = await getWorkspaceDb();
       await db.update(accounts).set({
         ...(account.emailVerified ? {} : { emailVerified: true }),
-        ...(avatarUrl !== account.providerAvatarUrl ? { providerAvatarUrl: avatarUrl } : {}),
+        ...(hasAvatarData && avatarUrl !== account.providerAvatarUrl ? { providerAvatarUrl: avatarUrl } : {}),
       }).where(eq(accounts.email, email));
     }
 

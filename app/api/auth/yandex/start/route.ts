@@ -36,7 +36,11 @@ export async function GET(request: Request) {
   authorizeUrl.searchParams.set("response_type", "code");
   authorizeUrl.searchParams.set("client_id", process.env.YANDEX_OAUTH_CLIENT_ID!.trim());
   authorizeUrl.searchParams.set("redirect_uri", redirectUri);
-  authorizeUrl.searchParams.set("scope", "login:email login:info login:avatar");
+  // The registered KLIO OAuth app currently grants only login:email and
+  // login:info. Requesting login:avatar for an optional profile-photo
+  // feature makes Yandex reject authorization until that permission is
+  // enabled in its console, so keep sign-in on the approved scopes.
+  authorizeUrl.searchParams.set("scope", "login:email login:info");
   authorizeUrl.searchParams.set("state", state);
 
   const response = NextResponse.redirect(authorizeUrl.toString());
