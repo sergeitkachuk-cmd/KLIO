@@ -514,7 +514,9 @@ export async function createImageFromSource(
   if (corner) editOptions.background = "opaque";
   const backgroundInstruction = editOptions.background === "opaque"
     ? "Результат — цельное непрозрачное изображение. Не добавляй прозрачные участки, полупрозрачные края, виньетку, рамку или подложку под логотип."
-    : "";
+    : editOptions.background === "transparent"
+      ? "Preserve a fully transparent background in the result. If the user asks to remove an object, do not insert a replacement object into the selected area; restore transparency there."
+      : "";
   const placementInstruction = logo && !exactOverlay ? logoPlacementInstruction(options.logoPlacement, options.logoPosition) : "";
   const editModel = purpose === "edit"
     ? process.env.KLIO_IMAGE_EDIT_MODEL?.trim() || "gpt-image-2.5-sunburst"
@@ -555,14 +557,36 @@ export async function createImageFromSource(
     // the user's painted selection.
     for (let index = 0; index < selectedAreaAlpha.length; index += 1)
       selectedAreaAlpha[index] = Math.min(selectedAreaAlpha[index], softenedAlpha[index]);
-    const generatedLayer = await sharp(bytes)
+    // Keep any alpha returned by the provider. Removing it here turned a
+    // transparent edit into opaque black pixels inside the painted area.
+    const generatedRgba = await sharp(bytes)
       .rotate()
       .resize(width, height, { fit: "fill", kernel: "lanczos3" })
-      .removeAlpha()
-      .joinChannel(selectedAreaAlpha, { raw: { width, height, channels: 1 } })
+      .ensureAlpha()
+      .raw()
+      .toBuffer();
+    for (let index = 0; index < selectedAreaAlpha.length; index += 1) {
+      const alphaIndex = index * 4 + 3;
+      generatedRgba[alphaIndex] = Math.min(generatedRgba[alphaIndex], selectedAreaAlpha[index]);
+    }
+    const generatedLayer = await sharp(generatedRgba, { raw: { width, height, channels: 4 } })
       .png()
       .toBuffer();
-    const lockedResult = await sharp(source.bytes)
+    // Clear the source under the mask before compositing. A transparent
+    // generated pixel cannot erase an opaque source pixel when it is simply
+    // composited over it; this was why removed objects could reappear.
+    const sourceRgba = await sharp(source.bytes)
+      .ensureAlpha()
+      .raw()
+      .toBuffer();
+    for (let index = 0; index < selectedAreaAlpha.length; index += 1) {
+      const alphaIndex = index * 4 + 3;
+      sourceRgba[alphaIndex] = Math.round(sourceRgba[alphaIndex] * (255 - selectedAreaAlpha[index]) / 255);
+    }
+    const clearedSource = await sharp(sourceRgba, { raw: { width, height, channels: 4 } })
+      .png()
+      .toBuffer();
+    const lockedResult = await sharp(clearedSource)
       .composite([{ input: generatedLayer, left: 0, top: 0, blend: "over" }])
       .png()
       .toBuffer();

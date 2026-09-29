@@ -6218,7 +6218,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setImageReferenceError("");
     setImageAdditionalReferences([]);
     setImageCanvasSize("");
-    setImageBackground("auto");
+    // Keep the background mode of the image being edited. In particular,
+    // an image produced by "Убрать фон" must stay transparent when a later
+    // brush edit is opened; resetting to auto makes the provider render an
+    // opaque replacement (often black) around the masked object.
     setImagePrompt("");
     setImageSourceTitle(imageResult.title);
     setPendingCarouselSource(null);
