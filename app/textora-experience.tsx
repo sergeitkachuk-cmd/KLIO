@@ -7520,7 +7520,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <button type="button" role="tab" aria-selected={imageGeneratorMode === "create"} className={imageGeneratorMode === "create" ? "is-active" : ""} disabled={imageBusy || carouselBusy || imageReferenceBusy} onClick={startFreshImage}>
                 <span className="image-generator-mode-index">01</span><span><strong>Изображение</strong><small>Создать с нуля</small></span>
               </button>
-              <button type="button" role="tab" aria-selected={imageGeneratorMode === "edit"} className={imageGeneratorMode === "edit" ? "is-active" : ""} disabled={imageBusy || carouselBusy || imageReferenceBusy} onClick={() => { setImageGeneratorMode("edit"); setImageError(""); setCarouselError(""); setCarouselLightboxIndex(null); }}>
+              <button type="button" role="tab" aria-selected={imageGeneratorMode === "edit"} className={imageGeneratorMode === "edit" ? "is-active" : ""} disabled={imageBusy || carouselBusy || imageReferenceBusy} onClick={() => { setImageGeneratorMode("edit"); setImageReferencePurpose("edit"); setImageError(""); setCarouselError(""); setCarouselLightboxIndex(null); }}>
                 <span className="image-generator-mode-index">02</span><span><strong>Доработать</strong><small>Изменить или взять референс</small></span>
               </button>
               <button type="button" role="tab" aria-selected={imageGeneratorMode === "carousel"} className={imageGeneratorMode === "carousel" ? "is-active" : ""} disabled={imageBusy || carouselBusy || imageReferenceBusy} onClick={() => { setImageGeneratorMode("carousel"); setImageError(""); setCarouselError(""); setCarouselLightboxIndex(null); }}>
