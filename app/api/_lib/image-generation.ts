@@ -689,7 +689,14 @@ export async function createLocalImageEdit(
   const sharp = (await import("sharp")).default;
   let pipeline = sharp(source.bytes).rotate();
   if (operation === "auto-correction") {
-    pipeline = pipeline.normalize().modulate({ brightness: 1.03, saturation: 1.03 }).sharpen({ sigma: 0.55, m1: 0.35, m2: 1.1 });
+    // Make the preset visibly useful on an already decent photo: expand a
+    // small tonal range, lift shadows, tame the overall contrast and restore
+    // colour separation without handing the photograph to a generative edit.
+    pipeline = pipeline
+      .normalize({ lower: 2, upper: 98 })
+      .modulate({ brightness: 1.05, saturation: 1.1 })
+      .linear(1.04, -4)
+      .sharpen({ sigma: 0.8, m1: 0.5, m2: 1.2 });
   } else if (operation === "denoise") {
     pipeline = pipeline.median(3).sharpen({ sigma: 0.45, m1: 0.3, m2: 0.9 });
   } else if (operation === "sharpen") {
