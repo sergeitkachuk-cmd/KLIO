@@ -5837,7 +5837,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           sourceImageUrl: imageReferenceSourceId || imageEditSourceId ? undefined : imageReferenceUrl || undefined,
           sourceImagePurpose: imageEditSourceId || imageReferenceSourceId || imageReferenceUrl ? imageReferencePurpose : undefined,
           imageEditMask: imageEditMask || undefined,
-          brandId: useBrand ? activeBrandId || undefined : undefined,
+          // The active brand owns the material even when the person turns
+          // off brand context for the prompt.  `useBrand` controls style,
+          // site facts and logo guidance; it must not make a generated or
+          // edited image brandless.  Otherwise the row is saved with a null
+          // brandId and disappears from Materials while that brand is open.
+          brandId: activeBrandId || undefined,
           requestId,
           aspectRatio: imageAspectRatio,
           outputFormat: imageOutputFormat,
