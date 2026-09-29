@@ -392,14 +392,16 @@ export async function createImageFromLogo(
   );
 }
 
-// The first image is the actual scene. The optional second image is only
-// the logo; it must never replace the scene as the sole provider input.
+// The first image is the actual scene or primary reference. A second image
+// can be a user-provided style/object reference or the real brand logo; the
+// first input always remains the source for edits.
 export async function createImageFromSource(
   prompt: string, source: ImageInput, purpose: "edit" | "reference", logo: ImageInput | undefined,
-  email: string, baseUrl: string, requestId: string, options: ImageGenerationOptions = {}, mask?: ImageInput, onPartial?: ImagePartialHandler, onUsage?: ImageUsageHandler,
+  email: string, baseUrl: string, requestId: string, options: ImageGenerationOptions = {}, mask?: ImageInput, onPartial?: ImagePartialHandler, onUsage?: ImageUsageHandler, references: ImageInput[] = [],
 ) {
   const maxInputBytes = 8 * 1024 * 1024;
-  for (const image of [source, ...(logo ? [logo] : [])]) {
+  if (references.length > 1) throw new ImageInputError("Можно добавить только один дополнительный референс к исходному изображению.");
+  for (const image of [source, ...references, ...(logo ? [logo] : [])]) {
     const detected = imageContentType(image.bytes);
     if (!detected || !["image/png", "image/jpeg", "image/webp"].includes(detected))
       throw new ImageInputError("Для доработки загрузите изображение в формате PNG, JPEG или WEBP.");
@@ -517,9 +519,14 @@ export async function createImageFromSource(
   const editModel = purpose === "edit"
     ? process.env.KLIO_IMAGE_EDIT_MODEL?.trim() || "gpt-image-2.5-sunburst"
     : undefined;
-  const { bytes, contentType } = await generateImageBytes(`${instruction}\n${maskInstruction}\n${backgroundInstruction}\n\n${prompt}\n\n${logoInstruction}\n${placementInstruction}`, requestId,
+  const referenceInstruction = references.length
+    ? "Второе изображение — дополнительный визуальный референс. Используй его только для объекта, стиля или деталей, указанных в запросе; не копируй его фон целиком и не заменяй им основную сцену."
+    : "";
+  const providerInputs = [source, ...references, ...(logo && !exactOverlay ? [logo] : [])];
+  if (providerInputs.length > 2) throw new ImageInputError("Для этого запуска можно использовать исходник и один дополнительный референс. Отключите логотип или уберите лишнее изображение.");
+  const { bytes, contentType } = await generateImageBytes(`${instruction}\n${maskInstruction}\n${backgroundInstruction}\n\n${prompt}\n\n${referenceInstruction}\n${logoInstruction}\n${placementInstruction}`, requestId,
     editOptions,
-    logo && !exactOverlay ? [source, logo] : source, editModel, mask, mask ? undefined : onPartial, onUsage);
+    providerInputs.length > 1 ? providerInputs : source, editModel, mask, mask ? undefined : onPartial, onUsage);
 
   // The provider treats an edit mask as guidance and can still change pixels
   // outside it. Lock those pixels locally: only let generated pixels through

@@ -23888,6 +23888,17 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 .image-edit-quick-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%}
 .image-edit-quick-grid .button{min-height:42px;padding:9px 10px;border-radius:12px;font-size:12px;font-weight:700;line-height:1.25;text-align:center}
 .image-edit-quick-grid .button:disabled{cursor:not-allowed;opacity:.48}
+.image-format-presets{display:grid;gap:10px;width:100%;padding:14px 0 2px;border-top:1px solid #34425a}
+.image-format-preset-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%}
+.image-format-preset-grid .button{min-height:42px;padding:9px 10px;border-radius:12px;font-size:12px;font-weight:700;line-height:1.25;text-align:center}
+.image-format-preset-grid .button.is-selected{border-color:#91b9ed;background:#2b4f7a;color:#fff}
+.image-custom-size{display:flex;align-items:center;gap:10px;color:#91a4bd;font-size:12px}
+.image-custom-size input{width:150px;min-height:34px;padding:7px 9px;border:1px solid #34425a;border-radius:9px;background:#101f37;color:#fff;font:inherit}
+.image-generator-additional-reference-list{display:grid;gap:8px}
+.image-generator-additional-reference{display:flex;align-items:center;gap:10px;padding:8px;border:1px solid #34425a;border-radius:12px;background:#101f37}
+.image-generator-additional-reference>img{width:72px;height:54px;flex:0 0 auto;object-fit:cover;border-radius:7px}
+.image-generator-additional-reference>span{min-width:0;flex:1 1 auto;overflow:hidden;color:#d9e2ef;font-size:12px;text-overflow:ellipsis;white-space:nowrap}
+.image-generator-additional-reference .button{min-height:32px;padding:5px 9px;font-size:12px}
 .image-generator-source-count{align-self:flex-end;margin-top:-8px;color:#91a4bd;font-size:12px;font-variant-numeric:tabular-nums}
 .image-generator-style-field{display:grid;gap:8px;width:100%}
 .image-generator-style-heading{display:grid;gap:3px}
@@ -24007,6 +24018,13 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 [data-theme="light"] .image-edit-quick-heading small{color:#60738c}
 [data-theme="light"] .image-edit-quick-grid .button{border-color:#d5deea;background:#f5f8fc;color:#304661}
 [data-theme="light"] .image-edit-quick-grid .button:hover:not(:disabled){border-color:#9eb8da;background:#edf4fd;color:#14253f}
+[data-theme="light"] .image-format-presets{border-color:#d5deea}
+[data-theme="light"] .image-format-preset-grid .button{border-color:#d5deea;background:#f5f8fc;color:#304661}
+[data-theme="light"] .image-format-preset-grid .button:hover:not(:disabled),[data-theme="light"] .image-format-preset-grid .button.is-selected{border-color:#9eb8da;background:#edf4fd;color:#14253f}
+[data-theme="light"] .image-custom-size{color:#60738c}
+[data-theme="light"] .image-custom-size input{border-color:#d5deea;background:#fff;color:#14253f}
+[data-theme="light"] .image-generator-additional-reference{border-color:#d5deea;background:#f5f8fc}
+[data-theme="light"] .image-generator-additional-reference>span{color:#304661}
 [data-theme="light"] .image-generator-style-heading small{color:#60738c}
 [data-theme="light"] .image-generator-style-picker button{border-color:#d5deea;background:#f5f8fc;color:#304661}
 [data-theme="light"] .image-generator-style-picker button:hover:not(:disabled){border-color:#9eb8da;background:#edf4fd;color:#14253f}
@@ -24044,7 +24062,7 @@ html:not([data-theme="light"]) .site-shell > footer nav a:hover {
 [data-theme="light"] .carousel-lightbox-regeneration small,[data-theme="light"] .carousel-slide-regeneration small,[data-theme="light"] .image-generator-carousel-slide-actions small{color:#60738c}
 @media(max-width:750px){.image-generator-studio-steps{display:flex;grid-template-columns:none;gap:8px;overflow-x:auto;padding:16px 16px 0;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}.image-generator-studio-steps>div{flex:0 0 min(82vw,240px);scroll-snap-align:start}.image-generator-mode-switch{display:flex;gap:8px;overflow-x:auto;padding:16px 16px 0;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}.image-generator-mode-switch button{flex:0 0 min(78vw,250px);scroll-snap-align:start}.image-generator-layout{grid-template-columns:1fr;padding:16px}.image-generator-form,.image-generator-preview{padding:18px}.image-generator-empty{min-height:220px}.image-generator-reference-actions{align-items:stretch;flex-direction:column}.image-generator-reference-actions .button,.image-generator-reference-upload{justify-content:center;width:100%}.image-generator-reference-selected{align-items:stretch;flex-direction:column}.image-generator-reference-selected>img{width:100%;height:160px}.image-generator-reference-selected .module-select{min-width:0}.image-generator-style-picker{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;margin:0 -2px;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}.image-generator-style-picker button{flex:0 0 148px;scroll-snap-align:start}.image-generator-template-picker{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;margin:0 -2px;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}.image-generator-template-picker button{flex:0 0 164px;scroll-snap-align:start}}
 @media(max-width:750px){.image-generator-preview>.image-generator-carousel-slides{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.image-generator-carousel-slide{padding:8px}.image-generator-carousel-slide-actions{grid-template-columns:repeat(2,36px);gap:5px}.image-generator-carousel-slide .button{width:36px;min-width:36px;height:36px;min-height:36px}.carousel-lightbox-actions{align-items:stretch;flex-direction:column}.carousel-lightbox-actions>.button,.carousel-lightbox-regeneration{width:100%;max-width:320px;margin-inline:auto}}
-@media(max-width:750px){.image-edit-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:750px){.image-edit-quick-grid,.image-format-preset-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.image-custom-size{align-items:stretch;flex-direction:column}.image-custom-size input{width:100%}}
 @media(max-width:750px){.image-generator-logo-toggle{min-height:52px;gap:12px;padding:14px;font-size:14px}.image-generator-logo-toggle input{flex-basis:22px;width:22px;height:22px}}
 
 /* Editable brief, comment, material and brand-profile text stays compact and

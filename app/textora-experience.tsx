@@ -403,11 +403,33 @@ type GenerationArchiveItem = {
 type CarouselSlide = { headline: string; subtext: string; imageUrl: string; templateId?: CarouselTemplateId; aspectRatio?: string };
 type ImageGeneratorMode = "create" | "edit" | "carousel";
 
+const IMAGE_FORMAT_PRESETS = [
+  { id: "social-post", label: "Пост VK / Telegram", size: "1024x1024" },
+  { id: "story", label: "Сторис", size: "1024x1824" },
+  { id: "article-cover", label: "Обложка статьи", size: "1536x1024" },
+  { id: "marketplace-card", label: "Карточка маркетплейса", size: "1024x1024" },
+  { id: "banner", label: "Баннер", size: "1536x864" },
+] as const;
+
+function isSupportedImageCanvasSize(value: string) {
+  if (!value || value === "auto") return true;
+  const match = /^(\d{3,4})x(\d{3,4})$/.exec(value);
+  if (!match) return false;
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  const ratio = Math.max(width, height) / Math.min(width, height);
+  return width % 16 === 0 && height % 16 === 0
+    && width <= 3840 && height <= 3840
+    && width * height >= 655_360 && width * height <= 8_294_400
+    && ratio <= 3;
+}
+
 const IMAGE_EDIT_PRESETS: Array<{
   id: string;
   label: string;
   prompt: string;
   background?: "auto" | "transparent";
+  requiresAdditionalReference?: boolean;
 }> = [
   {
     id: "auto-correction",
@@ -439,6 +461,37 @@ const IMAGE_EDIT_PRESETS: Array<{
     id: "remove-object",
     label: "Убрать объект",
     prompt: "Удали объект, выделенный кистью, и естественно восстанови фон за ним. Остальные объекты, лица и композицию не изменяй.",
+  },
+  {
+    id: "replace-sky",
+    label: "Заменить небо",
+    prompt: "Замени только небо на естественное выразительное небо, согласуй свет, цвет и отражения со сценой. Не меняй землю, здания, людей и основные объекты.",
+  },
+  {
+    id: "studio-background",
+    label: "Студийный фон",
+    prompt: "Замени фон на чистый профессиональный студийный фон с мягким светом и естественной тенью. Сохрани объект, лицо, позу, одежду и пропорции без изменений.",
+  },
+  {
+    id: "portrait-enhance",
+    label: "Улучшить портрет",
+    prompt: "Аккуратно улучши портрет: естественно выровняй тон кожи, свет и детализацию, убери мелкие технические дефекты. Сохрани лицо, возраст, мимику, черты и личность человека.",
+  },
+  {
+    id: "restore-damage",
+    label: "Восстановить область",
+    prompt: "Восстанови повреждённую или испорченную область изображения, продолжив окружающие текстуры, линии и свет. Не меняй остальные части кадра.",
+  },
+  {
+    id: "marketplace-prep",
+    label: "Для маркетплейса",
+    prompt: "Подготовь изображение товара для карточки маркетплейса: чистый нейтральный фон, товар полностью в кадре, ровный свет, высокая детализация и аккуратные края. Не меняй форму, цвет и маркировку товара.",
+  },
+  {
+    id: "combine-references",
+    label: "Объединить референсы",
+    prompt: "Объедини объекты и визуальные элементы из прикреплённых изображений в одну цельную сцену. Используй первое изображение как основу, а второе как дополнительный референс. Сохрани узнаваемость объектов и естественные масштаб, свет и перспективу.",
+    requiresAdditionalReference: true,
   },
 ];
 
@@ -2584,6 +2637,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [imagePrompt, setImagePrompt] = useState("");
   const [imageSourceTitle, setImageSourceTitle] = useState("");
   const [imageAspectRatio, setImageAspectRatio] = useState<"1:1" | "4:3" | "4:5" | "16:9" | "9:16">("4:3");
+  const [imageCanvasSize, setImageCanvasSize] = useState("");
   const [imageOutputFormat, setImageOutputFormat] = useState<"png" | "jpeg" | "webp">("png");
   const [imageBackground, setImageBackground] = useState<"auto" | "transparent">("auto");
   const [imageStyle, setImageStyle] = useState("");
@@ -2604,7 +2658,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [imageStreamPreview, setImageStreamPreview] = useState("");
   const [imageReferenceBusy, setImageReferenceBusy] = useState(false);
   const [imageReferenceError, setImageReferenceError] = useState("");
+  const [imageAdditionalReferences, setImageAdditionalReferences] = useState<Array<{ url: string; title: string }>>([]);
   const imageReferenceInputRef = useRef<HTMLInputElement | null>(null);
+  const imageAdditionalReferenceInputRef = useRef<HTMLInputElement | null>(null);
   const [carouselSlideCount, setCarouselSlideCount] = useState("5");
   const [carouselIndicatorMode, setCarouselIndicatorMode] = useState<CarouselSlideIndicatorMode>("numbers");
   const [carouselAspectRatio, setCarouselAspectRatio] = useState<"1:1" | "4:3" | "4:5" | "16:9" | "9:16">("1:1");
@@ -5800,6 +5856,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }
 
   function applyImageEditPreset(preset: (typeof IMAGE_EDIT_PRESETS)[number]) {
+    if (preset.requiresAdditionalReference && imageAdditionalReferences.length === 0) {
+      setImageError("Добавьте второе изображение, чтобы объединить несколько референсов.");
+      return;
+    }
     setImageGeneratorMode("edit");
     setImageSourceTitle("");
     setPendingCarouselSource(null);
@@ -5837,6 +5897,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setImageReferencePurpose("edit");
     setImageEditMask("");
     setImageReferenceError("");
+    setImageAdditionalReferences([]);
+    setImageCanvasSize("");
     setImageBackground("auto");
     setImageTextMode(current => current === "auto" ? "none" : current);
     setPendingCarouselSource(carouselSource);
@@ -5861,10 +5923,37 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setImageReferenceUrl(payload.url);
       setImageReferenceSourceId("");
       setImageEditSourceId(null);
-      setImageReferencePurpose("edit");
+      setImageReferencePurpose(imageGeneratorMode === "edit" ? "edit" : "reference");
       setImageEditMask("");
     } catch (error) {
       setImageReferenceError(error instanceof Error ? error.message : "Не удалось загрузить исходное изображение.");
+    } finally {
+      setImageReferenceBusy(false);
+    }
+  }
+
+  async function uploadAdditionalImageReferences(files: File[]) {
+    const available = Math.max(0, 1 - imageAdditionalReferences.length);
+    const selected = files.slice(0, available);
+    if (!selected.length) {
+      setImageReferenceError("Можно добавить один дополнительный референс к исходному изображению.");
+      return;
+    }
+    setImageReferenceBusy(true);
+    setImageReferenceError("");
+    try {
+      const uploaded: Array<{ url: string; title: string }> = [];
+      for (const file of selected) {
+        const form = new FormData();
+        form.append("file", file);
+        const response = await fetch("/api/uploads", { method: "POST", body: form, signal: AbortSignal.timeout(60_000) });
+        const payload = await safeJson(response) as { error?: string; url?: string };
+        if (!response.ok || !payload.url) throw new Error(payload.error || "Не удалось загрузить дополнительный референс.");
+        uploaded.push({ url: payload.url, title: file.name });
+      }
+      setImageAdditionalReferences(current => [...current, ...uploaded].slice(0, 1));
+    } catch (error) {
+      setImageReferenceError(error instanceof Error ? error.message : "Не удалось загрузить дополнительный референс.");
     } finally {
       setImageReferenceBusy(false);
     }
@@ -5874,9 +5963,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     prompt?: string;
     background?: "auto" | "transparent";
     outputFormat?: "png" | "jpeg" | "webp";
+    size?: string;
   }) {
     const prompt = (overrides?.prompt ?? imagePrompt).trim();
     if (prompt.length < 8 || imageBusy) return;
+    const requestedSize = (overrides?.size ?? imageCanvasSize).trim();
+    if (requestedSize && !isSupportedImageCanvasSize(requestedSize)) {
+      setImageError("Укажите размер, кратный 16, например 1536x864. Допустимый диапазон — от 655 360 до 8 294 400 пикселей.");
+      return;
+    }
     if (imageTextMode === "custom" && !imageText.trim()) { setImageError("Введите текст для изображения или выберите «Без текста»."); return; }
     setImageBusy(true);
     setImageError("");
@@ -5896,6 +5991,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           sourceImageGenerationId: imageEditSourceId || imageReferenceSourceId || undefined,
           sourceImageUrl: imageReferenceSourceId || imageEditSourceId ? undefined : imageReferenceUrl || undefined,
           sourceImagePurpose: imageEditSourceId || imageReferenceSourceId || imageReferenceUrl ? imageReferencePurpose : undefined,
+          referenceImageUrls: imageAdditionalReferences.map(reference => reference.url),
           imageEditMask: imageEditMask || undefined,
           // The active brand owns the material even when the person turns
           // off brand context for the prompt.  `useBrand` controls style,
@@ -5905,10 +6001,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           brandId: activeBrandId || undefined,
           requestId,
           aspectRatio: imageAspectRatio,
+          size: requestedSize || undefined,
           outputFormat: overrides?.outputFormat || imageOutputFormat,
           background: overrides?.background || imageBackground,
           imageStyle,
-          useLogo: useBrand && Boolean(brand.logoKey) && useLogoInImage,
+          useLogo: useBrand && Boolean(brand.logoKey) && useLogoInImage && imageAdditionalReferences.length === 0,
           logoPlacement, logoPosition, imageTextMode, imageText: imageTextMode === "custom" ? imageText.trim() : undefined,
         }),
       });
@@ -5950,6 +6047,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setImageEditSourceId(null);
       setImageReferenceUrl("");
       setImageReferenceSourceId("");
+      setImageAdditionalReferences([]);
       setImageReferenceError("");
       setImageEditMask("");
       openModule("images");
@@ -6116,6 +6214,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setImageReferencePurpose("edit");
     setImageEditMask("");
     setImageReferenceError("");
+    setImageAdditionalReferences([]);
+    setImageCanvasSize("");
     setImageBackground("auto");
     setImagePrompt("");
     setImageSourceTitle(imageResult.title);
@@ -6148,6 +6248,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setImageReferencePurpose("edit");
     setImageEditMask("");
     setImageReferenceError("");
+    setImageAdditionalReferences([]);
+    setImageCanvasSize("");
     setImageBackground("auto");
     setImageError("");
     setCarouselError("");
@@ -7383,15 +7485,28 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 {imageGeneratorMode === "edit" && <div className="image-edit-quick-actions">
                   <div className="image-edit-quick-heading"><strong>Быстрые действия</strong><small>Нажмите действие — КЛИО сразу обработает выбранное изображение.</small></div>
                   <div className="image-edit-quick-grid">
-                    {IMAGE_EDIT_PRESETS.map(preset => <button key={preset.id} type="button" className="button ghost" onClick={() => applyImageEditPreset(preset)} disabled={imageBusy || carouselBusy || imageReferenceBusy || !imageEditSourceId && !imageReferenceUrl && !imageReferenceSourceId} title={!imageEditSourceId && !imageReferenceUrl && !imageReferenceSourceId ? "Сначала выберите или загрузите исходное изображение" : `Обработать изображение: ${preset.label}`}>{preset.label}</button>)}
+                    {IMAGE_EDIT_PRESETS.map(preset => <button key={preset.id} type="button" className="button ghost" onClick={() => applyImageEditPreset(preset)} disabled={imageBusy || carouselBusy || imageReferenceBusy || !imageEditSourceId && !imageReferenceUrl && !imageReferenceSourceId || Boolean(preset.requiresAdditionalReference && imageAdditionalReferences.length === 0)} title={!imageEditSourceId && !imageReferenceUrl && !imageReferenceSourceId ? "Сначала выберите или загрузите исходное изображение" : preset.requiresAdditionalReference && imageAdditionalReferences.length === 0 ? "Добавьте ещё одно изображение" : `Обработать изображение: ${preset.label}`}>{preset.label}</button>)}
                   </div>
                 </div>}
+                {imageGeneratorMode === "create" && <div className="image-format-presets">
+                  <div className="image-edit-quick-heading"><strong>Формат результата</strong><small>Выберите готовый размер холста — КЛИО создаст новую картинку сразу под задачу.</small></div>
+                  <div className="image-format-preset-grid">
+                    {IMAGE_FORMAT_PRESETS.map(preset => <button key={preset.id} type="button" className={`button ghost ${imageCanvasSize === preset.size ? "is-selected" : ""}`} onClick={() => setImageCanvasSize(preset.size)} disabled={imageBusy || carouselBusy} title={`${preset.label}: ${preset.size}`}>{preset.label}</button>)}
+                  </div>
+                  <label className="image-custom-size">Свой размер
+                    <input value={imageCanvasSize && !IMAGE_FORMAT_PRESETS.some(preset => preset.size === imageCanvasSize) ? imageCanvasSize : ""} onChange={event => setImageCanvasSize(event.target.value.replace(/[^0-9x]/gi, "").slice(0, 9))} placeholder="например, 1536x864" inputMode="numeric" disabled={imageBusy || carouselBusy}/>
+                  </label>
+                </div>}
+                {imageGeneratorMode === "create" && imageAdditionalReferences.length > 0 && <div className="image-edit-quick-actions image-reference-combine-action">
+                  <div className="image-edit-quick-heading"><strong>Объединить изображения</strong><small>КЛИО возьмёт основной файл и дополнительный референс и соберёт их в одну сцену.</small></div>
+                  <button type="button" className="button ghost" onClick={() => applyImageEditPreset(IMAGE_EDIT_PRESETS.find(preset => preset.id === "combine-references")!)} disabled={imageBusy || carouselBusy || imageReferenceBusy}>Объединить референсы</button>
+                </div>}
                 {imageGeneratorMode === "carousel" && <small className="image-generator-source-count">{imagePrompt.length.toLocaleString("ru-RU")} / {MAX_CAROUSEL_SOURCE_CHARACTERS.toLocaleString("ru-RU")} символов</small>}
-                <div className="image-generator-reference" style={{ display: imageGeneratorMode === "edit" ? undefined : "none" }}>
-                  <div className="image-generator-reference-heading"><strong>Добавить изображение <em>(необязательно)</em></strong><small>По желанию загрузите свою картинку или выберите сохранённую: КЛИО изменит её по описанию или возьмёт как визуальный референс.</small></div>
+                <div className="image-generator-reference" style={{ display: imageGeneratorMode === "carousel" ? "none" : undefined }}>
+                  <div className="image-generator-reference-heading"><strong>{imageGeneratorMode === "edit" ? "Исходное изображение и референс" : "Добавить референс"} <em>(необязательно)</em></strong><small>{imageGeneratorMode === "edit" ? "Выберите исходник для доработки и при необходимости добавьте ещё одну фотографию, стиль или объект для объединения." : "Добавьте фотографию, стиль или объект как визуальный ориентир для новой генерации."}</small></div>
                   <div className="image-generator-reference-actions">
                     <label className={`button ghost image-generator-reference-upload ${imageReferenceBusy ? "is-busy" : ""}`}>
-                      {imageReferenceBusy ? "Загрузка…" : imageReferenceUrl ? "Заменить свою картинку" : "Загрузить свою картинку"}
+                      {imageReferenceBusy ? "Загрузка…" : imageReferenceUrl ? "Заменить исходник" : "Загрузить исходник"}
                       <input ref={imageReferenceInputRef} type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={imageReferenceBusy || imageBusy || carouselBusy} onChange={event => {
                         const file = event.target.files?.[0];
                         event.target.value = "";
@@ -7406,18 +7521,37 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                         setImageReferenceUrl(item.imageUrl);
                         setImageReferenceSourceId(item.id);
                         setImageEditSourceId(null);
-                        setImageReferencePurpose("edit");
+                        setImageReferencePurpose(imageGeneratorMode === "edit" ? "edit" : "reference");
                         setImageEditMask("");
                         setImageReferenceError("");
                       }}
                     />}
-                    {(imageReferenceUrl || imageEditSourceId) && <button type="button" className="button ghost" onClick={() => { setImageReferenceUrl(""); setImageReferenceSourceId(""); setImageEditSourceId(null); setImageReferencePurpose("edit"); setImageEditMask(""); setImageReferenceError(""); }}>Убрать исходник</button>}
+                    {imageGeneratorMode !== "edit" && <label className={`button ghost image-generator-reference-upload ${imageReferenceBusy ? "is-busy" : ""}`}>
+                      {imageReferenceBusy ? "Загрузка…" : "Добавить референс"}
+                      <input ref={imageAdditionalReferenceInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden disabled={imageReferenceBusy || imageBusy || carouselBusy || imageAdditionalReferences.length >= 1 || !imageReferenceUrl} onChange={event => {
+                        const files = Array.from(event.target.files || []);
+                        event.target.value = "";
+                        if (files.length) void uploadAdditionalImageReferences(files);
+                      }}/>
+                    </label>}
+                    {(imageReferenceUrl || imageEditSourceId) && imageGeneratorMode === "edit" && <label className={`button ghost image-generator-reference-upload ${imageReferenceBusy ? "is-busy" : ""}`}>
+                      {imageReferenceBusy ? "Загрузка…" : "Добавить референс"}
+                      <input ref={imageAdditionalReferenceInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden disabled={imageReferenceBusy || imageBusy || carouselBusy || imageAdditionalReferences.length >= 1} onChange={event => {
+                        const files = Array.from(event.target.files || []);
+                        event.target.value = "";
+                        if (files.length) void uploadAdditionalImageReferences(files);
+                      }}/>
+                    </label>}
+                    {(imageReferenceUrl || imageEditSourceId) && <button type="button" className="button ghost" onClick={() => { setImageReferenceUrl(""); setImageReferenceSourceId(""); setImageEditSourceId(null); setImageReferencePurpose(imageGeneratorMode === "edit" ? "edit" : "reference"); setImageEditMask(""); setImageReferenceError(""); }}>Убрать исходник</button>}
                   </div>
                   {(imageReferenceUrl || imageEditSourceId) && <div className="image-generator-reference-selected">
                     {(imageReferenceUrl || (imageEditSourceId ? imageResult?.imageUrl : "")) && <Image src={(imageReferenceUrl || imageResult?.imageUrl) as string} alt="Выбранное исходное изображение" width={96} height={72} unoptimized/>}
                   <ModuleSelect label="Как использовать" value={imageReferencePurpose} onChange={value => changeImageReferencePurpose(value as "edit" | "reference")} options={[{ value: "edit", label: "Редактировать по описанию" }, { value: "reference", label: "Взять как визуальный референс" }]}/>
                   </div>}
                   {(imageReferencePurpose === "edit") && (imageReferenceUrl || imageEditSourceId) && (imageReferenceUrl || imageResult?.imageUrl) && <ImageMaskEditor key={imageReferenceUrl || imageEditSourceId || "image-edit"} src={(imageReferenceUrl || imageResult?.imageUrl) as string} onMaskChange={mask => { setImageEditMask(mask); if (mask) setUseLogoInImage(false); }}/>}
+                  {imageAdditionalReferences.length > 0 && <div className="image-generator-additional-reference-list">
+                    {imageAdditionalReferences.map(reference => <div className="image-generator-additional-reference" key={reference.url}><Image src={reference.url} alt={reference.title || "Дополнительный референс"} width={96} height={72} unoptimized/><span>{reference.title || "Дополнительный референс"}</span><button type="button" className="button ghost" onClick={() => setImageAdditionalReferences(current => current.filter(item => item.url !== reference.url))}>Убрать</button></div>)}
+                  </div>}
                   {imageReferenceError && <small className="generation-error" role="alert">{imageReferenceError}</small>}
                 </div>
                 <div className="image-generator-settings">
@@ -7439,7 +7573,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   {imageGeneratorMode !== "carousel" && <ModuleSelect
                     label="Соотношение"
                     value={imageAspectRatio}
-                    onChange={(value) => setImageAspectRatio(value as "1:1" | "4:3" | "4:5" | "16:9" | "9:16")}
+                    onChange={(value) => { setImageAspectRatio(value as "1:1" | "4:3" | "4:5" | "16:9" | "9:16"); setImageCanvasSize(""); }}
                     options={[
                       { value: "1:1", label: "Квадрат" },
                       { value: "4:3", label: "Альбомная" },
@@ -7459,11 +7593,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </div>
                 {useBrand && activeBrandId && (brand.logoKey ? (
                   <>
-                    <label className={`image-generator-logo-toggle${imageEditMask ? " is-disabled" : ""}`} title={imageEditMask ? "Сначала очистите выделение кистью" : undefined}>
-                      <input type="checkbox" checked={useLogoInImage} disabled={Boolean(imageEditMask)} onChange={(event) => setUseLogoInImage(event.target.checked)}/>
+                    <label className={`image-generator-logo-toggle${imageEditMask || imageAdditionalReferences.length ? " is-disabled" : ""}`} title={imageEditMask ? "Сначала очистите выделение кистью" : imageAdditionalReferences.length ? "При дополнительном референсе логотип отключён: relay принимает два изображения за запрос" : undefined}>
+                      <input type="checkbox" checked={useLogoInImage} disabled={Boolean(imageEditMask) || imageAdditionalReferences.length > 0} onChange={(event) => setUseLogoInImage(event.target.checked)}/>
                       <span>Использовать логотип бренда на картинке</span>
                     </label>
                     {imageEditMask && <small className="image-generator-logo-toggle-note">Чтобы добавить логотип, сначала очистите выделение кистью.</small>}
+                    {imageAdditionalReferences.length > 0 && <small className="image-generator-logo-toggle-note">Логотип отключён при добавлении дополнительного референса, чтобы оставить место для двух пользовательских изображений.</small>}
                   </>
                 ) : (
                   <button type="button" className="image-generator-logo-suggest" onClick={() => openModule("brand")}>Загрузить логотип бренда →</button>

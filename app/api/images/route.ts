@@ -32,6 +32,9 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) failureId = requestId;
     const sourceImageGenerationId = typeof input.sourceImageGenerationId === "string" ? input.sourceImageGenerationId.trim() : "";
     const sourceImageUrl = typeof input.sourceImageUrl === "string" ? input.sourceImageUrl.trim().slice(0, 600) : "";
+    const referenceImageUrls = Array.isArray(input.referenceImageUrls)
+      ? input.referenceImageUrls.filter((value): value is string => typeof value === "string").map(value => value.trim().slice(0, 600)).filter(Boolean).slice(0, 1)
+      : [];
     const sourceImagePurpose = input.sourceImagePurpose === "reference" ? "reference" : "edit";
     const imageOptions = parseImageGenerationOptions(input);
     const imageStyle = typeof input.imageStyle === "string"
@@ -57,6 +60,7 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
     const [existing] = await db.select().from(generations).where(and(eq(generations.id, requestId), eq(generations.ownerEmail, user.email))).limit(1);
     if (existing) return Response.json({ generation: existing });
     if (sourceImageGenerationId && sourceImageUrl) return Response.json({ error: "Выберите сохранённое изображение или загрузите файл, но не оба источника сразу." }, { status: 400 });
+    if (referenceImageUrls.some(url => url === sourceImageUrl)) return Response.json({ error: "Основное изображение и дополнительный референс должны быть разными файлами." }, { status: 400 });
     let inheritedBrandId = "";
     if (typeof input.sourceGenerationId === "string" && input.sourceGenerationId) {
       const [source] = await db.select({ title: generations.title, brandId: generations.brandId }).from(generations).where(and(eq(generations.id, input.sourceGenerationId), eq(generations.ownerEmail, user.email))).limit(1);
@@ -91,6 +95,7 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
     }
     const baseUrl = new URL(resolveBaseUrl(request)).origin;
     let sourceImage: { bytes: Uint8Array<ArrayBuffer>; contentType: string } | undefined;
+    const additionalImages: Array<{ bytes: Uint8Array<ArrayBuffer>; contentType: string }> = [];
     let resolvedSourceImageUrl = sourceImageUrl;
     if (sourceImageGenerationId) {
       const [source] = await db.select({ imageUrl: generations.imageUrl, brandId: generations.brandId })
@@ -112,6 +117,16 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
         throw new WorkspaceAccessError("Выберите своё изображение или загрузите файл заново.", 400);
       sourceImage = await downloadPublicationImage(match[1]);
     }
+    for (const referenceUrl of referenceImageUrls) {
+      let parsed: URL;
+      try { parsed = new URL(referenceUrl, baseUrl); } catch { throw new WorkspaceAccessError("Дополнительный референс недоступен.", 400); }
+      const match = /^\/api\/uploads\/(publications\/([a-f0-9]{64})\/[a-f0-9-]{36}\.(?:png|jpg|webp|gif))$/i.exec(parsed.pathname);
+      const ownerKey = createHash("sha256").update(user.email.trim().toLowerCase()).digest("hex");
+      if (!/^https?:$/.test(parsed.protocol) || !match || match[2] !== ownerKey)
+        throw new WorkspaceAccessError("Выберите свой дополнительный референс или загрузите его заново.", 400);
+      additionalImages.push(await downloadPublicationImage(match[1]));
+    }
+    if (additionalImages.length && !sourceImage) throw new WorkspaceAccessError("Сначала выберите основное изображение, затем добавьте референс.", 400);
     if (useLogo && !logoKey) throw new WorkspaceAccessError("Добавьте логотип в профиль бренда или отключите его использование.", 400);
     const finalPrompt = `${prompt}${brandContext}${imageStyle ? `\n\nСтиль изображения: ${imageStyle}` : ""}\n\n${dialogueImageTextInstruction(imageTextMode, imageTextMode === "title" ? sourceTitle : imageText, Boolean(sourceImage) && sourceImagePurpose === "edit", useLogo)}`;
     const imageStartedAt = Date.now();
@@ -121,7 +136,7 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
       imageUrl = sourceImage
         ? await createImageFromSource(finalPrompt, sourceImage, sourceImagePurpose,
           useLogo && logoKey ? await downloadBrandLogo(logoKey) : undefined,
-          user.email, baseUrl, requestId, imageOptions, editMask, onPartial, usage => { imageUsage = usage; })
+          user.email, baseUrl, requestId, imageOptions, editMask, onPartial, usage => { imageUsage = usage; }, additionalImages)
         : useLogo && logoKey
         ? await createImageFromLogo(finalPrompt, await downloadBrandLogo(logoKey), user.email, baseUrl, requestId, imageOptions, undefined, onPartial, usage => { imageUsage = usage; })
         : await createImage(finalPrompt, user.email, baseUrl, requestId, imageOptions, undefined, onPartial, usage => { imageUsage = usage; });
