@@ -11,7 +11,6 @@ export type ImageQuality = "low" | "medium" | "high" | "xhigh" | "max";
 export type LogoPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 export type ImageInput = { bytes: Uint8Array<ArrayBuffer>; contentType: string };
 export type ImageReferenceRole = "object" | "style";
-export type LocalImageEditOperation = "auto-correction" | "denoise" | "sharpen" | "portrait-enhance";
 type ImagePartialHandler = (dataUrl: string) => void;
 type ImageUsageHandler = (usage: ImageProviderUsage) => void;
 export type ImageGenerationOptions = {
@@ -673,47 +672,6 @@ async function overlayOriginalLogo(
   if (outputFormat === "jpeg") return { bytes: Uint8Array.from(await composed.jpeg({ quality: 95, mozjpeg: true }).toBuffer()), contentType: "image/jpeg" };
   if (outputFormat === "webp") return { bytes: Uint8Array.from(await composed.webp({ quality: 95, alphaQuality: 100 }).toBuffer()), contentType: "image/webp" };
   return { bytes: Uint8Array.from(await composed.png().toBuffer()), contentType: "image/png" };
-}
-
-// Technical enhancement buttons must not send the whole photograph through a
-// generative edit: that can redraw faces, hair and other identity-bearing
-// details. Keep these operations pixel-preserving and deterministic with
-// Sharp. Creative operations (background replacement, object removal, sky
-// replacement) continue through the image model below.
-export async function createLocalImageEdit(
-  source: ImageInput,
-  operation: LocalImageEditOperation,
-  email: string,
-  baseUrl: string,
-) {
-  const sharp = (await import("sharp")).default;
-  let pipeline = sharp(source.bytes).rotate();
-  if (operation === "auto-correction") {
-    // Make the preset visibly useful on an already decent photo: expand a
-    // small tonal range, lift shadows, tame the overall contrast and restore
-    // colour separation without handing the photograph to a generative edit.
-    pipeline = pipeline
-      .normalize({ lower: 2, upper: 98 })
-      .modulate({ brightness: 1.05, saturation: 1.1 })
-      .linear(1.04, -4)
-      .sharpen({ sigma: 0.8, m1: 0.5, m2: 1.2 });
-  } else if (operation === "denoise") {
-    pipeline = pipeline.median(3).sharpen({ sigma: 0.45, m1: 0.3, m2: 0.9 });
-  } else if (operation === "sharpen") {
-    pipeline = pipeline.sharpen({ sigma: 1, m1: 0.7, m2: 1.6 });
-  } else {
-    // Portrait enhancement must be visible on an already well exposed photo,
-    // while remaining pixel preserving.  The previous 2%/1% adjustment was
-    // effectively indistinguishable and looked like a no-op to the user.
-    pipeline = pipeline
-      .modulate({ brightness: 1.05, saturation: 1.08 })
-      .linear(1.04, -4)
-      .sharpen({ sigma: 1.05, m1: 0.65, m2: 1.45 });
-  }
-  // PNG/WebP keep an existing transparent background. JPEG would flatten it,
-  // so local edits always use PNG as the lossless archival format.
-  const bytes = await pipeline.png().toBuffer();
-  return uploadPublicationImage(new File([bytes], "klio-local-edit.png", { type: "image/png" }), email, baseUrl, { optimizeOversized: true });
 }
 
 // Each carousel card is generated as a complete raster image by the image

@@ -5881,14 +5881,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setCarouselError("");
     setImageBackground(preset.background || "auto");
     if (preset.background === "transparent") setImageOutputFormat("png");
-    const localOperation = ["auto-correction", "denoise", "sharpen", "portrait-enhance"].includes(preset.id)
-      ? preset.id as "auto-correction" | "denoise" | "sharpen" | "portrait-enhance"
-      : undefined;
     void generateProfessionalImage({
       prompt: preset.prompt,
       background: preset.background || "auto",
       outputFormat: preset.background === "transparent" ? "png" : undefined,
-      localOperation,
       sourcePurpose: "edit",
     });
   }
@@ -5997,7 +5993,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     background?: "auto" | "transparent";
     outputFormat?: "png" | "jpeg" | "webp";
     size?: string;
-    localOperation?: "auto-correction" | "denoise" | "sharpen" | "portrait-enhance";
     sourcePurpose?: "edit" | "reference";
   }) {
     const prompt = (overrides?.prompt ?? imagePrompt).trim() || (canGenerateFromVisualReference
@@ -6033,7 +6028,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           referenceImageUrls: imageAdditionalReferences.map(reference => reference.url),
           referenceImageRoles: imageAdditionalReferences.map(reference => reference.purpose),
           imageEditMask: imageEditMask || undefined,
-          localOperation: overrides?.localOperation,
           // The active brand owns the material even when the person turns
           // off brand context for the prompt.  `useBrand` controls style,
           // site facts and logo guidance; it must not make a generated or

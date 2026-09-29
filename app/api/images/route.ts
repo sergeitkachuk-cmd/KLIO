@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { brands, generations } from "../../../db/schema";
-import { imageConfigured, createImage, createImageFromLogo, createImageFromSource, createLocalImageEdit, parseImageGenerationOptions, type LocalImageEditOperation } from "../_lib/image-generation";
+import { imageConfigured, createImage, createImageFromLogo, createImageFromSource, parseImageGenerationOptions } from "../_lib/image-generation";
 import { downloadBrandLogo, downloadPublicationImage, StorageError } from "../_lib/storage";
 import { dialogueImageTextInstruction } from "../_lib/dialogue-image-prompt";
 import { readBoundedJson, RequestBodyError } from "../_lib/request-body";
@@ -26,9 +26,6 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
     const user = await workspaceIdentity();
     const input = await readBoundedJson(request, 5 * 1024 * 1024);
     let prompt = typeof input.prompt === "string" ? input.prompt.trim().slice(0, 1800) : "";
-    const localOperation = typeof input.localOperation === "string" && (["auto-correction", "denoise", "sharpen", "portrait-enhance"] as const).includes(input.localOperation as LocalImageEditOperation)
-      ? input.localOperation as LocalImageEditOperation
-      : undefined;
     let sourceTitle = typeof input.sourceTitle === "string" ? input.sourceTitle.trim().slice(0, 500) : "";
     const brandId = typeof input.brandId === "string" ? input.brandId.trim() : "";
     const requestId = typeof input.requestId === "string" ? input.requestId.trim() : "";
@@ -41,14 +38,7 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
     const referenceImageRoles = Array.isArray(input.referenceImageRoles)
       ? input.referenceImageRoles.map(value => value === "object" ? "object" : "style").slice(0, referenceImageUrls.length) as Array<"object" | "style">
       : [];
-    // The quick technical enhancements always operate on the selected photo
-    // itself.  The UI can briefly retain the previous "reference" value when
-    // switching from create to edit mode; allowing that stale value here made
-    // the buttons either reject the request or route it through the wrong
-    // image path.  A local operation is unambiguously an edit.
-    const sourceImagePurpose = localOperation
-      ? "edit"
-      : input.sourceImagePurpose === "reference" ? "reference" : "edit";
+    const sourceImagePurpose = input.sourceImagePurpose === "reference" ? "reference" : "edit";
     const imageOptions = parseImageGenerationOptions(input);
     const imageStyle = typeof input.imageStyle === "string"
       ? IMAGE_STYLE_OPTIONS.find(option => option.value === input.imageStyle)?.instruction || ""
@@ -87,7 +77,7 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
       sourceTitle = sourceTitle || source.title.slice(0, 500);
     }
     if (imageTextMode === "title" && !sourceTitle) return Response.json({ error: "Выберите материал с заголовком или режим «Свой текст»." }, { status: 400 });
-    if (!imageConfigured() && !localOperation) return Response.json({ error: "Генерация изображений пока недоступна." }, { status: 503 });
+    if (!imageConfigured()) return Response.json({ error: "Генерация изображений пока недоступна." }, { status: 503 });
     if (isRateLimited(`images:${user.email}`, 4, 60_000)) return Response.json({ error: "Слишком много запросов. Подождите минуту." }, { status: 429 });
     await assertGenerationQuotaAvailable(brandId || undefined);
     let brandContext = "";
@@ -143,7 +133,6 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
       additionalImages.push(await downloadPublicationImage(match[1]));
     }
     if (additionalImages.length && !sourceImage) throw new WorkspaceAccessError("Сначала выберите основное изображение, затем добавьте референс.", 400);
-    if (localOperation && (!sourceImage || sourceImagePurpose !== "edit")) throw new ImageInputError("Technical enhancement requires a selected source image.");
     if (useLogo && !logoKey) throw new WorkspaceAccessError("Добавьте логотип в профиль бренда или отключите его использование.", 400);
     const visualReferenceStyleInstruction = sourceImage && sourceImagePurpose === "reference" && imageStyle
       ? "\n\nКЛЮЧЕВОЕ ТРЕБОВАНИЕ К СТИЛЮ: исходное изображение является референсом самого объекта и его содержания. Сохрани именно этот объект, его силуэт, пропорции, ракурс и ключевые детали — не заменяй его другим предметом и не меняй его назначение. Одновременно не оставляй исходную фотореалистичную подачу и не просто помещай объект в новую сцену: измени только визуальную подачу под выбранный стиль — материалы, освещение, цвет, контуры, фактуру, объём и степень детализации. Результат должен явно выглядеть как выбранная стилизация, при этом объект оставаться узнаваемым и тем же самым."
@@ -153,15 +142,13 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
     let imageUsage: ImageProviderUsage | undefined;
     let imageUrl: string;
     try {
-      imageUrl = localOperation
-        ? await createLocalImageEdit(sourceImage!, localOperation, user.email, baseUrl)
-        : sourceImage
-          ? await createImageFromSource(finalPrompt, sourceImage, sourceImagePurpose,
-            useLogo && logoKey ? await downloadBrandLogo(logoKey) : undefined,
-            user.email, baseUrl, requestId, imageOptions, editMask, onPartial, usage => { imageUsage = usage; }, additionalImages, referenceImageRoles)
-          : useLogo && logoKey
-            ? await createImageFromLogo(finalPrompt, await downloadBrandLogo(logoKey), user.email, baseUrl, requestId, imageOptions, undefined, onPartial, usage => { imageUsage = usage; })
-            : await createImage(finalPrompt, user.email, baseUrl, requestId, imageOptions, undefined, onPartial, usage => { imageUsage = usage; });
+      imageUrl = sourceImage
+        ? await createImageFromSource(finalPrompt, sourceImage, sourceImagePurpose,
+          useLogo && logoKey ? await downloadBrandLogo(logoKey) : undefined,
+          user.email, baseUrl, requestId, imageOptions, editMask, onPartial, usage => { imageUsage = usage; }, additionalImages, referenceImageRoles)
+        : useLogo && logoKey
+          ? await createImageFromLogo(finalPrompt, await downloadBrandLogo(logoKey), user.email, baseUrl, requestId, imageOptions, undefined, onPartial, usage => { imageUsage = usage; })
+          : await createImage(finalPrompt, user.email, baseUrl, requestId, imageOptions, undefined, onPartial, usage => { imageUsage = usage; });
       await recordImageUsage({ ownerEmail: user.email, requestId, operation: "generate_image", durationMs: Date.now() - imageStartedAt, status: "success", usage: imageUsage });
     } catch (error) {
       await recordImageUsage({ ownerEmail: user.email, requestId, operation: "generate_image", durationMs: Date.now() - imageStartedAt, status: "failed", usage: imageUsage, errorMessage: error instanceof Error ? error.message : String(error) });
