@@ -403,6 +403,45 @@ type GenerationArchiveItem = {
 type CarouselSlide = { headline: string; subtext: string; imageUrl: string; templateId?: CarouselTemplateId; aspectRatio?: string };
 type ImageGeneratorMode = "create" | "edit" | "carousel";
 
+const IMAGE_EDIT_PRESETS: Array<{
+  id: string;
+  label: string;
+  prompt: string;
+  background?: "auto" | "transparent";
+}> = [
+  {
+    id: "auto-correction",
+    label: "Автокоррекция",
+    prompt: "Сделай цветокоррекцию, выровняй тени, убери засветы, сделай шумоподавление и размой фон. Сохрани естественные цвета, детали, лица и композицию исходного изображения.",
+  },
+  {
+    id: "remove-background",
+    label: "Убрать фон",
+    prompt: "Аккуратно отдели главный объект от фона, убери фон полностью и сохрани чистые естественные края объекта. Не изменяй сам объект.",
+    background: "transparent",
+  },
+  {
+    id: "blur-background",
+    label: "Размыть фон",
+    prompt: "Размой фон с естественной глубиной резкости, оставь главный объект и его контуры резкими. Не меняй объект, лицо, одежду и композицию.",
+  },
+  {
+    id: "denoise",
+    label: "Убрать шум",
+    prompt: "Убери цифровой шум и цветовой шум, сохрани мелкие детали, текстуры, естественную кожу и резкость исходного изображения.",
+  },
+  {
+    id: "sharpen",
+    label: "Повысить резкость",
+    prompt: "Аккуратно повысь резкость и микроконтраст, восстанови читаемость деталей без ореолов, перешарпа и неестественной кожи.",
+  },
+  {
+    id: "remove-object",
+    label: "Убрать объект",
+    prompt: "Удали объект, выделенный кистью, и естественно восстанови фон за ним. Остальные объекты, лица и композицию не изменяй.",
+  },
+];
+
 function readCarouselSlides(value?: string): CarouselSlide[] {
   try {
     const parsed: unknown = JSON.parse(value || "[]");
@@ -2546,6 +2585,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [imageSourceTitle, setImageSourceTitle] = useState("");
   const [imageAspectRatio, setImageAspectRatio] = useState<"1:1" | "4:3" | "4:5" | "16:9" | "9:16">("4:3");
   const [imageOutputFormat, setImageOutputFormat] = useState<"png" | "jpeg" | "webp">("png");
+  const [imageBackground, setImageBackground] = useState<"auto" | "transparent">("auto");
   const [imageStyle, setImageStyle] = useState("");
   const [imageGeneratorMode, setImageGeneratorMode] = useState<ImageGeneratorMode>("create");
   const [imageTextMode, setImageTextMode] = useState("auto");
@@ -5759,6 +5799,21 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     return [title, subtitle, body].filter(Boolean).map((part) => part.trim()).filter(Boolean).join("\n\n").slice(0, MAX_CAROUSEL_SOURCE_CHARACTERS);
   }
 
+  function applyImageEditPreset(preset: (typeof IMAGE_EDIT_PRESETS)[number]) {
+    setImageGeneratorMode("edit");
+    setImageSourceTitle("");
+    setPendingCarouselSource(null);
+    setImageError("");
+    setCarouselError("");
+    setImageBackground(preset.background || "auto");
+    if (preset.background === "transparent") setImageOutputFormat("png");
+    void generateProfessionalImage({
+      prompt: preset.prompt,
+      background: preset.background || "auto",
+      outputFormat: preset.background === "transparent" ? "png" : undefined,
+    });
+  }
+
   // Every "Создать картинку"/"Создать карусель" button outside this module
   // itself used to call generateProfessionalImage/generateCarousel directly,
   // firing a real (paid) generation before the person had seen the aspect
@@ -5782,6 +5837,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setImageReferencePurpose("edit");
     setImageEditMask("");
     setImageReferenceError("");
+    setImageBackground("auto");
     setImageTextMode(current => current === "auto" ? "none" : current);
     setPendingCarouselSource(carouselSource);
     setImageError("");
@@ -5814,8 +5870,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     }
   }
 
-  async function generateProfessionalImage() {
-    const prompt = imagePrompt.trim();
+  async function generateProfessionalImage(overrides?: {
+    prompt?: string;
+    background?: "auto" | "transparent";
+    outputFormat?: "png" | "jpeg" | "webp";
+  }) {
+    const prompt = (overrides?.prompt ?? imagePrompt).trim();
     if (prompt.length < 8 || imageBusy) return;
     if (imageTextMode === "custom" && !imageText.trim()) { setImageError("Введите текст для изображения или выберите «Без текста»."); return; }
     setImageBusy(true);
@@ -5845,7 +5905,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           brandId: activeBrandId || undefined,
           requestId,
           aspectRatio: imageAspectRatio,
-          outputFormat: imageOutputFormat,
+          outputFormat: overrides?.outputFormat || imageOutputFormat,
+          background: overrides?.background || imageBackground,
           imageStyle,
           useLogo: useBrand && Boolean(brand.logoKey) && useLogoInImage,
           logoPlacement, logoPosition, imageTextMode, imageText: imageTextMode === "custom" ? imageText.trim() : undefined,
@@ -6055,6 +6116,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setImageReferencePurpose("edit");
     setImageEditMask("");
     setImageReferenceError("");
+    setImageBackground("auto");
     setImagePrompt("");
     setImageSourceTitle(imageResult.title);
     setPendingCarouselSource(null);
@@ -6086,6 +6148,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setImageReferencePurpose("edit");
     setImageEditMask("");
     setImageReferenceError("");
+    setImageBackground("auto");
     setImageError("");
     setCarouselError("");
     setImageStreamPreview("");
@@ -7317,6 +7380,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <div className="image-generator-form">
                 <label htmlFor="image-prompt">{imageGeneratorMode === "carousel" ? "Статья или тема для карусели" : imageGeneratorMode === "edit" || imageEditSourceId ? "Что изменить в изображении" : "Что изобразить"}</label>
                 <textarea id="image-prompt" value={imagePrompt} onChange={event => { setImagePrompt(event.target.value); setImageSourceTitle(""); setPendingCarouselSource(null); if (imageTextMode === "title") setImageTextMode("auto"); }} placeholder={imageGeneratorMode === "carousel" ? "Вставьте статью или опишите тему, которую нужно раскрыть в серии слайдов" : imageGeneratorMode === "edit" || imageEditSourceId ? "Например: добавь мягкий вечерний свет и убери кружку справа" : "Например: чашка кофе на деревянном столе у окна, мягкий утренний свет, без надписей"} rows={6} maxLength={imageGeneratorMode === "carousel" ? MAX_CAROUSEL_SOURCE_CHARACTERS : 1800}/>
+                {imageGeneratorMode === "edit" && <div className="image-edit-quick-actions">
+                  <div className="image-edit-quick-heading"><strong>Быстрые действия</strong><small>Нажмите действие — КЛИО сразу обработает выбранное изображение.</small></div>
+                  <div className="image-edit-quick-grid">
+                    {IMAGE_EDIT_PRESETS.map(preset => <button key={preset.id} type="button" className="button ghost" onClick={() => applyImageEditPreset(preset)} disabled={imageBusy || carouselBusy || imageReferenceBusy || !imageEditSourceId && !imageReferenceUrl && !imageReferenceSourceId} title={!imageEditSourceId && !imageReferenceUrl && !imageReferenceSourceId ? "Сначала выберите или загрузите исходное изображение" : `Обработать изображение: ${preset.label}`}>{preset.label}</button>)}
+                  </div>
+                </div>}
                 {imageGeneratorMode === "carousel" && <small className="image-generator-source-count">{imagePrompt.length.toLocaleString("ru-RU")} / {MAX_CAROUSEL_SOURCE_CHARACTERS.toLocaleString("ru-RU")} символов</small>}
                 <div className="image-generator-reference" style={{ display: imageGeneratorMode === "edit" ? undefined : "none" }}>
                   <div className="image-generator-reference-heading"><strong>Добавить изображение <em>(необязательно)</em></strong><small>По желанию загрузите свою картинку или выберите сохранённую: КЛИО изменит её по описанию или возьмёт как визуальный референс.</small></div>
