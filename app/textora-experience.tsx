@@ -5871,6 +5871,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setImageAdditionalReferences(current => current.map(reference => ({ ...reference, purpose: "object" })));
     }
     setImageGeneratorMode("edit");
+    // Every quick action is an edit of the selected source.  Keep this state
+    // explicit even when the image was previously selected as a visual
+    // reference in create mode.
+    setImageReferencePurpose("edit");
     setImageSourceTitle("");
     setPendingCarouselSource(null);
     setImageError("");
@@ -5885,7 +5889,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       background: preset.background || "auto",
       outputFormat: preset.background === "transparent" ? "png" : undefined,
       localOperation,
-      sourcePurpose: localOperation ? "edit" : undefined,
+      sourcePurpose: "edit",
     });
   }
 
