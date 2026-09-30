@@ -142,6 +142,37 @@ const OPERATION_LABELS: Record<AiOperation, string> = {
   condense_overflow: "Сжатие переполнения (nano)",
 };
 
+// One visible action can contain a main generation plus technical calls such
+// as brief parsing, validation, correction and shortening. Activity rows are
+// sorted newest first, so simply taking rows[0] made the last technical step
+// replace the action name after calls started being grouped. Pick the
+// user-facing operation explicitly; every individual call is still listed in
+// the expanded details below.
+const GROUP_OPERATION_PRIORITY: AiOperation[] = [
+  "generate_seo_article",
+  "generate_social_post",
+  "generate_ad_copy",
+  "generate_landing",
+  "generate_quick_material",
+  "generate_content_plan",
+  "revise_content_plan",
+  "generate_carousel_slides",
+  "adapt_text",
+  "research_semantics",
+  "discover_competitors",
+  "analyze_competitors",
+  "analyze_brand_website",
+  "suggest_brand_voice",
+  "dialogue",
+  "dialogue_plain",
+  "dialogue_deepseek_plain",
+  "revise_content",
+  "normalize_quick_brief",
+  "validate_content",
+  "condense_overflow",
+  "infer_content_plan_industry",
+];
+
 // payments.status values written by /api/payments/tochka/create (pending)
 // and the webhook handler (paid) — refunded is set manually today, there is
 // no automated refund flow yet.
@@ -452,7 +483,12 @@ export default async function AdminPage() {
     const images = imagesByOwner.get(account.email) ?? 0;
     const mat = materialsByOwner.get(account.email) ?? { contentPlan: 0, semantics: 0, competitors: 0 };
     const social = socialChannelsByOwner.get(account.email) ?? { vk: 0, telegram: 0 };
-    const modulesUsed = [gen.generator > 0, gen.editor > 0, mat.contentPlan > 0, mat.semantics > 0, mat.competitors > 0].filter(Boolean).length;
+    // The quota ledger records a completed generation even when its result
+    // stays inside Dialogue and is not saved to the materials library. The
+    // generations table is a material archive, so using it alone made those
+    // customers look as if they had never generated anything.
+    const hasGenerated = account.lifetimeGenerationsUsed > 0;
+    const modulesUsed = [hasGenerated, gen.editor > 0, mat.contentPlan > 0, mat.semantics > 0, mat.competitors > 0].filter(Boolean).length;
     return {
       email: account.email,
       displayName: account.displayName,
@@ -476,6 +512,7 @@ export default async function AdminPage() {
       // the bare "Пробный период" label formatPlanExpiry falls back to.
       planExpiresAt: account.planId === "trial" ? trialExpiresAt(account) : account.planExpiresAt,
       generationsUsed: account.generationsUsed,
+      lifetimeGenerationsUsed: account.lifetimeGenerationsUsed,
       generationLimit: plan.generationLimit,
       researchUsed: account.researchUsed,
       researchLimit: plan.researchLimit,
@@ -560,7 +597,7 @@ export default async function AdminPage() {
     { id: "verified", label: "Подтвердили почту", count: verifiedCount },
     { id: "brand", label: "Создали профиль бренда", count: users.filter((item) => item.brandCount > 0).length },
     { id: "brand-filled", label: "Заполнили профиль бренда ≥50%", count: users.filter((item) => (item.brandProfileCompletion ?? 0) >= 50).length },
-    { id: "first-material", label: "Создали первый материал", count: users.filter((item) => item.textsGenerated + item.textsEdited + item.textsManual + item.contentPlans + item.semanticsRuns + item.competitorAnalyses > 0).length },
+    { id: "first-material", label: "Сделали первую генерацию или материал", count: users.filter((item) => item.lifetimeGenerationsUsed > 0 || item.textsEdited + item.textsManual + item.contentPlans + item.semanticsRuns + item.competitorAnalyses > 0).length },
     { id: "multi-module", label: "Использовали 2+ инструмента", count: users.filter((item) => item.modulesUsed >= 2).length },
     { id: "paid", label: "Оплатили тариф", count: users.filter((item) => item.everPaid).length },
     { id: "active-30d", label: "Активны за последние 30 дней", count: users.filter((item) => { const days = daysSince(item.lastCallAt); return days !== null && days <= 30; }).length },
@@ -696,8 +733,13 @@ export default async function AdminPage() {
             <thead><tr><th>Время</th><th>Пользователь</th><th>Операция</th><th>Модель</th><th>Размышление</th><th>Длительность</th><th>Токены вход / выход</th><th>Расход, USD</th><th>Статус</th><th>Ошибка</th></tr></thead>
             <tbody>
               {recentActivityGroups.map((group) => {
-                const primary = group.rows[0];
-                const operationLabel = (row: typeof primary) => row.activityType === "image"
+                const newest = group.rows[0];
+                const primary = group.rows.find((row) => row.activityType === "image")
+                  ?? GROUP_OPERATION_PRIORITY
+                    .map((operation) => group.rows.find((row) => row.activityType === "ai" && row.operation === operation))
+                    .find((row) => Boolean(row))
+                  ?? newest;
+                const operationLabel = (row: typeof newest) => row.activityType === "image"
                   ? row.topic === "Карусель" ? "Генерация карусели"
                     : row.topic === "Слайд карусели" ? "Перегенерация слайда"
                       : "Генерация изображения"
@@ -710,7 +752,7 @@ export default async function AdminPage() {
                 const hasFailure = group.rows.some((row) => row.status !== "success");
                 const errors = group.rows.map((row) => row.errorMessage).filter(Boolean);
                 return <tr key={group.key}>
-                  <td>{formatDate(primary.createdAt)}</td>
+                  <td>{formatDate(newest.createdAt)}</td>
                   <td>{primary.ownerEmail}</td>
                   <td>
                     <details className="admin-call-group" open={group.rows.length === 1 ? undefined : false}>
