@@ -435,7 +435,7 @@ const IMAGE_EDIT_PRESETS: Array<{
   {
     id: "auto-correction",
     label: "Автокоррекция",
-    prompt: "Сделай умеренную профессиональную цветокоррекцию исходной фотографии без изменения сюжета и композиции. Слегка подними детали в глубоких тенях, сохранив естественный общий уровень экспозиции. Мягко выровняй светлые участки и убери локальные пересветы, особенно на воде, небе, одежде и других белых объектах, без сильного затемнения или осветления всего кадра. Сохрани естественные средние тона. Проверь баланс белого по нейтральным участкам и убери жёлтый или синий оттенок. Удали цифровой и цветовой шум с сохранением текстур и мелких деталей. Если главный объект слегка мягкий, мутный или немного смазан, очень умеренно повысь только на нём локальную резкость, микроконтраст и читаемость деталей. Если объект уже резкий, не усиливай резкость. Не дорисовывай отсутствующие детали, не меняй черты лица, форму и текстуры объекта, не создавай ореолы, двойные контуры, лишнее зерно или эффект перешарпа. Добавь чуть более сильное естественное размытие заднего плана с мягким боке, оставив главный объект и его края резкими; не размывай сам объект и не превращай фон в искусственную сплошную заливку. Не меняй лица, форму объектов, цвета предметов и исходную композицию.",
+    prompt: "Сделай умеренную профессиональную цветокоррекцию исходной фотографии без изменения сюжета и композиции. Слегка подними детали в глубоких тенях, сохранив естественный общий уровень экспозиции. Мягко выровняй светлые участки и убери локальные пересветы, особенно на воде, небе, одежде и других белых объектах, без сильного затемнения или осветления всего кадра. Сохрани естественные средние тона. Проверь баланс белого по нейтральным участкам и убери жёлтый или синий оттенок. Удали цифровой и цветовой шум с сохранением текстур и мелких деталей. Если главный объект слегка мягкий, мутный или немного смазан, очень умеренно повысь только на нём локальную резкость, микроконтраст и читаемость деталей. Если объект уже резкий, не усиливай резкость. Сохрани естественные отдельные пряди волос, мелкие волоски, линию причёски и чистую границу волос с фоном; не склеивай волосы в гладкую массу, не размывай их и не дорисовывай новую причёску. Не дорисовывай отсутствующие детали, не меняй черты лица, форму и текстуры объекта, не создавай ореолы, двойные контуры, лишнее зерно или эффект перешарпа. Добавь чуть более сильное естественное размытие заднего плана с мягким боке, оставив главный объект, волосы и их края резкими; не размывай сам объект и не превращай фон в искусственную сплошную заливку. Не меняй лица, форму объектов, цвета предметов и исходную композицию.",
   },
   {
     id: "remove-background",
@@ -2651,6 +2651,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [imageBusy, setImageBusy] = useState(false);
   const [imageError, setImageError] = useState("");
   const [imageResult, setImageResult] = useState<GenerationArchiveItem | null>(null);
+  // The edit form clears its source after a successful request. Keep only
+  // the URL used for that completed edit so the result can still show a
+  // before/after comparison without treating the old source as a new input.
+  const [imageComparisonSourceUrl, setImageComparisonSourceUrl] = useState("");
+  const [imageComparisonPosition, setImageComparisonPosition] = useState(50);
   const [imageEditSourceId, setImageEditSourceId] = useState<string | null>(null);
   const [imageReferenceUrl, setImageReferenceUrl] = useState("");
   const [imageReferenceSourceId, setImageReferenceSourceId] = useState("");
@@ -6010,6 +6015,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     if (imageTextMode === "custom" && !imageText.trim()) { setImageError("Введите текст для изображения или выберите «Без текста»."); return; }
     setImageBusy(true);
     setImageError("");
+    const effectiveSourcePurpose = overrides?.sourcePurpose || imageReferencePurpose;
+    const completedEditSourceUrl = effectiveSourcePurpose === "edit"
+      ? imageEditSourceId ? imageResult?.imageUrl || "" : imageReferenceUrl
+      : "";
     const keepsSavedEditSource = Boolean(imageEditSourceId && imageResult?.id === imageEditSourceId);
     if (!keepsSavedEditSource) setImageResult(null);
     setImageStreamPreview("");
@@ -6079,6 +6088,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       } else payload = await safeJson(response) as typeof payload;
       if (!response.ok || !payload.generation) throw new Error(payload.error || "Не удалось создать изображение.");
       setImageResult(payload.generation);
+      setImageComparisonSourceUrl(completedEditSourceUrl);
+      setImageComparisonPosition(50);
       setImageResultRevealTick((value) => value + 1);
       setImageStreamPreview("");
       setWorkspaceHistory(current => [payload.generation!, ...current.filter(item => item.id !== payload.generation!.id)].slice(0, 60));
@@ -6115,6 +6126,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setCarouselResult(null);
     setCarouselLightboxIndex(null);
     setImageResult(null);
+    setImageComparisonSourceUrl("");
     try {
       const startResponse = await fetch("/api/carousel", {
         method: "POST",
@@ -6265,6 +6277,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     // title of the next edited image or reappear in the image editor.
     setImageSourceTitle(source.topic === "Изображение" ? "" : source.title);
     setImageResult({ ...source });
+    setImageComparisonSourceUrl("");
     setPendingCarouselSource(null);
     setImageError("");
     setCarouselError("");
@@ -6306,6 +6319,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setCarouselError("");
     setImageStreamPreview("");
     setImageResult(null);
+    setImageComparisonSourceUrl("");
     setCarouselResult(null);
     setPendingCarouselSource(null);
   }
@@ -7717,7 +7731,24 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   </div>
                   <p>Карусель из {carouselResult.slides.length} слайдов сохранена в «Материалы».</p>
                   <div><button className="button ghost" type="button" onClick={() => { setMaterialsFilter("all"); openModule("history"); }}>Открыть материалы</button><button className="button ghost" type="button" onClick={() => void openPublicationDraft(carouselPublicationDraft(carouselResult.slides, carouselResult.archive))}>В публикацию</button></div>
-                </> : imageGeneratorMode !== "carousel" && imageResult?.imageUrl ? <><button type="button" className="image-generator-result-trigger" aria-label="Открыть изображение крупнее" onClick={() => setLightboxUrl(imageResult.imageUrl)}><Image src={imageResult.imageUrl} alt={imageResult.title} width={1024} height={1024} unoptimized/></button><p>Изображение сохранено в «Материалы».</p><div className="image-generator-result-icons"><a className="button ghost" href={imageResult.imageUrl} download aria-label={`Скачать ${imageFormatLabel(imageResult.imageUrl)}`} title={`Скачать ${imageFormatLabel(imageResult.imageUrl)}`}><Icon name="download"/></a><button className="button ghost" type="button" onClick={startImageEdit} aria-label="Доработать изображение" title="Доработать изображение"><Icon name="edit"/></button><button className="button ghost" type="button" onClick={() => { setMaterialsFilter("image"); openModule("history"); }} aria-label="Открыть материалы" title="Открыть материалы"><Icon name="folder"/></button></div>{imageSourceMaterial ? <><p className="image-generator-publication-note">Изображение создано для статьи «{imageSourceMaterial.title}». Выберите, что поставить в публикацию:</p><div className="image-generator-publication-actions"><button className="button primary" type="button" onClick={() => openImagePublicationDraft(true)}>Картинка + текст статьи</button><button className="button ghost" type="button" onClick={() => openImagePublicationDraft(false)}>Только картинка</button></div></> : <div className="image-generator-result-actions"><button className="button ghost" type="button" onClick={() => openImagePublicationDraft(false)}>В публикацию</button></div>}</> : <div className="image-generator-empty">{imageBusy || carouselBusy ? <div className="klio-gen-noise klio-gen-noise-panel" aria-hidden="true" /> : <Icon name="image"/>}<span>{imageBusy ? "КЛИО рисует. Обычно это занимает до минуты." : carouselBusy ? "КЛИО собирает карусель. Это может занять пару минут." : "Готовое изображение появится здесь"}</span></div>}
+                </> : imageGeneratorMode !== "carousel" && imageResult?.imageUrl ? <>
+                  {imageComparisonSourceUrl ? <div className="image-before-after">
+                    <div className="image-before-after-stage" style={{ aspectRatio: imageAspectRatio.replace(":", " / ") }}>
+                      <Image src={imageComparisonSourceUrl} alt="Изображение до доработки" width={1024} height={1024} unoptimized/>
+                      <div className="image-before-after-result" style={{ clipPath: `inset(0 ${100 - imageComparisonPosition}% 0 0)` }}>
+                        <Image src={imageResult.imageUrl} alt="Изображение после доработки" width={1024} height={1024} unoptimized/>
+                      </div>
+                      <span className="image-before-after-label is-before">До</span>
+                      <span className="image-before-after-label is-after">После</span>
+                      <i className="image-before-after-divider" style={{ left: `${imageComparisonPosition}%` }} aria-hidden="true" />
+                    </div>
+                    <label className="image-before-after-control"><span>Сравнить до и после</span><input type="range" min="0" max="100" value={imageComparisonPosition} onChange={event => setImageComparisonPosition(Number(event.target.value))} aria-label="Положение границы сравнения исходного и доработанного изображения"/></label>
+                    <button type="button" className="image-before-after-open" onClick={() => setLightboxUrl(imageResult.imageUrl)}>Открыть результат крупнее</button>
+                  </div> : <button type="button" className="image-generator-result-trigger" aria-label="Открыть изображение крупнее" onClick={() => setLightboxUrl(imageResult.imageUrl)}><Image src={imageResult.imageUrl} alt={imageResult.title} width={1024} height={1024} unoptimized/></button>}
+                  <p>Изображение сохранено в «Материалы».</p>
+                  <div className="image-generator-result-icons"><a className="button ghost" href={imageResult.imageUrl} download aria-label={`Скачать ${imageFormatLabel(imageResult.imageUrl)}`} title={`Скачать ${imageFormatLabel(imageResult.imageUrl)}`}><Icon name="download"/></a><button className="button ghost" type="button" onClick={startImageEdit} aria-label="Доработать изображение" title="Доработать изображение"><Icon name="edit"/></button><button className="button ghost" type="button" onClick={() => { setMaterialsFilter("image"); openModule("history"); }} aria-label="Открыть материалы" title="Открыть материалы"><Icon name="folder"/></button></div>
+                  {imageSourceMaterial ? <><p className="image-generator-publication-note">Изображение создано для статьи «{imageSourceMaterial.title}». Выберите, что поставить в публикацию:</p><div className="image-generator-publication-actions"><button className="button primary" type="button" onClick={() => openImagePublicationDraft(true)}>Картинка + текст статьи</button><button className="button ghost" type="button" onClick={() => openImagePublicationDraft(false)}>Только картинка</button></div></> : <div className="image-generator-result-actions"><button className="button ghost" type="button" onClick={() => openImagePublicationDraft(false)}>В публикацию</button></div>}
+                </> : <div className="image-generator-empty">{imageBusy || carouselBusy ? <div className="klio-gen-noise klio-gen-noise-panel" aria-hidden="true" /> : <Icon name="image"/>}<span>{imageBusy ? "КЛИО рисует. Обычно это занимает до минуты." : carouselBusy ? "КЛИО собирает карусель. Это может занять пару минут." : "Готовое изображение появится здесь"}</span></div>}
               </div>
             </div>
           </section>
