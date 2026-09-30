@@ -6289,6 +6289,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     openImageEditorForSource(imageResult);
   }
 
+  function moveImageComparison(event: ReactPointerEvent<HTMLDivElement>) {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    if (bounds.width <= 0) return;
+    const position = ((event.clientX - bounds.left) / bounds.width) * 100;
+    setImageComparisonPosition(Math.round(Math.max(0, Math.min(100, position))));
+  }
+
   function openMaterialImage(item: GenerationArchiveItem) {
     if (item.topic === "Карусель") {
       const slides = readCarouselSlides(item.slidesJson);
@@ -7733,7 +7740,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <div><button className="button ghost" type="button" onClick={() => { setMaterialsFilter("all"); openModule("history"); }}>Открыть материалы</button><button className="button ghost" type="button" onClick={() => void openPublicationDraft(carouselPublicationDraft(carouselResult.slides, carouselResult.archive))}>В публикацию</button></div>
                 </> : imageGeneratorMode !== "carousel" && imageResult?.imageUrl ? <>
                   {imageComparisonSourceUrl ? <div className="image-before-after">
-                    <div className="image-before-after-stage" style={{ aspectRatio: imageAspectRatio.replace(":", " / ") }}>
+                    <div className="image-before-after-stage" style={{ aspectRatio: imageAspectRatio.replace(":", " / ") }} role="slider" tabIndex={0} aria-label="Сравнение исходного и доработанного изображения" aria-valuemin={0} aria-valuemax={100} aria-valuenow={imageComparisonPosition} onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); moveImageComparison(event); }} onPointerMove={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) moveImageComparison(event); }} onPointerUp={event => { moveImageComparison(event); if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); }} onPointerCancel={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); }} onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowDown") { event.preventDefault(); setImageComparisonPosition(value => Math.max(0, value - 5)); } else if (event.key === "ArrowRight" || event.key === "ArrowUp") { event.preventDefault(); setImageComparisonPosition(value => Math.min(100, value + 5)); } }}>
                       <Image src={imageComparisonSourceUrl} alt="Изображение до доработки" width={1024} height={1024} unoptimized/>
                       <div className="image-before-after-result" style={{ clipPath: `inset(0 ${100 - imageComparisonPosition}% 0 0)` }}>
                         <Image src={imageResult.imageUrl} alt="Изображение после доработки" width={1024} height={1024} unoptimized/>
