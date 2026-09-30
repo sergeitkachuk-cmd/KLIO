@@ -1419,6 +1419,17 @@ function AdminStyles() {
          its own intrinsic size instead and spill past the circle. */
       .admin-avatar-circle { position: relative; display: grid; place-items: center; flex-shrink: 0; overflow: hidden; width: 28px; height: 28px; border-radius: 50%; background: #e5e7eb; color: #6b7280; font-size: 11px; font-weight: 700; }
       .admin-avatar-circle img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+      .admin-avatar-button { appearance: none; padding: 0; border: 0; font: inherit; cursor: zoom-in; }
+      .admin-avatar-button:hover { box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.22); transform: scale(1.06); }
+      .admin-avatar-button:focus-visible { outline: 3px solid rgba(79, 70, 229, 0.42); outline-offset: 2px; }
+      .admin-avatar-preview { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 22px; background: rgba(3, 7, 18, 0.82); backdrop-filter: blur(8px); }
+      .admin-avatar-preview-card { position: relative; display: grid; justify-items: center; gap: 14px; width: min(520px, 92vw); max-height: 90vh; padding: 18px; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 20px; background: #111827; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.42); color: #f8fafc; }
+      .admin-avatar-preview-card > img { display: block; width: min(440px, 82vw); height: min(440px, 68vh); border-radius: 16px; background: #0b1020; object-fit: contain; }
+      .admin-avatar-preview-card > div { display: grid; gap: 3px; text-align: center; }
+      .admin-avatar-preview-card strong { font-size: 16px; }
+      .admin-avatar-preview-card small { color: #94a3b8; font-size: 12px; }
+      .admin-avatar-preview-close { position: absolute; top: 8px; right: 8px; z-index: 1; display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 50%; background: rgba(15, 23, 42, 0.82); color: #fff; font: inherit; font-size: 27px; line-height: 1; cursor: pointer; }
+      .admin-avatar-preview-close:hover { background: #4f46e5; }
       body[data-admin-theme="dark"] .admin-avatar-circle { background: #1f2540; color: #94a3b8; }
       .admin-details-toggle { border: 1px solid #94a3b8; border-radius: 999px; padding: 6px 11px; background: transparent; color: inherit; cursor: pointer; font: inherit; font-size: 12px; white-space: nowrap; }
       .admin-details-toggle:hover { border-color: #8b5cf6; color: #8b5cf6; }

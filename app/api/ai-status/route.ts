@@ -49,7 +49,7 @@ export async function GET() {
     "X-Klio-Materials-Carousel-Release": "2026-09-27-brand-logo-backdrop-v3",
     "X-Klio-Dialogue-Task-Picker-Release": "2026-09-27-four-dot-menu-v1",
     "X-Klio-Carousel-Release": "2026-09-27-carousel-visual-variety-v1",
-    "X-Klio-Admin-Release": "2026-09-30-admin-generation-accounting-v2",
+    "X-Klio-Admin-Release": "2026-09-30-admin-avatar-preview-v3",
     "X-Klio-Editor-Release": "2026-09-07-search-fallback-v3",
     "X-Klio-Generator-Release": "2026-09-07-bounded-latency-v2",
   } });

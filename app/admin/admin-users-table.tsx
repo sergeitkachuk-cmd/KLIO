@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 
 export type AdminUserRow = {
   email: string; displayName: string; avatarUrl: string | null; emailStatus: string; createdAt: string; planName: string; planExpires: string;
@@ -30,6 +30,20 @@ function initials(value: string) {
 export function AdminUsersTable({ users }: Props) {
   const [query, setQuery] = useState("");
   const [expandedEmail, setExpandedEmail] = useState<string | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<{ url: string; name: string; email: string } | null>(null);
+  useEffect(() => {
+    if (!avatarPreview) return;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setAvatarPreview(null);
+    };
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [avatarPreview]);
   const normalizedQuery = query.trim().toLocaleLowerCase("ru-RU");
   const filteredUsers = useMemo(() => {
     if (!normalizedQuery) return users;
@@ -49,7 +63,7 @@ export function AdminUsersTable({ users }: Props) {
         <tbody>
           {filteredUsers.map((item) => { const expanded = expandedEmail === item.email; return <Fragment key={item.email}>
             {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary external host (own /api/admin/account-avatar, or Yandex's/VK's own CDN) - not worth a next.config.ts remotePatterns entry for two different providers */}
-            <tr className={item.registeredToday ? "admin-user-row-new" : undefined}><td>{item.email}</td><td><div className="admin-user-name-cell"><span className="admin-avatar-circle">{item.avatarUrl ? <img src={item.avatarUrl} alt="" /> : initials(item.displayName)}</span><span><span>{item.displayName}</span><small className="admin-user-muted">{item.emailStatus} · {item.createdAt}</small></span></div></td><td>{item.planName}</td>
+            <tr className={item.registeredToday ? "admin-user-row-new" : undefined}><td>{item.email}</td><td><div className="admin-user-name-cell">{item.avatarUrl ? <button type="button" className="admin-avatar-circle admin-avatar-button" aria-label={`Открыть аватар ${item.displayName} крупнее`} title="Открыть аватар крупнее" onClick={() => setAvatarPreview({ url: item.avatarUrl!, name: item.displayName, email: item.email })}><img src={item.avatarUrl} alt="" /></button> : <span className="admin-avatar-circle">{initials(item.displayName)}</span>}<span><span>{item.displayName}</span><small className="admin-user-muted">{item.emailStatus} · {item.createdAt}</small></span></div></td><td>{item.planName}</td>
               <td className={`admin-plan-expiry admin-plan-expiry-${item.planExpiryState}`}>{item.planExpires}</td><td>{item.generations}</td><td>{item.imagesGenerated}</td><td>{item.research}</td><td>{item.editor}</td><td>{item.dialogue}</td><td>{item.brandCount}</td><td>{item.totalCost}</td>
               <td><button type="button" className="admin-details-toggle" onClick={() => setExpandedEmail(expanded ? null : item.email)}>{expanded ? "Свернуть" : "Подробнее"}</button></td></tr>
             {expanded && <tr className="admin-user-details-row"><td colSpan={12}><div className="admin-user-details">
@@ -71,5 +85,13 @@ export function AdminUsersTable({ users }: Props) {
         </tbody>
       </table>
     </div>
+    {avatarPreview && <div className="admin-avatar-preview" role="dialog" aria-modal="true" aria-label={`Аватар ${avatarPreview.name}`} onMouseDown={(event) => { if (event.target === event.currentTarget) setAvatarPreview(null); }}>
+      <div className="admin-avatar-preview-card">
+        <button type="button" className="admin-avatar-preview-close" aria-label="Закрыть крупный аватар" onClick={() => setAvatarPreview(null)}>×</button>
+        {/* eslint-disable-next-line @next/next/no-img-element -- same authenticated/external avatar URL as the table image above */}
+        <img src={avatarPreview.url} alt={`Аватар ${avatarPreview.name}`} />
+        <div><strong>{avatarPreview.name}</strong><small>{avatarPreview.email}</small></div>
+      </div>
+    </div>}
   </>;
 }
