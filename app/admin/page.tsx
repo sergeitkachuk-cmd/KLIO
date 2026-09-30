@@ -1243,6 +1243,9 @@ function AdminStyles() {
       .admin-feedback-thread-head { display: flex; align-items: center; gap: 8px; }
       .admin-feedback-thread-head b { display: block; font-size: 13px; }
       .admin-feedback-thread-head small { display: block; color: #6b7280; font-size: 11px; }
+      .admin-feedback-thread-identity { flex: 1; min-width: 0; }
+      .admin-feedback-thread-identity b, .admin-feedback-thread-identity small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .admin-feedback-mobile-back { display: none; }
       .admin-feedback-empty-thread { margin: 0; padding: 16px; border: 1px dashed rgba(148, 163, 184, 0.35); border-radius: 12px; color: #6b7280; font-size: 12px; }
       .admin-feedback-bubbles { display: grid; align-content: start; gap: 8px; max-height: 46vh; overflow-y: auto; padding: 3px 4px 4px 0; scrollbar-color: #8b5cf6 transparent; scrollbar-width: auto; }
       .admin-feedback-bubbles::-webkit-scrollbar { width: 12px; }
@@ -1267,6 +1270,30 @@ function AdminStyles() {
       body[data-admin-theme="dark"] .admin-feedback-bubble.is-client { background: #1f2540; color: #e5e7eb; }
       body[data-admin-theme="dark"] .admin-feedback-bubble.is-admin, body[data-admin-theme="dark"] .admin-feedback-bubble.is-bot { background: #322a5c; color: #ede9fe; }
       body[data-admin-theme="dark"] .admin-feedback-reply textarea { background: #171d3d; border-color: rgba(139, 110, 255, 0.3); color: #e5e7eb; }
+      /* On phones, show either the contact list or the selected conversation.
+         Keeping the desktop two-column layout here squeezed the 260px contact
+         panel and pushed the actual chat off the right edge. */
+      @media (max-width: 900px) {
+        .admin-feedback-layout { grid-template-columns: minmax(0, 1fr); gap: 12px; width: 100%; }
+        .admin-feedback-layout.is-mobile-list .admin-feedback-thread { display: none; }
+        .admin-feedback-layout.is-mobile-chat .admin-feedback-thread-panel { display: none; }
+        .admin-feedback-thread { width: 100%; max-width: none; }
+        .admin-feedback-thread-head { min-width: 0; }
+        .admin-feedback-thread-search { min-height: 44px; }
+        .admin-feedback-mobile-back { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; border: 1px solid rgba(148, 163, 184, 0.32); border-radius: 11px; background: transparent; color: inherit; font: inherit; font-size: 22px; line-height: 1; cursor: pointer; }
+        .admin-feedback-bubbles { height: clamp(180px, 42svh, 430px); max-height: none; overflow-x: hidden; overscroll-behavior: contain; }
+        .admin-feedback-thread-list { max-height: min(58svh, 520px); overscroll-behavior: contain; }
+        .admin-feedback-bubble { max-width: min(82vw, 380px); }
+        .admin-feedback-bubble p { overflow-wrap: anywhere; }
+        .admin-feedback-reply textarea { min-height: 76px; max-height: 30svh; }
+        .admin-feedback-reply-actions button { min-height: 42px; }
+      }
+      @media (max-width: 420px) {
+        .admin-feedback-bubble-row .admin-avatar-circle { display: none; }
+        .admin-feedback-bubble { max-width: 88%; }
+        .admin-feedback-thread-item { gap: 9px; padding: 11px; }
+        .admin-feedback-thread-item-email { font-size: 13px; }
+      }
       .admin-announcement-field { display: grid; gap: 6px; margin-bottom: 14px; color: #6b7280; font-size: 12px; font-weight: 700; }
       .admin-announcement-field textarea { width: 100%; min-height: 90px; border: 1px solid #d1d5db; border-radius: 9px; padding: 8px 10px; background: #fff; color: #1c1f26; font: inherit; font-size: 13px; resize: vertical; }
       body[data-admin-theme="dark"] .admin-announcement-field textarea { background: #171d3d; border-color: rgba(139, 110, 255, 0.3); color: #e5e7eb; }

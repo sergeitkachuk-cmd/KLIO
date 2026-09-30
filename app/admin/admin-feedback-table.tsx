@@ -106,7 +106,7 @@ function buildThreads(rows: AdminFeedbackMessage[], accounts: AdminFeedbackAccou
   return threads;
 }
 
-function ThreadPane({ thread }: { thread: Thread }) {
+function ThreadPane({ thread, onMobileBack }: { thread: Thread; onMobileBack: () => void }) {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -142,8 +142,9 @@ function ThreadPane({ thread }: { thread: Thread }) {
   return (
     <div className="admin-feedback-thread">
       <div className="admin-feedback-thread-head">
+        <button type="button" className="admin-feedback-mobile-back" aria-label="К списку переписок" onClick={onMobileBack}>←</button>
         <Avatar label={thread.displayName} avatarUrl={thread.avatarUrl} />
-        <span>
+        <span className="admin-feedback-thread-identity">
           <b>{thread.displayName}</b>
           <small>{thread.ownerEmail}</small>
         </span>
@@ -193,11 +194,12 @@ export function AdminFeedbackTable({ rows, accounts }: Props) {
   }
 
   return (
-    <div className="admin-feedback-layout">
+    <div className={`admin-feedback-layout ${selected ? "is-mobile-chat" : "is-mobile-list"}`}>
       <div className="admin-feedback-thread-panel">
         <input
           type="search"
           className="admin-feedback-thread-search"
+          aria-label="Поиск клиента по имени или почте"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Поиск по имени или почте"
@@ -227,7 +229,7 @@ export function AdminFeedbackTable({ rows, accounts }: Props) {
           {!filteredThreads.length && <p className="admin-empty-row">Никого не нашли.</p>}
         </div>
       </div>
-      {activeThread && <ThreadPane thread={activeThread} key={activeThread.ownerEmail} />}
+      {activeThread && <ThreadPane thread={activeThread} key={activeThread.ownerEmail} onMobileBack={() => setSelected(null)} />}
     </div>
   );
 }

@@ -40,7 +40,7 @@ export async function GET() {
     "X-Klio-Bank-Deadline": "2026-09-13-bounded-provider-v1",
     "X-Klio-Checkout-Input": "2026-09-13-bounded-shared-prices-v1",
     "X-Klio-Ai-Release": "2026-09-10-v4-1-output-budget-v2",
-    "X-Klio-Ui-Release": "2026-09-27-dialogue-result-reading-v1",
+    "X-Klio-Ui-Release": "2026-09-30-admin-feedback-mobile-v1",
     "X-Klio-Professional-Workspace-Release": "2026-09-27-professional-workspace-result-follow-v1",
     "X-Klio-Image-Studio-Release": "2026-09-27-image-edit-reliability-v1",
     "X-Klio-Image-Mask-Release": "2026-09-27-brush-area-lock-v1",
@@ -49,7 +49,7 @@ export async function GET() {
     "X-Klio-Materials-Carousel-Release": "2026-09-27-brand-logo-backdrop-v3",
     "X-Klio-Dialogue-Task-Picker-Release": "2026-09-27-four-dot-menu-v1",
     "X-Klio-Carousel-Release": "2026-09-27-carousel-visual-variety-v1",
-    "X-Klio-Admin-Release": "2026-09-07-ai-latency-visible",
+    "X-Klio-Admin-Release": "2026-09-30-admin-feedback-mobile-v1",
     "X-Klio-Editor-Release": "2026-09-07-search-fallback-v3",
     "X-Klio-Generator-Release": "2026-09-07-bounded-latency-v2",
   } });
