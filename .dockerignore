@@ -1,6 +1,9 @@
 .git
 .next
 node_modules
+.sites-runtime
+coverage
+*.log
 .env
 .env.*
 !.env.example

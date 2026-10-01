@@ -1,15 +1,14 @@
 # KLIO is a server-rendered Next.js application: build it in the image and
 # keep runtime configuration (database and provider keys) in platform env vars.
-FROM node:22-bookworm-slim AS dependencies
+FROM node:22-bookworm-slim AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
-
-FROM node:22-bookworm-slim AS builder
-WORKDIR /app
-COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
+# The compiler, linter and test packages are not needed by the running app.
+# drizzle-kit remains because db:push intentionally runs at container start.
+RUN npm prune --omit=dev
 
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
