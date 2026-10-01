@@ -2659,6 +2659,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [imageComparisonPosition, setImageComparisonPosition] = useState(50);
   const [imageEditSourceId, setImageEditSourceId] = useState<string | null>(null);
   const [imageReferenceUrl, setImageReferenceUrl] = useState("");
+  // A freshly selected source already exists in the browser. Show that local
+  // file immediately instead of waiting for S3 and then downloading the same
+  // bytes back through /api/uploads just to paint the preview.
+  const [imageReferencePreviewUrl, setImageReferencePreviewUrl] = useState("");
+  const imageReferencePreviewUrlRef = useRef("");
   const [imageReferenceSourceId, setImageReferenceSourceId] = useState("");
   const [imageEditMask, setImageEditMask] = useState("");
   const [imageStreamPreview, setImageStreamPreview] = useState("");
@@ -2669,6 +2674,19 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [imageAdditionalReferences, setImageAdditionalReferences] = useState<Array<{ url: string; title: string; purpose: "object" | "style" }>>([]);
   const imageReferenceInputRef = useRef<HTMLInputElement | null>(null);
   const imageAdditionalReferenceInputRef = useRef<HTMLInputElement | null>(null);
+  const imageReferenceDisplayUrl = imageReferencePreviewUrl || imageReferenceUrl || (imageEditSourceId ? imageResult?.imageUrl || "" : "");
+
+  function replaceImageReferencePreviewUrl(nextUrl: string) {
+    const previousUrl = imageReferencePreviewUrlRef.current;
+    if (previousUrl && previousUrl !== nextUrl) URL.revokeObjectURL(previousUrl);
+    imageReferencePreviewUrlRef.current = nextUrl;
+    setImageReferencePreviewUrl(nextUrl);
+  }
+
+  useEffect(() => () => {
+    if (imageReferencePreviewUrlRef.current) URL.revokeObjectURL(imageReferencePreviewUrlRef.current);
+    imageReferencePreviewUrlRef.current = "";
+  }, []);
   const [carouselSlideCount, setCarouselSlideCount] = useState("5");
   const [carouselIndicatorMode, setCarouselIndicatorMode] = useState<CarouselSlideIndicatorMode>("numbers");
   const [carouselAspectRatio, setCarouselAspectRatio] = useState<"1:1" | "3:4" | "4:3" | "4:5" | "16:9" | "9:16">("1:1");
@@ -5914,6 +5932,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setImageSourceTitle(sourceTitle);
     setImageEditSourceId(null);
     setImageReferenceUrl("");
+    replaceImageReferencePreviewUrl("");
     setImageReferenceSourceId("");
     setImageEditMask("");
     setImageReferenceError("");
@@ -5934,6 +5953,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setImageReferenceBusy(true);
     setImageReferenceError("");
     setImageEditMask("");
+    const localPreviewUrl = URL.createObjectURL(file);
+    replaceImageReferencePreviewUrl(localPreviewUrl);
     try {
       const form = new FormData();
       form.append("file", file);
@@ -5945,6 +5966,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setImageEditSourceId(null);
       setImageEditMask("");
     } catch (error) {
+      if (imageReferencePreviewUrlRef.current === localPreviewUrl) replaceImageReferencePreviewUrl("");
       setImageReferenceError(error instanceof Error ? error.message : "Не удалось загрузить исходное изображение.");
     } finally {
       setImageReferenceBusy(false);
@@ -6093,6 +6115,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       if (payload.account) setWorkspaceAccount(payload.account);
       setImageEditSourceId(null);
       setImageReferenceUrl("");
+      replaceImageReferencePreviewUrl("");
       setImageReferenceSourceId("");
       setImageAdditionalReferences([]);
       setImageReferenceError("");
@@ -6258,6 +6281,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setImageGeneratorMode("edit");
     setImageEditSourceId(source.id);
     setImageReferenceUrl("");
+    replaceImageReferencePreviewUrl("");
     setImageReferenceSourceId("");
     setImageEditMask("");
     setImageReferenceError("");
@@ -6311,6 +6335,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setImageSourceTitle("");
     setImageEditSourceId(null);
     setImageReferenceUrl("");
+    replaceImageReferencePreviewUrl("");
     setImageReferenceSourceId("");
     setImageEditMask("");
     setImageReferenceError("");
@@ -7557,6 +7582,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                       items={imageReferenceMaterials.filter(item => item.imageUrl).map(item => ({ id: item.id, title: item.title, imageUrl: item.imageUrl as string }))}
                       activeUrl={imageReferenceUrl}
                       onSelect={item => {
+                        replaceImageReferencePreviewUrl("");
                         setImageReferenceUrl(item.imageUrl);
                         setImageReferenceSourceId(item.id);
                         setImageEditSourceId(null);
@@ -7580,13 +7606,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                         if (files.length) void uploadAdditionalImageReferences(files);
                       }}/>
                     </label>}
-                    {(imageReferenceUrl || imageEditSourceId) && <button type="button" className="button ghost" onClick={() => { setImageReferenceUrl(""); setImageReferenceSourceId(""); setImageEditSourceId(null); setImageEditMask(""); setImageReferenceError(""); }}>Убрать исходник</button>}
+                    {(imageReferenceUrl || imageEditSourceId) && <button type="button" className="button ghost" onClick={() => { replaceImageReferencePreviewUrl(""); setImageReferenceUrl(""); setImageReferenceSourceId(""); setImageEditSourceId(null); setImageEditMask(""); setImageReferenceError(""); }}>Убрать исходник</button>}
                   </div>
-                  {(imageReferenceUrl || imageEditSourceId) && <div className="image-generator-reference-selected">
-                    {(imageReferenceUrl || (imageEditSourceId ? imageResult?.imageUrl : "")) && <Image src={(imageReferenceUrl || imageResult?.imageUrl) as string} alt="Выбранное исходное изображение" width={96} height={72} unoptimized/>}
+                  {imageReferenceDisplayUrl && <div className="image-generator-reference-selected">
+                    <Image src={imageReferenceDisplayUrl} alt="Выбранное исходное изображение" width={96} height={72} unoptimized/>
                     <strong className="field-label-help image-generator-reference-role">{imageGeneratorMode === "edit" ? "Исходник для изменения" : "Образец новой картинки"}<HelpTip label="Используется автоматически" text={imageGeneratorMode === "edit" ? "КЛИО изменит выбранную картинку по вашему описанию и постарается сохранить остальные детали." : "КЛИО создаст новую картинку, используя выбранный файл как образец объекта, композиции и визуального характера."}/></strong>
                   </div>}
-                  {imageGeneratorMode === "edit" && (imageReferenceUrl || imageEditSourceId) && (imageReferenceUrl || imageResult?.imageUrl) && <ImageMaskEditor key={imageReferenceUrl || imageEditSourceId || "image-edit"} src={(imageReferenceUrl || imageResult?.imageUrl) as string} onMaskChange={mask => { setImageEditMask(mask); if (mask) setUseLogoInImage(false); }}/>}
+                  {imageGeneratorMode === "edit" && (imageReferenceUrl || imageEditSourceId) && imageReferenceDisplayUrl && <ImageMaskEditor key={imageReferenceUrl || imageEditSourceId || "image-edit"} src={imageReferenceDisplayUrl} onMaskChange={mask => { setImageEditMask(mask); if (mask) setUseLogoInImage(false); }}/>}
                   {imageAdditionalReferences.length > 0 && <div className="image-generator-additional-reference-list">
                     {imageAdditionalReferences.map(reference => <div className="image-generator-additional-reference" key={reference.url}><Image src={reference.url} alt={reference.title || "Дополнительный референс"} width={96} height={72} unoptimized/><span>{reference.title || "Дополнительный референс"}</span><ModuleSelect label="Назначение" value={reference.purpose} onChange={value => setImageAdditionalReferences(current => current.map(item => item.url === reference.url ? { ...item, purpose: value as "object" | "style" } : item))} options={[{ value: "style", label: "Стиль обработки" }, { value: "object", label: "Объект для добавления" }]}/><button type="button" className="button ghost" onClick={() => setImageAdditionalReferences(current => current.filter(item => item.url !== reference.url))}>Убрать</button></div>)}
                   </div>}
