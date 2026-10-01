@@ -1489,7 +1489,7 @@ select:focus-visible {
 
 .landing-image-demo-tabs {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   max-width: 520px;
   margin: 0 auto 18px;
@@ -1509,6 +1509,7 @@ select:focus-visible {
   font: inherit;
   font-size: 13px;
   font-weight: 720;
+  line-height: 1.2;
   cursor: pointer;
 }
 

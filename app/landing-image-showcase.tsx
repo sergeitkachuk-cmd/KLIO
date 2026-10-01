@@ -21,6 +21,14 @@ const examples = [
     before: "/landing/image-studio/autocorrect-before.webp",
     after: "/landing/image-studio/studio-after.webp",
   },
+  {
+    id: "remove-object",
+    label: "Убрать предмет",
+    title: "Лишний предмет исчезает из кадра",
+    description: "КЛИО убирает выбранный объект и восстанавливает изображение так, чтобы свободная область выглядела естественно.",
+    before: "/landing/image-studio/autocorrect-before.webp",
+    after: "/landing/image-studio/remove-object-after.webp",
+  },
 ] as const;
 
 export function LandingImageShowcase() {
