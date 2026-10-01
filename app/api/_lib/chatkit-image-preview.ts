@@ -10,7 +10,7 @@ async function dimensions(url: string, signal: AbortSignal): Promise<Dimensions 
   let key: string;
   try {
     const path = new URL(url).pathname;
-    if (!/^\/api\/uploads\/publications\/[a-f0-9]{64}\/[a-f0-9-]{36}\.(png|jpg|webp|gif)$/.test(path)) return null;
+    if (!/^\/api\/uploads\/(publications|temporary)\/[a-f0-9]{64}\/[a-f0-9-]{36}\.(png|jpg|webp|gif)$/.test(path)) return null;
     key = path.slice("/api/uploads/".length);
   } catch { return null; }
   // Only read our fixed S3 bucket. Never fetch a card's arbitrary URL.

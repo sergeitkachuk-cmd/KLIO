@@ -22,13 +22,14 @@ export async function POST(request: Request) {
   try {
     const user = await workspaceIdentity();
     if (isRateLimited(`upload:${user.email}`, 20, 60 * 60_000)) return Response.json({ error: "Слишком много загрузок. Попробуйте позже." }, { status: 429 });
-    const bytes = await readBoundedBody(request, 8 * 1024 * 1024 + 64 * 1024, 30_000);
+    const bytes = await readBoundedBody(request, 15 * 1024 * 1024 + 256 * 1024, 120_000);
     const form = await new Response(new Uint8Array(bytes), { headers: { "Content-Type": request.headers.get("content-type") || "" } }).formData();
     const file = form.get("file");
     if (!(file instanceof File)) {
       return Response.json({ error: "Файл не передан." }, { status: 400 });
     }
-    const url = await uploadPublicationImage(file, user.email, resolveBaseUrl(request));
+    const temporary = form.get("purpose") === "image-source";
+    const url = await uploadPublicationImage(file, user.email, resolveBaseUrl(request), { temporary });
     return Response.json({ url }, { status: 201 });
   } catch (error) {
     if (error instanceof RequestBodyError) return Response.json({ error: error.message }, { status: error.status });

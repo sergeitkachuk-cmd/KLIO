@@ -19,6 +19,7 @@ import { attemptPublish } from "../../_lib/publish-attempt";
 import { resolveBaseUrl } from "../../_lib/base-url";
 import { tochkaRequest } from "../../_lib/tochka";
 import { confirmTochkaPayment } from "../../_lib/confirm-tochka-payment";
+import { cleanupExpiredTemporaryImages } from "../../_lib/storage";
 
 // Bounds how much work one invocation does — a scheduler firing every
 // minute will always keep the backlog near zero in practice, this just
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
   if (!await workspaceDatabaseAvailable()) return Response.json({ error: "Хранилище недоступно." }, { status: 503 });
 
   const db = await getWorkspaceDb();
+  const temporaryImageCleanup = cleanupExpiredTemporaryImages();
   const nowIso = new Date().toISOString();
   const stalePayments = await db.select({ id: payments.id, operationId: payments.operationId }).from(payments).where(and(
     eq(payments.status, "pending"),
@@ -100,7 +102,8 @@ export async function POST(request: Request) {
     }
   }));
 
-  return Response.json({ processed: results.length, results, paymentsChecked: stalePayments.length, paymentsApproved, paymentChecksFailed });
+  const temporaryImagesDeleted = await temporaryImageCleanup;
+  return Response.json({ processed: results.length, results, paymentsChecked: stalePayments.length, paymentsApproved, paymentChecksFailed, temporaryImagesDeleted });
 }
 
 // GET mirrors POST — some cron dashboards only offer GET pings. Same

@@ -16,7 +16,7 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
   // Defense in depth, not a real security boundary (the bucket only ever
   // holds what we put there) — just keeps this route from doubling as a
   // generic "fetch any object from our bucket" proxy for an unrelated key.
-  if (!key.startsWith("publications/")) return Response.json({ error: "Не найдено." }, { status: 404 });
+  if (!/^(publications|temporary)\//.test(key)) return Response.json({ error: "Не найдено." }, { status: 404 });
 
   try {
     const { bytes, contentType } = await downloadPublicationImage(key);

@@ -22,14 +22,14 @@ export function DialogueImageAttachment({ source, url, busy, onChange, onBusy, l
       const file = event.target.files?.[0]; event.target.value = "";
       if (!file) return;
       setError("");
-      if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > 8 * 1024 * 1024) {
-        setError("Выберите PNG, JPEG или WEBP до 8 МБ."); return;
+      if (!["image/png", "image/jpeg", "image/webp"].includes(file.type) || file.size > 15 * 1024 * 1024) {
+        setError("Выберите PNG, JPEG или WEBP до 15 МБ."); return;
       }
       const current = ++ticket.current;
       onBusy(true);
       try {
-        const form = new FormData(); form.set("file", file);
-        const response = await fetch("/api/uploads", { method: "POST", body: form, signal: AbortSignal.timeout(60_000) });
+        const form = new FormData(); form.set("file", file); form.set("purpose", "image-source");
+        const response = await fetch("/api/uploads", { method: "POST", body: form, signal: AbortSignal.timeout(120_000) });
         const data = await response.json();
         if (!response.ok || !data.url) throw new Error(data.error || "Не удалось загрузить изображение.");
         if (current === ticket.current) onChange({ uploadUrl: data.url, purpose: lockedPurpose || "reference" });

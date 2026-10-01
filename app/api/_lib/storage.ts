@@ -31,7 +31,7 @@
 // policy stop mattering. See uploadBrandBookPdf's own comment for why
 // that upload deliberately went private-only from the start instead.
 
-import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectsCommand, GetObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { createHash } from "node:crypto";
 import { imageContentType } from "./image-type";
 import { isPdfSignature } from "./pdf-type";
@@ -115,13 +115,17 @@ const ALLOWED_CONTENT_TYPES: Record<string, string> = {
 // the "Публикации" design discussion on why 1 GB was chosen (auto-scales
 // on Timeweb's side if this project ever needs more, so this cap is
 // about one upload staying reasonable, not about the bucket running out).
-const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 
 type PublicationImageUploadOptions = {
   // Provider generated PNGs can be larger than the upload cap even when the
   // user's source image was small. Optimize those results before saving;
-  // direct browser uploads remain subject to the explicit 8 MB limit.
+  // direct browser uploads remain subject to the explicit 15 MB limit.
   optimizeOversized?: boolean;
+  // Source and reference files used by the image generator do not belong to
+  // a publication or saved material. Keep them under a separate prefix so
+  // they can be removed after use and expired if the person abandons a draft.
+  temporary?: boolean;
 };
 
 async function optimizeOversizedImage(bytes: Uint8Array<ArrayBuffer>) {
@@ -178,7 +182,7 @@ export async function uploadPublicationImage(file: File, ownerEmail: string, bas
   // Namespaced by owner so two accounts can never collide or overwrite
   // each other's file, without needing a database lookup to check.
   const ownerKey = createHash("sha256").update(ownerEmail.trim().toLowerCase()).digest("hex");
-  const key = `publications/${ownerKey}/${crypto.randomUUID()}.${extension}`;
+  const key = `${options.temporary ? "temporary" : "publications"}/${ownerKey}/${crypto.randomUUID()}.${extension}`;
 
   try {
     await client().send(new PutObjectCommand({
@@ -210,10 +214,37 @@ export async function downloadPublicationImage(key: string): Promise<{ bytes: Ui
   }
 }
 
+// The regular publish cron also sweeps uploads that never reached generation
+// (closed tab, replaced file, failed request). Generated and publication
+// images use another prefix and can never be touched by this cleanup.
+export async function cleanupExpiredTemporaryImages(maxAgeMs = 24 * 60 * 60_000): Promise<number> {
+  if (!storageConfigured()) return 0;
+  try {
+    const listed = await client().send(new ListObjectsV2Command({
+      Bucket: requiredEnv("S3_BUCKET"),
+      Prefix: "temporary/",
+      MaxKeys: 100,
+    }), { abortSignal: AbortSignal.timeout(20_000) });
+    const cutoff = Date.now() - maxAgeMs;
+    const keys = (listed.Contents || [])
+      .filter(item => item.Key && item.LastModified && item.LastModified.getTime() < cutoff)
+      .map(item => ({ Key: item.Key! }));
+    if (!keys.length) return 0;
+    await client().send(new DeleteObjectsCommand({
+      Bucket: requiredEnv("S3_BUCKET"),
+      Delete: { Objects: keys, Quiet: true },
+    }), { abortSignal: AbortSignal.timeout(20_000) });
+    return keys.length;
+  } catch (error) {
+    console.error("S3 temporary-image cleanup failed", error instanceof Error ? error.message : error);
+    return 0;
+  }
+}
+
 // Read only a bounded header for thumbnail dimensions, never the entire image.
 // The caller's signal also bounds the body read (not just the response headers).
 export async function publicationImageHeader(key: string, signal: AbortSignal): Promise<Uint8Array> {
-  if (!/^publications\/[a-f0-9]{64}\/[a-f0-9-]{36}\.(png|jpg|webp|gif)$/.test(key)) {
+  if (!/^(publications|temporary)\/[a-f0-9]{64}\/[a-f0-9-]{36}\.(png|jpg|webp|gif)$/.test(key)) {
     throw new StorageError("Некорректный путь изображения.", 400);
   }
   const response = await client().send(new GetObjectCommand({

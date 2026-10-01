@@ -24,7 +24,7 @@ export function resolveDialogueImageSource(raw: unknown, data: DialogueData, tex
   const url = dialogueImageSourceUrl(source, data);
   let parsed: URL;
   try { parsed = new URL(url, baseUrl); } catch { throw new DialogueImageSourceError("Исходное изображение недоступно."); }
-  const match = /^\/api\/uploads\/(publications\/([a-f0-9]{64})\/[a-f0-9-]{36}\.(?:png|jpg|webp|gif))$/.exec(parsed.pathname);
+  const match = /^\/api\/uploads\/((?:publications|temporary)\/([a-f0-9]{64})\/[a-f0-9-]{36}\.(?:png|jpg|webp|gif))$/.exec(parsed.pathname);
   const owner = createHash("sha256").update(email.trim().toLowerCase()).digest("hex");
   // Never fetch a supplied URL. Only read an owner-scoped key from our own S3.
   if (!/^https?:$/.test(parsed.protocol) || !match || match[2] !== owner)

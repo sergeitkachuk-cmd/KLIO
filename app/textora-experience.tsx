@@ -44,6 +44,7 @@ type ContentPlanMode = "idle" | "demo" | "ai";
 type WorkspaceModule = "start" | "brand" | "generator" | "images" | "semantics" | "competitors" | "content-plan" | "adaptation" | "history" | "publications";
 
 const WORKSPACE_MODULE_STORAGE_KEY = "klio-workspace-active-module";
+const MAX_IMAGE_UPLOAD_BYTES = 15 * 1024 * 1024;
 const WORKSPACE_MODULES = new Set<WorkspaceModule>(["start", "brand", "generator", "images", "semantics", "competitors", "content-plan", "adaptation", "history", "publications"]);
 
 function isWorkspaceModule(value: string | null): value is WorkspaceModule {
@@ -2400,13 +2401,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     try {
       const form = new FormData();
       form.append("file", file);
-      const response = await fetch("/api/uploads", { method: "POST", body: form, signal: AbortSignal.timeout(60_000) });
+      const response = await fetch("/api/uploads", { method: "POST", body: form, signal: AbortSignal.timeout(120_000) });
       const payload = await safeJson(response) as { error?: string; url?: string };
       if (!response.ok || !payload.url) throw new Error(payload.error || "Не удалось загрузить картинку.");
       setPubEditor((current) => current && { ...current, imageUrl: payload.url as string });
     } catch (error) {
       const message = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")
-        ? "Загрузка картинки не завершилась за минуту. Проверьте соединение и попробуйте снова."
+        ? "Загрузка картинки не завершилась за две минуты. Проверьте соединение и попробуйте снова."
         : error instanceof Error ? error.message : "Не удалось загрузить картинку.";
       setPubImageUploadError(message);
       showToast(message);
@@ -5950,6 +5951,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }
 
   async function uploadProfessionalImageReference(file: File) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setImageReferenceError("Выберите изображение PNG, JPEG или WEBP.");
+      return;
+    }
+    if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
+      setImageReferenceError("Изображение больше 15 МБ — уменьшите файл и попробуйте снова.");
+      return;
+    }
     setImageReferenceBusy(true);
     setImageReferenceError("");
     setImageEditMask("");
@@ -5958,7 +5967,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     try {
       const form = new FormData();
       form.append("file", file);
-      const response = await fetch("/api/uploads", { method: "POST", body: form, signal: AbortSignal.timeout(60_000) });
+      form.append("purpose", "image-source");
+      const response = await fetch("/api/uploads", { method: "POST", body: form, signal: AbortSignal.timeout(120_000) });
       const payload = await safeJson(response) as { error?: string; url?: string };
       if (!response.ok || !payload.url) throw new Error(payload.error || "Не удалось загрузить исходное изображение.");
       setImageReferenceUrl(payload.url);
@@ -5980,6 +5990,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setImageReferenceError("Можно добавить один дополнительный референс к исходному изображению.");
       return;
     }
+    const invalid = selected.find(file => !["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > MAX_IMAGE_UPLOAD_BYTES);
+    if (invalid) {
+      setImageReferenceError(invalid.size > MAX_IMAGE_UPLOAD_BYTES ? "Изображение больше 15 МБ — уменьшите файл и попробуйте снова." : "Выберите изображение PNG, JPEG или WEBP.");
+      return;
+    }
     setImageReferenceBusy(true);
     setImageReferenceError("");
     try {
@@ -5987,7 +6002,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       for (const file of selected) {
         const form = new FormData();
         form.append("file", file);
-        const response = await fetch("/api/uploads", { method: "POST", body: form, signal: AbortSignal.timeout(60_000) });
+        form.append("purpose", "image-source");
+        const response = await fetch("/api/uploads", { method: "POST", body: form, signal: AbortSignal.timeout(120_000) });
         const payload = await safeJson(response) as { error?: string; url?: string };
         if (!response.ok || !payload.url) throw new Error(payload.error || "Не удалось загрузить дополнительный референс.");
       uploaded.push({ url: payload.url, title: file.name, purpose: "object" });

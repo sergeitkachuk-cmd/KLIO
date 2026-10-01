@@ -115,7 +115,7 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
     if (resolvedSourceImageUrl) {
       let parsed: URL;
       try { parsed = new URL(resolvedSourceImageUrl, baseUrl); } catch { throw new WorkspaceAccessError("Исходное изображение недоступно.", 400); }
-      const match = /^\/api\/uploads\/(publications\/([a-f0-9]{64})\/[a-f0-9-]{36}\.(?:png|jpg|webp|gif))$/i.exec(parsed.pathname);
+      const match = /^\/api\/uploads\/((?:publications|temporary)\/([a-f0-9]{64})\/[a-f0-9-]{36}\.(?:png|jpg|webp|gif))$/i.exec(parsed.pathname);
       const ownerKey = createHash("sha256").update(user.email.trim().toLowerCase()).digest("hex");
       // Never fetch an arbitrary URL supplied by the browser. The upload route
       // is owner-scoped, and the object is read directly from our S3 bucket.
@@ -126,7 +126,7 @@ async function handleImageRequest(request: Request, onPartial?: (image: string) 
     for (const referenceUrl of referenceImageUrls) {
       let parsed: URL;
       try { parsed = new URL(referenceUrl, baseUrl); } catch { throw new WorkspaceAccessError("Дополнительный референс недоступен.", 400); }
-      const match = /^\/api\/uploads\/(publications\/([a-f0-9]{64})\/[a-f0-9-]{36}\.(?:png|jpg|webp|gif))$/i.exec(parsed.pathname);
+      const match = /^\/api\/uploads\/((?:publications|temporary)\/([a-f0-9]{64})\/[a-f0-9-]{36}\.(?:png|jpg|webp|gif))$/i.exec(parsed.pathname);
       const ownerKey = createHash("sha256").update(user.email.trim().toLowerCase()).digest("hex");
       if (!/^https?:$/.test(parsed.protocol) || !match || match[2] !== ownerKey)
         throw new WorkspaceAccessError("Выберите свой дополнительный референс или загрузите его заново.", 400);
