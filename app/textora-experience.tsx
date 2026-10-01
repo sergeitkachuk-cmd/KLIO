@@ -14,6 +14,7 @@ import { CAROUSEL_TEMPLATE_OPTIONS, DEFAULT_CAROUSEL_TEMPLATE, MAX_CAROUSEL_SOUR
 import { PublicationImagePicker } from "./publication-image-picker";
 import { ImageLightbox } from "./image-lightbox";
 import ImageMaskEditor from "./image-mask-editor";
+import { LandingImageShowcase } from "./landing-image-showcase";
 import { FOUNDATION_FIELDS, VOICE_FIELDS, mergeProfileFill, missingVoiceFoundation } from "./brand-profile-fill";
 import { russianGeoTree } from "./geo-data";
 import { ADAPTATION_PLANS, TONE_PLANS } from "./content-plans";
@@ -8213,6 +8214,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       </div>
       <p className="showcase-note">Это образец интерфейса и результата. Настройки здесь не изменяют текст — рабочая генерация находится в личном кабинете.</p>
     </section>
+
+    <LandingImageShowcase/>
 
     <section className="modules section" id="modules">
       <div className="section-heading"><div><p className="kicker">Глава 02 / Полный цикл</p><h2>Не просто генерация.<br/><em>Система контента<span className="klio-mark-dot">.</span></em></h2></div><p>Каждый модуль связан с остальными: данные компании и поисковой выдачи переходят в статьи, контент‑план и материалы для разных площадок.</p></div>
