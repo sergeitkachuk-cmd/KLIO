@@ -42,7 +42,7 @@ export async function GET() {
     "X-Klio-Ai-Release": "2026-09-10-v4-1-output-budget-v2",
     "X-Klio-Ui-Release": "2026-09-30-admin-generation-accounting-v2",
     "X-Klio-Professional-Workspace-Release": "2026-09-27-professional-workspace-result-follow-v1",
-    "X-Klio-Image-Studio-Release": "2026-10-01-image-source-auto-v9",
+    "X-Klio-Image-Studio-Release": "2026-10-01-image-edit-hint-v10",
     "X-Klio-Image-Mask-Release": "2026-09-27-brush-area-lock-v1",
     "X-Klio-Image-Model-Release": "2026-09-27-sunburst-default-v1",
     "X-Klio-Carousel-Editor-Release": "2026-09-27-carousel-viewer-v1",
