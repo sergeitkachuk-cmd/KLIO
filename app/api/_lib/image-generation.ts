@@ -112,15 +112,11 @@ export function resolveImageGenerationOptions(options: ImageGenerationOptions = 
   const ratio = options.aspectRatio && IMAGE_SIZE_BY_RATIO[options.aspectRatio] ? options.aspectRatio : "4:3";
   const size = options.size && (options.size === "auto" || /^\d+x\d+$/.test(options.size)) ? options.size : IMAGE_SIZE_BY_RATIO[ratio];
   const providerSize = providerSizeForTarget(size);
-  // Was "medium", and only ever sent to the provider when a caller
-  // explicitly set options.quality - which nothing in this app actually
-  // does (no quality picker anywhere in the UI), so every real request
-  // omitted "quality" entirely. For gpt-image-1 that leaves the provider's
-  // own default; for gpt-image-2.5 the API guide confirms omitting it
-  // defaults to "auto" specifically, not "high" (site owner: "качество
-  // как будто низкое"). Defaulting to "high" and always sending it
-  // (below) removes that ambiguity instead of hoping "auto" picks well.
-  const quality = options.quality && ["low", "medium", "high", "xhigh", "max"].includes(options.quality) ? options.quality : "high";
+  // Always send an explicit quality so the provider cannot silently choose
+  // its own "auto" level. Medium is the current product default while the
+  // visual result and generation cost are evaluated; an explicit caller
+  // override still takes precedence.
+  const quality = options.quality && ["low", "medium", "high", "xhigh", "max"].includes(options.quality) ? options.quality : "medium";
   const outputFormat = options.outputFormat && ["png", "jpeg", "webp"].includes(options.outputFormat) ? options.outputFormat : "png";
   const background = options.background && ["auto", "transparent", "opaque"].includes(options.background) ? options.background : "auto";
 

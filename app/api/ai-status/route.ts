@@ -46,6 +46,7 @@ export async function GET() {
     "X-Klio-Image-Studio-Release": "2026-10-01-autocorrection-even-skin-v13",
     "X-Klio-Image-Mask-Release": "2026-09-27-brush-area-lock-v1",
     "X-Klio-Image-Model-Release": "2026-09-27-sunburst-default-v1",
+    "X-Klio-Image-Quality-Release": "2026-10-01-medium-default-v1",
     "X-Klio-Carousel-Editor-Release": "2026-09-27-carousel-viewer-v1",
     "X-Klio-Materials-Carousel-Release": "2026-09-27-brand-logo-backdrop-v3",
     "X-Klio-Dialogue-Task-Picker-Release": "2026-09-27-four-dot-menu-v1",
