@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode, TextareaHTMLAttributes } from "react";
@@ -2659,7 +2659,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [imageEditSourceId, setImageEditSourceId] = useState<string | null>(null);
   const [imageReferenceUrl, setImageReferenceUrl] = useState("");
   const [imageReferenceSourceId, setImageReferenceSourceId] = useState("");
-  const [imageReferencePurpose, setImageReferencePurpose] = useState<"edit" | "reference">("edit");
   const [imageEditMask, setImageEditMask] = useState("");
   const [imageStreamPreview, setImageStreamPreview] = useState("");
   const [imageReferenceBusy, setImageReferenceBusy] = useState(false);
@@ -5879,7 +5878,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     // Every quick action is an edit of the selected source.  Keep this state
     // explicit even when the image was previously selected as a visual
     // reference in create mode.
-    setImageReferencePurpose("edit");
     setImageSourceTitle("");
     setPendingCarouselSource(null);
     setImageError("");
@@ -5916,7 +5914,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setImageEditSourceId(null);
     setImageReferenceUrl("");
     setImageReferenceSourceId("");
-    setImageReferencePurpose("edit");
     setImageEditMask("");
     setImageReferenceError("");
     setImageAdditionalReferences([]);
@@ -5945,7 +5942,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       setImageReferenceUrl(payload.url);
       setImageReferenceSourceId("");
       setImageEditSourceId(null);
-      setImageReferencePurpose(imageGeneratorMode === "edit" ? "edit" : "reference");
       setImageEditMask("");
     } catch (error) {
       setImageReferenceError(error instanceof Error ? error.message : "Не удалось загрузить исходное изображение.");
@@ -5992,7 +5988,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }, [imageError, imageReferenceError]);
 
   const canGenerateFromVisualReference = imageGeneratorMode !== "carousel"
-    && imageReferencePurpose === "reference"
+    && imageGeneratorMode === "create"
     && Boolean(imageReferenceUrl || imageReferenceSourceId || imageEditSourceId);
 
   async function generateProfessionalImage(overrides?: {
@@ -6015,7 +6011,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     if (imageTextMode === "custom" && !imageText.trim()) { setImageError("Введите текст для изображения или выберите «Без текста»."); return; }
     setImageBusy(true);
     setImageError("");
-    const effectiveSourcePurpose = overrides?.sourcePurpose || imageReferencePurpose;
+    const effectiveSourcePurpose = overrides?.sourcePurpose || (imageGeneratorMode === "edit" ? "edit" : "reference");
     const completedEditSourceUrl = effectiveSourcePurpose === "edit"
       ? imageEditSourceId ? imageResult?.imageUrl || "" : imageReferenceUrl
       : "";
@@ -6035,7 +6031,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           sourceImageGenerationId: imageEditSourceId || imageReferenceSourceId || undefined,
           sourceImageUrl: imageReferenceSourceId || imageEditSourceId ? undefined : imageReferenceUrl || undefined,
           sourceImagePurpose: imageEditSourceId || imageReferenceSourceId || imageReferenceUrl
-            ? overrides?.sourcePurpose || imageReferencePurpose
+            ? effectiveSourcePurpose
             : undefined,
           referenceImageUrls: imageAdditionalReferences.map(reference => reference.url),
           referenceImageRoles: imageAdditionalReferences.map(reference => reference.purpose),
@@ -6262,7 +6258,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setImageEditSourceId(source.id);
     setImageReferenceUrl("");
     setImageReferenceSourceId("");
-    setImageReferencePurpose("edit");
     setImageEditMask("");
     setImageReferenceError("");
     setImageAdditionalReferences([]);
@@ -6316,7 +6311,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setImageEditSourceId(null);
     setImageReferenceUrl("");
     setImageReferenceSourceId("");
-    setImageReferencePurpose("edit");
     setImageEditMask("");
     setImageReferenceError("");
     setImageAdditionalReferences([]);
@@ -6329,12 +6323,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setImageComparisonSourceUrl("");
     setCarouselResult(null);
     setPendingCarouselSource(null);
-  }
-
-  function changeImageReferencePurpose(purpose: "edit" | "reference") {
-    setImageReferencePurpose(purpose);
-    setImageEditMask("");
-    setImageError("");
   }
 
   async function openPublicationDraft(source: { title: string; body: string; generationId?: string | null; imageUrl?: string }) {
@@ -7541,10 +7529,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <div className="workspace-module-heading tool-heading workspace-module-banner"><div><span>Визуальные материалы</span><h2>Генерация изображений<span className="klio-mark-dot">.</span></h2></div><p>Опишите, что должно быть на картинке. КЛИО создаст её и сохранит в «Материалы».</p></div>
             <div className="image-generator-mode-switch" role="tablist" aria-label="Режим генератора изображений">
               <button type="button" role="tab" aria-selected={imageGeneratorMode === "create"} className={imageGeneratorMode === "create" ? "is-active" : ""} disabled={imageBusy || carouselBusy || imageReferenceBusy} onClick={startFreshImage}>
-                <span className="image-generator-mode-index">01</span><span><strong>Изображение</strong><small>Создать с нуля</small></span>
+                <span className="image-generator-mode-index">01</span><span><strong>Изображение</strong><small>Создать с нуля или по образцу</small></span>
               </button>
-              <button type="button" role="tab" aria-selected={imageGeneratorMode === "edit"} className={imageGeneratorMode === "edit" ? "is-active" : ""} disabled={imageBusy || carouselBusy || imageReferenceBusy} onClick={() => { setImageGeneratorMode("edit"); setImageReferencePurpose("edit"); setImageError(""); setCarouselError(""); setCarouselLightboxIndex(null); }}>
-                <span className="image-generator-mode-index">02</span><span><strong>Доработать</strong><small>Изменить или взять референс</small></span>
+              <button type="button" role="tab" aria-selected={imageGeneratorMode === "edit"} className={imageGeneratorMode === "edit" ? "is-active" : ""} disabled={imageBusy || carouselBusy || imageReferenceBusy} onClick={() => { setImageGeneratorMode("edit"); setImageEditMask(""); setImageError(""); setCarouselError(""); setCarouselLightboxIndex(null); }}>
+                <span className="image-generator-mode-index">02</span><span><strong>Доработать</strong><small>Изменить готовую картинку</small></span>
               </button>
               <button type="button" role="tab" aria-selected={imageGeneratorMode === "carousel"} className={imageGeneratorMode === "carousel" ? "is-active" : ""} disabled={imageBusy || carouselBusy || imageReferenceBusy} onClick={() => { setImageGeneratorMode("carousel"); setImageError(""); setCarouselError(""); setCarouselLightboxIndex(null); }}>
                 <span className="image-generator-mode-index">03</span><span><strong>Карусель</strong><small>Собрать серию слайдов</small></span>
@@ -7571,7 +7559,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                         setImageReferenceUrl(item.imageUrl);
                         setImageReferenceSourceId(item.id);
                         setImageEditSourceId(null);
-                        setImageReferencePurpose(imageGeneratorMode === "edit" ? "edit" : "reference");
                         setImageEditMask("");
                         setImageReferenceError("");
                       }}
@@ -7592,20 +7579,20 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                         if (files.length) void uploadAdditionalImageReferences(files);
                       }}/>
                     </label>}
-                    {(imageReferenceUrl || imageEditSourceId) && <button type="button" className="button ghost" onClick={() => { setImageReferenceUrl(""); setImageReferenceSourceId(""); setImageEditSourceId(null); setImageReferencePurpose(imageGeneratorMode === "edit" ? "edit" : "reference"); setImageEditMask(""); setImageReferenceError(""); }}>Убрать исходник</button>}
+                    {(imageReferenceUrl || imageEditSourceId) && <button type="button" className="button ghost" onClick={() => { setImageReferenceUrl(""); setImageReferenceSourceId(""); setImageEditSourceId(null); setImageEditMask(""); setImageReferenceError(""); }}>Убрать исходник</button>}
                   </div>
                   {(imageReferenceUrl || imageEditSourceId) && <div className="image-generator-reference-selected">
                     {(imageReferenceUrl || (imageEditSourceId ? imageResult?.imageUrl : "")) && <Image src={(imageReferenceUrl || imageResult?.imageUrl) as string} alt="Выбранное исходное изображение" width={96} height={72} unoptimized/>}
-                  <ModuleSelect label="Как использовать" help="«Изменить эту картинку» сохраняет исходный кадр и меняет только то, что указано в описании; в этом режиме доступна кисть. «Создать новую на её основе» использует объект, композицию и стиль как образец, но заново рисует изображение и может сильнее изменить детали." value={imageReferencePurpose} onChange={value => changeImageReferencePurpose(value as "edit" | "reference")} options={[{ value: "edit", label: "Изменить эту картинку" }, { value: "reference", label: "Создать новую на её основе" }]}/>
+                    <strong className="field-label-help image-generator-reference-role">{imageGeneratorMode === "edit" ? "Исходник для изменения" : "Образец новой картинки"}<HelpTip label="Используется автоматически" text={imageGeneratorMode === "edit" ? "КЛИО изменит выбранную картинку по вашему описанию и постарается сохранить остальные детали." : "КЛИО создаст новую картинку, используя выбранный файл как образец объекта, композиции и визуального характера."}/></strong>
                   </div>}
-                  {(imageReferencePurpose === "edit") && (imageReferenceUrl || imageEditSourceId) && (imageReferenceUrl || imageResult?.imageUrl) && <ImageMaskEditor key={imageReferenceUrl || imageEditSourceId || "image-edit"} src={(imageReferenceUrl || imageResult?.imageUrl) as string} onMaskChange={mask => { setImageEditMask(mask); if (mask) setUseLogoInImage(false); }}/>}
+                  {imageGeneratorMode === "edit" && (imageReferenceUrl || imageEditSourceId) && (imageReferenceUrl || imageResult?.imageUrl) && <ImageMaskEditor key={imageReferenceUrl || imageEditSourceId || "image-edit"} src={(imageReferenceUrl || imageResult?.imageUrl) as string} onMaskChange={mask => { setImageEditMask(mask); if (mask) setUseLogoInImage(false); }}/>}
                   {imageAdditionalReferences.length > 0 && <div className="image-generator-additional-reference-list">
                     {imageAdditionalReferences.map(reference => <div className="image-generator-additional-reference" key={reference.url}><Image src={reference.url} alt={reference.title || "Дополнительный референс"} width={96} height={72} unoptimized/><span>{reference.title || "Дополнительный референс"}</span><ModuleSelect label="Назначение" value={reference.purpose} onChange={value => setImageAdditionalReferences(current => current.map(item => item.url === reference.url ? { ...item, purpose: value as "object" | "style" } : item))} options={[{ value: "style", label: "Стиль обработки" }, { value: "object", label: "Объект для добавления" }]}/><button type="button" className="button ghost" onClick={() => setImageAdditionalReferences(current => current.filter(item => item.url !== reference.url))}>Убрать</button></div>)}
                   </div>}
                   {imageReferenceError && <small ref={imageReferenceErrorRef} className="generation-error" role="alert" tabIndex={-1}>{imageReferenceError}</small>}
                 </div>
-                <label htmlFor="image-prompt">{imageGeneratorMode === "carousel" ? "Статья или тема для карусели" : imageGeneratorMode === "edit" || imageEditSourceId ? "Что изменить в изображении" : imageReferencePurpose === "reference" ? "Что изобразить (необязательно при визуальном референсе)" : "Что изобразить"}</label>
-                <textarea id="image-prompt" value={imagePrompt} onChange={event => { setImagePrompt(event.target.value); setImageSourceTitle(""); setPendingCarouselSource(null); if (imageTextMode === "title") setImageTextMode("auto"); }} placeholder={imageGeneratorMode === "carousel" ? "Вставьте статью или опишите тему, которую нужно раскрыть в серии слайдов" : imageGeneratorMode === "edit" || imageEditSourceId ? "Например: добавь мягкий вечерний свет и убери кружку справа" : imageReferencePurpose === "reference" ? "Описание необязательно — КЛИО возьмёт выбранное изображение за основу и применит выбранный стиль" : "Например: чашка кофе на деревянном столе у окна, мягкий утренний свет, без надписей"} rows={6} maxLength={imageGeneratorMode === "carousel" ? MAX_CAROUSEL_SOURCE_CHARACTERS : 1800}/>
+                <label htmlFor="image-prompt">{imageGeneratorMode === "carousel" ? "Статья или тема для карусели" : imageGeneratorMode === "edit" ? "Что изменить в изображении" : canGenerateFromVisualReference ? "Что изобразить (необязательно при выбранном образце)" : "Что изобразить"}</label>
+                <textarea id="image-prompt" value={imagePrompt} onChange={event => { setImagePrompt(event.target.value); setImageSourceTitle(""); setPendingCarouselSource(null); if (imageTextMode === "title") setImageTextMode("auto"); }} placeholder={imageGeneratorMode === "carousel" ? "Вставьте статью или опишите тему, которую нужно раскрыть в серии слайдов" : imageGeneratorMode === "edit" ? "Например: добавь мягкий вечерний свет и убери кружку справа" : canGenerateFromVisualReference ? "Описание необязательно — КЛИО создаст новую картинку на основе выбранного образца" : "Например: чашка кофе на деревянном столе у окна, мягкий утренний свет, без надписей"} rows={6} maxLength={imageGeneratorMode === "carousel" ? MAX_CAROUSEL_SOURCE_CHARACTERS : 1800}/>
                 {imageGeneratorMode === "carousel" && <small className="image-generator-source-count">{imagePrompt.length.toLocaleString("ru-RU")} / {MAX_CAROUSEL_SOURCE_CHARACTERS.toLocaleString("ru-RU")} символов</small>}
                 {imageGeneratorMode === "edit" && Boolean(imageEditSourceId || imageReferenceUrl || imageReferenceSourceId) && <div className="image-edit-quick-actions">
                   <div className="image-edit-quick-heading"><strong className="field-label-help">Шаг 2. Быстрые действия<HelpTip label="Быстрые действия с изображением" text="Выбранное действие сразу запускает одну обработку изображения и расходует одну генерацию."/></strong></div>
