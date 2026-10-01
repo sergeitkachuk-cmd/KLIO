@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode, TextareaHTMLAttributes } from "react";
@@ -7552,32 +7552,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </div>
             <div className="image-generator-layout">
               <div className="image-generator-form">
-                <label htmlFor="image-prompt">{imageGeneratorMode === "carousel" ? "Статья или тема для карусели" : imageGeneratorMode === "edit" || imageEditSourceId ? "Что изменить в изображении" : imageReferencePurpose === "reference" ? "Что изобразить (необязательно при визуальном референсе)" : "Что изобразить"}</label>
-                <textarea id="image-prompt" value={imagePrompt} onChange={event => { setImagePrompt(event.target.value); setImageSourceTitle(""); setPendingCarouselSource(null); if (imageTextMode === "title") setImageTextMode("auto"); }} placeholder={imageGeneratorMode === "carousel" ? "Вставьте статью или опишите тему, которую нужно раскрыть в серии слайдов" : imageGeneratorMode === "edit" || imageEditSourceId ? "Например: добавь мягкий вечерний свет и убери кружку справа" : imageReferencePurpose === "reference" ? "Описание необязательно — КЛИО возьмёт выбранное изображение за основу и применит выбранный стиль" : "Например: чашка кофе на деревянном столе у окна, мягкий утренний свет, без надписей"} rows={6} maxLength={imageGeneratorMode === "carousel" ? MAX_CAROUSEL_SOURCE_CHARACTERS : 1800}/>
-                {imageGeneratorMode === "edit" && <div className="image-edit-quick-actions">
-                  <div className="image-edit-quick-heading"><strong>Быстрые действия</strong><small>Нажмите действие — КЛИО сразу обработает выбранное изображение.</small></div>
-                  <div className="image-edit-quick-grid">
-                    {IMAGE_EDIT_PRESETS.map(preset => <button key={preset.id} type="button" className="button ghost" onClick={() => applyImageEditPreset(preset)} disabled={imageBusy || carouselBusy || imageReferenceBusy || !imageEditSourceId && !imageReferenceUrl && !imageReferenceSourceId || Boolean(preset.requiresAdditionalReference && imageAdditionalReferences.length === 0)} title={!imageEditSourceId && !imageReferenceUrl && !imageReferenceSourceId ? "Сначала выберите или загрузите исходное изображение" : preset.requiresAdditionalReference && imageAdditionalReferences.length === 0 ? "Добавьте ещё одно изображение" : `Обработать изображение: ${preset.label}`}>{preset.label}</button>)}
-                  </div>
-                </div>}
-                {imageGeneratorMode === "create" && <div className="image-format-presets">
-                  <div className="image-edit-quick-heading"><strong>Формат результата</strong><small>Выберите готовый размер холста — КЛИО создаст новую картинку сразу под задачу.</small></div>
-                  <div className="image-format-preset-grid">
-                    {IMAGE_FORMAT_PRESETS.map(preset => <button key={preset.id} type="button" className={`button ghost ${imageCanvasSize === preset.size ? "is-selected" : ""}`} onClick={() => setImageCanvasSize(preset.size)} disabled={imageBusy || carouselBusy} title={`${preset.label}: ${preset.size}`}>{preset.label}</button>)}
-                  </div>
-                  <label className="image-custom-size">Свой размер
-                    <input value={imageCanvasSize && !IMAGE_FORMAT_PRESETS.some(preset => preset.size === imageCanvasSize) ? imageCanvasSize : ""} onChange={event => setImageCanvasSize(event.target.value.replace(/[^0-9x]/gi, "").slice(0, 9))} placeholder="например, 1536x864" inputMode="numeric" disabled={imageBusy || carouselBusy}/>
-                  </label>
-                </div>}
-                {imageGeneratorMode === "create" && imageAdditionalReferences.length > 0 && <div className="image-edit-quick-actions image-reference-combine-action">
-                  <div className="image-edit-quick-heading"><strong>Объединить изображения</strong><small>КЛИО возьмёт основной файл и дополнительный референс и соберёт их в одну сцену.</small></div>
-                  <button type="button" className="button ghost" onClick={() => applyImageEditPreset(IMAGE_EDIT_PRESETS.find(preset => preset.id === "combine-references")!)} disabled={imageBusy || carouselBusy || imageReferenceBusy}>Объединить референсы</button>
-                </div>}
-                {imageGeneratorMode === "carousel" && <small className="image-generator-source-count">{imagePrompt.length.toLocaleString("ru-RU")} / {MAX_CAROUSEL_SOURCE_CHARACTERS.toLocaleString("ru-RU")} символов</small>}
-                <div className="image-generator-reference" style={{ display: imageGeneratorMode === "carousel" ? "none" : undefined }}>
-                  <div className="image-generator-reference-heading"><strong>{imageGeneratorMode === "edit" ? "Исходное изображение и референс" : "Добавить референс"} <em>(необязательно)</em></strong><small>{imageGeneratorMode === "edit" ? "Выберите исходник для доработки и при необходимости добавьте фотографию. Для добавленного файла отдельно укажите: стиль обработки или объект." : "Добавьте исходник и при необходимости референс стиля обработки или объект для новой генерации."}</small></div>
+                <div className={`image-generator-reference ${imageGeneratorMode === "edit" && !imageEditSourceId && !imageReferenceUrl && !imageReferenceSourceId ? "is-source-step" : ""}`} style={{ display: imageGeneratorMode === "carousel" ? "none" : undefined }}>
+                  <div className="image-generator-reference-heading"><strong className="field-label-help">{imageGeneratorMode === "edit" ? "Шаг 1. Выберите исходник" : <>Добавить референс <em>(необязательно)</em></>}<HelpTip label={imageGeneratorMode === "edit" ? "Исходник для доработки" : "Референс для изображения"} text={imageGeneratorMode === "edit" ? "Загрузите изображение или выберите сохранённое. После выбора появятся быстрые действия. Дополнительный файл можно использовать как стиль обработки или объект для добавления." : "Исходник можно использовать как основу новой картинки, а дополнительный файл — как стиль обработки или объект для добавления."}/></strong></div>
                   <div className="image-generator-reference-actions">
-                    <label className={`button ghost image-generator-reference-upload ${imageReferenceBusy ? "is-busy" : ""}`}>
+                    <label className={`button primary image-generator-reference-upload image-source-primary ${imageReferenceBusy ? "is-busy" : ""}`}>
                       {imageReferenceBusy ? "Загрузка…" : imageReferenceUrl ? "Заменить исходник" : "Загрузить исходник"}
                       <input ref={imageReferenceInputRef} type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={imageReferenceBusy || imageBusy || carouselBusy} onChange={event => {
                         const file = event.target.files?.[0];
@@ -7598,7 +7576,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                         setImageReferenceError("");
                       }}
                     />}
-                    {imageGeneratorMode !== "edit" && <label className={`button ghost image-generator-reference-upload ${imageReferenceBusy ? "is-busy" : ""}`} title={!imageReferenceUrl ? "Сначала загрузите исходник" : "Загрузите референс стиля или объект для добавления"}>
+                    {imageGeneratorMode !== "edit" && Boolean(imageReferenceUrl || imageReferenceSourceId) && <label className={`button ghost image-generator-reference-upload ${imageReferenceBusy ? "is-busy" : ""}`} title="Загрузите референс стиля или объект для добавления">
                       {imageReferenceBusy ? "Загрузка…" : imageReferenceUrl ? "Загрузить референс стиля / объект" : "Загрузить референс после исходника"}
                       <input ref={imageAdditionalReferenceInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden disabled={imageReferenceBusy || imageBusy || carouselBusy || imageAdditionalReferences.length >= 1 || !imageReferenceUrl} onChange={event => {
                         const files = Array.from(event.target.files || []);
@@ -7626,9 +7604,31 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   </div>}
                   {imageReferenceError && <small ref={imageReferenceErrorRef} className="generation-error" role="alert" tabIndex={-1}>{imageReferenceError}</small>}
                 </div>
+                <label htmlFor="image-prompt">{imageGeneratorMode === "carousel" ? "Статья или тема для карусели" : imageGeneratorMode === "edit" || imageEditSourceId ? "Что изменить в изображении" : imageReferencePurpose === "reference" ? "Что изобразить (необязательно при визуальном референсе)" : "Что изобразить"}</label>
+                <textarea id="image-prompt" value={imagePrompt} onChange={event => { setImagePrompt(event.target.value); setImageSourceTitle(""); setPendingCarouselSource(null); if (imageTextMode === "title") setImageTextMode("auto"); }} placeholder={imageGeneratorMode === "carousel" ? "Вставьте статью или опишите тему, которую нужно раскрыть в серии слайдов" : imageGeneratorMode === "edit" || imageEditSourceId ? "Например: добавь мягкий вечерний свет и убери кружку справа" : imageReferencePurpose === "reference" ? "Описание необязательно — КЛИО возьмёт выбранное изображение за основу и применит выбранный стиль" : "Например: чашка кофе на деревянном столе у окна, мягкий утренний свет, без надписей"} rows={6} maxLength={imageGeneratorMode === "carousel" ? MAX_CAROUSEL_SOURCE_CHARACTERS : 1800}/>
+                {imageGeneratorMode === "carousel" && <small className="image-generator-source-count">{imagePrompt.length.toLocaleString("ru-RU")} / {MAX_CAROUSEL_SOURCE_CHARACTERS.toLocaleString("ru-RU")} символов</small>}
+                {imageGeneratorMode === "edit" && Boolean(imageEditSourceId || imageReferenceUrl || imageReferenceSourceId) && <div className="image-edit-quick-actions">
+                  <div className="image-edit-quick-heading"><strong className="field-label-help">Шаг 2. Быстрые действия<HelpTip label="Быстрые действия с изображением" text="Выбранное действие сразу запускает одну обработку изображения и расходует одну генерацию."/></strong></div>
+                  <div className="image-edit-quick-grid">
+                    {IMAGE_EDIT_PRESETS.map(preset => <button key={preset.id} type="button" className="button ghost" onClick={() => applyImageEditPreset(preset)} disabled={imageBusy || carouselBusy || imageReferenceBusy || Boolean(preset.requiresAdditionalReference && imageAdditionalReferences.length === 0)} title={preset.requiresAdditionalReference && imageAdditionalReferences.length === 0 ? "Добавьте ещё одно изображение" : `Обработать изображение: ${preset.label}`}>{preset.label}</button>)}
+                  </div>
+                </div>}
+                {imageGeneratorMode === "create" && <div className="image-format-presets">
+                  <div className="image-edit-quick-heading"><strong className="field-label-help">Формат результата<HelpTip label="Формат результата" text="Выберите готовый размер холста или укажите свой размер от 300 до 3840 пикселей по каждой стороне."/></strong></div>
+                  <div className="image-format-preset-grid">
+                    {IMAGE_FORMAT_PRESETS.map(preset => <button key={preset.id} type="button" className={`button ghost ${imageCanvasSize === preset.size ? "is-selected" : ""}`} onClick={() => setImageCanvasSize(preset.size)} disabled={imageBusy || carouselBusy} title={`${preset.label}: ${preset.size}`}>{preset.label}</button>)}
+                  </div>
+                  <label className="image-custom-size">Свой размер
+                    <input value={imageCanvasSize && !IMAGE_FORMAT_PRESETS.some(preset => preset.size === imageCanvasSize) ? imageCanvasSize : ""} onChange={event => setImageCanvasSize(event.target.value.replace(/[^0-9x]/gi, "").slice(0, 9))} placeholder="например, 1536x864" inputMode="numeric" disabled={imageBusy || carouselBusy}/>
+                  </label>
+                </div>}
+                {imageGeneratorMode === "create" && imageAdditionalReferences.length > 0 && <div className="image-edit-quick-actions image-reference-combine-action">
+                  <div className="image-edit-quick-heading"><strong className="field-label-help">Объединить изображения<HelpTip label="Объединить изображения" text="КЛИО возьмёт основной файл и дополнительный референс и соберёт их в одну сцену."/></strong></div>
+                  <button type="button" className="button ghost" onClick={() => applyImageEditPreset(IMAGE_EDIT_PRESETS.find(preset => preset.id === "combine-references")!)} disabled={imageBusy || carouselBusy || imageReferenceBusy}>Объединить референсы</button>
+                </div>}
                 <div className="image-generator-settings">
                   <div className="image-generator-style-field">
-                    <div className="image-generator-style-heading"><span>Стиль изображения</span><small>{IMAGE_STYLE_OPTIONS.find(option => option.value === imageStyle)?.instruction}</small></div>
+                    <div className="image-generator-style-heading"><span className="field-label-help">Стиль изображения<HelpTip label="Стиль изображения" text={IMAGE_STYLE_OPTIONS.find(option => option.value === imageStyle)?.instruction || "КЛИО выберет визуальный подход по смыслу задачи."}/></span></div>
                     <div className="image-generator-style-picker" role="radiogroup" aria-label="Стиль изображения">
                       {IMAGE_STYLE_OPTIONS.map(option => <button key={option.value || "auto"} type="button" className={imageStyle === option.value ? "is-selected" : ""} role="radio" aria-checked={imageStyle === option.value} title={option.instruction} disabled={imageBusy || carouselBusy} onClick={() => setImageStyle(option.value)}><span>{option.label}</span>{imageStyle === option.value && <i aria-hidden="true">✓</i>}</button>)}
                     </div>
@@ -7672,7 +7672,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   </fieldset>
                 </details>
                 {imageError && <p ref={imageErrorRef} className="generation-error" role="alert" tabIndex={-1}>{imageError}</p>}
-                <button className={`button primary large generation-action ${imageBusy ? "is-busy" : ""}`} style={{ display: imageGeneratorMode === "carousel" ? "none" : undefined }} type="button" onClick={() => void generateProfessionalImage()} disabled={imageBusy || carouselBusy || !workspaceReady || (!canGenerateFromVisualReference && imagePrompt.trim().length < 8) || workspaceAccount.generationsRemaining <= 0}><Icon name="image"/>{imageBusy ? "Создаём изображение…" : workspaceAccount.generationsRemaining <= 0 ? "Лимит генераций исчерпан" : imageGeneratorMode === "edit" ? "Применить изменения" : "Создать изображение"}</button>
+                <button className={`button primary large generation-action ${imageBusy ? "is-busy" : ""}`} style={{ display: imageGeneratorMode === "carousel" ? "none" : undefined }} type="button" onClick={() => void generateProfessionalImage()} disabled={imageBusy || carouselBusy || !workspaceReady || imageGeneratorMode === "edit" && !imageEditSourceId && !imageReferenceUrl && !imageReferenceSourceId || (!canGenerateFromVisualReference && imagePrompt.trim().length < 8) || workspaceAccount.generationsRemaining <= 0}><Icon name="image"/>{imageBusy ? "Создаём изображение…" : workspaceAccount.generationsRemaining <= 0 ? "Лимит генераций исчерпан" : imageGeneratorMode === "edit" ? "Применить изменения" : "Создать изображение"}</button>
                 <div className="image-generator-carousel" style={{ display: imageGeneratorMode === "carousel" ? undefined : "none" }}>
                   <div><span>Карусель</span><h3>Несколько слайдов из этого текста<span className="klio-mark-dot">.</span></h3><p>КЛИО выделит главные мысли и создаст для каждого слайда отдельную сцену с коротким текстом внутри изображения. Весь введённый текст учитывается; один слайд — одна генерация.</p></div>
                   <div className="image-generator-carousel-controls">
