@@ -48,6 +48,7 @@ export async function GET() {
     "X-Klio-Image-Model-Release": "2026-09-27-sunburst-default-v1",
     "X-Klio-Image-Quality-Release": "2026-10-01-medium-default-v1",
     "X-Klio-Image-Upload-Release": "2026-10-01-15mb-temp-cleanup-v2",
+    "X-Klio-Image-Reference-Release": "2026-10-02-edit-reference-autoprompt-v1",
     "X-Klio-Carousel-Editor-Release": "2026-09-27-carousel-viewer-v1",
     "X-Klio-Materials-Carousel-Release": "2026-09-27-brand-logo-backdrop-v3",
     "X-Klio-Dialogue-Task-Picker-Release": "2026-09-27-four-dot-menu-v1",
