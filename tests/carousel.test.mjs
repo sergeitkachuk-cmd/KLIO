@@ -97,7 +97,7 @@ async function createCarouselHarness() {
 
   async function seedAccount(overrides = {}) {
     await db.insert(schema.accounts).values({
-      email: owner, planId: "start", generationMonth: "2026-09", planExpiresAt: "2099-01-01", ...overrides,
+      email: owner, planId: "start", generationMonth: new Date().toISOString().slice(0, 7), planExpiresAt: "2099-01-01", ...overrides,
     });
   }
 

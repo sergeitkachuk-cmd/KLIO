@@ -9,7 +9,7 @@ import ts from "typescript";
 const source = ts.createSourceFile("workspace.tsx", readFileSync(new URL("../app/textora-experience.tsx", import.meta.url), "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 const handlers = {};
 function visit(node) {
-  if (ts.isFunctionDeclaration(node) && ["generateProfessionalImage", "startFreshImage"].includes(node.name?.text || "")) handlers[node.name.text] = node.getText(source);
+  if (ts.isFunctionDeclaration(node) && ["generateProfessionalImage", "startFreshImage", "isSupportedImageCanvasSize"].includes(node.name?.text || "")) handlers[node.name.text] = node.getText(source);
   ts.forEachChild(node, visit);
 }
 visit(source);
@@ -28,6 +28,10 @@ function setup(overrides = {}) {
     pendingCarouselSource: { generationId: "material-1" },
     useBrand: true, activeBrandId: "studio", brand: { logoKey: "logo" }, useLogoInImage: true,
     imageAspectRatio: "9:16", imageOutputFormat: "png", logoPlacement: "corner", logoPosition: "top-left",
+    imageGeneratorMode: "create", imageCanvasSize: "", imageBackground: "auto", imageAdditionalReferences: [], automaticImagePrompt: "",
+    imageReferencePreviewUrlRef: { current: "" }, replaceImageReferencePreviewUrl: setResetValue("referencePreviewUrl"),
+    replaceImageComparisonSourceUrl: setResetValue("comparisonSourceUrl"), setImageComparisonPosition: setResetValue("comparisonPosition"),
+    setImageAdditionalReferences: setResetValue("additionalReferences"), setImageBackground: setResetValue("background"), setImageCanvasSize: setResetValue("canvasSize"),
     setImageGeneratorMode: setResetValue("mode"), setImagePrompt: setResetValue("prompt"), setImageSourceTitle: setResetValue("sourceTitle"),
     setImageEditSourceId: setResetValue("editSourceId"), setImageReferenceUrl: setResetValue("referenceUrl"), setImageReferenceSourceId: setResetValue("referenceSourceId"),
     setImageReferencePurpose: setResetValue("referencePurpose"), setImageEditMask: setResetValue("mask"), setImageReferenceError: setResetValue("referenceError"),
@@ -65,10 +69,12 @@ test("empty custom text blocks the professional request, while no-text mode omit
 test("switching from edit to create clears the edit source, mask, prompts, and errors", () => {
   const app = setup({ startingError: "Ошибка доработки", imageResult: { id: "old-image", imageUrl: "/old.png" } });
   app.startFresh();
-  assert.deepEqual(app.state.reset, {
-    mode: "create", prompt: "", sourceTitle: "", editSourceId: null, referenceUrl: "",
-    referenceSourceId: "", referencePurpose: "edit", mask: "", referenceError: "",
-    carouselError: "", streamPreview: "", carouselResult: null, carouselSource: null,
+  // The source's purpose now follows the mode (edit vs create), so there is no separate purpose to reset.
+  // JSON round-trip: arrays created inside the vm sandbox belong to another realm.
+  assert.deepEqual(JSON.parse(JSON.stringify(app.state.reset)), {
+    mode: "create", prompt: "", sourceTitle: "", editSourceId: null, referenceUrl: "", referencePreviewUrl: "",
+    referenceSourceId: "", mask: "", referenceError: "", additionalReferences: [], canvasSize: "", background: "auto",
+    carouselError: "", streamPreview: "", comparisonSourceUrl: "", carouselResult: null, carouselSource: null,
   });
   assert.equal(app.state.error, "");
   assert.equal(app.state.result, null);
@@ -84,7 +90,7 @@ test("a failed saved-image edit keeps the original image available for retry", a
 
 test("the editor submits its current brush mask with the selected saved source", async () => {
   const source = { id: "source-image", imageUrl: "/source.png" };
-  const app = setup({ imageEditSourceId: source.id, imageEditMask: "transparent-mask-base64", imageResult: source });
+  const app = setup({ imageGeneratorMode: "edit", imageEditSourceId: source.id, imageEditMask: "transparent-mask-base64", imageResult: source });
   await app.send();
   const payload = app.state.requests[0].body;
   assert.equal(payload.sourceImageGenerationId, source.id);

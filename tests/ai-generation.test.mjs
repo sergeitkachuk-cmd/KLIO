@@ -65,7 +65,7 @@ function harness(fetchImpl, clock = Date, env = {}) {
   const globals = {
     process: { env: { AI_PROVIDER: "deepseek", DEEPSEEK_API_KEY: "test-only", ...env } },
     Date: clock, AbortSignal, DOMException, setTimeout, URL, Buffer,
-    console: { error() {} },
+    console: { error() {}, warn() {}, info() {} },
   };
   const config = loadTs("app/api/_lib/ai-config.ts", globals);
   const router = loadTs("app/api/_lib/ai-router.ts", globals, {
@@ -267,7 +267,7 @@ function routeHarness(h, quick = false, options = {}) {
       WorkspaceAccessError: TestWorkspaceAccessError,
       workspaceErrorResponse: (error) => Response.json({ error: error.message }, { status: 403 }),
     },
-    [`${prefix}website-context`]: { readWebsiteContext: async () => ({ status: "not_provided" }) },
+    [`${prefix}website-context`]: { readWebsiteContext: async () => ({ requestedUrl: "", resolvedUrl: "", status: "not_provided", text: "" }) },
     [`${prefix}tavily`]: { researchMaterialWeb: async () => ({ results: Array.from({ length: 5 }, (_, i) => ({ title: `Source ${i}`, url: `https://example.invalid/${i}`, content: `Verified context ${i}` })) }) },
     [`${prefix}openai-response`]: { AiResponseError: TestAiResponseError },
     [`${prefix}async-jobs`]: {
@@ -320,7 +320,7 @@ test("quota lost before acquiring the generation gate prevents paid work in eith
   }
 });
 
-test("every advanced format returns and records material with thinking and external research in one provider call", async () => {
+test("every advanced format returns and records material in one provider call, with external research only for seo and landing", async () => {
   for (const [format, length] of [["seo", 5600], ["social", 1000], ["ads", 700], ["landing", 3500]]) {
     const sentence = "Кофе раскрывает аромат после помола. Для кофе важны свежие зёрна и чистая вода.\n\n";
     const draft = { title: "Кофе", subtitle: "Вкус кофе", body: sentence.repeat(Math.floor((length - 30) / sentence.length)), meta_title: "Кофе", meta_description: "Вкус кофе", editorial_comment: "" };
@@ -333,16 +333,16 @@ test("every advanced format returns and records material with thinking and exter
     const job = await waitForJob(route);
     assert.equal(job.status, "done", job.errorMessage);
     const result = job.payload;
-    assert.equal(result.sources.research.sources.length, 5);
-    assert.ok(route.records[0].editorialComment.includes("https://example.invalid/4"));
+    const researched = format === "seo" || format === "landing";
+    assert.equal(result.sources.research.sources.length, researched ? 5 : 0);
+    if (researched) assert.ok(route.records[0].editorialComment.includes("https://example.invalid/4"));
     assert.ok(result.material.body.length > length * 0.85);
     assert.equal(result.mode, "ai");
     assert.ok(result.coverage);
     assert.equal(result.usage.archive.id, "test");
     assert.equal(route.records.length, 1);
     assert.equal(h.calls.length, 1);
-    assert.ok(h.calls[0].body.input.includes("Verified context"));
-    assert.ok(h.calls[0].body.input.includes("Verified context 4"));
+    assert.equal(h.calls[0].body.input.includes("Verified context 4"), researched);
     assert.equal(h.calls[0].body.reasoning.effort, "low");
     assert.doesNotMatch(h.calls[0].body.instructions, /выполни веб[‑-]поиск/i);
   }
@@ -424,16 +424,21 @@ test("material research retains substantial source passages and caches separatel
       return Response.json({ results: Array.from({ length: 6 }, (_, i) => ({ title: `Source ${i}`, url: `https://example.invalid/${i}`, content: "Evidence passage. ".repeat(150) })) });
     },
   });
-  const material = await research.researchMaterialWeb("Coffee", []);
-  assert.equal(requests[0].search_depth, "advanced");
-  assert.equal(requests[0].chunks_per_source, 3);
+  // Deep search is opt-in (the route asks for it only for SEO and landing
+  // pages, see 06a9dbb); the default stays basic and bounded.
+  const basic = await research.researchMaterialWeb("Coffee", []);
+  assert.equal(requests[0].search_depth, "basic");
+  assert.equal(basic.results[0].content.length, 800);
+  const material = await research.researchMaterialWeb("Coffee", [], "advanced");
+  assert.equal(requests[1].search_depth, "advanced");
+  assert.equal(requests[1].chunks_per_source, 3);
   assert.equal(material.results.length, 5);
   assert.equal(material.results[0].content.length, 1800);
-  await research.researchMaterialWeb("Coffee", []);
-  assert.equal(requests.length, 1);
+  await research.researchMaterialWeb("Coffee", [], "advanced");
+  assert.equal(requests.length, 2, "same query and depth is served from cache");
   const plan = await research.researchContentPlanWeb("Coffee", []);
-  assert.equal(requests.length, 2);
-  assert.equal(requests[1].search_depth, "fast");
+  assert.equal(requests.length, 3);
+  assert.equal(requests[2].search_depth, "basic");
   assert.equal(plan.results[0].content.length, 420);
 });
 

@@ -47,7 +47,7 @@ function harness(replies, connecting) {
     "./public-fetch": { fetchPublicResource: async url => ({ ok: true, status: 200, bytes: Buffer.from(`bytes:${url}`) }) },
     "./image-type": { imageContentType: () => "image/png" },
     "./publishing-config": load("app/api/_lib/publishing-config.ts"),
-    "./telegram-proxy": load("app/api/_lib/telegram-proxy.ts", {}, { process: { env: {} } }),
+    "./telegram-proxy": load("app/api/_lib/telegram-proxy.ts", {}, { process: { env: {} } }), "./vk-oauth": {},
   });
   return {
     sent, paths,
@@ -87,7 +87,7 @@ function vkHarness(fetchReplies, imageType = "image/jpeg") {
     "./public-fetch": { fetchPublicResource: async () => ({ ok: true, bytes: new Uint8Array([1, 2, 3]) }) },
     "./image-type": { imageContentType: () => imageType },
     "./publishing-config": load("app/api/_lib/publishing-config.ts"),
-    "./telegram-proxy": load("app/api/_lib/telegram-proxy.ts", {}, { process: { env: {} } }),
+    "./telegram-proxy": load("app/api/_lib/telegram-proxy.ts", {}, { process: { env: {} } }), "./vk-oauth": {},
     // fetchImageBytes/uploadPhotoForWall build a real Blob and post it
     // through a real FormData - neither is in load()'s base global list
     // (only needed for this VK path, not Telegram), so without these the
@@ -244,7 +244,7 @@ function loadPublishAttempt() {
     "../../../db/schema": {},
     "./social-publish": { PublishError: class extends Error {}, publishToChannel: async () => ({ providerPostId: "unused" }) },
     "./publishing-config": load("app/api/_lib/publishing-config.ts"),
-    "./email": { emailDeliveryAvailable: () => false, sendPublicationFailedEmail: async () => {} },
+    "./email": { emailDeliveryAvailable: () => false, sendPublicationFailedEmail: async () => {} }, "./social-channels": { ensureFreshVkPhotoToken: async vk => ({ vk, refreshed: false }) },
   });
   // resolveImageUrls runs inside the vm sandbox, so any array it builds
   // internally is a different-realm Array from this file's own - same
@@ -327,7 +327,7 @@ for (const scenario of ["receipt", "connect", "exhausted", "unknown", "partial"]
       return { providerPostId: "confirmed" };
     } },
     "./publishing-config": load("app/api/_lib/publishing-config.ts"),
-    "./email": { emailDeliveryAvailable: () => false },
+    "./email": { emailDeliveryAvailable: () => false }, "./social-channels": { ensureFreshVkPhotoToken: async vk => ({ vk, refreshed: false }) },
   });
   assert.equal(await loaded.attemptPublish("post", "another-owner", "https://example.com"), null);
   assert.equal(externalCalls, 0);
@@ -378,7 +378,7 @@ test("Telegram channel validation separates transport failures from invalid cred
       "./publishing-config": {}, "../../../db/schema": {},
       "node:https": { request },
       "node:http": { request },
-      "./telegram-proxy": load("app/api/_lib/telegram-proxy.ts", {}, { process: { env: {} } }),
+      "./telegram-proxy": load("app/api/_lib/telegram-proxy.ts", {}, { process: { env: {} } }), "./vk-oauth": {},
     }, {
       setTimeout: callback => { callback(); return 0; },
     });
@@ -400,7 +400,7 @@ test("VK normalizes a pasted community URL and resolves its numeric group id", a
     "../../../db/schema": {},
     "node:https": {},
     "node:http": {},
-    "./telegram-proxy": {},
+    "./telegram-proxy": {}, "./vk-oauth": {},
   }, {
     fetch: async (url, options) => {
       calls.push({ url: String(url), body: options.body });
@@ -427,7 +427,7 @@ test("VK rejects a foreign or malformed community URL before sending credentials
     "../../../db/schema": {},
     "node:https": {},
     "node:http": {},
-    "./telegram-proxy": {},
+    "./telegram-proxy": {}, "./vk-oauth": {},
   }, {
     fetch: async () => { calls++; throw new Error("must not fetch"); },
   });

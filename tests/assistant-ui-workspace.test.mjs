@@ -243,7 +243,7 @@ test("Refine chooses the clicked older image without generating and submits that
   const newerImage = card({ id: "newer", body: "", kind: "post", imageUrl: "https://preview.example.invalid/newer.png" });
   const row = sampleThread("saved", { data: { cards: [oldImage, newerImage], messages: [{ id: "a1", role: "assistant", text: "Готово", cardIds: ["old"] }, { id: "a2", role: "assistant", text: "Готово", cardIds: ["newer"] }] } });
   const ui = await mountDialogue(t, { threads: [row], selected: "saved" });
-  await ui.click(ui.findButton("Доработать", ui.document.getElementById("klio-chat-card-old")));
+  await ui.click(ui.findButton("Доработать изображение", ui.document.getElementById("klio-chat-card-old")));
   assert.equal(ui.calls.filter(c => c.action === "send").length, 0);
   assert.equal(ui.document.querySelector(".klio-aui-attachment-preview img").src, oldImage.imageUrl);
   await ui.type("Убери провод на столе"); await ui.click(ui.findButton("Отправить сообщение"));
@@ -256,7 +256,7 @@ test("Refine chooses the clicked older image without generating and submits that
 test("new conversations do not inherit an attached reference", async (t) => {
   const value = card({ kind: "post", body: "", imageUrl: "https://preview.example.invalid/image.png" });
   const ui = await mountDialogue(t, { threads: [withCard(value)], selected: "saved" });
-  await ui.click(ui.findButton("Доработать"));
+  await ui.click(ui.findButton("Доработать изображение"));
   await ui.click(ui.document.querySelector(".klio-chatkit-new"));
   assert.equal(ui.document.querySelector(".klio-aui-attachment-preview"), null);
   await ui.type("Привет!"); await ui.click(ui.findButton("Отправить сообщение"));

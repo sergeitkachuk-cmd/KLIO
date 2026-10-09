@@ -73,7 +73,10 @@ test("uploaded references and explicit older slides use the chosen source; error
   assert.equal(h.imageDownloads[1], new URL(thread.data.cards[0].imageUrl).pathname.slice("/api/uploads/".length));
 });
 
-test("late image edits cannot save a material after a timeout refund", async t => {
+// Since 3ae5ca4 a finished image is kept even if the request outlived its
+// lease: the person was told it was saved. The timed-out request stays
+// refunded, so nobody is charged twice for a failed turn.
+test("late image edits keep the finished image without charging after a timeout refund", async t => {
   const h = await createDialogueHarness(); t.after(() => h.close());
   let release;
   h.setEditImage(() => new Promise(resolve => { release = resolve; }));
@@ -85,7 +88,8 @@ test("late image edits cannot save a material after a timeout refund", async t =
   assert.equal((await h.read(thread.id)).thread.status, "failed");
   release("https://example.invalid/late-image.png"); await new Promise(resolve => setTimeout(resolve, 40));
   assert.equal((await h.account()).generationsUsed, 0);
-  assert.equal((await h.db.select().from(h.schema.generations)).length, 0);
+  assert.equal((await h.db.select().from(h.schema.generations)).length, 1);
+  assert.equal((await h.read(thread.id)).thread.status, "failed");
   assert.equal((await h.read(thread.id)).thread.data.cards.length, 1);
 });
 

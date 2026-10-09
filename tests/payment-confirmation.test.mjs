@@ -3,6 +3,19 @@ import assert from "node:assert/strict";
 import * as orm from "drizzle-orm";
 import { createDialogueHarness, load } from "./helpers/dialogue-harness.mjs";
 
+// The admin Telegram ping is a side channel, not part of what these tests check.
+function loadConfirmation(h) {
+  return load("app/api/_lib/confirm-tochka-payment.ts", {
+    "drizzle-orm": orm,
+    "../../../db/schema": h.schema,
+    "../../../db": { getDb: () => h.db },
+    "./subscription": load("app/api/_lib/subscription.ts"),
+    "../../plans": load("app/plans.ts"),
+    "../../billing-pricing": load("app/billing-pricing.ts"),
+    "./admin-notify": { adminTelegramAvailable: () => false, sendAdminTelegramMessage: async () => ({ messageId: 0 }) },
+  });
+}
+
 test("reconcile and webhook confirm once, consume the discount and preserve later usage", async t => {
   const h = await createDialogueHarness();
   t.after(() => h.close());
@@ -10,12 +23,7 @@ test("reconcile and webhook confirm once, consume the discount and preserve late
   await h.db.update(h.schema.accounts).set({ planId: "trial", planExpiresAt: null }).where(orm.eq(h.schema.accounts.email, h.owner));
   await h.db.insert(h.schema.payments).values({ id: paymentId, ownerEmail: h.owner, planId: "start", billing: "monthly", mode: "card", amountKopecks: 79200, discountApplied: true, operationId: "operation-test" });
   const body = load("app/api/_lib/request-body.ts");
-  const confirmTochkaPayment = load("app/api/_lib/confirm-tochka-payment.ts", {
-    "drizzle-orm": orm,
-    "../../../db/schema": h.schema,
-    "../../../db": { getDb: () => h.db },
-    "./subscription": load("app/api/_lib/subscription.ts"),
-  });
+  const confirmTochkaPayment = loadConfirmation(h);
   class WorkspaceAccessError extends Error {}
   const dependencies = {
     "drizzle-orm": orm,
@@ -66,12 +74,7 @@ test("a refund restores the active plan that existed before the purchase", async
   }).where(orm.eq(h.schema.accounts.email, h.owner));
   await h.db.insert(h.schema.payments).values({ id: paymentId, ownerEmail: h.owner, planId: "start", billing: "monthly", mode: "card", amountKopecks: 119000, operationId: "restore-operation" });
   let providerStatus = "APPROVED";
-  const confirmTochkaPayment = load("app/api/_lib/confirm-tochka-payment.ts", {
-    "drizzle-orm": orm,
-    "../../../db/schema": h.schema,
-    "../../../db": { getDb: () => h.db },
-    "./subscription": load("app/api/_lib/subscription.ts"),
-  });
+  const confirmTochkaPayment = loadConfirmation(h);
   const route = load("app/api/payments/tochka/reconcile/route.ts", {
     "drizzle-orm": orm,
     "../../../../../db/schema": h.schema,
@@ -123,12 +126,7 @@ test("monthly discount and quarterly checkout send consistent bank and receipt a
   t.after(() => h.close());
   const operations = [];
   let bankFailure = false;
-  const confirmTochkaPayment = load("app/api/_lib/confirm-tochka-payment.ts", {
-    "drizzle-orm": orm,
-    "../../../db/schema": h.schema,
-    "../../../db": { getDb: () => h.db },
-    "./subscription": load("app/api/_lib/subscription.ts"),
-  });
+  const confirmTochkaPayment = loadConfirmation(h);
   const route = load("app/api/payments/tochka/create/route.ts", {
     "drizzle-orm": orm,
     "../../../../../db/schema": h.schema,

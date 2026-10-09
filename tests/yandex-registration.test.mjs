@@ -13,7 +13,7 @@ test("Yandex creates a verified session and retains the intended checkout page o
     "../../../../../db/schema": { accounts: { email: "email" } },
     "../../../_lib/base-url": { resolveBaseUrl: () => "https://example.invalid" },
     "../../../_lib/safe-return-path": load("app/api/_lib/safe-return-path.ts"),
-    "../../../_lib/yandex-oauth": { yandexOAuthConfigured: () => true, YANDEX_TOKEN_URL: "https://oauth.yandex.ru/token", YANDEX_USER_INFO_URL: "https://login.yandex.ru/info" },
+    "../../../_lib/yandex-oauth": { ...load("app/api/_lib/yandex-oauth.ts"), yandexOAuthConfigured: () => true },
     "../../../_lib/workspace-account": { workspaceDatabaseAvailable: async () => true, ensureAccount: async (user, method) => { accountsCreated++; assert.equal(user.email, "test@example.invalid"); assert.equal(method, "yandex"); return { emailVerified: false }; }, getWorkspaceDb: async () => ({ update: () => ({ set: fields => { assert.equal(fields.emailVerified, true); return { where: async () => {} }; } }) }) },
     "../../../../site-auth": { createSiteSession: async email => { assert.equal(email, "test@example.invalid"); sessions++; } },
   };

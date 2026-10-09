@@ -89,7 +89,9 @@ export async function createDialogueHarness() {
     .values({
       email: owner,
       planId: "start",
-      generationMonth: "2026-09",
+      // Current month, not a fixed one: a past month makes the app reset the
+      // quota on first use, which silently changes what every test sees.
+      generationMonth: new Date().toISOString().slice(0, 7),
       planExpiresAt: "2099-01-01",
     });
   class WorkspaceAccessError extends Error {
