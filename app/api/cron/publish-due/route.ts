@@ -14,12 +14,15 @@
 
 import { and, asc, eq, isNotNull, lte, sql } from "drizzle-orm";
 import { payments, publications } from "../../../../db/schema";
-import { getWorkspaceDb, workspaceDatabaseAvailable } from "../../_lib/workspace-account";
+import { getWorkspaceDb, TRIAL_DURATION_MS, workspaceDatabaseAvailable } from "../../_lib/workspace-account";
 import { attemptPublish } from "../../_lib/publish-attempt";
 import { resolveBaseUrl } from "../../_lib/base-url";
 import { tochkaRequest } from "../../_lib/tochka";
 import { confirmTochkaPayment } from "../../_lib/confirm-tochka-payment";
 import { cleanupExpiredTemporaryImages } from "../../_lib/storage";
+import { cleanupOldAsyncJobs } from "../../_lib/async-jobs";
+import { emailDeliveryAvailable, sendTrialEndingEmail } from "../../_lib/email";
+import { sendTrialEndingReminders } from "../../_lib/trial-reminders";
 
 // Bounds how much work one invocation does — a scheduler firing every
 // minute will always keep the backlog near zero in practice, this just
@@ -103,7 +106,17 @@ export async function POST(request: Request) {
   }));
 
   const temporaryImagesDeleted = await temporaryImageCleanup;
-  return Response.json({ processed: results.length, results, paymentsChecked: stalePayments.length, paymentsApproved, paymentChecksFailed, temporaryImagesDeleted });
+  const asyncJobsDeleted = await cleanupOldAsyncJobs();
+  let trialRemindersSent = 0;
+  try {
+    const accountUrl = `${resolveBaseUrl(request)}/account`;
+    if (emailDeliveryAvailable()) {
+      trialRemindersSent = await sendTrialEndingReminders({ db, trialDurationMs: TRIAL_DURATION_MS, send: email => sendTrialEndingEmail(email, accountUrl) });
+    }
+  } catch (error) {
+    console.error("publish-due: trial reminders failed", error instanceof Error ? error.message : "unknown error");
+  }
+  return Response.json({ processed: results.length, results, paymentsChecked: stalePayments.length, paymentsApproved, paymentChecksFailed, temporaryImagesDeleted, asyncJobsDeleted, trialRemindersSent });
 }
 
 // GET mirrors POST — some cron dashboards only offer GET pings. Same

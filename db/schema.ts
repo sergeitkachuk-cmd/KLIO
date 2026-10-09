@@ -92,6 +92,10 @@ export const accounts = pgTable("accounts", {
   // announcement sent before signup is still visible in the list, just
   // never counted as "new").
   lastSeenAnnouncementAt: text("last_seen_announcement_at"),
+  // Set once the "trial ends soon" email has been claimed for this account
+  // (api/cron/publish-due) - claimed before sending, so overlapping cron
+  // runs can never email the same person twice.
+  trialReminderSentAt: text("trial_reminder_sent_at"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });

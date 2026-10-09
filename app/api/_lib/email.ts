@@ -165,17 +165,17 @@ export async function sendFeedbackRepliedEmail(email: string, workspaceUrl: stri
   });
 }
 
-// Sent by the trial-reminder cron job (not yet wired up — see workspace-account.ts's
-// TRIAL_DURATION_MS) once an account is approaching the end of its 72h trial window.
-export async function sendTrialEndingEmail(email: string, workspaceUrl: string) {
-  const safeUrl = escapeHtml(workspaceUrl);
+// Sent by api/cron/publish-due once, during the final day of the 72h trial
+// (see workspace-account.ts's TRIAL_DURATION_MS); the link opens the plans.
+export async function sendTrialEndingEmail(email: string, accountUrl: string) {
+  const safeUrl = escapeHtml(accountUrl);
   await sendTransactionalEmail({
     to: email,
     subject: "Пробный период в КЛИО скоро закончится",
     html: emailShell("Пробный период скоро закончится", `
-      <p>Ваш пробный доступ к КЛИО заканчивается в течение ближайших часов. После этого генерация, семантика и другие ИИ-инструменты станут недоступны, пока вы не перейдёте на платный тариф.</p>
-      <p><a href="${safeUrl}" style="display: inline-block; padding: 12px 22px; border-radius: 10px; background: #101015; color: #fff; text-decoration: none; font-weight: 650;">Открыть КЛИО</a></p>
+      <p>Ваш пробный доступ к КЛИО заканчивается в течение суток. После этого генерация, семантика и другие ИИ-инструменты станут недоступны, пока вы не перейдёте на платный тариф.</p>
+      <p><a href="${safeUrl}" style="display: inline-block; padding: 12px 22px; border-radius: 10px; background: #101015; color: #fff; text-decoration: none; font-weight: 650;">Выбрать тариф</a></p>
     `),
-    plaintext: `Ваш пробный доступ к КЛИО заканчивается в течение ближайших часов. Открыть КЛИО: ${workspaceUrl}`,
+    plaintext: `Ваш пробный доступ к КЛИО заканчивается в течение суток. Выбрать тариф: ${accountUrl}`,
   });
 }

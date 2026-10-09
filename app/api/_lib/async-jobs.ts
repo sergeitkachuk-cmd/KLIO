@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { asyncJobs } from "../../../db/schema";
@@ -14,8 +14,8 @@ import { WorkspaceAccessError } from "./workspace-account";
 // OpenAI or this server, giving up on a slow-but-otherwise-fine request).
 //
 // Why "just don't await it" is safe here specifically: this app runs on
-// Render as a persistent `next start` Node process (render.yaml, plan:
-// starter), not a serverless function that gets frozen or recycled the
+// Timeweb as a persistent `next start` Node process (see Dockerfile), not
+// a serverless function that gets frozen or recycled the
 // moment an HTTP response is sent. A promise kept running after
 // `Response.json(...)` returns from a route handler keeps executing
 // normally as long as the process stays alive and the event loop has
@@ -77,7 +77,29 @@ export async function claimAsyncJob(kind: string, ownerEmail: string, input: unk
       inputJson: JSON.stringify(input),
     });
     return { id, reused: false };
-  });
+  }).finally(() => { void cleanupOldAsyncJobs(); });
+}
+
+// Finished jobs only matter while the browser collects the result (it is
+// saved to Материалы by then); failed content plans stay visible in /admin
+// for a quarter. Running jobs are never touched. Called from the cron and,
+// as a fallback if the cron is ever switched off, after new job claims -
+// at most once an hour per process either way.
+const ASYNC_JOB_CLEANUP_INTERVAL_MS = 60 * 60_000;
+let lastAsyncJobCleanupAt = 0;
+export async function cleanupOldAsyncJobs(now = Date.now()): Promise<number> {
+  if (now - lastAsyncJobCleanupAt < ASYNC_JOB_CLEANUP_INTERVAL_MS) return 0;
+  lastAsyncJobCleanupAt = now;
+  try {
+    const removed = await getDb().delete(asyncJobs).where(or(
+      and(eq(asyncJobs.status, "done"), sql`${asyncJobs.updatedAt}::timestamptz < now() - interval '7 days'`),
+      and(eq(asyncJobs.status, "failed"), sql`${asyncJobs.updatedAt}::timestamptz < now() - interval '90 days'`),
+    )).returning({ id: asyncJobs.id });
+    return removed.length;
+  } catch (error) {
+    console.error("async job cleanup failed (non-fatal)", error instanceof Error ? error.message : error);
+    return 0;
+  }
 }
 
 export async function markAsyncJobProcessing(id: string) {
