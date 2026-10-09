@@ -1,5 +1,3 @@
-import { eq } from "drizzle-orm";
-import { payments } from "../../../../../db/schema";
 import { getWorkspaceDb } from "../../../_lib/workspace-account";
 import { verifyTochkaWebhook } from "../../../_lib/tochka";
 import { readBoundedBody, RequestBodyError } from "../../../_lib/request-body";

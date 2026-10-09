@@ -196,6 +196,10 @@ export async function uploadPublicationImage(file: File, ownerEmail: string, bas
     console.error("S3 upload failed", error instanceof Error ? error.message : error);
     throw new StorageError("Не удалось загрузить картинку в хранилище.");
   }
+  // Generated and saved images are looked at right away, so their light
+  // on-screen copy is prepared now. Temporary sources/references wait until
+  // something actually displays them from the server.
+  if (!options.temporary) void createDisplayPreview(key, bytes, contentType);
 
   return `${baseUrl.replace(/\/+$/, "")}/api/uploads/${key}`;
 }
@@ -212,6 +216,99 @@ export async function downloadPublicationImage(key: string): Promise<{ bytes: Ui
     console.error("S3 publication-image download failed", error instanceof Error ? error.message : error);
     throw new StorageError("Не удалось прочитать файл из хранилища.", 502);
   }
+}
+
+// On-screen copy of a stored image. The original (PNG by default, for
+// detail) stays exactly as saved for downloads, publishing and as an edit
+// source; only <img> requests get this lighter WebP. A multi-megabyte PNG
+// otherwise crawls through this host and paints top to bottom. Same pixel
+// size as the original (EXIF rotation applied, like the browser would) -
+// the brush mask is drawn on the displayed image and must match the
+// source exactly (see the mask size check in image-generation.ts).
+const DISPLAY_PREVIEW_MIN_BYTES = 200 * 1024;
+const DISPLAY_PREVIEW_TYPES = new Set(["image/png", "image/jpeg"]);
+const displayPreviewJobs = new Map<string, Promise<Uint8Array<ArrayBuffer> | null>>();
+const keysWithoutDisplayPreview = new Set<string>();
+
+// One CPU on the production host: at most two image re-encodes at a time,
+// the rest wait their turn instead of starving request handling.
+let activeDisplayEncodes = 0;
+const waitingDisplayEncodes: Array<() => void> = [];
+function acquireDisplayEncode(): Promise<void> {
+  if (activeDisplayEncodes < 2) {
+    activeDisplayEncodes += 1;
+    return Promise.resolve();
+  }
+  return new Promise(resolve => waitingDisplayEncodes.push(resolve));
+}
+function releaseDisplayEncode() {
+  const next = waitingDisplayEncodes.shift();
+  if (next) next();
+  else activeDisplayEncodes -= 1;
+}
+
+function displayPreviewKey(key: string) {
+  return `${key}.display.webp`;
+}
+
+function isMissingObject(error: unknown) {
+  const failure = error as { name?: string; $metadata?: { httpStatusCode?: number } } | null;
+  return failure?.name === "NoSuchKey" || failure?.$metadata?.httpStatusCode === 404;
+}
+
+function createDisplayPreview(key: string, bytes: Uint8Array<ArrayBuffer>, contentType: string) {
+  const pending = displayPreviewJobs.get(key);
+  if (pending) return pending;
+  if (!DISPLAY_PREVIEW_TYPES.has(contentType) || bytes.byteLength < DISPLAY_PREVIEW_MIN_BYTES) return Promise.resolve(null);
+  const job = (async () => {
+    await acquireDisplayEncode();
+    let encoded: Buffer;
+    try {
+      const sharp = (await import("sharp")).default;
+      encoded = await sharp(Buffer.from(bytes)).rotate().webp({ quality: 82, alphaQuality: 90, effort: 4 }).toBuffer();
+    } finally {
+      releaseDisplayEncode();
+    }
+    if (encoded.byteLength > bytes.byteLength * 0.9) {
+      keysWithoutDisplayPreview.add(key);
+      return null;
+    }
+    const preview = Uint8Array.from(encoded);
+    // Stored for the next viewer; the current request already has the bytes.
+    void client().send(new PutObjectCommand({
+      Bucket: requiredEnv("S3_BUCKET"),
+      Key: displayPreviewKey(key),
+      Body: preview,
+      ContentType: "image/webp",
+    }), { abortSignal: AbortSignal.timeout(40_000) }).catch(error => {
+      console.error("S3 display-preview upload failed", error instanceof Error ? error.message : error);
+    });
+    return preview;
+  })().catch(error => {
+    console.error("Display preview encode failed", error instanceof Error ? error.message : error);
+    return null;
+  }).finally(() => displayPreviewJobs.delete(key));
+  displayPreviewJobs.set(key, job);
+  return job;
+}
+
+export async function downloadPublicationImageForDisplay(key: string): Promise<{ bytes: Uint8Array<ArrayBuffer>; contentType: string }> {
+  const pending = displayPreviewJobs.get(key);
+  if (pending) {
+    const ready = await pending;
+    if (ready) return { bytes: ready, contentType: "image/webp" };
+  }
+  if (!pending && !keysWithoutDisplayPreview.has(key) && storageConfigured()) {
+    try {
+      return await getObjectBytes(displayPreviewKey(key));
+    } catch (error) {
+      if (!isMissingObject(error)) console.error("S3 display-preview read failed", error instanceof Error ? error.message : error);
+    }
+  }
+  const original = await downloadPublicationImage(key);
+  if (keysWithoutDisplayPreview.has(key)) return original;
+  const preview = await createDisplayPreview(key, original.bytes, original.contentType);
+  return preview ? { bytes: preview, contentType: "image/webp" } : original;
 }
 
 // The regular publish cron also sweeps uploads that never reached generation

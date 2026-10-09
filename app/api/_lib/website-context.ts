@@ -340,7 +340,6 @@ async function loadWebsiteContext(value: string, fullSite: boolean): Promise<Web
     const pages = new Map<string, { url: string; text: string }>();
     const initialText = extractWebsiteText(html);
     if (initialText || fullSite) pages.set(startUrl, { url: startUrl, text: initialText });
-    const root = new URL(startUrl);
     const queue: URL[] = [];
     const queued = new Set<string>([startUrl]);
     const attempted = new Set<string>([startUrl]);

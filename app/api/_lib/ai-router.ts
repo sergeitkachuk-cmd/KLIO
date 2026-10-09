@@ -3,7 +3,6 @@ import { getDb } from "../../../db";
 import { aiUsage } from "../../../db/schema";
 import { assertValidAiOutput } from "./ai-output-validation";
 import {
-  activeProvider,
   providerForModel,
   AI_MODELS,
   FALLBACKS,

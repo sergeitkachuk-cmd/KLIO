@@ -8,7 +8,7 @@
 // overwritten (see uploadPublicationImage), so a given URL's content
 // never changes.
 
-import { downloadPublicationImage, StorageError } from "../../_lib/storage";
+import { downloadPublicationImage, downloadPublicationImageForDisplay, StorageError } from "../../_lib/storage";
 
 export async function GET(request: Request, context: { params: Promise<{ key: string[] }> }) {
   const { key: segments } = await context.params;
@@ -19,13 +19,20 @@ export async function GET(request: Request, context: { params: Promise<{ key: st
   if (!/^(publications|temporary)\//.test(key)) return Response.json({ error: "Не найдено." }, { status: 404 });
 
   try {
-    const { bytes, contentType } = await downloadPublicationImage(key);
     const download = new URL(request.url).searchParams.get("download") === "1";
+    // Only a browser <img> gets the light on-screen copy. Downloads, a
+    // script's fetch(), and Telegram/VK pulling a photo for publishing (they
+    // send no Sec-Fetch-Dest) always get the original file, full quality.
+    const forDisplay = !download
+      && request.headers.get("sec-fetch-dest") === "image"
+      && (request.headers.get("accept") || "").includes("image/webp");
+    const { bytes, contentType } = forDisplay ? await downloadPublicationImageForDisplay(key) : await downloadPublicationImage(key);
     const extension = ({ "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" } as Record<string, string>)[contentType] || "bin";
     return new Response(bytes, {
       headers: {
         "Content-Type": contentType,
         "Cache-Control": "public, max-age=31536000, immutable",
+        Vary: "Sec-Fetch-Dest, Accept",
         "Content-Length": String(bytes.byteLength),
         ...(download ? { "Content-Disposition": `attachment; filename="klio-image.${extension}"` } : {}),
       },

@@ -88,14 +88,6 @@ function credentials() {
   return { token, clientId, customerCode, merchantId };
 }
 
-export function tochkaCustomerCode() {
-  return credentials().customerCode;
-}
-
-export function tochkaMerchantId() {
-  return credentials().merchantId;
-}
-
 export async function discoverTochkaIds() {
   const configured = credentials();
   let customerCode = configured.customerCode;

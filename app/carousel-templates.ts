@@ -68,9 +68,3 @@ export function carouselTemplateInstruction(value: unknown): string {
     || CAROUSEL_TEMPLATE_OPTIONS.find((option) => option.value === DEFAULT_CAROUSEL_TEMPLATE)!;
   return template.instruction;
 }
-
-export function carouselTemplateLabel(value: unknown): string {
-  const template = CAROUSEL_TEMPLATE_OPTIONS.find((option) => option.value === value)
-    || CAROUSEL_TEMPLATE_OPTIONS.find((option) => option.value === DEFAULT_CAROUSEL_TEMPLATE)!;
-  return template.label;
-}

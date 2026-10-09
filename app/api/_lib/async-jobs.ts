@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, lt } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { asyncJobs } from "../../../db/schema";
@@ -78,50 +78,6 @@ export async function claimAsyncJob(kind: string, ownerEmail: string, input: unk
     });
     return { id, reused: false };
   });
-}
-
-export async function createAsyncJob(kind: string, ownerEmail: string, input: unknown) {
-  const db = getDb();
-  const id = crypto.randomUUID();
-  await db.insert(asyncJobs).values({
-    id,
-    ownerEmail,
-    kind,
-    status: "pending",
-    inputJson: JSON.stringify(input),
-  });
-  // Opportunistic cleanup instead of a cron job: every new job takes the
-  // chance to drop this owner's own jobs from over a day ago. Cheap (one
-  // indexed delete), keeps the table from growing forever, and never
-  // touches another user's rows or a job that might still be running.
-  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  await db.delete(asyncJobs).where(and(
-    eq(asyncJobs.ownerEmail, ownerEmail),
-    lt(asyncJobs.createdAt, oneDayAgo),
-  )).catch((error) => {
-    console.error("async job cleanup failed (non-fatal)", error);
-  });
-  return id;
-}
-
-// The browser can resend a POST after a network hiccup, be open in two tabs,
-// or let a person press the action again after a long wait.  A content-plan
-// job is expensive, so the route reuses the owner's already active job
-// instead of starting a second identical provider call.
-export async function findActiveAsyncJob(kind: string, ownerEmail: string, maxAgeMs?: number) {
-  const db = getDb();
-  const [job] = await db.select().from(asyncJobs).where(and(
-    eq(asyncJobs.kind, kind),
-    eq(asyncJobs.ownerEmail, ownerEmail),
-    inArray(asyncJobs.status, ["pending", "processing"]),
-  )).orderBy(desc(asyncJobs.createdAt)).limit(1);
-  if (!job) return null;
-  const updatedAt = Date.parse(job.updatedAt);
-  if (maxAgeMs && Number.isFinite(updatedAt) && Date.now() - updatedAt > maxAgeMs) {
-    await failAsyncJob(job.id, "Сборка контент‑плана превысила лимит времени. Запустите её ещё раз.");
-    return null;
-  }
-  return job;
 }
 
 export async function markAsyncJobProcessing(id: string) {

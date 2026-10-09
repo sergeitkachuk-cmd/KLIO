@@ -275,7 +275,8 @@ test("uploading a reference attaches the stored file without triggering a paid g
   Object.defineProperty(input, "files", { configurable: true, value: [new File(["fixture"], "reference.png", { type: "image/png" })] });
   await React.act(async () => input.dispatchEvent(new ui.window.Event("change", { bubbles: true })));
   assert.equal(ui.calls.filter(c => c.action === "send").length, 0);
-  assert.equal(ui.document.querySelector(".klio-aui-attachment-preview img").src, url);
+  // Preview comes straight from the chosen file; the stored copy is what generation uses.
+  assert.match(ui.document.querySelector(".klio-aui-attachment-preview img").src, /^blob:/);
   await ui.type("Интерьер в таком стиле"); await ui.click(ui.findButton("Отправить сообщение"));
   const send = ui.calls.find(c => c.action === "send");
   assert.deepEqual(send.imageSource, { uploadUrl: url, purpose: "reference" });

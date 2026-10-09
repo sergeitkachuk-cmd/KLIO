@@ -2639,7 +2639,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   }, [pubEditor?.generationId, pubEditor?.imageUrl, workspaceHistory]);
   const [imagePrompt, setImagePrompt] = useState("");
   const [imageSourceTitle, setImageSourceTitle] = useState("");
-  const [imageAspectRatio, setImageAspectRatio] = useState<"1:1" | "3:4" | "4:3" | "4:5" | "16:9" | "9:16">("4:3");
+  const [imageAspectRatio] = useState<"1:1" | "3:4" | "4:3" | "4:5" | "16:9" | "9:16">("4:3");
   const [imageCanvasSize, setImageCanvasSize] = useState("");
   const [imageOutputFormat, setImageOutputFormat] = useState<"png" | "jpeg" | "webp">("png");
   const [imageBackground, setImageBackground] = useState<"auto" | "transparent">("auto");
@@ -2684,9 +2684,19 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setImageReferencePreviewUrl(nextUrl);
   }
 
+  const imageComparisonSourceUrlRef = useRef("");
+  function replaceImageComparisonSourceUrl(nextUrl: string) {
+    const previousUrl = imageComparisonSourceUrlRef.current;
+    if (previousUrl.startsWith("blob:") && previousUrl !== nextUrl) URL.revokeObjectURL(previousUrl);
+    imageComparisonSourceUrlRef.current = nextUrl;
+    setImageComparisonSourceUrl(nextUrl);
+  }
+
   useEffect(() => () => {
     if (imageReferencePreviewUrlRef.current) URL.revokeObjectURL(imageReferencePreviewUrlRef.current);
     imageReferencePreviewUrlRef.current = "";
+    if (imageComparisonSourceUrlRef.current.startsWith("blob:")) URL.revokeObjectURL(imageComparisonSourceUrlRef.current);
+    imageComparisonSourceUrlRef.current = "";
   }, []);
   const [carouselSlideCount, setCarouselSlideCount] = useState("5");
   const [carouselIndicatorMode, setCarouselIndicatorMode] = useState<CarouselSlideIndicatorMode>("numbers");
@@ -6061,6 +6071,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     const completedEditSourceUrl = effectiveSourcePurpose === "edit"
       ? imageEditSourceId ? imageResult?.imageUrl || "" : imageReferenceUrl
       : "";
+    // The person's own uploaded file is still in browser memory - reuse it
+    // for the "before" side instead of downloading the source back.
+    const completedEditLocalUrl = effectiveSourcePurpose === "edit" && !imageEditSourceId ? imageReferencePreviewUrlRef.current : "";
     const keepsSavedEditSource = Boolean(imageEditSourceId && imageResult?.id === imageEditSourceId);
     if (!keepsSavedEditSource) setImageResult(null);
     setImageStreamPreview("");
@@ -6130,7 +6143,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       } else payload = await safeJson(response) as typeof payload;
       if (!response.ok || !payload.generation) throw new Error(payload.error || "Не удалось создать изображение.");
       setImageResult(payload.generation);
-      setImageComparisonSourceUrl(completedEditSourceUrl);
+      const localStillOwned = Boolean(completedEditLocalUrl) && imageReferencePreviewUrlRef.current === completedEditLocalUrl;
+      if (localStillOwned) imageReferencePreviewUrlRef.current = "";
+      replaceImageComparisonSourceUrl(localStillOwned ? completedEditLocalUrl : completedEditSourceUrl);
       setImageComparisonPosition(50);
       setImageResultRevealTick((value) => value + 1);
       setImageStreamPreview("");
@@ -6169,7 +6184,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setCarouselResult(null);
     setCarouselLightboxIndex(null);
     setImageResult(null);
-    setImageComparisonSourceUrl("");
+    replaceImageComparisonSourceUrl("");
     try {
       const startResponse = await fetch("/api/carousel", {
         method: "POST",
@@ -6320,7 +6335,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     // title of the next edited image or reappear in the image editor.
     setImageSourceTitle(source.topic === "Изображение" ? "" : source.title);
     setImageResult({ ...source });
-    setImageComparisonSourceUrl("");
+    replaceImageComparisonSourceUrl("");
     setPendingCarouselSource(null);
     setImageError("");
     setCarouselError("");
@@ -6369,7 +6384,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setCarouselError("");
     setImageStreamPreview("");
     setImageResult(null);
-    setImageComparisonSourceUrl("");
+    replaceImageComparisonSourceUrl("");
     setCarouselResult(null);
     setPendingCarouselSource(null);
   }

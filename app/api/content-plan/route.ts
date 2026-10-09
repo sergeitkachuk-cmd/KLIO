@@ -91,58 +91,6 @@ type ContentPlanWebResearch = {
   sources: ContentPlanWebSource[];
 };
 
-function contentPlanWebSources(response: unknown): ContentPlanWebSource[] {
-  if (!response || typeof response !== "object") return [];
-  const output = (response as { output?: unknown }).output;
-  if (!Array.isArray(output)) return [];
-  const sources = new Map<string, ContentPlanWebSource>();
-  const add = (urlValue: unknown, titleValue?: unknown) => {
-    if (typeof urlValue !== "string") return;
-    try {
-      const url = new URL(urlValue);
-      if (url.protocol !== "https:" && url.protocol !== "http:") return;
-      url.hash = "";
-      const normalizedUrl = url.toString();
-      const title = typeof titleValue === "string" && titleValue.trim()
-        ? titleValue.trim().slice(0, 180)
-        : url.hostname.replace(/^www\./, "");
-      const existing = sources.get(normalizedUrl);
-      if (existing && existing.title !== url.hostname.replace(/^www\./, "")) return;
-      sources.set(normalizedUrl, { title, url: normalizedUrl });
-    } catch {
-      // Ignore malformed provider citations rather than exposing a link.
-    }
-  };
-  for (const item of output) {
-    if (!item || typeof item !== "object") continue;
-    const entry = item as { type?: unknown; action?: unknown; content?: unknown };
-    if (entry.type === "web_search_call" && entry.action && typeof entry.action === "object") {
-      const actionSources = (entry.action as { sources?: unknown }).sources;
-      if (Array.isArray(actionSources)) {
-        for (const source of actionSources) {
-          if (!source || typeof source !== "object") continue;
-          const citation = source as { url?: unknown; title?: unknown };
-          add(citation.url, citation.title);
-        }
-      }
-    }
-    if (entry.type === "message" && Array.isArray(entry.content)) {
-      for (const part of entry.content) {
-        if (!part || typeof part !== "object") continue;
-        const annotations = (part as { annotations?: unknown }).annotations;
-        if (!Array.isArray(annotations)) continue;
-        for (const annotation of annotations) {
-          if (!annotation || typeof annotation !== "object") continue;
-          const citation = annotation as { type?: unknown; url?: unknown; title?: unknown; url_citation?: { url?: unknown; title?: unknown } };
-          if (citation.type !== "url_citation") continue;
-          add(citation.url ?? citation.url_citation?.url, citation.title ?? citation.url_citation?.title);
-        }
-      }
-    }
-  }
-  return [...sources.values()].slice(0, 8);
-}
-
 async function researchContentPlanWithTavily(
   input: ReturnType<typeof normalizePayload>,
   currentIndustryFocus: boolean,

@@ -9,11 +9,6 @@
 
 export type SocialPlatform = "telegram" | "vk";
 
-export const SOCIAL_PLATFORMS: Array<{ id: SocialPlatform; label: string }> = [
-  { id: "telegram", label: "Telegram" },
-  { id: "vk", label: "VK" },
-];
-
 export function isSocialPlatform(value: unknown): value is SocialPlatform {
   return value === "telegram" || value === "vk";
 }
