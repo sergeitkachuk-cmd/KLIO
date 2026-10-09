@@ -1069,7 +1069,7 @@ const WORKSPACE_MODULE_GUIDE: Array<{
   // required-first/optional-after grouping - the sidebar is what people
   // actually navigate by, so the cards should read the same way.
   { id: "brand", step: "+", title: "Профиль бренда", text: "Один раз опишите компанию: аудиторию, сильные стороны и тон общения. Пока профиль включён, КЛИО учитывает его в каждой новой генерации.", cta: "Заполнить профиль" },
-  { id: "generator", step: "01", title: "Генератор материала", text: "Укажите тему и ключевые слова — КЛИО подготовит черновик с заголовком, метаописанием и подзаголовками. Профиль бренда можно подключить, но он не обязателен.", cta: "Написать материал" },
+  { id: "generator", step: "01", title: "Генератор текстов", text: "Укажите тему и ключевые слова — КЛИО подготовит черновик с заголовком, метаописанием и подзаголовками. Профиль бренда можно подключить, но он не обязателен.", cta: "Написать материал" },
   { id: "content-plan", step: "+", title: "Контент‑план", text: "Соберите очередь тем для публикаций. Семантика и анализ конкурентов необязательны, но помогут точнее выбрать темы. Любую строку можно сразу отправить в генератор.", cta: "Собрать план" },
   { id: "adaptation", step: "+", title: "Редакторы КЛИО", text: "Улучшайте готовый текст: проверьте ошибки, измените тон, адаптируйте под площадку или пересоберите материал для SEO. Подойдёт новый текст или материал из архива.", cta: "Открыть редакторы" },
   { id: "semantics", step: "+", title: "Семантика", text: "Введите тему и географию — КЛИО найдёт реальные поисковые запросы и сгруппирует их по смыслу. Так каждая статья будет отвечать на один понятный запрос читателя.", cta: "Найти запросы" },
@@ -6837,8 +6837,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             <a href="#brand-profile" className={activeModule === "brand" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("brand"); }}><i><Icon name="building"/></i><span><b>Профиль бренда</b></span></a>
             <a href="#history" className={activeModule === "history" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("history"); }}><i><Icon name="folder"/></i><span><b>Материалы</b></span></a>
             <a href="#content-plan" className={activeModule === "content-plan" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("content-plan"); }}><i><Icon name="list"/></i><span><b>Контент‑план</b></span></a>
-            <a href="#generator" className={activeModule === "generator" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("generator"); }}><i><Icon name="spark"/></i><span><b>Генератор материалов</b></span></a>
-            <a href="#images" className={activeModule === "images" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("images"); }}><i><Icon name="image"/></i><span><b>Генерация изображений</b></span></a>
+            <a href="#generator" className={activeModule === "generator" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("generator"); }}><i><Icon name="spark"/></i><span><b>Генератор текстов</b></span></a>
+            <a href="#images" className={activeModule === "images" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("images"); }}><i><Icon name="image"/></i><span><b>Генератор изображений</b></span></a>
             <a href="#adaptation" className={activeModule === "adaptation" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("adaptation"); }}><i><Icon name="edit"/></i><span><b>Редакторы КЛИО</b></span></a>
             <a href="#publications" className={activeModule === "publications" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("publications"); }}><i><Icon name="calendar"/></i><span><b>Публикации</b></span></a>
             <a href="#semantics" className={activeModule === "semantics" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("semantics"); }}><i><Icon name="search"/></i><span><b>Семантика</b></span></a>
@@ -7590,7 +7590,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>
 
           <section className="workspace-module image-generator-module" id="images" style={{ display: activeModule === "images" ? undefined : "none" }}>
-            <div className="workspace-module-heading tool-heading workspace-module-banner"><div><span>Визуальные материалы</span><h2>Генерация изображений<span className="klio-mark-dot">.</span></h2></div><p>Опишите, что должно быть на картинке. КЛИО создаст её и сохранит в «Материалы».</p></div>
+            <div className="workspace-module-heading tool-heading workspace-module-banner"><div><span>Визуальные материалы</span><h2>Генератор изображений<span className="klio-mark-dot">.</span></h2></div><p>Опишите, что должно быть на картинке. КЛИО создаст её и сохранит в «Материалы».</p></div>
             <div className="image-generator-mode-switch" role="tablist" aria-label="Режим генератора изображений">
               <button type="button" role="tab" aria-selected={imageGeneratorMode === "create"} className={imageGeneratorMode === "create" ? "is-active" : ""} disabled={imageBusy || carouselBusy || imageReferenceBusy} onClick={startFreshImage}>
                 <span className="image-generator-mode-index">01</span><span><strong>Изображение</strong><small>Создать с нуля или по образцу</small></span>
@@ -7813,7 +7813,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </section>
 
           <section className="workspace-module generator-module" id="generator" style={{ display: activeModule === "generator" ? undefined : "none" }}>
-            <div className="workspace-module-heading tool-heading workspace-module-banner"><div><span>Главный экран</span><h2>Генератор материалов<span className="klio-mark-dot">.</span></h2></div><p>Укажите формат, тему, ключевые слова и то, что важно раскрыть. Остальные инструменты подключаются только по необходимости.</p></div>
+            <div className="workspace-module-heading tool-heading workspace-module-banner"><div><span>Главный экран</span><h2>Генератор текстов<span className="klio-mark-dot">.</span></h2></div><p>Укажите формат, тему, ключевые слова и то, что важно раскрыть. Остальные инструменты подключаются только по необходимости.</p></div>
             <div className={`studio ${hasGeneratedResult ? "has-result" : ""}`}>
               <aside className="brief-panel">
                 <div className="brief-step"><div className="brief-step-label"><span>Шаг 01</span><b>Бриф материала</b></div><button type="button" className="brief-reset" onClick={resetGeneratorBrief}>Начать заново</button></div>
