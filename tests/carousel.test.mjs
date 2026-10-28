@@ -90,6 +90,7 @@ async function createCarouselHarness() {
     "./image-usage": { recordImageUsage: async () => {} },
     "./storage": { downloadBrandLogo: (...args) => downloadLogo(...args) },
     "./website-context": { readWebsiteContext: async () => ({ status: "not_provided", text: "" }) },
+    "../../content-plans": load("app/content-plans.ts"),
     "./workspace-account": workspaceAccount,
     "./async-jobs": asyncJobs,
     "../../carousel-templates": carouselTemplates,

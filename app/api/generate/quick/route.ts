@@ -7,6 +7,7 @@ import { createGenerationBudget, materialOutputTokenBudget } from "../../_lib/ge
 import { researchMaterialWeb } from "../../_lib/web-research";
 import { readWebsiteContext } from "../../_lib/website-context";
 import { aiConfigured } from "../../_lib/ai-config";
+import { BRAND_SALES_RULE } from "../../../content-plans";
 import { publicationCharacters, bodyBudget, trimOverflowBody } from "../../_lib/text-length";
 
 export const maxDuration = 220;
@@ -229,6 +230,7 @@ export async function POST(request: Request) {
           "Материал должен быть готов к публикации сразу: конкретный, без воды, без пересказа задачи и без служебных пометок внутри текста.",
           "Пиши обычным чистым текстом для редактора: без Markdown-разметки и символов **, __, ##, >, без маркеров списков. Смысловые акценты делай короткими самостоятельными предложениями.",
           "Список, вопрос или эмодзи используй только при реальной пользе для конкретного формата и интонации — не как украшение. По умолчанию пиши без эмодзи; если формат явно предполагает лёгкий разговорный тон (например, пост для соцсетей), уместен максимум один-два по смыслу, не в каждом абзаце.",
+          BRAND_SALES_RULE,
           "Для медицинской, юридической и финансовой тематики избегай гарантий результата, диагнозов и персональных рекомендаций.",
           "Структура JSON: title, subtitle, body, meta_title, meta_description, editorial_comment, format, tone. subtitle — зацепка под заголовком, 1–2 предложения без повтора title. Все значения — строки.",
         ].join("\n"),

@@ -202,6 +202,7 @@ export async function createDialogueHarness() {
     "./image-usage": { recordImageUsage: async () => {} },
     "./storage": { downloadBrandLogo: async () => ({ bytes: new Uint8Array([2]), contentType: "image/png" }) },
     "./website-context": { readWebsiteContext: async () => ({ status: "loaded", text: "Кофейня" }) },
+    "../../content-plans": contentPlans,
     "./workspace-account": workspace, "./async-jobs": {}, "../../carousel-templates": carouselTemplates,
   });
   const route = load(

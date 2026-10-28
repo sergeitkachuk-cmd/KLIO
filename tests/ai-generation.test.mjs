@@ -277,6 +277,7 @@ function routeHarness(h, quick = false, options = {}) {
       failAsyncJob: async (id, errorMessage) => { jobs.push({ id, status: "failed", errorMessage }); },
     },
     "../../content-plans": loadTs("app/content-plans.ts", h.globals),
+    "../../../content-plans": loadTs("app/content-plans.ts", h.globals),
   };
   const route = loadTs(`app/api/generate/${quick ? "quick/" : ""}route.ts`, { ...h.globals, Response }, dependencies);
   return { ...route, records, jobs };
