@@ -137,17 +137,17 @@ export default function LoginPage() {
           <label className="field">Email<input type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
           <PasswordField label="Пароль" value={password} onChange={setPassword} autoComplete="current-password" />
           <button className="auth-forgot" type="button" onClick={() => void handleForgotPassword()} disabled={forgotBusy}>
-            {forgotBusy ? "Отправляем…" : "Забыли пароль?"}
+            {forgotBusy ? "Отправляю…" : "Забыли пароль?"}
           </button>
           {forgotMessage && <p className="auth-reset-message">{forgotMessage}</p>}
           {error && <p className="auth-error">{error}</p>}
           {needsVerification && (
             <button className="button ghost" type="button" onClick={() => void handleResend()} disabled={resendBusy}>
-              {resendBusy ? "Отправляем…" : "Отправить письмо подтверждения ещё раз"}
+              {resendBusy ? "Отправляю…" : "Отправить письмо подтверждения ещё раз"}
             </button>
           )}
           {resendMessage && <p className="auth-error" style={{ color: "#d3ffd8", background: "rgba(92,255,140,0.12)", borderColor: "rgba(118,255,118,0.35)" }}>{resendMessage}</p>}
-          <button className="button primary large" type="submit" disabled={busy}>{busy ? "Входим…" : "Войти"}</button>
+          <button className="button primary large" type="submit" disabled={busy}>{busy ? "Выполняю вход…" : "Войти"}</button>
         </form>
         <p className="auth-switch">Нет аккаунта? <Link href={{ pathname: "/signup", query: { return_to: safeReturnTo() } }}>Зарегистрироваться</Link></p>
       </div>

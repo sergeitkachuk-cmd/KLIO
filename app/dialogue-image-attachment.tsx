@@ -71,7 +71,7 @@ export function DialogueImageAttachment({ source, url, busy, onChange, onBusy, l
       </div>}
       <button type="button" aria-label="Убрать исходное изображение" disabled={busy} onClick={() => { replaceLocal(null); onChange(null); }}><X size={16} /></button>
     </div> : <button type="button" className="klio-aui-attach-trigger" disabled={busy} onClick={() => input.current?.click()}><ImagePlus size={16} />Референс</button>}
-    {busy && <small role="status">Загружаем изображение…</small>}
+    {busy && <small role="status">Загружаю изображение…</small>}
     {error && <small role="alert">{error}</small>}
   </div>;
 }

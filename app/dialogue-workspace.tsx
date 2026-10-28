@@ -562,7 +562,7 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
               if (target) {
                 target.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "center" });
                 target.focus({ preventScroll: true });
-              } else { void session.refresh(); setNotice("Обновляем результаты диалога. Выберите материал ещё раз."); }
+              } else { void session.refresh(); setNotice("Обновляю результаты диалога. Выберите материал ещё раз."); }
             }}
           />
           <button className="klio-chatkit-history-button" type="button" aria-label="История диалогов" title="История диалогов" disabled={!chatReady} onClick={() => void openRecentThread()}>

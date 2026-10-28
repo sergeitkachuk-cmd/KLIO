@@ -60,7 +60,7 @@ export function DialogueRecentThreads({ brandId, activeThreadId, ready, visible,
         <DialogueThreadMenu title={thread.title || "Новый диалог"} disabled={!ready} onAction={(action) => onAction(action, thread.id)} />
       </li>)}
     </ul>}
-    {!threads.length && !failed && <p>{loading ? "Загружаем диалоги…" : "Ваши диалоги появятся здесь"}</p>}
+    {!threads.length && !failed && <p>{loading ? "Загружаю диалоги…" : "Ваши диалоги появятся здесь"}</p>}
     {failed && <div className="klio-chatkit-recent-error" role="status">
       <p>Не удалось обновить список</p>
       <button type="button" onClick={() => setRetry((value) => value + 1)}>Повторить</button>

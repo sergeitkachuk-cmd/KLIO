@@ -33,7 +33,7 @@ export function AdminAccountControls({ users }: { users: AdminUser[] }) {
   const [unit, setUnit] = useState<"months" | "days">("months");
   const [message, setMessage] = useState("");
   async function save(clear = false) {
-    setMessage("Сохраняем…");
+    setMessage("Сохраняю…");
     const duration = clear ? 0 : Number(amount) || 0;
     const response = await fetch("/api/admin/accounts", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
       email, planId: clear ? "trial" : planId,
@@ -47,7 +47,7 @@ export function AdminAccountControls({ users }: { users: AdminUser[] }) {
   }
   async function deleteAccount() {
     if (!email || !window.confirm(`Удалить аккаунт ${email}? Все его данные будут удалены без возможности восстановления.`)) return;
-    setMessage("Удаляем…");
+    setMessage("Удаляю…");
     const response = await fetch("/api/admin/accounts", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
     const data = await response.json().catch(() => null);
     if (!response.ok) { setMessage(data?.error ?? "Не удалось удалить аккаунт"); return; }

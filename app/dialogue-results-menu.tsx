@@ -67,7 +67,7 @@ export function DialogueResultsMenu({ threadId, ready, visible, revision, onOpen
         <small>{card.slides?.length ? `Карусель · ${card.slides.length} слайдов` : thread && isStandaloneImage(thread, card) ? "Изображение" : card.imageUrl ? "Текст и изображение" : card.kind === "topic" ? "Тема" : card.kind === "note" ? "Заметка" : "Текст"}</small>
         <span>{card.title}</span>
       </button>)}
-      {!cards.length && !failed && <p>{loading ? "Загружаем результаты…" : "Здесь появятся темы, тексты и изображения этого диалога"}</p>}
+      {!cards.length && !failed && <p>{loading ? "Загружаю результаты…" : "Здесь появятся темы, тексты и изображения этого диалога"}</p>}
       {failed && <div role="status"><p>Не удалось обновить результаты</p><button type="button" onClick={() => setRetry((value) => value + 1)}>Повторить</button></div>}
     </div>}
   </div>;

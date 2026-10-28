@@ -51,7 +51,7 @@ export function AdminAnnouncements({ users, rows }: { users: AdminClient[]; rows
       return;
     }
     setBusy(true);
-    setStatus("Отправляем…");
+    setStatus("Отправляю…");
     try {
       const response = await fetch("/api/admin/announcements", {
         method: "POST",
@@ -119,7 +119,7 @@ export function AdminAnnouncements({ users, rows }: { users: AdminClient[]; rows
       </label>
       <div className="admin-control-actions">
         <button type="button" disabled={busy} onClick={() => void send()}>
-          {busy ? "Отправляем…" : recipients.length === 0 ? "Отправить всем" : recipients.length === 1 ? "Отправить этому клиенту" : `Отправить ${recipients.length} клиентам`}
+          {busy ? "Отправляю…" : recipients.length === 0 ? "Отправить всем" : recipients.length === 1 ? "Отправить этому клиенту" : `Отправить ${recipients.length} клиентам`}
         </button>
       </div>
       {status && <p className="admin-muted">{status}</p>}

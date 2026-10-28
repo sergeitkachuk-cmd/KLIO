@@ -122,7 +122,7 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
   return <AssistantRuntimeProvider runtime={runtime}>
     <ThreadPrimitive.Root className={`klio-aui-root ${empty ? "is-empty" : ""}`}>
       <ThreadPrimitive.Viewport ref={viewport} className="klio-aui-viewport" autoScroll>
-        {loading && <p className="klio-aui-status" role="status">Загружаем диалог…</p>}
+        {loading && <p className="klio-aui-status" role="status">Загружаю диалог…</p>}
         {empty && <div className="klio-aui-welcome"><h1>Чем я могу помочь?</h1></div>}
         <div className="klio-aui-messages">
           <ThreadPrimitive.Messages>{({ message }) => {

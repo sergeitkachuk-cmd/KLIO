@@ -33,8 +33,8 @@ export function AdminPaymentAction({ paymentId, operationId }: { paymentId: stri
   }
 
   return <div className="admin-payment-actions">
-    <button type="button" disabled={Boolean(busy) || !operationId} onClick={() => void recover(false)}>{busy === "grant" ? "Проверяем…" : "Сверить и выдать"}</button>
-    <button type="button" className="admin-payment-preserve" disabled={Boolean(busy) || !operationId} onClick={() => void recover(true)}>{busy === "preserve" ? "Проверяем…" : "Тариф уже выдан"}</button>
+    <button type="button" disabled={Boolean(busy) || !operationId} onClick={() => void recover(false)}>{busy === "grant" ? "Проверяю…" : "Сверить и выдать"}</button>
+    <button type="button" className="admin-payment-preserve" disabled={Boolean(busy) || !operationId} onClick={() => void recover(true)}>{busy === "preserve" ? "Проверяю…" : "Тариф уже выдан"}</button>
     {message && <small>{message}</small>}
   </div>;
 }

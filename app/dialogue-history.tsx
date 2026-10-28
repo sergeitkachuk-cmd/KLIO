@@ -29,7 +29,7 @@ export function DialogueHistory({ brandId, onOpen, onClose }: { brandId: string;
   useEffect(() => { live.current = true; const timer = setTimeout(() => { void load(); }, 0); return () => { live.current = false; clearTimeout(timer); }; }, [load]);
   return <DialogueModal title="История диалогов" onClose={onClose}>
     <ul className="klio-aui-history-list">{rows.map((row) => <li key={row.id}><button type="button" onClick={() => onOpen(row.id)}>{row.title || "Новый диалог"}</button></li>)}</ul>
-    {busy && <p role="status">Загружаем…</p>}
+    {busy && <p role="status">Загружаю…</p>}
     {!busy && !rows.length && !error && <p>Пока нет диалогов</p>}
     {error && <p role="alert">{error}</p>}
     {(next || error) && <button type="button" disabled={busy} onClick={() => void load(next || undefined)}>{error ? "Повторить" : "Загрузить ещё"}</button>}

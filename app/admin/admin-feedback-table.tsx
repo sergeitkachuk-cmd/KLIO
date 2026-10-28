@@ -165,7 +165,7 @@ function ThreadPane({ thread, onMobileBack }: { thread: Thread; onMobileBack: ()
       <div className="admin-feedback-reply">
         <textarea rows={3} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Введите сообщение…" />
         <div className="admin-feedback-reply-actions">
-          <button type="button" className="admin-details-toggle" disabled={busy} onClick={() => void send()}>{busy ? "Отправляем…" : "Отправить"}</button>
+          <button type="button" className="admin-details-toggle" disabled={busy} onClick={() => void send()}>{busy ? "Отправляю…" : "Отправить"}</button>
         </div>
         {error && <p className="admin-feedback-reply-error">{error}</p>}
       </div>

@@ -96,7 +96,7 @@ export default function SignupPage() {
           <p className="auth-subtitle">Мы отправили письмо со ссылкой подтверждения на <b>{sentTo}</b>. Перейдите по ней, чтобы открыть кабинет — ссылка действует 24 часа.</p>
           <p className="auth-spam-note"><b>Загляните в папку «Спам»</b> — почтовые сервисы (особенно iCloud/Mail на Apple-устройствах) нередко отправляют туда письма от новых сервисов.</p>
           {resendMessage && <p className="auth-error" style={{ color: "#d3ffd8", background: "rgba(92,255,140,0.12)", borderColor: "rgba(118,255,118,0.35)" }}>{resendMessage}</p>}
-          <button className="button ghost large" type="button" onClick={() => void handleResend()} disabled={resendBusy}>{resendBusy ? "Отправляем…" : "Отправить письмо ещё раз"}</button>
+          <button className="button ghost large" type="button" onClick={() => void handleResend()} disabled={resendBusy}>{resendBusy ? "Отправляю…" : "Отправить письмо ещё раз"}</button>
           <p className="auth-switch">Уже подтвердили? <Link href={{ pathname: "/login", query: { return_to: safeReturnTo() } }}>Войти</Link></p>
         </div>
       </main>
@@ -123,7 +123,7 @@ export default function SignupPage() {
           <PasswordField label="Пароль" value={password} onChange={setPassword} autoComplete="new-password" minLength={8} hint={<small>Не короче 8 символов</small>} />
           <PasswordField label="Повторите пароль" value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" minLength={8} />
           {error && <p className="auth-error">{error}</p>}
-          <button className="button primary large" type="submit" disabled={busy}>{busy ? "Создаём…" : "Создать кабинет"}</button>
+          <button className="button primary large" type="submit" disabled={busy}>{busy ? "Создаю…" : "Создать кабинет"}</button>
         </form>
         <p className="auth-switch">Уже есть аккаунт? <Link href={{ pathname: "/login", query: { return_to: safeReturnTo() } }}>Войти</Link></p>
       </div>

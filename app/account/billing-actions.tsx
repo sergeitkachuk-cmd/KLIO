@@ -187,20 +187,20 @@ export default function BillingActions({
           disabled={!accepted || Boolean(busy) || checking}
           onClick={() => pay("sbp")}
         >
-          {busy === "sbp" ? "Открываем…" : "Оплатить через СБП"}
+          {busy === "sbp" ? "Открываю…" : "Оплатить через СБП"}
         </button>
         <button
           type="button"
           disabled={!accepted || Boolean(busy) || checking}
           onClick={() => pay("card")}
         >
-          {busy === "card" ? "Открываем…" : "Оплатить картой"}
+          {busy === "card" ? "Открываю…" : "Оплатить картой"}
         </button>
         <a href={`/invoice?planId=${planId}&billing=${billing}`}>
           Получить счёт
         </a>
       </div>
-      {checking && <p role="status">Проверяем подтверждение оплаты…</p>}
+      {checking && <p role="status">Проверяю подтверждение оплаты…</p>}
       {error && <p className="account-billing-error" role="alert">{error}</p>}
       {canCheck && !checking && <button type="button" onClick={() => setCheckAttempt(value => value + 1)}>Проверить оплату</button>}
     </div>

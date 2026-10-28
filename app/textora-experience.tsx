@@ -1278,7 +1278,7 @@ const marqueeItems = ["SEO‑СТАТЬИ", "ПОСТЫ", "РЕКЛАМА", "К�
 // on a plausible "still working" message rather than looking frozen at an
 // earlier, now-stale step. See the indeterminate progress-bar animation
 // next to its usage for the same problem on the visual side.
-const busySteps = ["Изучаем профиль бренда", "Ищем актуальные факты", "Проектируем структуру", "Собираем черновик", "Проверяем ключи и объём", "Дорабатываем детали"];
+const busySteps = ["Изучаю профиль бренда", "Ищу актуальные факты", "Проектируем структуру", "Собираю черновик", "Проверяю ключи и объём", "Дорабатываем детали"];
 
 const competitorCoverageMeta: Record<CompetitorCoverage, { label: string }> = {
   strong: { label: "Раскрыто" },
@@ -6742,7 +6742,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </label>
             {feedbackError && <p className="generation-error" role="alert">{feedbackError}</p>}
             <div className="publications-editor-actions">
-              <button type="button" className="button primary" disabled={feedbackBusy} onClick={() => void submitFeedback()}>{feedbackBusy ? "Отправляем…" : "Отправить"}</button>
+              <button type="button" className="button primary" disabled={feedbackBusy} onClick={() => void submitFeedback()}>{feedbackBusy ? "Отправляю…" : "Отправить"}</button>
             </div>
           </div>}
         </section>
@@ -6830,7 +6830,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </div>}
             </div>
             <small>{workspaceBrands.length} из {workspaceAccount.brandLimit} брендов · данные раздельны</small>
-            {brandCreatorOpen && <div className="brand-create-form"><input value={newBrandName} onChange={(event) => setNewBrandName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void createWorkspaceBrand(); }} placeholder="Название бренда" autoFocus autoComplete="off"/><button type="button" onClick={() => void createWorkspaceBrand()} disabled={brandSwitchBusy || !newBrandName.trim()}>{brandSwitchBusy ? "Создаём…" : "Создать"}</button></div>}
+            {brandCreatorOpen && <div className="brand-create-form"><input value={newBrandName} onChange={(event) => setNewBrandName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void createWorkspaceBrand(); }} placeholder="Название бренда" autoFocus autoComplete="off"/><button type="button" onClick={() => void createWorkspaceBrand()} disabled={brandSwitchBusy || !newBrandName.trim()}>{brandSwitchBusy ? "Создаю…" : "Создать"}</button></div>}
           </div>
           <nav aria-label="Рабочие модули">
             <a href="#start" className={activeModule === "start" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("start"); }}><i><Icon name="home"/></i><span><b>{workspaceMode === "dialogue" ? "Диалоги" : "Начните здесь"}</b></span></a>
@@ -6878,7 +6878,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           )}
 
           {historyOpen && <section className="workspace-history" id="history">
-            {archiveLoading && <p role="status">Загружаем материалы бренда…</p>}
+            {archiveLoading && <p role="status">Загружаю материалы бренда…</p>}
             {archiveLoadError && <p role="alert">{archiveLoadError} <button type="button" onClick={() => void loadArchivePage(activeBrandId, archivePage?.brandId === activeBrandId ? archivePage : null)}>Повторить</button></p>}
             {archivePage?.brandId === activeBrandId && (archivePage.history || archivePage.materials) && <div><p>Показана часть архива. Счётчики и фильтры относятся к загруженным материалам.</p><button className="button ghost" type="button" disabled={archiveLoading} onClick={() => void loadArchivePage(activeBrandId, archivePage)}>Загрузить ещё материалы</button></div>}
             <div className="workspace-history-head workspace-module-banner"><div><span>{activeWorkspaceBrand?.name || "Личное пространство"}</span><h2>Материалы<span className="klio-mark-dot">.</span></h2></div><p>{workspaceMode === "dialogue" ? "Сохранённые тексты, темы и заметки. Продолжайте работу в диалоге или редакторе." : "Здесь хранятся тексты, темы, заметки, планы и исследования текущего бренда. Откройте материал, чтобы продолжить работу."}</p></div>
@@ -6937,7 +6937,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             actions={<div className="carousel-lightbox-actions">
               <a className="button ghost" href={carouselLightboxSlide.imageUrl} download>Скачать {imageFormatLabel(carouselLightboxSlide.imageUrl)}</a>
               <div className="carousel-lightbox-regeneration">
-                <button className="button ghost carousel-slide-regenerate" type="button" onClick={() => void regenerateCarouselSlide(carouselLightboxIndex)} disabled={carouselSlideBusy !== null || carouselBusy || workspaceAccount.generationsRemaining < 1}>{carouselSlideBusy === carouselLightboxIndex ? "Обновляем слайд…" : "Перегенерировать"}</button>
+                <button className="button ghost carousel-slide-regenerate" type="button" onClick={() => void regenerateCarouselSlide(carouselLightboxIndex)} disabled={carouselSlideBusy !== null || carouselBusy || workspaceAccount.generationsRemaining < 1}>{carouselSlideBusy === carouselLightboxIndex ? "Обновляю слайд…" : "Перегенерировать"}</button>
                 <small>1 генерация</small>
               </div>
             </div>}
@@ -6972,8 +6972,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     <button className="button ghost" type="button" onClick={() => prepareImageGeneration({ generationId: archiveEditorItem.id }, buildArticleImagePrompt(archiveEditorItem.title, archiveEditorItem.subtitle, archiveEditorItem.body), archiveEditorItem.title)}>Создать картинку</button>
                     <button className="button ghost" type="button" onClick={() => prepareImageGeneration({ text: buildArticleCarouselSource(archiveEditorItem.title, archiveEditorItem.subtitle, archiveEditorItem.body) }, buildArticleCarouselSource(archiveEditorItem.title, archiveEditorItem.subtitle, archiveEditorItem.body), archiveEditorItem.title, "carousel")}>Создать карусель</button>
                     <button className="button ghost" type="button" onClick={restoreArchiveOriginal} disabled={!archiveEditorDirty || archiveEditorSaving || archiveEditorBusy}>Вернуть</button>
-                    <button className="button ghost" type="button" onClick={() => void saveArchiveItem("copy")} disabled={archiveEditorSaving || archiveEditorBusy}>{archiveEditorSaving ? "Сохраняем…" : "Сохранить копию"}</button>
-                    <button className="button primary" type="button" onClick={() => void saveArchiveItem("update")} disabled={archiveEditorSaving || archiveEditorBusy || !archiveEditorDirty}>{archiveEditorSaving ? "Сохраняем…" : "Сохранить"}</button>
+                    <button className="button ghost" type="button" onClick={() => void saveArchiveItem("copy")} disabled={archiveEditorSaving || archiveEditorBusy}>{archiveEditorSaving ? "Сохраняю…" : "Сохранить копию"}</button>
+                    <button className="button primary" type="button" onClick={() => void saveArchiveItem("update")} disabled={archiveEditorSaving || archiveEditorBusy || !archiveEditorDirty}>{archiveEditorSaving ? "Сохраняю…" : "Сохранить"}</button>
                   </div>
                   <div className="archive-editor-seo">
                     <label><span className="seo-field-label"><b>SEO‑заголовок</b></span><AutoTextarea rows={1} value={archiveEditorItem.metaTitle} onChange={(event) => setArchiveEditorItem((current) => current ? { ...current, metaTitle: event.target.value } : current)}/><button type="button" className="seo-field-copy" onClick={() => copyPlainText(archiveEditorItem.metaTitle, "SEO‑заголовок")}><Icon name="copy"/> Копировать</button></label>
@@ -7122,7 +7122,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <p>Выберите, как отправить пост в Telegram. Текст не будет потерян.</p>
                 <div>
                   <button type="button" className={pubEditor.telegramDeliveryChoice === "photo_continue" ? "is-active" : ""} onClick={() => setPubEditor((current) => current && { ...current, telegramDeliveryMode: "photo_continue", telegramDeliveryChoice: "photo_continue" })}>С картинкой и продолжением</button>
-                  <button type="button" className={pubEditor.telegramDeliveryChoice === "adapt" ? "is-active" : ""} disabled={pubEditor.busy} onClick={() => void adaptPubForTelegram()}>{pubEditor.busy ? "Готовим короткую версию…" : "Адаптировать текст для Telegram"}</button>
+                  <button type="button" className={pubEditor.telegramDeliveryChoice === "adapt" ? "is-active" : ""} disabled={pubEditor.busy} onClick={() => void adaptPubForTelegram()}>{pubEditor.busy ? "Готовлю короткую версию…" : "Адаптировать текст для Telegram"}</button>
                   <button type="button" className={pubEditor.telegramDeliveryChoice === "text_only" ? "is-active" : ""} onClick={() => setPubEditor((current) => current && { ...current, telegramDeliveryMode: "text_only", telegramDeliveryChoice: "text_only" })}>Без картинки — одним текстом</button>
                 </div>
                 <small>{pubEditor.telegramDeliveryMode === "photo_continue" ? "Картинка будет с началом текста, а оставшаяся часть придёт следующим сообщением." : "Картинка не будет отправлена. Если текст слишком длинный для одного сообщения, он будет продолжен следующим."}</small>
@@ -7195,7 +7195,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </>}
               {pubChannelError && <p className="generation-error" role="alert">{pubChannelError}</p>}
               <div className="publications-editor-actions">
-                <button type="button" className="button primary" disabled={pubChannelBusy} onClick={() => void connectPubChannel()}>{pubChannelBusy ? "Проверяем…" : "Подключить"}</button>
+                <button type="button" className="button primary" disabled={pubChannelBusy} onClick={() => void connectPubChannel()}>{pubChannelBusy ? "Проверяю…" : "Подключить"}</button>
               </div>
             </section>
           </div>}
@@ -7237,7 +7237,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <ProfileField id="brand-website" label="Сайт" help="КЛИО использует сайт при сборе семантики и генерации. Кнопка заполняет профиль по сайту; результат можно отредактировать. Недоступные сведения не додумываются.">
                     <div className="brand-website-row">
                       <input id="brand-website" aria-describedby="brand-website-help brand-website-cost" aria-invalid={Boolean(brandAnalyzeError)} value={brand.website} onChange={(event) => updateBrand("website", event.target.value)} autoComplete="off"/>
-                      <button type="button" className={brandAnalyzeBusy ? "is-busy" : ""} onClick={() => void fillBrandTab("foundation")} disabled={brandAnalyzeBusy || voiceBusy || !brand.website.trim() || aiConnection !== "connected"} title="КЛИО прочитает сайт и предложит описание, позиционирование, аудиторию и факты — каждое поле можно будет скорректировать вручную">{brandAnalyzeBusy ? "Читаем сайт…" : !brand.website.trim() ? "Укажите сайт" : aiConnection !== "connected" ? "ИИ не подключён" : workspaceAccount.researchRemaining <= 0 ? "Лимит исчерпан" : "Заполнить по сайту с КЛИО"}</button>
+                      <button type="button" className={brandAnalyzeBusy ? "is-busy" : ""} onClick={() => void fillBrandTab("foundation")} disabled={brandAnalyzeBusy || voiceBusy || !brand.website.trim() || aiConnection !== "connected"} title="КЛИО прочитает сайт и предложит описание, позиционирование, аудиторию и факты — каждое поле можно будет скорректировать вручную">{brandAnalyzeBusy ? "Читаю сайт…" : !brand.website.trim() ? "Укажите сайт" : aiConnection !== "connected" ? "ИИ не подключён" : workspaceAccount.researchRemaining <= 0 ? "Лимит исчерпан" : "Заполнить по сайту с КЛИО"}</button>
                     </div>
                     <small id="brand-website-cost">КЛИО заполнит профиль — спишется 1 исследование</small>
                     <label className="profile-fill-replace"><input type="checkbox" checked={replaceFoundation} onChange={event => setReplaceFoundation(event.target.checked)} disabled={brandAnalyzeBusy || voiceBusy}/>Перезаписать поля, которые уже заполнены</label>
@@ -7247,7 +7247,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <ProfileField id="brand-book" label="Брендбук (PDF)" help="Если у бренда нет сайта — например, только группа или страница в соцсетях — загрузите PDF с брендбуком или описанием компании. КЛИО прочитает текст файла и предложит те же поля, что и по сайту.">
                     <div className="brand-website-row">
                       <span className="brand-book-status">{brand.brandBookFileName || "Файл не прикреплён"}</span>
-                      <button type="button" className={brandAnalyzeBusy ? "is-busy" : ""} disabled={brandAnalyzeBusy || voiceBusy} onClick={() => brandBookInputRef.current?.click()}>{brandAnalyzeBusy ? "Читаем файл…" : brand.brandBookFileName ? "Заменить файл" : "Загрузить PDF"}</button>
+                      <button type="button" className={brandAnalyzeBusy ? "is-busy" : ""} disabled={brandAnalyzeBusy || voiceBusy} onClick={() => brandBookInputRef.current?.click()}>{brandAnalyzeBusy ? "Читаю файл…" : brand.brandBookFileName ? "Заменить файл" : "Загрузить PDF"}</button>
                       <input ref={brandBookInputRef} type="file" accept="application/pdf" hidden disabled={brandAnalyzeBusy || voiceBusy} onChange={(event) => {
                         const file = event.target.files?.[0];
                         event.target.value = "";
@@ -7262,7 +7262,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     <div className="brand-website-row">
                       {brand.logoKey && activeBrandId && <Image className="brand-logo-preview" src={`/api/brand/logo?brandId=${encodeURIComponent(activeBrandId)}`} alt="Логотип бренда" width={48} height={48} unoptimized/>}
                       <span className="brand-book-status">{brand.logoFileName || "Файл не прикреплён"}</span>
-                      <button type="button" className={brandLogoBusy ? "is-busy" : ""} disabled={brandLogoBusy} onClick={() => brandLogoInputRef.current?.click()}>{brandLogoBusy ? "Загружаем…" : brand.logoFileName ? "Заменить файл" : "Загрузить логотип"}</button>
+                      <button type="button" className={brandLogoBusy ? "is-busy" : ""} disabled={brandLogoBusy} onClick={() => brandLogoInputRef.current?.click()}>{brandLogoBusy ? "Загружаю…" : brand.logoFileName ? "Заменить файл" : "Загрузить логотип"}</button>
                       <input ref={brandLogoInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden disabled={brandLogoBusy} onChange={(event) => {
                         const file = event.target.files?.[0];
                         event.target.value = "";
@@ -7286,7 +7286,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
               <div className="brand-field-group" role="tabpanel" id="brand-panel-voice" aria-labelledby="brand-tab-voice" hidden={brandTab !== "voice"}>
                 <div className="profile-voice-fill">
-                  <button type="button" className="button primary" onClick={() => void fillBrandTab("voice")} disabled={brandAnalyzeBusy || voiceBusy || voiceMissing.length > 0 || aiConnection !== "connected"}>{voiceBusy ? "Подбираем голос…" : "Подобрать голос с КЛИО"}</button>
+                  <button type="button" className="button primary" onClick={() => void fillBrandTab("voice")} disabled={brandAnalyzeBusy || voiceBusy || voiceMissing.length > 0 || aiConnection !== "connected"}>{voiceBusy ? "Подбираю голос…" : "Подобрать голос с КЛИО"}</button>
                   <small>{voiceMissing.length ? `На первой вкладке заполните ${voiceMissing.join(", ")}.` : aiConnection !== "connected" ? "КЛИО сейчас недоступна" : workspaceAccount.researchRemaining <= 0 ? "Лимит исследований исчерпан" : "По основе бренда · 1 исследование"}</small>
                   <label className="profile-fill-replace"><input type="checkbox" checked={replaceVoice} onChange={event => setReplaceVoice(event.target.checked)} disabled={voiceBusy || brandAnalyzeBusy}/>Перезаписать поля, которые уже заполнены</label>
                   <small className="profile-fill-replace-help">По умолчанию заполняются только пустые поля.</small>
@@ -7308,7 +7308,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </div>
               </div>
 
-              <div className="brand-profile-footer"><p role={workspaceDataError ? "alert" : "status"}><i className={brandSaved ? "saved" : workspaceDataError ? "error" : ""}/>{workspaceDataError ? `Не удалось сохранить: ${workspaceDataError}` : workspaceSaving ? "Сохраняем изменения…" : brandSaved ? "Все изменения профиля сохранены автоматически" : "Изменения сохраняются автоматически"}</p><div><button type="button" onClick={restoreBrand}>Восстановить базовый профиль</button><button className="button primary" type="button" onClick={() => void saveBrand()}>{workspaceDataError ? "Повторить сохранение" : "Сохранить сейчас"}</button></div></div>
+              <div className="brand-profile-footer"><p role={workspaceDataError ? "alert" : "status"}><i className={brandSaved ? "saved" : workspaceDataError ? "error" : ""}/>{workspaceDataError ? `Не удалось сохранить: ${workspaceDataError}` : workspaceSaving ? "Сохраняю изменения…" : brandSaved ? "Все изменения профиля сохранены автоматически" : "Изменения сохраняются автоматически"}</p><div><button type="button" onClick={restoreBrand}>Восстановить базовый профиль</button><button className="button primary" type="button" onClick={() => void saveBrand()}>{workspaceDataError ? "Повторить сохранение" : "Сохранить сейчас"}</button></div></div>
             </div>
           </section>
 
@@ -7318,7 +7318,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <div className="semantic-search-card">
                 <div className="semantic-search-head">
                   <div><span>Шаг 1</span><h3>О чём могут искать ваши будущие клиенты?</h3><p>Напишите тему и выберите географию. КЛИО покажет реальные варианты запросов и сама разделит их на понятные группы.</p></div>
-                  <span className={`semantic-mode semantic-mode-${aiConnection === "connected" ? "ai" : "idle"}`} title="Проверяется наличие настроек подключения. Доступность провайдера определяется при выполнении запроса."><i/>{aiConnection === "connected" ? "ИИ настроен" : aiConnection === "disconnected" ? "ИИ не настроен · генерация отключена" : "Проверяем настройки ИИ"}</span>
+                  <span className={`semantic-mode semantic-mode-${aiConnection === "connected" ? "ai" : "idle"}`} title="Проверяется наличие настроек подключения. Доступность провайдера определяется при выполнении запроса."><i/>{aiConnection === "connected" ? "ИИ настроен" : aiConnection === "disconnected" ? "ИИ не настроен · генерация отключена" : "Проверяю настройки ИИ"}</span>
                 </div>
                 <div className="semantic-primary-query">
                   <label>
@@ -7388,8 +7388,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <div className="semantic-geo-summary"><span>Передаём в анализ</span><b>{semanticRegion}</b></div>
                 </div>
                 <div className={`semantic-analysis-action ${semanticNeedsRefresh ? "needs-refresh" : ""}`}>
-                  <div><span>{semanticAnalysisReady ? "Анализ актуален" : semanticMode === "idle" ? "Шаг 2 · запуск анализа" : "Исходные данные изменены"}</span><b>{semanticQuery.trim() ? `Анализируем: «${semanticQuery.trim()}»` : "Введите основной запрос выше"}</b><small>{semanticAnalysisReady ? "Результат ниже относится только к текущей теме и выбранной географии." : `Будут использованы тема + география${useBrand ? " + профиль и открытая страница бренда" : " без профиля бренда"}.`}</small></div>
-                  <button className={`button primary large ${semanticBusy ? "is-busy" : ""}`} type="button" onClick={analyzeSemantics} disabled={semanticBusy || !semanticQuery.trim() || aiConnection !== "connected"}><Icon name="spark"/>{semanticBusy ? "Анализируем…" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.researchRemaining <= 0 ? "Лимит исследований исчерпан" : semanticMode === "idle" ? "Собрать семантику" : "Обновить семантику"}</button>
+                  <div><span>{semanticAnalysisReady ? "Анализ актуален" : semanticMode === "idle" ? "Шаг 2 · запуск анализа" : "Исходные данные изменены"}</span><b>{semanticQuery.trim() ? `Анализирую: «${semanticQuery.trim()}»` : "Введите основной запрос выше"}</b><small>{semanticAnalysisReady ? "Результат ниже относится только к текущей теме и выбранной географии." : `Будут использованы тема + география${useBrand ? " + профиль и открытая страница бренда" : " без профиля бренда"}.`}</small></div>
+                  <button className={`button primary large ${semanticBusy ? "is-busy" : ""}`} type="button" onClick={analyzeSemantics} disabled={semanticBusy || !semanticQuery.trim() || aiConnection !== "connected"}><Icon name="spark"/>{semanticBusy ? "Анализирую…" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.researchRemaining <= 0 ? "Лимит исследований исчерпан" : semanticMode === "idle" ? "Собрать семантику" : "Обновить семантику"}</button>
                 </div>
                 {semanticError && <p className="generation-error" role="alert">{semanticError}</p>}
                 {semanticAnalysisReady && <div className="semantic-data-note"><i>i</i><p>{semanticResult.dataNote}</p></div>}
@@ -7462,9 +7462,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <div className="semantic-action-buttons">
                   <button className="button ghost" type="button" onClick={openSemanticContentPlan} disabled={semanticNeedsRefresh}>Получить план статей</button>
                   <button className="button ghost" type="button" onClick={sendSemanticsToGenerator} disabled={!selectedSemanticKeywords.length || semanticNeedsRefresh}>Настроить статью</button>
-                  <button className={`button primary large ${semanticArticleBusy ? "is-busy" : ""}`} type="button" onClick={generateFromSemantics} disabled={!activeBrandId || !selectedSemanticKeywords.length || semanticNeedsRefresh || semanticArticleBusy || aiConnection !== "connected"}><Icon name="spark"/>{semanticArticleBusy ? "Создаём статью…" : !activeBrandId ? "Загружаем кабинет" : aiConnection !== "connected" ? "ИИ не подключён" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : semanticNeedsRefresh ? "Сначала обновите семантику" : "Сгенерировать материал"}</button>
+                  <button className={`button primary large ${semanticArticleBusy ? "is-busy" : ""}`} type="button" onClick={generateFromSemantics} disabled={!activeBrandId || !selectedSemanticKeywords.length || semanticNeedsRefresh || semanticArticleBusy || aiConnection !== "connected"}><Icon name="spark"/>{semanticArticleBusy ? "Создаю статью…" : !activeBrandId ? "Загружаю кабинет" : aiConnection !== "connected" ? "ИИ не подключён" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : semanticNeedsRefresh ? "Сначала обновите семантику" : "Сгенерировать материал"}</button>
                 </div>
-                <div className="module-material-bar"><span><b>{moduleMaterialSources.semantics ? "Продолжаете сохранённую версию" : "Зафиксировать исследование"}</b><small>Сохранение и экспорт не расходуют лимиты.</small></span><div><button type="button" onClick={() => void saveModuleMaterial("semantics")} disabled={materialSavingType === "semantics"}>{materialSavingType === "semantics" ? "Сохраняем…" : moduleMaterialSources.semantics ? "Сохранить новую версию" : "Сохранить в материалы"}</button>{moduleMaterialSources.semantics && <button type="button" onClick={() => void saveModuleMaterial("semantics", "copy")} disabled={materialSavingType === "semantics"}>Сохранить копию</button>}</div></div>
+                <div className="module-material-bar"><span><b>{moduleMaterialSources.semantics ? "Продолжаете сохранённую версию" : "Зафиксировать исследование"}</b><small>Сохранение и экспорт не расходуют лимиты.</small></span><div><button type="button" onClick={() => void saveModuleMaterial("semantics")} disabled={materialSavingType === "semantics"}>{materialSavingType === "semantics" ? "Сохраняю…" : moduleMaterialSources.semantics ? "Сохранить новую версию" : "Сохранить в материалы"}</button>{moduleMaterialSources.semantics && <button type="button" onClick={() => void saveModuleMaterial("semantics", "copy")} disabled={materialSavingType === "semantics"}>Сохранить копию</button>}</div></div>
                 <div className="semantic-optional-route"><span><i>+</i><b className="field-label-help">Нужен более глубокий SEO‑разбор?<HelpTip label="Нужен более глубокий SEO‑разбор?" text="Только тогда откройте анализ конкурентов. Он сравнит сайты прямых конкурентов и передаст выбранные выводы в дополнительный акцент, не создавая новую семантику."/></b></span><button type="button" onClick={openCompetitorAnalysis}>Сравнить конкурентов</button></div>
               </div>
               </> : <div className="semantic-waiting-state">
@@ -7512,7 +7512,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </div></details></>}
 
                 <div className="competitor-source-list">
-                <div className="competitor-source-head"><div><span className="field-label-help">Сайты прямых конкурентов<HelpTip label="Сайты прямых конкурентов" text="Добавьте сайты компаний с сопоставимой услугой или используйте автоматический подбор. Агрегаторы, СМИ и страницы с упоминаниями бренда не подходят."/></span></div><div className="competitor-source-actions"><button type="button" className="competitor-reset" onClick={resetCompetitorSearch} disabled={competitorDiscoveryBusy}>Очистить список</button><button type="button" className={`competitor-discover ${competitorDiscoveryBusy ? "is-busy" : ""}`} onClick={discoverCompetitors} disabled={competitorDiscoveryBusy || aiConnection !== "connected"}><Icon name="spark"/>{competitorDiscoveryBusy ? "Ищем в интернете…" : aiConnection === "connected" ? "Подобрать автоматически" : aiConnection === "checking" ? "Проверяем подключение…" : "Автопоиск не подключён"}</button></div></div>
+                <div className="competitor-source-head"><div><span className="field-label-help">Сайты прямых конкурентов<HelpTip label="Сайты прямых конкурентов" text="Добавьте сайты компаний с сопоставимой услугой или используйте автоматический подбор. Агрегаторы, СМИ и страницы с упоминаниями бренда не подходят."/></span></div><div className="competitor-source-actions"><button type="button" className="competitor-reset" onClick={resetCompetitorSearch} disabled={competitorDiscoveryBusy}>Очистить список</button><button type="button" className={`competitor-discover ${competitorDiscoveryBusy ? "is-busy" : ""}`} onClick={discoverCompetitors} disabled={competitorDiscoveryBusy || aiConnection !== "connected"}><Icon name="spark"/>{competitorDiscoveryBusy ? "Ищу в интернете…" : aiConnection === "connected" ? "Подобрать автоматически" : aiConnection === "checking" ? "Проверяю подключение…" : "Автопоиск не подключён"}</button></div></div>
                 {aiConnection === "disconnected" && <p className="competitor-search-status"><i>i</i><span><b>Почему ссылки не подставляются автоматически</b><small>В текущей версии не подключён реальный AI‑доступ к веб‑поиску. Поэтому КЛИО не имитирует поиск и не придумывает адреса: пока используйте ручные ссылки.</small></span></p>}
                 {competitorDiscoveryNote && <p className="competitor-discovery-note"><Icon name="check"/>{competitorDiscoveryNote}</p>}
                 {competitors.map((competitor, index) => <div className="competitor-source-row" key={competitor.id}>
@@ -7527,7 +7527,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <div className="competitor-setup-footer competitor-setup-footer-simple">
                 <div className={`competitor-analysis-action ${competitorNeedsRefresh ? "needs-refresh" : ""}`}>
                   <div className={`competitor-requirement ${validCompetitorEntries >= 2 ? "is-ready" : "is-needed"}`}><i>{validCompetitorEntries >= 2 ? <Icon name="check"/> : "2+"}</i><span><b>{validCompetitorEntries >= 2 ? "Сайтов достаточно для анализа" : "Добавьте минимум два сайта прямых конкурентов"}</b><small>{validCompetitorEntries >= 2 ? `${validCompetitorEntries} ссылок будут проверены при построении матрицы.` : aiConnection === "connected" ? "Можно вставить ссылки вручную или подобрать их автоматически." : "Сейчас доступны ручные ссылки; автопоиск появится после подключения AI‑доступа."}</small></span></div>
-                  <button className={`button primary large ${competitorBusy ? "is-busy" : ""}`} type="button" onClick={analyzeCompetitors} disabled={competitorBusy}><Icon name="spark"/>{competitorBusy ? "Читаем страницы…" : workspaceAccount.researchRemaining <= 0 ? "Лимит исследований исчерпан" : competitorMode === "example" ? "Построить матрицу" : "Обновить матрицу"}</button>
+                  <button className={`button primary large ${competitorBusy ? "is-busy" : ""}`} type="button" onClick={analyzeCompetitors} disabled={competitorBusy}><Icon name="spark"/>{competitorBusy ? "Читаю страницы…" : workspaceAccount.researchRemaining <= 0 ? "Лимит исследований исчерпан" : competitorMode === "example" ? "Построить матрицу" : "Обновить матрицу"}</button>
                 </div>
               </div>
               {competitorError && <p className="competitor-error" role="alert"><i>!</i><span>{competitorError}</span></p>}
@@ -7583,7 +7583,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
             <div className={`competitor-actionbar ${competitorNeedsRefresh ? "needs-refresh" : ""}`}>
               <div><span>Следующий шаг</span><b>{competitorArticleOpportunities.length ? (selectedCompetitorArticleTopics.length ? `Выбрано тем для статьи: ${selectedCompetitorArticleTopics.length}` : "КЛИО сам выберет подходящие темы") : "Новая статья по этой теме не нужна"}</b><small>{competitorArticleOpportunities.length ? (selectedCompetitorArticleTopics.length ? "КЛИО передаст тему и выбранные разделы в генератор. Там вы сможете дополнить бриф и создать статью." : "Если хотите изменить подборку, отметьте нужные темы в таблице. Иначе КЛИО выберет свои рекомендации автоматически.") : "Текущая страница бренда уже раскрывает найденные темы. Новая статья повторит её и может конкурировать с ней в поиске — выберите другой поисковый кластер."}</small></div>
-              <div className="competitor-action-buttons"><button type="button" className="module-save-button" onClick={() => void saveModuleMaterial("competitors")} disabled={materialSavingType === "competitors" || competitorNeedsRefresh}>{materialSavingType === "competitors" ? "Сохраняем…" : moduleMaterialSources.competitors ? "Сохранить анализ" : "Сохранить анализ в материалы"}</button>{moduleMaterialSources.competitors && <button type="button" className="module-copy-button" onClick={() => void saveModuleMaterial("competitors", "copy")} disabled={materialSavingType === "competitors"}>Копия</button>}{competitorArticleOpportunities.length ? <button className={`button primary large ${competitorNeedsRefresh ? "is-blocked" : ""}`} type="button" onClick={sendCompetitorInsightsToGenerator} aria-disabled={competitorNeedsRefresh}>Открыть в генераторе <Icon name="arrow"/></button> : <button className="button primary large" type="button" onClick={() => openModule("semantics")}>Выбрать другой запрос <Icon name="arrow"/></button>}</div>
+              <div className="competitor-action-buttons"><button type="button" className="module-save-button" onClick={() => void saveModuleMaterial("competitors")} disabled={materialSavingType === "competitors" || competitorNeedsRefresh}>{materialSavingType === "competitors" ? "Сохраняю…" : moduleMaterialSources.competitors ? "Сохранить анализ" : "Сохранить анализ в материалы"}</button>{moduleMaterialSources.competitors && <button type="button" className="module-copy-button" onClick={() => void saveModuleMaterial("competitors", "copy")} disabled={materialSavingType === "competitors"}>Копия</button>}{competitorArticleOpportunities.length ? <button className={`button primary large ${competitorNeedsRefresh ? "is-blocked" : ""}`} type="button" onClick={sendCompetitorInsightsToGenerator} aria-disabled={competitorNeedsRefresh}>Открыть в генераторе <Icon name="arrow"/></button> : <button className="button primary large" type="button" onClick={() => openModule("semantics")}>Выбрать другой запрос <Icon name="arrow"/></button>}</div>
             </div>
               </div>
             </div>
@@ -7724,7 +7724,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   </fieldset>
                 </details>
                 {imageError && <p ref={imageErrorRef} className="generation-error" role="alert" tabIndex={-1}>{imageError}</p>}
-                <button className={`button primary large generation-action ${imageBusy ? "is-busy" : ""}`} style={{ display: imageGeneratorMode === "carousel" ? "none" : undefined }} type="button" onClick={() => void generateProfessionalImage()} disabled={imageBusy || carouselBusy || !workspaceReady || imageGeneratorMode === "edit" && !imageEditSourceId && !imageReferenceUrl && !imageReferenceSourceId || (!canGenerateWithoutImagePrompt && imagePrompt.trim().length < 8) || workspaceAccount.generationsRemaining <= 0}><Icon name="image"/>{imageBusy ? "Создаём изображение…" : workspaceAccount.generationsRemaining <= 0 ? "Лимит генераций исчерпан" : imageGeneratorMode === "edit" ? "Применить изменения" : "Создать изображение"}</button>
+                <button className={`button primary large generation-action ${imageBusy ? "is-busy" : ""}`} style={{ display: imageGeneratorMode === "carousel" ? "none" : undefined }} type="button" onClick={() => void generateProfessionalImage()} disabled={imageBusy || carouselBusy || !workspaceReady || imageGeneratorMode === "edit" && !imageEditSourceId && !imageReferenceUrl && !imageReferenceSourceId || (!canGenerateWithoutImagePrompt && imagePrompt.trim().length < 8) || workspaceAccount.generationsRemaining <= 0}><Icon name="image"/>{imageBusy ? "Создаю изображение…" : workspaceAccount.generationsRemaining <= 0 ? "Лимит генераций исчерпан" : imageGeneratorMode === "edit" ? "Применить изменения" : "Создать изображение"}</button>
                 <div className="image-generator-carousel" style={{ display: imageGeneratorMode === "carousel" ? undefined : "none" }}>
                   <div><span>Карусель</span><h3>Несколько слайдов из этого текста<span className="klio-mark-dot">.</span></h3><p>КЛИО выделит главные мысли и создаст для каждого слайда отдельную сцену с коротким текстом внутри изображения. Весь введённый текст учитывается; один слайд — одна генерация.</p></div>
                   <div className="image-generator-carousel-controls">
@@ -7771,7 +7771,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     </div>
                   </div>
                   {carouselError && <p className="generation-error" role="alert">{carouselError}</p>}
-                  <button className={`button ghost large generation-action ${carouselBusy ? "is-busy" : ""}`} type="button" onClick={() => void generateCarousel(pendingCarouselSource ?? { text: imagePrompt })} disabled={imageBusy || carouselBusy || !workspaceReady || imagePrompt.trim().length < 20 || workspaceAccount.generationsRemaining < Number(carouselSlideCount)}><Icon name="image"/>{carouselBusy ? "Создаём карусель…" : workspaceAccount.generationsRemaining < Number(carouselSlideCount) ? "Не хватает генераций" : `Создать карусель (${carouselSlideCount})`}</button>
+                  <button className={`button ghost large generation-action ${carouselBusy ? "is-busy" : ""}`} type="button" onClick={() => void generateCarousel(pendingCarouselSource ?? { text: imagePrompt })} disabled={imageBusy || carouselBusy || !workspaceReady || imagePrompt.trim().length < 20 || workspaceAccount.generationsRemaining < Number(carouselSlideCount)}><Icon name="image"/>{carouselBusy ? "Создаю карусель…" : workspaceAccount.generationsRemaining < Number(carouselSlideCount) ? "Не хватает генераций" : `Создать карусель (${carouselSlideCount})`}</button>
                 </div>
               </div>
               {imageBusy && imageStreamPreview && <div className="image-generator-stream-preview" aria-live="polite"><Image src={imageStreamPreview} alt="Промежуточный вариант изображения" width={1024} height={1024} unoptimized/><span>КЛИО уже рисует — это промежуточный кадр</span></div>}
@@ -7831,7 +7831,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                       the moment "на глаз" keyword guessing is the actual pattern,
                       not a one-off. */}
                   {workspaceAccount.lifetimeGenerationsUsed >= 3 && semanticMode === "idle" && renderAdviceTip("generator-try-semantics", <>Вижу, вы уже сделали несколько материалов на глаз, без реальных поисковых запросов. Загляните в «Семантика» — я найду формулировки, которые реально ищут по вашей теме, и материалы точнее попадут в спрос.</>)}
-                  <button className={`button primary generate generation-action ${quickBusy ? "is-busy" : ""}`} type="button" onClick={() => void generateQuick()} disabled={!workspaceReady || quickBusy || aiConnection !== "connected"}><Icon name="spark"/>{quickBusy ? "КЛИО пишет…" : !workspaceReady ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
+                  <button className={`button primary generate generation-action ${quickBusy ? "is-busy" : ""}`} type="button" onClick={() => void generateQuick()} disabled={!workspaceReady || quickBusy || aiConnection !== "connected"}><Icon name="spark"/>{quickBusy ? "КЛИО пишет…" : !workspaceReady ? "Загружаю кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
                 </div>}
                 {generatorMode === "advanced" && <>
                 <div className="field"><label>Формат</label><div className="format-tabs">{formats.map((item) => <button type="button" className={format === item.id ? "active" : ""} onClick={() => { changeFormat(item.id); if (editorialBrief) setEditorialBrief(null); }} key={item.id}>{item.label}</button>)}</div></div>
@@ -7879,7 +7879,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   </div>
                 </div>
                 {generationError && <p className="generation-error" role="alert">{generationError}</p>}
-                <button className={`button primary generate generation-action ${busy ? "is-busy" : ""}`} type="button" onClick={generate} disabled={!workspaceReady || busy || aiConnection !== "connected"}><Icon name="spark"/>{busy ? busySteps[busyStep] : !workspaceReady ? "Загружаем кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
+                <button className={`button primary generate generation-action ${busy ? "is-busy" : ""}`} type="button" onClick={generate} disabled={!workspaceReady || busy || aiConnection !== "connected"}><Icon name="spark"/>{busy ? busySteps[busyStep] : !workspaceReady ? "Загружаю кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
                 {busy && <>
                   {/* Once the last step lands, this stops being a real
                       progress readout (nothing after it is measured) and
@@ -7942,7 +7942,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
                 <div className="content-plan-controls">
                   <div><span>Количество тем</span><div>{[10, 15, 25].map((value) => <button type="button" className={contentPlanCount === value ? "active" : ""} onClick={() => { setContentPlanCount(value); setContentPlanNeedsRefresh(true); persistContentPlan({ count: value, needsRefresh: true }); }} key={value}>{value}</button>)}</div></div>
-                  <button className={`button primary large generation-action ${contentPlanBusy ? "is-busy" : ""}`} type="button" onClick={buildContentPlan} disabled={contentPlanBusy || aiConnection !== "connected"}><Icon name="spark"/>{contentPlanBusy ? "Собираем систему…" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.researchRemaining <= 0 ? "Лимит исследований исчерпан" : contentPlanResult.items.length ? "Обновить контент‑план" : "Собрать контент‑план"}</button>
+                  <button className={`button primary large generation-action ${contentPlanBusy ? "is-busy" : ""}`} type="button" onClick={buildContentPlan} disabled={contentPlanBusy || aiConnection !== "connected"}><Icon name="spark"/>{contentPlanBusy ? "Собираю систему…" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.researchRemaining <= 0 ? "Лимит исследований исчерпан" : contentPlanResult.items.length ? "Обновить контент‑план" : "Собрать контент‑план"}</button>
                 </div>
                 {contentPlanBusy && <small className="generation-wait-note">План собирается в фоне. Можно продолжать работу — результат появится здесь автоматически.</small>}
                 {contentPlanError && <p className="generation-error" role="alert">{contentPlanError}</p>}
@@ -7957,8 +7957,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </div>
 
                 {contentPlanArchiveStatus && <div className={`content-plan-save-status status-${contentPlanArchiveStatus}`} role="status" aria-live="polite">
-                  <span>{contentPlanArchiveStatus === "saving" ? "Сохраняем план в «Материалы»…" : contentPlanArchiveStatus === "saved" ? "План автоматически сохранён в «Материалы»." : contentPlanArchiveStatus === "modified" ? "В плане есть изменения. Сохраните новую версию в «Материалы»." : contentPlanArchiveStatus === "needs-brand" ? "План готов. Выберите бренд, чтобы сохранить его в «Материалы»." : "План готов, но сохранить его не удалось."}</span>
-                  {contentPlanArchiveStatus === "failed" && <button type="button" onClick={() => void saveModuleMaterial("content_plan")} disabled={materialSavingType === "content_plan"}>{materialSavingType === "content_plan" ? "Сохраняем…" : "Повторить сохранение"}</button>}
+                  <span>{contentPlanArchiveStatus === "saving" ? "Сохраняю план в «Материалы»…" : contentPlanArchiveStatus === "saved" ? "План автоматически сохранён в «Материалы»." : contentPlanArchiveStatus === "modified" ? "В плане есть изменения. Сохраните новую версию в «Материалы»." : contentPlanArchiveStatus === "needs-brand" ? "План готов. Выберите бренд, чтобы сохранить его в «Материалы»." : "План готов, но сохранить его не удалось."}</span>
+                  {contentPlanArchiveStatus === "failed" && <button type="button" onClick={() => void saveModuleMaterial("content_plan")} disabled={materialSavingType === "content_plan"}>{materialSavingType === "content_plan" ? "Сохраняю…" : "Повторить сохранение"}</button>}
                 </div>}
 
                 {/* Right above the (often long, 10-25 item) list so it's seen
@@ -7999,7 +7999,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
                 <div className="content-plan-actions">
                   <div className="content-plan-toolbar-actions">
-                    <button type="button" className="button ghost" onClick={() => void saveModuleMaterial("content_plan")} disabled={contentPlanBusy || materialSavingType !== null}>{materialSavingType === "content_plan" ? "Сохраняем…" : moduleMaterialSources.content_plan ? "Сохранить новую версию" : "Сохранить в материалы"}</button>
+                    <button type="button" className="button ghost" onClick={() => void saveModuleMaterial("content_plan")} disabled={contentPlanBusy || materialSavingType !== null}>{materialSavingType === "content_plan" ? "Сохраняю…" : moduleMaterialSources.content_plan ? "Сохранить новую версию" : "Сохранить в материалы"}</button>
                     {moduleMaterialSources.content_plan && <button type="button" className="button ghost" onClick={() => void saveModuleMaterial("content_plan", "copy")} disabled={contentPlanBusy || materialSavingType !== null}>Копия</button>}
                     <button type="button" className="button ghost" onClick={exportContentPlan}><Icon name="arrow"/> Скачать план (CSV)</button>
                   </div>
@@ -8017,7 +8017,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <div className="content-plan-replacement-options"><span>Что изменить</span><div>{["Другой ракурс", "Исключить похожие темы", "Более продающая тема", "Другой формат"].map((option) => <button type="button" className={planReplacementPreference === option ? "active" : ""} onClick={() => setPlanReplacementPreference(option)} key={option}>{option}</button>)}</div></div>
                   <label className="content-plan-replacement-comment"><span>Дополнительное пожелание · необязательно</span><AutoTextarea rows={2} value={planReplacementComment} onChange={(event) => setPlanReplacementComment(event.target.value)} placeholder="Например: больше практических тем для аудитории 45+"/></label>
                   {planReplacementError && <p className="generation-error" role="alert">{planReplacementError}</p>}
-                  <button className="button primary" type="button" onClick={() => void requestPlanReplacements()} disabled={planReplacementBusy}>{planReplacementBusy ? "Подбираем варианты…" : workspaceAccount.editorActionsRemaining <= 0 ? "Лимит AI‑редактуры исчерпан" : `Предложить замену для ${selectedPlanItemIds.length} ${selectedPlanItemIds.length === 1 ? "темы" : "тем"}`}</button>
+                  <button className="button primary" type="button" onClick={() => void requestPlanReplacements()} disabled={planReplacementBusy}>{planReplacementBusy ? "Подбираю варианты…" : workspaceAccount.editorActionsRemaining <= 0 ? "Лимит AI‑редактуры исчерпан" : `Предложить замену для ${selectedPlanItemIds.length} ${selectedPlanItemIds.length === 1 ? "темы" : "тем"}`}</button>
                   {planReplacements.length > 0 && <div className="content-plan-replacement-groups">{planReplacements.map((group) => {
                     const source = contentPlanResult.items.find((item) => item.id === group.sourceId);
                     return <article key={group.sourceId}><div><span>Исходная тема</span><h4>{source?.title}</h4><button type="button" onClick={() => keepOriginalPlanItem(group.sourceId)}>Оставить исходную</button></div><div>{group.alternatives.map((alternative) => <button type="button" onClick={() => applyPlanReplacement(group.sourceId, alternative)} key={alternative.id}><span>{alternative.format} · {alternative.intent}</span><b>{alternative.title}</b><small>{alternative.angle}</small><em>Выбрать вариант <Icon name="arrow"/></em></button>)}</div></article>;
