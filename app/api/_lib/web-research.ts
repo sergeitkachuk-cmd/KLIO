@@ -301,6 +301,18 @@ export async function researchAdaptationFacts(topic: string, recent = false): Pr
   });
 }
 
+// The dialogue searches before the KLIO agent answers, while the user waits,
+// so it uses DeepSeek's summaries only (no full page text) and a shorter
+// timeout than the background generators.
+export async function researchDialogueFacts(topic: string, recent = false): Promise<WebResearch | null> {
+  return await searchWithFallback(topic, 6, `dialogue-facts-${recent ? "recent" : "v1"}:${cacheKey(topic, [])}`, {
+    question: recent ? `Что нового и что изменилось: ${topic}` : `Конкретные факты и подробности: ${topic}`,
+    contentLength: 800,
+    timeoutMs: 8_000,
+    ...(recent ? { recentDays: 30 } : {}),
+  });
+}
+
 export async function discoverWeb(query: string): Promise<WebResearch | null> {
   return deepseekSearch(query, 12, "competitors");
 }

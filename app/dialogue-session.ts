@@ -14,9 +14,12 @@ type Snapshot = {
 type SendOptions = { mode: string; cardId?: string; imageSource?: DialogueImageSource; useBrandContext: boolean; settings: Record<string, unknown> };
 type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
-export async function dialogueRequest<T>(values: Record<string, unknown> | string): Promise<T> {
+// A send waits for web search, site reading and the KLIO agent before the
+// server saves the message; 30 seconds cut those off mid-flight and the
+// user saw a failure for a message that was still being processed.
+export async function dialogueRequest<T>(values: Record<string, unknown> | string, timeoutMs = 30_000): Promise<T> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(typeof values === "string" ? values : "/api/dialogue", {
       credentials: "same-origin", cache: "no-store", signal: controller.signal,
@@ -155,7 +158,7 @@ export function createDialogueSession(options: {
       const requestId = pending.id;
       let result: { thread: DialogueThread };
       try {
-        result = await request({ action: "send", id: thread.id, revision: thread.revision, requestId, text, ...sendOptions });
+        result = await request({ action: "send", id: thread.id, revision: thread.revision, requestId, text, ...sendOptions }, 120_000);
       } catch (error) {
         // A disconnected POST can have succeeded. Reconcile by reading the
         // saved user message before offering a retry with the SAME request id.

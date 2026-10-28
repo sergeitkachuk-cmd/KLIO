@@ -240,7 +240,7 @@ export async function createDialogueHarness() {
       },
       "../_lib/rate-limit": { isRateLimited: () => false },
       "../_lib/workspace-account": workspace,
-      "../_lib/web-research": { researchAdaptationFacts: async (...args) => research(...args) },
+      "../_lib/web-research": { researchDialogueFacts: async (...args) => research(...args) },
       "../_lib/website-context": {
         readWebsiteContext: async () => ({ status: "loaded", text: "Кофейня" }),
       },

@@ -124,3 +124,16 @@ test("reload recovers an accepted message and clears only its matching cached dr
   cache.set("test:a:pending", JSON.stringify({ id: "request-1", signature: JSON.stringify({ text: "cached prompt", ...input }) }));
   await store.open("a"); assert.equal(store.getSnapshot().draft, ""); assert.equal(cache.has("test:a:pending"), false);
 });
+
+test("a send waits long enough for search and the agent, while reads keep the short timeout", async (t) => {
+  const timeouts = [];
+  const { store } = harness(t, async (p, timeoutMs) => {
+    timeouts.push({ action: typeof p === "string" ? "read" : p.action, timeoutMs });
+    if (typeof p === "string") return { thread: thread("a") };
+    return { thread: thread("a", { revision: 1, data: { cards: [], messages: [{ id: p.requestId, role: "user", text: p.text }] } }) };
+  });
+  await store.open("a");
+  assert.equal(await store.send("Сделай продающий пост", input), true);
+  assert.equal(timeouts.find(call => call.action === "send").timeoutMs, 120_000);
+  assert.ok(timeouts.filter(call => call.action === "read").every(call => call.timeoutMs === undefined));
+});
