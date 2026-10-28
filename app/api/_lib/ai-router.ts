@@ -398,6 +398,9 @@ async function requestOnce(params: {
     const transient = response.status >= 500;
     const error = new AiCallError("AI-редакция временно не ответила.", response.status);
     (error as { transient?: boolean }).transient = transient;
+    // Recorded in ai_usage for the admin page: the user-facing message alone
+    // never says which provider failed or why.
+    error.diagnosticMessage = `${useRelay ? `${provider} via relay` : provider} ${params.model} HTTP ${response.status}: ${detail.replace(/\s+/g, " ").slice(0, 400)}`;
     throw error;
   }
 
