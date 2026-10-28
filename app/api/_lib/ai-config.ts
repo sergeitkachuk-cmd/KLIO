@@ -188,7 +188,7 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // structured dialogue schema. Plain text needs no action/card envelope.
   dialogue_plain: { model: DIALOGUE_CONTENT, reasoningEffort: "none", maxOutputTokens: 3_000, structuredOutput: false, retryable: false, useWebSearch: false },
   dialogue_deepseek_plain: { model: DEEPSEEK_MODELS.CONTENT, reasoningEffort: "none", maxOutputTokens: 3_000, structuredOutput: false, retryable: false, useWebSearch: false },
-  // Full materials are grounded by one bounded Tavily request in the route,
+  // Full materials are grounded by one bounded DeepSeek search in the route,
   // not by a model-owned web tool. DeepSeek can otherwise spend minutes in
   // search/tool loops before it starts writing; a single compact digest keeps
   // the facts while making generation a single predictable model pass.
@@ -214,7 +214,7 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // — a reasoning item draft-rejecting-redrafting its own topic list for
   // several turns, then (once reasoning was turned off to stop that) 10
   // Keep the long structured generation focused and bounded. A separate
-  // Search is done separately through Tavily
+  // Search is done separately through DeepSeek Search
   // before generation, while readWebsiteContext supplies the brand site.
   // Search and site crawling are not repeated for each batch of plan rows.
   // A failed long generation can still have consumed a very large cached
@@ -269,7 +269,7 @@ export const OPERATION_CONFIG: Record<AiOperation, OperationConfig> = {
   // продукт не заполнено ... мы можем чтобы ии сам определил тематику...
   // а то смысла кнопки новости вообще нет") — the news search's subject
   // otherwise falls back to brand name + marketing positioning, which
-  // (confirmed against Tavily's own docs, this session) reliably finds
+  // (confirmed in practice) reliably finds
   // nothing for a small/regional brand regardless of search mode. A
   // Small extraction task (read whatever brand context and website snapshot
   // exists, name the industry and a few concrete product/service keywords).

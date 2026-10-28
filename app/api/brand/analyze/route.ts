@@ -1,5 +1,5 @@
 import { readWebsiteContext, websiteSourceLabel } from "../../_lib/website-context";
-import { extractTavilyWebsite } from "../../_lib/tavily";
+import { fetchWebPage } from "../../_lib/web-research";
 import { AiNotConfiguredError, AiResponseError, openAiErrorResponse } from "../../_lib/openai-response";
 import { callAiModel } from "../../_lib/ai-router";
 import { aiConfigured } from "../../_lib/ai-config";
@@ -52,9 +52,9 @@ export async function POST(request: Request) {
     if (website.status === "blocked") {
       return Response.json({ error: "Этот адрес сайта отклонён проверкой безопасности. Проверьте ссылку и попробуйте снова." }, { status: 400 });
     }
-    // The direct read is fast and free. Tavily Extract is a single bounded
+    // The direct read is fast and free. DeepSeek Fetch is a single bounded
     // fallback for SPAs or protected pages; DeepSeek never searches itself.
-    const tavilyWebsite = website.status === "loaded" ? null : await extractTavilyWebsite(input.website);
+    const fetchedWebsite = website.status === "loaded" ? null : await fetchWebPage(input.website);
 
     const instructions = brandAnalysisInstructions(
       "Ты — бренд-стратег платформы КЛИО. По открытой странице сайта (и, если она недоступна или скудная, по данным из веб‑поиска) собери основу профиля бренда для редакционной команды.",
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
         // and leaves enough output room for all structured fields.
         website_snapshot: website.status === "loaded"
           ? { url: website.resolvedUrl, text: website.text.slice(0, 7_000) }
-          : tavilyWebsite ? { url: tavilyWebsite.url, text: tavilyWebsite.content.slice(0, 7_000) } : null,
+          : fetchedWebsite ? { url: fetchedWebsite.url, text: fetchedWebsite.content.slice(0, 7_000) } : null,
         existing_profile_draft: {
           name: input.name || null,
           description: input.description || null,
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
       result: normalized,
       mode: "ai",
       model,
-      sources: { website: tavilyWebsite ? "tavily_extract" : website.status, websiteNote: tavilyWebsite ? `страница прочитана через Tavily: ${tavilyWebsite.url}` : websiteSourceLabel(website) },
+      sources: { website: fetchedWebsite ? "deepseek_fetch" : website.status, websiteNote: fetchedWebsite ? `страница прочитана через DeepSeek: ${fetchedWebsite.url}` : websiteSourceLabel(website) },
       usage,
     });
   } catch (error) {

@@ -2,7 +2,7 @@ import { AiCallError, callAiModel } from "../../_lib/ai-router";
 import { aiConfigured } from "../../_lib/ai-config";
 import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../../_lib/workspace-account";
 import { readWebsiteContext } from "../../_lib/website-context";
-import { discoverTavilyWeb } from "../../_lib/tavily";
+import { discoverWeb } from "../../_lib/web-research";
 import { isAiRateLimited } from "../../_lib/rate-limit";
 
 type BrandInput = {
@@ -287,7 +287,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Укажите тему либо заполните описание и позиционирование бренда." }, { status: 400 });
     }
 
-    // Tavily and Yandex collect candidate pages, followed by up to 20 page
+    // DeepSeek and Yandex search collect candidate pages, followed by up to 20 page
     // reads for verification. The route is metered like every other research
     // endpoint so it cannot be looped for unbounded spend.
     await assertSecondaryQuotaAvailable("research");
@@ -301,19 +301,19 @@ export async function POST(request: Request) {
     let responseBody: unknown;
     let model = "";
     let yandexResults: Citation[] = [];
-    let tavilyResults: Citation[] = [];
+    let webResults: Citation[] = [];
     try {
       // Both search providers resolve to empty results on ordinary service
       // failures, so one provider being unavailable does not hide the other.
-      const [call, yandex, tavily] = await Promise.all([
+      const [call, yandex, web] = await Promise.all([
         Promise.resolve({ rawResponse: null, model: "" }),
         yandexSearch(marketQuery(query, brand)),
-        discoverTavilyWeb([marketQuery(query, brand), geography.slice(0, 2).map((item) => [item.label, item.detail].filter(Boolean).join(" ")).filter(Boolean).join(" "), "прямые конкуренты официальный сайт услуги"].filter(Boolean).join(" ")),
+        discoverWeb([marketQuery(query, brand), geography.slice(0, 2).map((item) => [item.label, item.detail].filter(Boolean).join(" ")).filter(Boolean).join(" "), "прямые конкуренты официальный сайт услуги"].filter(Boolean).join(" ")),
       ]);
       responseBody = call.rawResponse;
       model = call.model;
       yandexResults = yandex;
-      tavilyResults = tavily?.results.map((item) => ({ title: item.title, url: item.url })) ?? [];
+      webResults = web?.results.map((item) => ({ title: item.title, url: item.url })) ?? [];
     } catch (error) {
       if (error instanceof AiCallError) {
         return Response.json({ error: error.message }, { status: error.status });
@@ -323,7 +323,7 @@ export async function POST(request: Request) {
 
     const brandDomain = domainOf(brand.website);
     const seen = new Set<string>();
-    const pool = [...yandexResults, ...tavilyResults, ...citationsFromResponse(responseBody)]
+    const pool = [...yandexResults, ...webResults, ...citationsFromResponse(responseBody)]
       .filter((item) => isDirectCandidate(item.url, brandDomain))
       .filter((item) => {
         const key = domainOf(item.url);

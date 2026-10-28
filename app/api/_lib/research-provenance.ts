@@ -1,6 +1,6 @@
-import type { TavilyResearch } from "./tavily";
+import type { WebResearch } from "./web-research";
 
-export function researchProvenance(research: TavilyResearch | null) {
+export function researchProvenance(research: WebResearch | null) {
   const sources = (research?.results || []).slice(0, 5).flatMap(item => {
     try {
       const url = new URL(item.url);
@@ -11,7 +11,7 @@ export function researchProvenance(research: TavilyResearch | null) {
   return { status: sources.length ? "available" as const : "unavailable" as const, provider: research?.provider || null, sources };
 }
 
-export function researchEditorialNote(research: TavilyResearch | null) {
+export function researchEditorialNote(research: WebResearch | null) {
   const provenance = researchProvenance(research);
   if (!provenance.sources.length) return "Внешний поиск не предоставил источников. Перед публикацией проверьте фактические утверждения; материал не считается проверенным по внешним источникам.";
   return `Источники, переданные ИИ при подготовке (перечень не означает независимой проверки фактов):\n${provenance.sources.map(source => `• ${source.title}: ${source.url}`).join("\n")}`;

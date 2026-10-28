@@ -4,7 +4,7 @@ import { isAiRateLimited } from "../../_lib/rate-limit";
 import { researchEditorialNote, researchProvenance } from "../../_lib/research-provenance";
 import { AiCallError, callAiModel } from "../../_lib/ai-router";
 import { createGenerationBudget, materialOutputTokenBudget } from "../../_lib/generation-budget";
-import { researchMaterialWeb } from "../../_lib/tavily";
+import { researchMaterialWeb } from "../../_lib/web-research";
 import { readWebsiteContext } from "../../_lib/website-context";
 import { aiConfigured } from "../../_lib/ai-config";
 import { publicationCharacters, bodyBudget, trimOverflowBody } from "../../_lib/text-length";

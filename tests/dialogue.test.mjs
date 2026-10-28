@@ -64,39 +64,60 @@ test("brand context is off by default even when a business is selected", async (
   assert.equal(settled.brandId, "coffee-brand");
 });
 
-test("web search runs automatically for fact-seeking questions and stays off for ordinary chat", async (t) => {
+test("web search grounds every substantive message, skips small talk and time-scopes only news questions", async (t) => {
   const h = await createDialogueHarness();
   t.after(() => h.close());
   let thread = await h.create();
   let sent;
-  let lastTavilyCall;
-  let tavilyCalls = 0;
+  const searches = [];
   h.setAi(async input => { sent = JSON.parse(input.input); return { raw: "Готово" }; });
-  h.setTavily(async (topic, recent) => { tavilyCalls++; lastTavilyCall = { topic, recent }; return { query: topic, results: [{ title: "ГОСТ 31805-2012", url: "https://example.invalid/gost", content: "Требования к упаковке." }] }; });
+  h.setResearch(async (topic, recent) => { searches.push({ topic, recent }); return { query: topic, results: [{ title: "ГОСТ 31805-2012", url: "https://example.invalid/gost", content: "Требования к упаковке." }] }; });
   const send = async (text) => {
     await h.post({ action: "send", id: thread.id, revision: thread.revision, requestId: randomUUID(), text, mode: "chat" });
     thread = await h.settled(thread.id);
   };
 
-  await send("Помоги придумать пост про уютную атмосферу кофейни");
-  assert.equal(tavilyCalls, 0);
+  await send("Привет!");
+  assert.equal(searches.length, 0);
   assert.equal(sent.searchAttempted, false);
   assert.equal(sent.research, null);
 
-  // A standard/GOST lookup is a fact question, not a recency one - the
-  // current standard can genuinely be a decade-old document, so this must
-  // NOT get time-scoped the way a news question does below.
-  await send("Какой ГОСТ регулирует упаковку кофе?");
-  assert.equal(tavilyCalls, 1);
+  await send("Помоги придумать пост про уютную атмосферу кофейни");
+  assert.equal(searches.length, 1);
   assert.equal(sent.searchAttempted, true);
   assert.equal(sent.research.results[0].title, "ГОСТ 31805-2012");
-  assert.equal(lastTavilyCall.recent, false);
+  assert.equal(searches[0].recent, false);
 
-  // "что изменилось" is exactly the site owner's own "не старые из памяти"
-  // complaint - must trigger the recency-biased search, not just any search.
+  // A standard/GOST lookup is a fact question, not a recency one - the
+  // current standard can genuinely be a decade-old document.
+  await send("Какой ГОСТ регулирует упаковку кофе?");
+  assert.equal(searches.length, 2);
+  assert.equal(searches[1].recent, false);
+
+  // "что изменилось" is the site owner's "не старые из памяти" case.
   await send("Что изменилось в правилах маркировки за последний месяц?");
-  assert.equal(tavilyCalls, 2);
-  assert.equal(lastTavilyCall.recent, true);
+  assert.equal(searches.length, 3);
+  assert.equal(searches[2].recent, true);
+
+  // Editing commands mention "измени"/"последний" without asking for news.
+  await send("Измени последний абзац, сделай его теплее");
+  assert.equal(searches.length, 4);
+  assert.equal(searches[3].recent, false);
+});
+
+test("an empty search result adds the 'not verified' notice only to explicit fact requests", async (t) => {
+  const h = await createDialogueHarness();
+  t.after(() => h.close());
+  let thread = await h.create();
+  h.setAi(async () => ({ raw: "Готово" }));
+  h.setResearch(async () => null);
+  const send = async (text) => {
+    await h.post({ action: "send", id: thread.id, revision: thread.revision, requestId: randomUUID(), text, mode: "chat" });
+    thread = await h.settled(thread.id);
+    return thread.data.messages.at(-1).text;
+  };
+  assert.doesNotMatch(await send("Помоги придумать пост про уютную атмосферу кофейни"), /Не удалось проверить/);
+  assert.match(await send("Найди в интернете статистику по кофейням"), /Не удалось проверить/);
 });
 
 test("image generation from dialogue saves the result into materials", async (t) => {

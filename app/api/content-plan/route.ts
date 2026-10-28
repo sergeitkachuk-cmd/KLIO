@@ -5,7 +5,7 @@ import { modelForProvider } from "../_lib/ai-config";
 import { assertSecondaryQuotaAvailable, recordResearch, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 import { claimAsyncJob, failAsyncJob, markAsyncJobProcessing, completeAsyncJob, recentCompletedContentPlanTitles } from "../_lib/async-jobs";
 import { readWebsiteContext } from "../_lib/website-context";
-import { researchContentPlanWeb } from "../_lib/tavily";
+import { researchContentPlanWeb } from "../_lib/web-research";
 import { isAiRateLimited } from "../_lib/rate-limit";
 
 type SemanticInput = {
@@ -91,7 +91,7 @@ type ContentPlanWebResearch = {
   sources: ContentPlanWebSource[];
 };
 
-async function researchContentPlanWithTavily(
+async function researchContentPlanOnline(
   input: ReturnType<typeof normalizePayload>,
   currentIndustryFocus: boolean,
   industryField: string,
@@ -110,7 +110,7 @@ async function researchContentPlanWithTavily(
       sources,
     };
   } catch (error) {
-    console.warn("Tavily content-plan web search failed", error instanceof Error ? error.message : error);
+    console.warn("Content-plan web search failed", error instanceof Error ? error.message : error);
     return null;
   }
 }
@@ -763,11 +763,11 @@ async function runContentPlanGeneration(input: ReturnType<typeof normalizePayloa
   if (currentIndustryFocus && !input.requestedQuery) {
     website = input.brand.website ? await readWebsiteContext(input.brand.website, { fullSite: true }) : null;
     const industryField = await inferContentPlanIndustryField(input.brand, website, ownerEmail, newsIndustryField, jobId);
-    webResearch = await researchContentPlanWithTavily(input, true, industryField);
+    webResearch = await researchContentPlanOnline(input, true, industryField);
   } else {
     [website, webResearch] = await Promise.all([
       input.brand.website ? readWebsiteContext(input.brand.website, { fullSite: true }) : Promise.resolve(null),
-      researchContentPlanWithTavily(input, currentIndustryFocus, newsIndustryField),
+      researchContentPlanOnline(input, currentIndustryFocus, newsIndustryField),
     ]);
   }
   const sources = availablePlanSources(input, website?.status === "loaded", Boolean(webResearch));

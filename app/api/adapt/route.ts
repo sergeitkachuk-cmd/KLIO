@@ -11,7 +11,7 @@ import {
   type ContentTone,
 } from "../../content-plans";
 import { readWebsiteContext } from "../_lib/website-context";
-import { researchAdaptationFacts } from "../_lib/tavily";
+import { researchAdaptationFacts } from "../_lib/web-research";
 import { assertSecondaryQuotaAvailable, recordEditorialAction, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 import { AiCallError, callAiModel } from "../_lib/ai-router";
 import { adaptationReasoningEffort, aiConfigured } from "../_lib/ai-config";
@@ -88,7 +88,7 @@ const distinctRewriteGoals = new Set<AdaptationGoal>(["rewrite", "seo", "social"
 // Only editors whose contract benefits from independent evidence receive a
 // search digest. Mechanical modes must preserve the supplied facts, and an
 // unnecessary advanced search made even proofreading wait up to 12 seconds.
-const researchGoals = new Set<AdaptationGoal>(["deepen", "rewrite", "seo", "landing", "review", "cold_email"]);
+const researchGoals = new Set<AdaptationGoal>(["deepen", "rewrite", "seo", "social", "landing", "ads", "review", "cold_email"]);
 
 function coreRulesFor(goal: AdaptationGoal): readonly string[] {
   if (!researchGoals.has(goal)) return ADAPTATION_CORE_RULES;
@@ -223,8 +223,8 @@ async function runAdaptation(input: ReturnType<typeof normalizePayload>, ownerEm
   const budget = createGenerationBudget(totalBudgetMs);
   const brandWebsite = input.useBrand ? clean(input.brand.website, 220) : "";
   const sourceHeading = input.sourceText.split(/\r?\n/, 1)[0]?.slice(0, 240) ?? "";
-  // Leave room for researchAdaptationFacts' evidence qualifiers after
-  // tavilySearch applies its 700-character request limit.
+  // The search module condenses this to DeepSeek's 128-character query
+  // limit; the Yandex fallback receives a longer version.
   const researchTopic = [sourceHeading, input.instructions, input.keywords].filter(Boolean).join(" ").slice(0, 430)
     || input.sourceText.slice(0, 430);
   const [website, webResearch] = await Promise.all([

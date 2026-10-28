@@ -12,7 +12,7 @@ import {
   type ContentTone,
 } from "../../content-plans";
 import { readWebsiteContext } from "../_lib/website-context";
-import { researchMaterialWeb } from "../_lib/tavily";
+import { researchMaterialWeb } from "../_lib/web-research";
 import { researchEditorialNote, researchProvenance } from "../_lib/research-provenance";
 import { assertGenerationQuotaAvailable, recordGeneration, workspaceIdentity, WorkspaceAccessError, workspaceErrorResponse } from "../_lib/workspace-account";
 import { AiCallError, callAiModel } from "../_lib/ai-router";
@@ -587,8 +587,9 @@ async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>,
   // reading happen in parallel before the single full-quality draft; any
   // repair pass must fit inside the same deadline.
   const budget = createGenerationBudget(input.length <= 2000 ? 150_000 : 190_000);
-  const needsExternalResearch = input.format === "seo" || input.format === "landing"
-    || /актуальн|сейчас|сегодня|последн|новост|проверь|проверьте|найди|найдите|по данным|статистик|исследован|изменил(?:ось|ись)|свеж(?:ая|ие|ую) информац|медицин|лечени|реабилитац|здоров/i.test(`${input.topic}\n${input.accent}`);
+  // Every format is grounded in a web search (site owner: research should
+  // deepen every material, not only SEO and landing pages). DeepSeek search
+  // costs $0.00075 per request and runs in parallel with the site read.
   let websiteMs = 0;
   let webResearchMs = 0;
   const [website, webResearch] = await Promise.all([
@@ -599,7 +600,6 @@ async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>,
       return result;
     })(),
     (async () => {
-      if (!needsExternalResearch) return null;
       const startedAt = Date.now();
       const deepResearch = input.format === "seo" || input.format === "landing"
         || /медицин|лечени|реабилитац|здоров|статистик|исследован|норматив|стандарт|закон/i.test(`${input.topic}\n${input.accent}`);
@@ -766,7 +766,6 @@ async function runMaterialGeneration(input: ReturnType<typeof normalizePayload>,
     websiteMs,
     webResearchMs,
     modelMs: Date.now() - modelStartedAt,
-    externalResearch: needsExternalResearch,
     researchProvider: webResearch?.provider || "none",
     websiteStatus: website.status,
     websiteCharacters: website.text.length,

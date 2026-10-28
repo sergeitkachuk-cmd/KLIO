@@ -268,7 +268,7 @@ function routeHarness(h, quick = false, options = {}) {
       workspaceErrorResponse: (error) => Response.json({ error: error.message }, { status: 403 }),
     },
     [`${prefix}website-context`]: { readWebsiteContext: async () => ({ requestedUrl: "", resolvedUrl: "", status: "not_provided", text: "" }) },
-    [`${prefix}tavily`]: { researchMaterialWeb: async () => ({ results: Array.from({ length: 5 }, (_, i) => ({ title: `Source ${i}`, url: `https://example.invalid/${i}`, content: `Verified context ${i}` })) }) },
+    [`${prefix}web-research`]: { researchMaterialWeb: async () => ({ results: Array.from({ length: 5 }, (_, i) => ({ title: `Source ${i}`, url: `https://example.invalid/${i}`, content: `Verified context ${i}` })) }) },
     [`${prefix}openai-response`]: { AiResponseError: TestAiResponseError },
     [`${prefix}async-jobs`]: {
       claimAsyncJob: async (kind) => { assert.equal(kind, "material_generation"); return { id: "test-job", reused: Boolean(options.reused) }; },
@@ -320,7 +320,7 @@ test("quota lost before acquiring the generation gate prevents paid work in eith
   }
 });
 
-test("every advanced format returns and records material in one provider call, with external research only for seo and landing", async () => {
+test("every advanced format returns and records material grounded in external research in one provider call", async () => {
   for (const [format, length] of [["seo", 5600], ["social", 1000], ["ads", 700], ["landing", 3500]]) {
     const sentence = "Кофе раскрывает аромат после помола. Для кофе важны свежие зёрна и чистая вода.\n\n";
     const draft = { title: "Кофе", subtitle: "Вкус кофе", body: sentence.repeat(Math.floor((length - 30) / sentence.length)), meta_title: "Кофе", meta_description: "Вкус кофе", editorial_comment: "" };
@@ -333,16 +333,15 @@ test("every advanced format returns and records material in one provider call, w
     const job = await waitForJob(route);
     assert.equal(job.status, "done", job.errorMessage);
     const result = job.payload;
-    const researched = format === "seo" || format === "landing";
-    assert.equal(result.sources.research.sources.length, researched ? 5 : 0);
-    if (researched) assert.ok(route.records[0].editorialComment.includes("https://example.invalid/4"));
+    assert.equal(result.sources.research.sources.length, 5);
+    assert.ok(route.records[0].editorialComment.includes("https://example.invalid/4"));
     assert.ok(result.material.body.length > length * 0.85);
     assert.equal(result.mode, "ai");
     assert.ok(result.coverage);
     assert.equal(result.usage.archive.id, "test");
     assert.equal(route.records.length, 1);
     assert.equal(h.calls.length, 1);
-    assert.equal(h.calls[0].body.input.includes("Verified context 4"), researched);
+    assert.ok(h.calls[0].body.input.includes("Verified context 4"));
     assert.equal(h.calls[0].body.reasoning.effort, "low");
     assert.doesNotMatch(h.calls[0].body.instructions, /выполни веб[‑-]поиск/i);
   }
@@ -413,42 +412,87 @@ test("research provenance reports missing search and rejects unsafe links", () =
   assert.equal(result.sources[0].url, "https://example.com/article");
 });
 
-test("material research retains substantial source passages and caches separately from content plans", async () => {
+test("material research uses DeepSeek search within its query limit and caches separately from content plans", async () => {
   const requests = [];
-  const research = loadTs("app/api/_lib/tavily.ts", {
-    process: { env: { TAVILY_API_KEY: "test-only" } }, Date, AbortSignal,
+  const research = loadTs("app/api/_lib/web-research.ts", {
+    process: { env: { DEEPSEEK_API_KEY: "test-only" } }, Date, AbortSignal, URL,
     console: { warn() {} },
-    fetch: async (_url, init) => {
-      requests.push(JSON.parse(init.body));
+    fetch: async (url, init) => {
+      assert.equal(url, "https://api.deepseek.com/v1/tools/search");
+      assert.equal(init.headers.Authorization, "Bearer test-only");
       assert.ok(init.signal);
-      return Response.json({ results: Array.from({ length: 6 }, (_, i) => ({ title: `Source ${i}`, url: `https://example.invalid/${i}`, content: "Evidence passage. ".repeat(150) })) });
+      const body = JSON.parse(init.body);
+      requests.push(body);
+      return Response.json({ results: [
+        { title: "Low authority", url: "https://studfile.net/x", summary: "Noise.", rerank_score: 2.5 },
+        ...Array.from({ length: 6 }, (_, i) => ({ title: `Source ${i}`, url: `https://example.invalid/${i}`, summary: "Evidence summary. ".repeat(60), content: body.need_content ? "Page text. ".repeat(300) : "", rerank_score: 2 })),
+      ] });
     },
   });
-  // Deep search is opt-in (the route asks for it only for SEO and landing
-  // pages, see 06a9dbb); the default stays basic and bounded.
   const basic = await research.researchMaterialWeb("Coffee", []);
-  assert.equal(requests[0].search_depth, "basic");
+  assert.equal(requests[0].need_content, false);
+  assert.equal(basic.provider, "deepseek");
+  assert.equal(basic.results.length, 5);
+  assert.ok(basic.results.every(item => !item.url.includes("studfile")));
   assert.equal(basic.results[0].content.length, 800);
   const material = await research.researchMaterialWeb("Coffee", [], "advanced");
-  assert.equal(requests[1].search_depth, "advanced");
-  assert.equal(requests[1].chunks_per_source, 3);
-  assert.equal(material.results.length, 5);
+  assert.equal(requests[1].need_content, true);
   assert.equal(material.results[0].content.length, 1800);
   await research.researchMaterialWeb("Coffee", [], "advanced");
   assert.equal(requests.length, 2, "same query and depth is served from cache");
   const plan = await research.researchContentPlanWeb("Coffee", []);
   assert.equal(requests.length, 3);
-  assert.equal(requests[2].search_depth, "basic");
   assert.equal(plan.results[0].content.length, 420);
+
+  // Long topics and dialogue commands are condensed to the 128-character limit.
+  await research.researchMaterialWeb("Инфракрасная сауна ".repeat(30), [{ label: "Москва", detail: "" }]);
+  assert.ok(requests[3].query.length <= 128);
+  assert.ok(requests[3].ori_question.length <= 128);
+  await research.researchAdaptationFacts("Инфракрасная сауна в санатории. Найди в интернете подтверждённый лечебный эффект и добавь это в пост", true);
+  assert.match(requests[4].query, /^Инфракрасная сауна в санатории\. подтверждённый лечебный эффект after:\d{4}-\d{2}-\d{2}$/);
+  assert.doesNotMatch(requests[4].query, /найди|интернете|добавь|в пост/i);
+  assert.ok(requests.every(body => body.query.length <= 128));
 });
 
 test("unavailable external research fails softly and never loops", async () => {
   let count = 0;
-  const research = loadTs("app/api/_lib/tavily.ts", {
-    process: { env: { TAVILY_API_KEY: "test-only" } }, Date, AbortSignal,
+  const research = loadTs("app/api/_lib/web-research.ts", {
+    process: { env: { DEEPSEEK_API_KEY: "test-only" } }, Date, AbortSignal, URL,
     console: { warn() {} },
     fetch: async () => { count++; throw new DOMException("timeout", "TimeoutError"); },
   });
   assert.equal(await research.researchMaterialWeb("Coffee", []), null);
   assert.equal(count, 1);
+});
+
+test("an empty DeepSeek balance pauses search and falls back to Yandex", async () => {
+  const urls = [];
+  const yandexXml = Buffer.from("<doc><url>https://example.invalid/y</url><title>Yandex source</title><passage>Yandex passage.</passage></doc>").toString("base64");
+  const research = loadTs("app/api/_lib/web-research.ts", {
+    process: { env: { DEEPSEEK_API_KEY: "test-only", YANDEX_SEARCH_API_KEY: "y", YANDEX_FOLDER_ID: "f" } }, Date, AbortSignal, URL, Buffer,
+    console: { warn() {} },
+    fetch: async (url) => {
+      urls.push(url);
+      return url.includes("deepseek") ? new Response("{}", { status: 402 }) : Response.json({ rawData: yandexXml });
+    },
+  });
+  const first = await research.researchMaterialWeb("Coffee", []);
+  assert.equal(first.provider, "yandex");
+  await research.researchMaterialWeb("Tea", []);
+  assert.equal(urls.filter(url => url.includes("deepseek")).length, 1, "402 pauses DeepSeek instead of retrying every request");
+});
+
+test("brand site fallback reads the page through DeepSeek fetch", async () => {
+  const research = loadTs("app/api/_lib/web-research.ts", {
+    process: { env: { DEEPSEEK_API_KEY: "test-only" } }, Date, AbortSignal, URL,
+    console: { warn() {} },
+    fetch: async (url, init) => {
+      assert.equal(url, "https://api.deepseek.com/v1/tools/fetch");
+      assert.deepEqual(JSON.parse(init.body), { url: "https://example.invalid/" });
+      return Response.json({ title: "Example", content: "# Example\n\nServices and prices." });
+    },
+  });
+  const page = await research.fetchWebPage("https://example.invalid/");
+  assert.equal(page.url, "https://example.invalid/");
+  assert.match(page.content, /Services and prices/);
 });

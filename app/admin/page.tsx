@@ -648,7 +648,7 @@ export default async function AdminPage() {
             <article className={`admin-integration admin-integration-${service.state}`} key={service.id}>
               <div className="admin-integration-top">
                 <span>{service.name}</span>
-                <i>{service.state === "connected" ? "Подключён" : service.state === "needs_setup" ? "Нужна настройка" : "Нет ответа"}</i>
+                <i>{service.state === "connected" ? "Подключён" : service.state === "needs_setup" ? "Нужна настройка" : service.state === "disabled" ? "Отключён" : "Нет ответа"}</i>
               </div>
               <b>{service.primary}</b>
               <small>{service.detail}</small>
@@ -1241,6 +1241,8 @@ function AdminStyles() {
       .admin-integration-connected i { background: #dcfce7; color: #166534; }
       .admin-integration-needs_setup i { background: #fef3c7; color: #92400e; }
       .admin-integration-unavailable i { background: #fee2e2; color: #991b1b; }
+      .admin-integration-disabled i { background: #e5e7eb; color: #4b5563; }
+      .admin-integration-disabled { opacity: 0.72; }
       .admin-integration b { display: block; margin-top: 14px; font-size: 20px; }
       .admin-integration small { display: block; margin-top: 5px; color: #6b7280; font-size: 12px; line-height: 1.4; }
       .admin-integration a { margin-top: auto; padding-top: 12px; color: #4f46e5; font-size: 12px; font-weight: 700; text-decoration: none; }
@@ -1501,6 +1503,7 @@ function AdminStyles() {
         .admin-integration-connected i { background: #153d2a; color: #86efac; }
         .admin-integration-needs_setup i { background: #4a3610; color: #fde68a; }
         .admin-integration-unavailable i { background: #4a1d24; color: #fca5a5; }
+        .admin-integration-disabled i { background: #2a3142; color: #a0a7b4; }
         .admin-table th, .admin-table td { border-color: rgba(148, 163, 184, 0.16); }
         .admin-table-scroll { border-color: rgba(148, 163, 184, 0.26); }
       }

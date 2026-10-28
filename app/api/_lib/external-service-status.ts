@@ -1,7 +1,7 @@
 import { request as httpsRequest } from "node:https";
 import { tochkaRequest } from "./tochka";
 
-type ServiceState = "connected" | "needs_setup" | "unavailable";
+type ServiceState = "connected" | "needs_setup" | "unavailable" | "disabled";
 
 export type ExternalServiceStatus = {
   id: "deepseek" | "openai" | "tavily" | "yandex" | "dataforseo" | "tochka" | "unisender" | "dadata" | "render" | "github" | "timeweb";
@@ -98,7 +98,7 @@ async function deepseekStatus(): Promise<ExternalServiceStatus> {
     if (!body.is_available || value === null) throw new Error("Balance unavailable");
     return {
       id: "deepseek", name: "DeepSeek", state: "connected", primary: money(value, balance?.currency),
-      detail: "Доступный остаток по данным DeepSeek.", href: "https://platform.deepseek.com/usage",
+      detail: "Доступный остаток по данным DeepSeek. С него же оплачивается веб-поиск ($0.75 за 1000 запросов).", href: "https://platform.deepseek.com/usage",
     };
   } catch {
     return {
@@ -136,35 +136,14 @@ async function openaiStatus(): Promise<ExternalServiceStatus> {
   }
 }
 
-async function tavilyStatus(): Promise<ExternalServiceStatus> {
-  const apiKey = process.env.TAVILY_API_KEY?.trim();
-  if (!apiKey) return {
-    id: "tavily", name: "Tavily", state: "needs_setup", primary: "Ключ не задан",
-    detail: "Добавьте TAVILY_API_KEY в переменные окружения.", href: "https://app.tavily.com/home",
+// Kept as a card so the admin page still shows where research used to go.
+// All web search moved to DeepSeek Search (with Yandex as the fallback), so
+// TAVILY_API_KEY is no longer read anywhere and can be removed from hosting.
+function tavilyStatus(): ExternalServiceStatus {
+  return {
+    id: "tavily", name: "Tavily", state: "disabled", primary: "Не используется",
+    detail: "Веб-поиск переведён на DeepSeek Search, резерв — Yandex Search. Ключ TAVILY_API_KEY можно удалить.", href: "https://app.tavily.com/home",
   };
-
-  try {
-    const response = await request("https://api.tavily.com/usage", { Authorization: `Bearer ${apiKey}` });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const body = await response.json() as Record<string, unknown>;
-    const used = Object.entries(body)
-      .filter(([key]) => key.endsWith("_usage") || key === "usage")
-      .reduce((sum, [, value]) => sum + (numeric(value) ?? 0), 0);
-    const limit = numeric(process.env.TAVILY_MONTHLY_CREDIT_LIMIT);
-    const primary = limit !== null
-      ? `${Math.max(0, limit - used).toLocaleString("ru-RU")} из ${limit.toLocaleString("ru-RU")} кредитов`
-      : `${used.toLocaleString("ru-RU")} кредитов израсходовано`;
-    return {
-      id: "tavily", name: "Tavily", state: "connected", primary,
-      detail: limit !== null ? "Остаток рассчитан для лимита, указанного в настройках." : "Укажите TAVILY_MONTHLY_CREDIT_LIMIT, чтобы видеть остаток.",
-      href: "https://app.tavily.com/home",
-    };
-  } catch {
-    return {
-      id: "tavily", name: "Tavily", state: "unavailable", primary: "Не удалось проверить",
-      detail: "Сервис не ответил в течение 8 секунд. Повторите обновление позже.", href: "https://app.tavily.com/home",
-    };
-  }
 }
 
 function yandexStatus(): ExternalServiceStatus {
@@ -180,7 +159,7 @@ function yandexStatus(): ExternalServiceStatus {
     };
 }
 
-// Prepaid-credit account, same shape as Tavily/DeepSeek above — see the
+// Prepaid-credit account, same shape as DeepSeek above — see the
 // "SEO-аудит" module's own comment on seoAuditLimit in plans.ts. Confirmed
 // live 2026-09-15 that api.dataforseo.com is not affected by the Timeweb
 // IPv6-routing issue the pinned request() helper above works around (see
@@ -361,8 +340,8 @@ async function timewebStatus(): Promise<ExternalServiceStatus> {
 }
 
 export async function getExternalServiceStatuses(): Promise<ExternalServiceStatus[]> {
-  const [deepseek, openai, tavily, dataforseo, tochka, render, github, timeweb] = await Promise.all([
-    deepseekStatus(), openaiStatus(), tavilyStatus(), dataforseoStatus(), tochkaStatus(), renderStatus(), githubStatus(), timewebStatus(),
+  const [deepseek, openai, dataforseo, tochka, render, github, timeweb] = await Promise.all([
+    deepseekStatus(), openaiStatus(), dataforseoStatus(), tochkaStatus(), renderStatus(), githubStatus(), timewebStatus(),
   ]);
-  return [deepseek, openai, tavily, yandexStatus(), dataforseo, tochka, unisenderStatus(), dadataStatus(), render, github, timeweb];
+  return [deepseek, openai, yandexStatus(), tavilyStatus(), dataforseo, tochka, unisenderStatus(), dadataStatus(), render, github, timeweb];
 }

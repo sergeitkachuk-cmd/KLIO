@@ -35,7 +35,7 @@ import {
   WorkspaceAccessError,
   workspaceErrorResponse,
 } from "../_lib/workspace-account";
-import { researchAdaptationFacts } from "../_lib/tavily";
+import { researchAdaptationFacts } from "../_lib/web-research";
 import { readWebsiteContext } from "../_lib/website-context";
 import { resolveBaseUrl } from "../_lib/base-url";
 import { createImage, createImageFromLogo, createImageFromSource, imageConfigured, type ImageAspectRatio, type ImageOutputFormat } from "../_lib/image-generation";
@@ -96,47 +96,38 @@ function materialSlides(value: string | null): DialogueCard["slides"] {
 }
 
 // Replaces the old manual "Поиск в интернете" checkbox (site owner: "давай
-// решать автоматически, чтобы не грузить клиента" - people didn't know when
-// to check it, and it didn't cost extra quota either way, so there was
-// nothing for a manual toggle to actually protect). A plain keyword/pattern
-// check, not a model-driven decision - keeps the same single, server-
-// controlled search this file already commits to elsewhere (see tavily.ts's
-// own comment on why the model never gets a search tool it could call
-// itself). Tuned toward requests for verifiable facts/current data, the
-// case researchAdaptationFacts actually helps with; a false positive only
-// costs a few seconds of latency (research is optional context - the model
-// is told it "can" lean on it, never required to), so this errs toward
-// searching when in doubt rather than trying to be precise.
-const FACT_SEARCH_KEYWORDS = [
-  "сколько", "процент", "статистик", "исследовани", "гост",
-  "санпин", "норматив", "стандарт", "требовани", "закон", "сертификат",
-  "лицензи", "правда ли", "действительно ли", "источник", "курс валют",
-  "конкурент",
-];
-// A separate signal from FACT_SEARCH_KEYWORDS above (site owner: "чтобы он
-// новости свежие проверял или изменения, а не старые из памяти доставал" -
-// a plain fact/standard lookup like a GOST number shouldn't be time-scoped
-// (the current standard can genuinely be a 2012 document; narrowing to
-// "last month" would wrongly exclude it), but a question about news or
-// what changed needs today's Tavily/Yandex results, not whatever the
-// model's own training data happened to freeze on. Threaded into
-// researchAdaptationFacts's own `recent` param below, which biases the
-// query toward current events and (for Tavily) sets time_range - same
-// recency mechanism used by other bounded research queries.
-const RECENT_SEARCH_KEYWORDS = [
-  "актуальн", "свеж", "сейчас", "на сегодня", "в этом году", "новост",
-  "тренд", "измен", "обновлен", "обновит", "последн",
-];
-function needsWebSearch(text: string): { search: boolean; recent: boolean } {
-  const lower = text.toLowerCase();
-  const recent = RECENT_SEARCH_KEYWORDS.some((word) => lower.includes(word));
-  const factual = FACT_SEARCH_KEYWORDS.some((word) => lower.includes(word))
-    || /\b20\d{2}\b/.test(text)
-    || /\d{1,3}\s?%/.test(text);
-  const asksForExternalSources = /(?:проверь|найди|посмотри|изучи|поищи|сверь|проведи\s+поиск)/iu.test(lower)
-    && /(?:сайт|страниц|интернет|веб|источник|актуаль|свеж|тренд|конкурент)/iu.test(lower);
-  const asksForCurrentInfo = /(?:актуаль|свеж|сейчас|сегодня|последн|новост|тренд|изменил|обновил)/iu.test(lower);
-  return { search: recent || factual || asksForExternalSources, recent: recent || asksForCurrentInfo };
+// решать автоматически, чтобы не грузить клиента"). Every substantive message
+// is now grounded in one server-controlled search (site owner: web search
+// should deepen every answer, not only keyword-matched fact questions); see
+// web-research.ts for why the model never gets a search tool of its own.
+// Greetings, thanks and one- or two-word replies are skipped.
+const SMALL_TALK = /^(?:привет|здравствуй(?:те)?|добр(?:ый|ое|ой) (?:день|вечер|утро)|спасибо|благодарю|ок(?:ей)?|хорошо|понятно|ясно|отлично|супер|класс|да|нет|ага|пока)(?:\s+(?:спасибо|большое|клио))*[\s!.,)]*$/iu;
+// A plain fact/standard lookup must not be time-scoped (the current standard
+// can genuinely be a 2012 document), but a question about news or what
+// changed needs today's results, not the model's training data (site owner:
+// "чтобы он новости свежие проверял или изменения, а не старые из памяти
+// доставал"). Matched narrowly so editing commands like "измени заголовок"
+// or "последний абзац" don't limit the search to the last month.
+const RECENT_SEARCH = /(?:актуальн|свеж(?:ие|ая|ую|ий|их) (?:данн|новост|сведени|информац)|на сегодня|сегодняшн|в этом году|новост|тренд|что изменил|изменени[яйе] в|обновлени[яйе] (?:в|правил|закон)|последн(?:ие|ий|юю|его) (?:новост|месяц|год|недел|дни|время|изменени))/iu;
+// Explicit requests for checking facts: only these get the "couldn't verify"
+// notice when search comes back empty — an ordinary post request shouldn't.
+const EXPLICIT_FACT_REQUEST = /(?:найди|поищи|проверь|сверь|изучи|в интернете|источник|статистик|исследовани|сколько|процент|гост|санпин|норматив|стандарт|закон|сертификат|лицензи|правда ли|действительно ли|курс валют|конкурент)/iu;
+function needsWebSearch(text: string): { search: boolean; recent: boolean; explicit: boolean } {
+  const trimmed = text.trim();
+  const words = trimmed.split(/[^\p{L}\p{N}]+/u).filter(Boolean).length;
+  const search = words >= 3 && !SMALL_TALK.test(trimmed);
+  const recent = RECENT_SEARCH.test(trimmed);
+  return { search, recent, explicit: search && (recent || EXPLICIT_FACT_REQUEST.test(trimmed)) };
+}
+
+// "Найди подтверждённый эффект и добавь это в пост" says nothing about the
+// subject on its own: the card being worked on supplies it.
+function dialogueSearchTopic(text: string, data: DialogueData, selectedId: string) {
+  const lastCardId = [...data.messages].reverse().find((message) => message.role === "assistant" && message.cardIds?.length)?.cardIds?.at(-1);
+  const card = data.cards.find((item) => item.id === selectedId) || data.cards.find((item) => item.id === lastCardId);
+  const title = card?.title?.trim().slice(0, 70) || "";
+  const message = text.slice(0, 800);
+  return title && !message.toLowerCase().includes(title.toLowerCase()) ? `${title}. ${message}` : message;
 }
 
 
@@ -507,11 +498,11 @@ async function runReply(
       });
     } else {
       const url = last.match(/https?:\/\/[^\s<>]+/i)?.[0];
-      const { search, recent } = needsWebSearch(last);
+      const { search, recent, explicit } = needsWebSearch(last);
       const [research, website] = agentGrounding
         ? [agentGrounding.research, agentGrounding.website]
         : await Promise.all([
-          search ? researchAdaptationFacts(last.slice(0, 800), recent) : Promise.resolve(null),
+          search ? researchAdaptationFacts(dialogueSearchTopic(last, data, effectiveSelectedId), recent) : Promise.resolve(null),
           url ? readWebsiteContext(url) : Promise.resolve(null),
         ]);
       const conversationInput = JSON.stringify({
@@ -679,7 +670,7 @@ async function runReply(
           a.profile.map((item) => [item.field, item.value]),
         );
       }
-      if (search && !research)
+      if (explicit && !research)
         message.text +=
           "\n\nНе удалось проверить это по актуальным источникам — свежие сведения не подтверждены.";
       data.messages.push(message);
@@ -884,14 +875,14 @@ export async function POST(request: Request) {
         if (brand) {
           try { profile = { ...JSON.parse(brand.profileJson), name: brand.name, website: brand.website }; } catch { profile = { name: brand.name, website: brand.website }; }
         }
-        const { search, recent } = needsWebSearch(text);
+        const { search, recent } = needsWebSearch(mode === "image" ? "" : text);
         const url = text.match(/https?:\/\/[^\s<>]+/i)?.[0];
         const websiteTargets = [
           ...(url ? [{ url, fullSite: false }] : []),
           ...(brand?.website && brand.website !== url ? [{ url: brand.website, fullSite: true }] : []),
         ];
         const [research, websites] = await Promise.all([
-          search ? researchAdaptationFacts(text.slice(0, 800), recent).catch(() => null) : Promise.resolve(null),
+          search ? researchAdaptationFacts(dialogueSearchTopic(text, previewData, selectedId), recent).catch(() => null) : Promise.resolve(null),
           Promise.all(websiteTargets.slice(0, 2).map((target) => readWebsiteContext(target.url, { fullSite: target.fullSite }).catch(() => null))),
         ]);
         const website = websites.filter(Boolean);

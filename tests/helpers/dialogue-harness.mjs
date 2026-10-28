@@ -114,7 +114,7 @@ export async function createDialogueHarness() {
   const imageCalls = [];
   const imageDownloads = [];
   let editImage = async () => "https://cdn.example.invalid/edited.png";
-  let tavily = async () => null;
+  let research = async () => null;
   let ai = async (input) => {
     const context = JSON.parse(input.input);
     const text = context.messages.at(-1).text;
@@ -239,7 +239,7 @@ export async function createDialogueHarness() {
       },
       "../_lib/rate-limit": { isRateLimited: () => false },
       "../_lib/workspace-account": workspace,
-      "../_lib/tavily": { researchAdaptationFacts: async (...args) => tavily(...args) },
+      "../_lib/web-research": { researchAdaptationFacts: async (...args) => research(...args) },
       "../_lib/website-context": {
         readWebsiteContext: async () => ({ status: "loaded", text: "Кофейня" }),
       },
@@ -320,8 +320,8 @@ export async function createDialogueHarness() {
     setAi: (value) => {
       ai = value;
     },
-    setTavily: (value) => {
-      tavily = value;
+    setResearch: (value) => {
+      research = value;
     },
     setUser: (value) => {
       user = value;
