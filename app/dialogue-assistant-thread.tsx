@@ -143,7 +143,7 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
             </MessagePrimitive.Root>;
           }}</ThreadPrimitive.Messages>
           {thread?.data.cards.filter((card) => !cardOwners.has(card.id)).map(renderCard)}
-          {running && <div className="klio-aui-status" role="status"><span className="klio-aui-pulse" />Готовим ответ…</div>}
+          {running && <div className="klio-aui-status" role="status"><span className="klio-aui-pulse" />Готовлю ответ…</div>}
           {thread?.error && !running && <div className="klio-aui-error" role="alert"><p>{thread.error}</p><button type="button" onClick={() => {
             const last = thread.data.messages.findLast((message) => message.role === "user");
             if (last) {
