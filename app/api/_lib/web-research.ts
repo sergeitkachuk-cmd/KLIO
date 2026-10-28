@@ -286,29 +286,19 @@ export async function researchMaterialWeb(topic: string, geography: Geography[],
   });
 }
 
-// Used by the text editors (КЛИО Глубина etc.) and the dialogue. Tuned for
-// concrete numbers, criteria or standards rather than generic topic
-// discovery. `recent` is for "новости"/"что изменилось" questions: it limits
-// results to the last month. A plain fact lookup must not be time-scoped —
-// the current standard can genuinely be a 2012 document.
+// Used by the text editors (КЛИО Глубина etc.) and the dialogue — the
+// dialogue gets the same deep search (site owner: answers there must not be
+// weaker than in the generators). Tuned for concrete numbers, criteria or
+// standards rather than generic topic discovery. `recent` is for "новости"/
+// "что изменилось" questions: it limits results to the last month. A plain
+// fact lookup must not be time-scoped — the current standard can genuinely
+// be a 2012 document.
 export async function researchAdaptationFacts(topic: string, recent = false): Promise<WebResearch | null> {
   return await searchWithFallback(topic, 6, `adaptation-facts-${recent ? "recent-v2" : "v3"}:${cacheKey(topic, [])}`, {
     question: recent ? `Что нового и что изменилось: ${topic}` : `Конкретные цифры, нормы и подтверждённые факты: ${topic}`,
     deep: true,
     contentLength: 1_800,
     timeoutMs: 12_000,
-    ...(recent ? { recentDays: 30 } : {}),
-  });
-}
-
-// The dialogue searches before the KLIO agent answers, while the user waits,
-// so it uses DeepSeek's summaries only (no full page text) and a shorter
-// timeout than the background generators.
-export async function researchDialogueFacts(topic: string, recent = false): Promise<WebResearch | null> {
-  return await searchWithFallback(topic, 6, `dialogue-facts-${recent ? "recent" : "v1"}:${cacheKey(topic, [])}`, {
-    question: recent ? `Что нового и что изменилось: ${topic}` : `Конкретные факты и подробности: ${topic}`,
-    contentLength: 800,
-    timeoutMs: 8_000,
     ...(recent ? { recentDays: 30 } : {}),
   });
 }

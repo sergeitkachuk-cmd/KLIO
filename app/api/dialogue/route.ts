@@ -35,7 +35,7 @@ import {
   WorkspaceAccessError,
   workspaceErrorResponse,
 } from "../_lib/workspace-account";
-import { researchDialogueFacts } from "../_lib/web-research";
+import { researchAdaptationFacts } from "../_lib/web-research";
 import { readWebsiteContext } from "../_lib/website-context";
 import { resolveBaseUrl } from "../_lib/base-url";
 import { createImage, createImageFromLogo, createImageFromSource, imageConfigured, type ImageAspectRatio, type ImageOutputFormat } from "../_lib/image-generation";
@@ -502,7 +502,7 @@ async function runReply(
       const [research, website] = agentGrounding
         ? [agentGrounding.research, agentGrounding.website]
         : await Promise.all([
-          search ? researchDialogueFacts(dialogueSearchTopic(last, data, effectiveSelectedId), recent) : Promise.resolve(null),
+          search ? researchAdaptationFacts(dialogueSearchTopic(last, data, effectiveSelectedId), recent) : Promise.resolve(null),
           url ? readWebsiteContext(url) : Promise.resolve(null),
         ]);
       const conversationInput = JSON.stringify({
@@ -882,7 +882,7 @@ export async function POST(request: Request) {
           ...(brand?.website && brand.website !== url ? [{ url: brand.website, fullSite: true }] : []),
         ];
         const [research, websites] = await Promise.all([
-          search ? researchDialogueFacts(dialogueSearchTopic(text, previewData, selectedId), recent).catch(() => null) : Promise.resolve(null),
+          search ? researchAdaptationFacts(dialogueSearchTopic(text, previewData, selectedId), recent).catch(() => null) : Promise.resolve(null),
           Promise.all(websiteTargets.slice(0, 2).map((target) => readWebsiteContext(target.url, { fullSite: target.fullSite }).catch(() => null))),
         ]);
         const website = websites.filter(Boolean);
