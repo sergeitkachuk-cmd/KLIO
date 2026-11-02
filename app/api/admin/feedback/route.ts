@@ -1,11 +1,23 @@
 import { getCurrentUser } from "../../../identity";
 import { isAdminEmail } from "../../_lib/admin";
 import { applyFeedbackReply } from "../../_lib/feedback-reply";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { feedbackMessages } from "../../../../db/schema";
 import { readBoundedJson, RequestBodyError } from "../../_lib/request-body";
 import { hasUnsafeRequestOrigin } from "../../_lib/request-origin";
+
+export async function GET() {
+  const user = await getCurrentUser();
+  if (!user || !isAdminEmail(user.email)) return Response.json({ error: "Недоступно" }, { status: 403 });
+  try {
+    const messages = await getDb().select().from(feedbackMessages).orderBy(desc(feedbackMessages.createdAt)).limit(200);
+    return Response.json({ messages }, { headers: { "Cache-Control": "private, no-store" } });
+  } catch {
+    console.error("Admin feedback history load failed");
+    return Response.json({ error: "Не удалось обновить переписки." }, { status: 502 });
+  }
+}
 
 export async function PATCH(request: Request) {
   const user = await getCurrentUser();

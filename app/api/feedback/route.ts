@@ -37,7 +37,7 @@ export async function GET() {
     // are now two distinct account-menu rows (site owner: "разными
     // строками в меню лк, а не разными вкладками в одной"), each with its
     // own badge.
-    return Response.json({ messages, announcements: announcementRows, unreadRepliesCount, unreadAnnouncementsCount });
+    return Response.json({ messages, announcements: announcementRows, unreadRepliesCount, unreadAnnouncementsCount }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     if (error instanceof WorkspaceAccessError) return Response.json({ error: error.message }, { status: error.status });
     console.error("Feedback history load failed");

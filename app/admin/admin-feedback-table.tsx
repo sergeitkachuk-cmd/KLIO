@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { startFeedbackSync } from "../feedback-sync";
 
 export type AdminFeedbackMessage = {
   id: string;
@@ -116,6 +117,13 @@ function ThreadPane({ thread, onMobileBack, onSent, onDeleted }: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const bubblesRef = useRef<HTMLDivElement | null>(null);
+  const followReplies = useRef(true);
+
+  useLayoutEffect(() => {
+    const node = bubblesRef.current;
+    if (node && followReplies.current) node.scrollTop = node.scrollHeight;
+  }, [thread.messages]);
 
   async function send() {
     const reply = draft.trim();
@@ -175,7 +183,10 @@ function ThreadPane({ thread, onMobileBack, onSent, onDeleted }: {
           <small>{thread.ownerEmail}</small>
         </span>
       </div>
-      <div className="admin-feedback-bubbles">
+      <div className="admin-feedback-bubbles" ref={bubblesRef} onScroll={() => {
+        const node = bubblesRef.current;
+        if (node) followReplies.current = node.scrollHeight - node.scrollTop - node.clientHeight < 80;
+      }}>
         {messages.length === 0 && <p className="admin-feedback-empty-thread">Переписки ещё нет — напишите первое сообщение.</p>}
         {messages.map((item) => (
           <div key={item.id} className={`admin-feedback-bubble-row is-${item.sender}`}>
@@ -211,14 +222,22 @@ function ThreadPane({ thread, onMobileBack, onSent, onDeleted }: {
 type Props = { rows: AdminFeedbackMessage[]; accounts: AdminFeedbackAccount[] };
 
 export function AdminFeedbackTable({ rows, accounts }: Props) {
+  const [liveRows, setLiveRows] = useState(rows);
   const [sent, setSent] = useState<AdminFeedbackMessage[]>([]);
   const [deletedIds, setDeletedIds] = useState<Set<string>>(() => new Set());
+  useEffect(() => startFeedbackSync<AdminFeedbackMessage>(snapshot => {
+    setLiveRows(snapshot.messages);
+    const confirmedIds = new Set(snapshot.messages.map(message => message.id));
+    setSent(current => current.filter(message => !confirmedIds.has(message.id)));
+  }, "support", { url: "/api/admin/feedback", markRead: false }), []);
+
   const threads = useMemo(() => {
-    const knownIds = new Set(rows.map(row => row.id));
-    return buildThreads([...rows, ...sent.filter(row => !knownIds.has(row.id))].filter(row => !deletedIds.has(row.id)), accounts);
-  }, [rows, accounts, sent, deletedIds]);
+    const knownIds = new Set(liveRows.map(row => row.id));
+    return buildThreads([...liveRows, ...sent.filter(row => !knownIds.has(row.id))].filter(row => !deletedIds.has(row.id)), accounts);
+  }, [liveRows, accounts, sent, deletedIds]);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
+  const [initialEmail] = useState(() => buildThreads(rows, accounts)[0]?.ownerEmail ?? null);
 
   const normalizedQuery = query.trim().toLocaleLowerCase("ru-RU");
   const filteredThreads = useMemo(() => {
@@ -226,7 +245,8 @@ export function AdminFeedbackTable({ rows, accounts }: Props) {
     return threads.filter((item) => [item.ownerEmail, item.displayName].some((value) => value.toLocaleLowerCase("ru-RU").includes(normalizedQuery)));
   }, [normalizedQuery, threads]);
 
-  const activeEmail = selected && threads.some((item) => item.ownerEmail === selected) ? selected : (threads[0]?.ownerEmail ?? null);
+  const activeEmail = selected && threads.some((item) => item.ownerEmail === selected) ? selected
+    : initialEmail && threads.some(item => item.ownerEmail === initialEmail) ? initialEmail : (threads[0]?.ownerEmail ?? null);
   const activeThread = threads.find((item) => item.ownerEmail === activeEmail) ?? null;
 
   if (!threads.length) {

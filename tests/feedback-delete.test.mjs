@@ -31,8 +31,14 @@ test("only an authenticated administrator can delete an operator reply in the sp
     method: "DELETE", headers: { "content-type": "application/json", ...headers }, body: JSON.stringify({ id, ownerEmail }),
   }));
   user = null; assert.equal((await remove()).status, 403);
+  assert.equal((await route.GET()).status, 403);
   user = { email: h.owner }; assert.equal((await remove()).status, 403);
+  assert.equal((await route.GET()).status, 403);
   user = { email: "admin@example.invalid" };
+  const history = await route.GET();
+  assert.equal(history.status, 200);
+  assert.equal(history.headers.get("cache-control"), "private, no-store");
+  assert.equal((await history.json()).messages.length, 4);
   assert.equal((await remove(replyId, h.owner, { origin: "https://attacker.example" })).status, 403);
   assert.equal((await remove("")).status, 400);
   assert.equal((await remove(clientId)).status, 404);
