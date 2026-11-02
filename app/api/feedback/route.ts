@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, isNull, ne, or } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, or, sql } from "drizzle-orm";
 import { accounts, announcements, feedbackMessages } from "../../../db/schema";
 import { readBoundedJson, RequestBodyError } from "../_lib/request-body";
 import { ensureAccount, getWorkspaceDb, WorkspaceAccessError, workspaceIdentity } from "../_lib/workspace-account";
@@ -10,10 +10,8 @@ const MAX_MESSAGE_LENGTH = 4000;
 const HISTORY_LIMIT = 50;
 const ANNOUNCEMENT_LIMIT = 30;
 
-// Shown immediately after a client message is saved, its own row right
-// behind it - site owner: "после оформления сообщения клиенту отвечает
-// клио, что сейчас передаст обращение оператору". Not a reply from a human
-// yet, just an acknowledgment that the message made it through.
+// Acknowledge only the beginning of the customer's conversation. Follow-ups
+// and replies to a human operator must not restart the automated greeting.
 const BOT_ACK_MESSAGE = "Спасибо за обращение! Уже передала его оператору — ответим здесь же, в этом окне.";
 
 export async function GET() {
@@ -54,17 +52,26 @@ export async function POST(request: Request) {
 
     const db = await getWorkspaceDb();
     const feedbackId = randomUUID();
-    await db.insert(feedbackMessages).values({ id: feedbackId, ownerEmail: user.email, sender: "client", body: message });
-
-    // Own row, own (later) createdAt so it sorts right after the client's
-    // message in the thread - not a reply from a human, just confirmation
-    // the message made it through while an operator picks it up.
-    const [botMessage] = await db.insert(feedbackMessages).values({
-      id: randomUUID(),
-      ownerEmail: user.email,
-      sender: "bot",
-      body: BOT_ACK_MESSAGE,
-    }).returning();
+    await ensureAccount(user);
+    const botMessage = await db.transaction(async tx => {
+      // Serialize the first two messages from different tabs/devices, too.
+      // No email or Telegram calls run while this account row is locked.
+      await tx.select({ email: accounts.email }).from(accounts).where(eq(accounts.email, user.email)).for("update");
+      const [previous] = await tx.select({ id: feedbackMessages.id }).from(feedbackMessages)
+        .where(eq(feedbackMessages.ownerEmail, user.email)).limit(1);
+      const [saved] = await tx.insert(feedbackMessages).values({
+        id: feedbackId, ownerEmail: user.email, sender: "client", body: message,
+        createdAt: sql`clock_timestamp()`,
+      }).returning({ createdAt: feedbackMessages.createdAt });
+      if (previous) return null;
+      const [ack] = await tx.insert(feedbackMessages).values({
+        id: randomUUID(), ownerEmail: user.email, sender: "bot", body: BOT_ACK_MESSAGE,
+        // CURRENT_TIMESTAMP is identical within one transaction; preserve
+        // the order of the customer's first message and its acknowledgement.
+        createdAt: sql`${saved.createdAt}::timestamptz + interval '1 microsecond'`,
+      }).returning();
+      return ack ?? null;
+    });
 
     // Best-effort — the message is already durably stored above, so a
     // notification failure (missing config, provider outage) must not turn
