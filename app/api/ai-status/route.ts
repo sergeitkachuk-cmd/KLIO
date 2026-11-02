@@ -10,6 +10,7 @@ export async function GET() {
   // an older healthy container.
   return Response.json({ connected, configured: connected, health: "unknown" }, { headers: {
     "Cache-Control": "no-store",
+    "X-Klio-Feedback-Release": "2026-11-03-live-updates-delete-v1",
     "X-Klio-Ai-Model-Release": "2026-09-26-gpt-6-luna-v1",
     "X-Klio-Content-Plan-Release": "2026-09-27-gpt-search-autosave-v1",
     "X-Klio-Brand-Voice-Guard": "2026-09-27-first-person-validation-v1",

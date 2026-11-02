@@ -7,6 +7,7 @@ import Image from "next/image";
 import { DialogueWorkspace } from "./dialogue-workspace";
 import { ProfileField } from "./profile-field";
 import { createWorkspaceSaveQueue } from "./workspace-save-queue";
+import { startFeedbackSync, type FeedbackMessageRecord, type AnnouncementRecord } from "./feedback-sync";
 import { HelpTip } from "./help-tip";
 import { ModuleSelect } from "./module-select";
 import { IMAGE_STYLE_OPTIONS, IMAGE_TEXT_OPTIONS, LOGO_PLACEMENT_OPTIONS, LOGO_POSITION_OPTIONS } from "./dialogue-generation-settings";
@@ -293,17 +294,6 @@ type WorkspaceAccount = {
   // Null falls back to the initials circle, same as before this existed.
   avatarUrl: string | null;
 };
-
-// Mirrors a row of feedbackMessages (db/schema.ts) — one message in this
-// visitor's own "Задать вопрос" thread, tagged by who sent it. Ordered
-// oldest-first by the API (see api/feedback/route.ts's GET) for a
-// Telegram-style top-to-bottom read.
-type FeedbackMessageRecord = { id: string; sender: "client" | "admin" | "bot"; body: string; createdAt: string };
-
-// Mirrors a row of announcements (db/schema.ts) — the opposite direction of
-// FeedbackMessageRecord above (site owner writing to clients, not replying
-// to their questions). One-way: no reply field, nothing to answer here.
-type AnnouncementRecord = { id: string; message: string; createdAt: string };
 
 type BrandWorkspaceSnapshot = {
   useBrand?: boolean;
@@ -3271,29 +3261,23 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     };
   }, [workspace]);
 
-  // Background load for the "Новости"/"Обращения" unread badges + history,
-  // so both are visible before the visitor ever opens either modal — see
-  // submitFeedback/the account-menu buttons below.
+  // Refresh replies while the chat is open, and badges in the background.
+  // Pause during a send so an older snapshot cannot overwrite its result.
   useEffect(() => {
-    if (!workspace) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const response = await fetch("/api/feedback", { cache: "no-store", headers: { Accept: "application/json" } });
-        const payload = await safeJson(response) as { messages?: FeedbackMessageRecord[]; announcements?: AnnouncementRecord[]; unreadRepliesCount?: number; unreadAnnouncementsCount?: number };
-        if (cancelled || !response.ok) return;
-        setFeedbackHistory(Array.isArray(payload.messages) ? payload.messages : []);
-        setAnnouncements(Array.isArray(payload.announcements) ? payload.announcements : []);
-        setFeedbackUnreadReplies(payload.unreadRepliesCount ?? 0);
-        setFeedbackUnreadNews(payload.unreadAnnouncementsCount ?? 0);
-      } catch {
-        // Background badge/history load - not worth surfacing an error for.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [workspace]);
+    if (!workspace || feedbackBusy) return;
+    const activeKind = feedbackOpen ? feedbackTab : null;
+    return startFeedbackSync((snapshot) => {
+      // Keep the same array when displayed messages are unchanged, so a
+      // poll doesn't scroll someone back down while reading older replies.
+      setFeedbackHistory(current => current.length === snapshot.messages.length && current.every((message, index) => {
+        const next = snapshot.messages[index];
+        return message.id === next.id && message.sender === next.sender && message.body === next.body && message.createdAt === next.createdAt;
+      }) ? current : snapshot.messages);
+      setAnnouncements(snapshot.announcements);
+      setFeedbackUnreadReplies(activeKind === "support" ? 0 : snapshot.unreadRepliesCount);
+      setFeedbackUnreadNews(activeKind === "news" ? 0 : snapshot.unreadAnnouncementsCount);
+    }, activeKind);
+  }, [workspace, feedbackOpen, feedbackTab, feedbackBusy]);
 
   const signOutOfWorkspace = async () => {
     try {
@@ -3304,20 +3288,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   };
 
   // Shared by both account-menu rows ("Новости"/"Обращения" below) — opens
-  // the same modal already showing the right content, and marks only that
-  // row's own badge as seen (api/feedback/route.ts's PATCH takes `kind` for
-  // exactly this - opening one must never clear the other's unread count).
-  // Optimistic clear so the badge doesn't flash while the request is in flight.
+  // the same modal already showing the right content. The sync above marks
+  // only this view as read after loading its latest messages.
   function openFeedback(kind: "news" | "support") {
     setAccountMenuOpen(false);
     setFeedbackTab(kind);
     setFeedbackOpen(true);
     setFeedbackError("");
-    const unread = kind === "news" ? feedbackUnreadNews : feedbackUnreadReplies;
-    if (unread > 0) {
-      if (kind === "news") setFeedbackUnreadNews(0); else setFeedbackUnreadReplies(0);
-      void fetch("/api/feedback", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind }) }).catch(() => {});
-    }
+    if (kind === "news") setFeedbackUnreadNews(0); else setFeedbackUnreadReplies(0);
   }
 
   async function submitFeedback() {

@@ -106,11 +106,16 @@ function buildThreads(rows: AdminFeedbackMessage[], accounts: AdminFeedbackAccou
   return threads;
 }
 
-function ThreadPane({ thread, onMobileBack }: { thread: Thread; onMobileBack: () => void }) {
+function ThreadPane({ thread, onMobileBack, onSent, onDeleted }: {
+  thread: Thread;
+  onMobileBack: () => void;
+  onSent: (message: AdminFeedbackMessage) => void;
+  onDeleted: (id: string) => void;
+}) {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [sent, setSent] = useState<AdminFeedbackMessage[]>([]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function send() {
     const reply = draft.trim();
@@ -128,7 +133,7 @@ function ThreadPane({ thread, onMobileBack }: { thread: Thread; onMobileBack: ()
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "Не удалось отправить сообщение.");
-      if (payload.feedback) setSent((current) => [...current, payload.feedback]);
+      if (payload.feedback) onSent(payload.feedback);
       setDraft("");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Не удалось отправить сообщение.");
@@ -137,7 +142,28 @@ function ThreadPane({ thread, onMobileBack }: { thread: Thread; onMobileBack: ()
     }
   }
 
-  const messages = [...thread.messages, ...sent];
+  async function deleteMessage(message: AdminFeedbackMessage) {
+    if (message.sender !== "admin" || deletingId || busy) return;
+    if (!window.confirm("Удалить этот ответ у вас и у клиента на сайте? Отменить удаление нельзя.")) return;
+    setDeletingId(message.id);
+    setError("");
+    try {
+      const response = await fetch("/api/admin/feedback", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: message.id, ownerEmail: thread.ownerEmail }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok && response.status !== 404) throw new Error(payload.error || "Не удалось удалить ответ.");
+      onDeleted(message.id);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Не удалось удалить ответ.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  const messages = thread.messages;
 
   return (
     <div className="admin-feedback-thread">
@@ -157,7 +183,16 @@ function ThreadPane({ thread, onMobileBack }: { thread: Thread; onMobileBack: ()
             <div className={`admin-feedback-bubble is-${item.sender}`}>
               <span className="admin-feedback-bubble-sender">{senderLabel(item.sender)}</span>
               <p>{item.body}</p>
-              <time>{formatDateTime(item.createdAt)}</time>
+              <div className="admin-feedback-message-footer">
+                <time>{formatDateTime(item.createdAt)}</time>
+                {item.sender === "admin" && <button
+                  type="button"
+                  className="admin-feedback-message-delete"
+                  aria-label={`Удалить ответ: ${item.body.slice(0, 60)}`}
+                  disabled={busy || deletingId !== null}
+                  onClick={() => void deleteMessage(item)}
+                >{deletingId === item.id ? "Удаляю…" : "Удалить"}</button>}
+              </div>
             </div>
           </div>
         ))}
@@ -165,9 +200,9 @@ function ThreadPane({ thread, onMobileBack }: { thread: Thread; onMobileBack: ()
       <div className="admin-feedback-reply">
         <textarea rows={3} value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Введите сообщение…" />
         <div className="admin-feedback-reply-actions">
-          <button type="button" className="admin-details-toggle" disabled={busy} onClick={() => void send()}>{busy ? "Отправляю…" : "Отправить"}</button>
+          <button type="button" className="admin-details-toggle" disabled={busy || deletingId !== null} onClick={() => void send()}>{busy ? "Отправляю…" : "Отправить"}</button>
         </div>
-        {error && <p className="admin-feedback-reply-error">{error}</p>}
+        {error && <p className="admin-feedback-reply-error" role="alert">{error}</p>}
       </div>
     </div>
   );
@@ -176,7 +211,12 @@ function ThreadPane({ thread, onMobileBack }: { thread: Thread; onMobileBack: ()
 type Props = { rows: AdminFeedbackMessage[]; accounts: AdminFeedbackAccount[] };
 
 export function AdminFeedbackTable({ rows, accounts }: Props) {
-  const threads = useMemo(() => buildThreads(rows, accounts), [rows, accounts]);
+  const [sent, setSent] = useState<AdminFeedbackMessage[]>([]);
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(() => new Set());
+  const threads = useMemo(() => {
+    const knownIds = new Set(rows.map(row => row.id));
+    return buildThreads([...rows, ...sent.filter(row => !knownIds.has(row.id))].filter(row => !deletedIds.has(row.id)), accounts);
+  }, [rows, accounts, sent, deletedIds]);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -229,7 +269,13 @@ export function AdminFeedbackTable({ rows, accounts }: Props) {
           {!filteredThreads.length && <p className="admin-empty-row">Никого не нашли.</p>}
         </div>
       </div>
-      {activeThread && <ThreadPane thread={activeThread} key={activeThread.ownerEmail} onMobileBack={() => setSelected(null)} />}
+      {activeThread && <ThreadPane
+        thread={activeThread}
+        key={activeThread.ownerEmail}
+        onMobileBack={() => setSelected(null)}
+        onSent={message => setSent(current => [...current, message])}
+        onDeleted={id => setDeletedIds(current => new Set([...current, id]))}
+      />}
     </div>
   );
 }

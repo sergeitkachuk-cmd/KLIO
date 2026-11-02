@@ -1284,6 +1284,10 @@ function AdminStyles() {
          rather than one (site owner screenshot). A real chat app never
          stretches bubbles across a whole ultrawide window either. */
       .admin-feedback-thread { display: grid; align-content: start; gap: 10px; min-width: 0; max-width: 720px; }
+      .admin-feedback-message-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
+      .admin-feedback-message-delete { min-height: 44px; min-width: 44px; padding: 4px 8px; border: 0; border-radius: 8px; background: transparent; color: inherit; font: inherit; font-size: 11px; text-decoration: underline; cursor: pointer; opacity: 0.75; }
+      .admin-feedback-message-delete:hover { background: rgba(148, 163, 184, 0.15); opacity: 1; }
+      .admin-feedback-message-delete:disabled { opacity: 0.45; cursor: wait; }
       .admin-feedback-thread-head { display: flex; align-items: center; gap: 8px; }
       .admin-feedback-thread-head b { display: block; font-size: 13px; }
       .admin-feedback-thread-head small { display: block; color: #6b7280; font-size: 11px; }
