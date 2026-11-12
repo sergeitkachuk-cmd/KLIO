@@ -1,0 +1,56 @@
+name: Build and qualify shared HIRVI transport
+on:
+  push:
+    branches: [codex/hirvi-shared-transport]
+    paths:
+      - services/hirvi-transport/**
+      - .github/workflows/hirvi-shared-transport.yml
+permissions:
+  contents: read
+  packages: write
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Preserve existing image command
+        run: |
+          docker pull ghcr.io/sergeitkachuk-cmd/klio-relay:71a48fc0a1d97b587832bac9aa18b44efe62b4b4
+          docker image inspect ghcr.io/sergeitkachuk-cmd/klio-relay:71a48fc0a1d97b587832bac9aa18b44efe62b4b4 --format '{{json .Config}}' | node --input-type=module -e 'import fs from "node:fs"; const c=JSON.parse(fs.readFileSync(0,"utf8")); const a=[...(c.Entrypoint||[]),...(c.Cmd||[])]; if(!a.length)throw Error("Missing base command"); fs.writeFileSync("services/hirvi-transport/original-command.json",JSON.stringify(a));'
+      - name: Existing KLIO handler regression checks
+        run: node --test tests/dialogue-images.test.mjs tests/dialogue-combined.test.mjs tests/image-edit-relay.test.mjs services/hirvi-transport/configuration.test.mjs
+      - name: Build image
+        run: docker build -f services/hirvi-transport/Dockerfile -t shared-relay-check .
+      - name: Qualify HTTP and WebSocket transport without customer keys
+        run: |
+          set -eu
+          docker network create hirvi-check
+          printf '["node","/fixture.mjs"]' > /tmp/hirvi-fixture-command.json
+          TOKEN=fixture-only-password-32-characters-long
+          docker run -d --name shared --network hirvi-check -p 127.0.0.1:18090:8081 -e PORT=8081 -e HIRVI_TRANSPORT_PASSWORD="$TOKEN" -e KLIO_IMAGE_SERVICE_TOKEN=fixture-only-klio-token-with-32-characters -e OPENAI_API_KEY=fixture-key -v /tmp/hirvi-fixture-command.json:/opt/hirvi-transport/original-command.json:ro -v "$PWD/services/hirvi-transport/fixture.mjs:/fixture.mjs:ro" shared-relay-check
+          node services/hirvi-transport/smoke.mjs
+          docker run -d --name good --network hirvi-check -p 127.0.0.1:13128:3128 --entrypoint /usr/local/bin/gost shared-relay-check -L http://:3128 -F "relay+ws://hirvi:$TOKEN@shared:8081?path=/_hirvi/ws"
+          docker run -d --name bad --network hirvi-check -p 127.0.0.1:13129:3128 --entrypoint /usr/local/bin/gost shared-relay-check -L http://:3128 -F 'relay+ws://hirvi:wrong-password@shared:8081?path=/_hirvi/ws'
+          CODE=$(curl --retry 5 --retry-connrefused --retry-delay 1 --max-time 25 -sS -o /dev/null -w '%{http_code}' --proxy http://127.0.0.1:13128 https://api.openai.com/v1/models)
+          test "$CODE" = 401
+          CODE=$(curl --max-time 15 -sS -o /dev/null -w '%{http_code}' --proxy http://127.0.0.1:13128 https://example.com/ || true)
+          test "$CODE" = 000
+          CODE=$(curl --max-time 15 -sS -o /dev/null -w '%{http_code}' --proxy http://127.0.0.1:13129 https://api.openai.com/v1/models || true)
+          test "$CODE" = 000
+          docker logs shared
+          docker stop -t 25 shared good bad
+          test "$(docker inspect shared --format '{{.State.ExitCode}}')" = 0
+      - name: Diagnostics on failure
+        if: failure()
+        run: docker logs shared 2>/dev/null || true
+      - name: Publish qualified image
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/hirvi-shared-relay"
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker tag shared-relay-check "$IMAGE:$GITHUB_SHA"
+          docker push "$IMAGE:$GITHUB_SHA"
