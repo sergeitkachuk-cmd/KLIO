@@ -1,0 +1,375 @@
+/* Matte capsules: navigation, actions and utilities share one quiet material. */
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) {
+  --ui-tray:#111113; --ui-control:#1b1a1e; --ui-hover:#29282d; --ui-selected:#38373c;
+  --ui-text:#faf8fa; --ui-muted:#b6b2bb; --ui-action:#ffcc83; --ui-action-text:#211a12;
+  --glass-edge-shadow:none!important; --glass-edge-active:none!important;
+}
+:root .workspace-shell.is-dialogue .klio-glass button {
+  box-shadow:none!important; text-shadow:none!important;
+}
+:root .workspace-shell:is(.is-dialogue,.is-professional) .klio-glass :is(.klio-chatkit-new,.klio-chatkit-toolbar>button,.klio-chatkit-results-trigger,.klio-aui-icon,.klio-aui-tool-chip,.glass-calendar-controls button,.glass-calendar-empty>button,.glass-calendar-day-add,.glass-calendar-filters button) {
+  background:var(--ui-control)!important; color:var(--ui-text)!important;
+  border-color:transparent!important; border-radius:999px;
+}
+:root .workspace-shell:is(.is-dialogue,.is-professional) .klio-glass :is(.klio-chatkit-new,.klio-chatkit-toolbar>button,.klio-chatkit-results-trigger,.klio-aui-icon,.klio-aui-tool-chip,.glass-calendar-controls button,.glass-calendar-empty>button,.glass-calendar-day-add,.glass-calendar-filters button):is(:hover,:focus-visible):not(:disabled) { background:var(--ui-hover)!important; }
+/* A single dark navigation tray, with a soft active capsule inside it. */
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-rail>nav {
+  display:grid; gap:2px; padding:5px; margin:4px 0 8px; border:0; border-radius:24px;
+  background:var(--ui-tray); box-shadow:none;
+}
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-rail>nav>button {
+  gap:11px; min-height:41px; padding:9px 12px; border:0!important; border-radius:19px;
+  background:transparent!important; color:var(--ui-muted)!important; font-size:12px; font-weight:450;
+  transform:none!important; transition:background .2s,color .2s;
+}
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-rail>nav>button:is(:hover,:focus-visible,.is-active,[aria-current="page"]) { background:var(--ui-selected)!important; color:var(--ui-text)!important; box-shadow:none!important; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-rail>nav>button :is(.klio-glass-nav-icon,i) {
+  display:grid; place-items:center; flex:0 0 21px; width:21px; height:21px; padding:0; border:0; border-radius:0; background:none; color:inherit;
+}
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-rail>nav>button svg { width:19px; height:19px; stroke-width:1.6; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-rail>nav>button .klio-glass-nav-arrow { display:none; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-new { min-height:45px; padding:7px 12px 7px 8px; gap:10px; font-weight:450; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-new-icon { display:grid; place-items:center; width:29px; height:29px; border:0!important; border-radius:50%; background:var(--ui-action)!important; color:var(--ui-action-text); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-new-icon svg { width:17px; height:17px; stroke-width:1.7; }
+/* Recent conversations are rows, with no nested beveled frames. */
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-recent li { border-color:transparent; border-radius:14px; background:transparent; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-recent li:is(:hover,:focus-within),
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-recent li:has([aria-current="page"]) { background:var(--glass-control); border-color:transparent; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-recent :is(.klio-chatkit-thread-open,.klio-chatkit-thread-more,.klio-chatkit-all-history) { background:transparent!important; border-color:transparent!important; box-shadow:none!important; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-recent .klio-chatkit-thread-more:is(:hover,:focus-visible,[aria-expanded="true"]) { background:var(--ui-selected)!important; color:var(--ui-text); border-radius:50%; }
+/* Brand switcher and its popover use the same solid tray. */
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand { border:0!important; border-radius:21px; background:var(--ui-tray)!important; box-shadow:none!important; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand>span { color:var(--ui-muted); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-select>button { border-color:transparent; border-radius:14px; background:transparent; color:var(--ui-text); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-select>button>i { border:0!important; border-radius:50%; background:var(--ui-selected)!important; color:var(--ui-text); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-select>button>em { color:var(--ui-muted); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-options { background:var(--ui-tray)!important; color:var(--ui-text); border:1px solid #ffffff18; border-radius:20px; box-shadow:0 10px 28px #0003; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-options button { color:var(--ui-muted); border-color:transparent; border-radius:13px; background:transparent; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-options button:is(:hover,:focus-visible,[aria-selected="true"]) { background:var(--ui-selected); color:var(--ui-text); border-color:transparent; }
+/* The mode switch and header utilities follow the navigation geometry. */
+:root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-mode-switch { border:0; border-radius:999px; padding:5px; background:var(--ui-tray); box-shadow:none; }
+:root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-mode-switch button { border:0; border-radius:999px; background:transparent!important; color:var(--ui-muted); box-shadow:none!important; font-weight:400; transition:background .2s,color .2s; }
+:root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-mode-switch button[aria-pressed="true"] { background:var(--ui-selected)!important; color:var(--ui-text); }
+:root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-header :is(.theme-toggle,.workspace-account i) { border:0; border-radius:50%; background:var(--ui-tray); color:var(--ui-text); box-shadow:none!important; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-root .klio-aui-send { border:0; border-radius:50%; background:var(--ui-action)!important; color:var(--ui-action-text)!important; box-shadow:none; transform:none; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-send:disabled { opacity:.35; }
+/* Regular module actions are matte pills too; content cards keep their shapes. */
+:root .workspace-shell.is-dialogue .is-dialogue-module-layout :is(#brand-profile,#history) button:not(.help-tip-trigger):not(.material-bento-tile),
+:root .workspace-shell.is-dialogue .is-dialogue-module-layout .publications-channels-bar>button,
+:root .workspace-shell.is-dialogue :is(.publications-editor-modal,.archive-editor-modal,.publications-channel-modal) button {
+  background:var(--ui-control)!important; color:var(--ui-text)!important; border-color:transparent!important;
+  border-radius:999px; box-shadow:none!important; text-shadow:none!important;
+}
+:root .workspace-shell.is-dialogue .is-dialogue-module-layout :is(#brand-profile,#history) button:not(.help-tip-trigger):not(.material-bento-tile):is(:hover,[aria-selected="true"],[aria-pressed="true"],.active),
+:root .workspace-shell.is-dialogue :is(.publications-editor-modal,.archive-editor-modal,.publications-channel-modal) button:is(:hover,:focus-visible) { background:var(--ui-selected)!important; }
+:root .workspace-shell:is(.is-dialogue,.is-professional) .klio-glass :is(.glass-calendar-view,.brand-tabs) { padding:4px; gap:3px; border:0; border-radius:999px; background:var(--ui-tray)!important; }
+:root .workspace-shell:is(.is-dialogue,.is-professional) .klio-glass :is(.glass-calendar-view,.brand-tabs) button { border:0!important; border-radius:999px; background:transparent!important; color:var(--ui-muted)!important; }
+:root .workspace-shell:is(.is-dialogue,.is-professional) .klio-glass :is(.glass-calendar-view,.brand-tabs) button:is([aria-pressed="true"],[aria-selected="true"],.active) { background:var(--ui-selected)!important; color:var(--ui-text)!important; }
+:root .workspace-shell:is(.is-dialogue,.is-professional) .klio-glass .glass-calendar-add,
+:root .workspace-shell:is(.is-dialogue,.is-professional) .klio-glass .glass-calendar-day-add { background:var(--ui-action)!important; color:var(--ui-action-text)!important; }
+:root .workspace-shell:is(.is-dialogue,.is-professional) .klio-glass .glass-calendar-week-strip button { border:0; border-radius:999px; background:transparent; }
+:root .workspace-shell:is(.is-dialogue,.is-professional) .klio-glass .glass-calendar-week-strip button[aria-pressed="true"] { background:var(--ui-selected); color:var(--ui-text); }
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) :is(.klio-chatkit-thread-menu,.klio-chatkit-settings-popover,.module-select-list.module-select-chatkit) { background:var(--ui-tray); border-color:#ffffff18; border-radius:20px; color:var(--ui-text); }
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) :is(.klio-chatkit-thread-menu,.klio-chatkit-settings-popover,.module-select-list.module-select-chatkit) button { border:0; border-radius:12px; background:transparent; color:var(--ui-text); box-shadow:none!important; }
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) :is(.klio-chatkit-thread-menu,.klio-chatkit-settings-popover,.module-select-list.module-select-chatkit) button:is(:hover,:focus-visible) { background:var(--ui-selected); }
+/* On phones, the active module expands its label inside a compact icon dock. */
+@media(max-width:820px) {
+  :root .workspace-shell.is-dialogue .is-dialogue-module-layout>.dialogue-module-rail { background:transparent!important; border:0; backdrop-filter:none; box-shadow:none; padding:4px 0; gap:7px; }
+  :root .workspace-shell.is-dialogue .is-dialogue-module-layout>.dialogue-module-rail>.klio-chatkit-new { flex:0 0 40px; width:40px; height:40px; min-height:40px; padding:0; font-size:0; background:var(--ui-action)!important; color:var(--ui-action-text)!important; }
+  :root .workspace-shell.is-dialogue .is-dialogue-module-layout>.dialogue-module-rail .klio-glass-new-icon { width:40px; height:40px; font-size:19px; color:inherit; background:transparent; }
+  :root .workspace-shell.is-dialogue .is-dialogue-module-layout>.dialogue-module-rail>nav { flex:1; display:flex; width:auto; padding:4px; border-radius:999px; gap:3px; margin:0; }
+  :root .workspace-shell.is-dialogue .is-dialogue-module-layout>.dialogue-module-rail>nav>button { flex:1; min-width:39px; min-height:34px; gap:6px; padding:7px 10px; border-radius:999px; }
+  :root .workspace-shell.is-dialogue .is-dialogue-module-layout>.dialogue-module-rail>nav>button.is-active { flex:1.9; background:var(--ui-selected)!important; }
+  :root .workspace-shell.is-dialogue .is-dialogue-module-layout>.dialogue-module-rail>nav>button i { display:grid; width:18px; height:18px; flex-basis:18px; background:transparent; }
+  :root .workspace-shell.is-dialogue .is-dialogue-module-layout>.dialogue-module-rail>nav>button i svg { width:18px; height:18px; }
+  :root .workspace-shell.is-dialogue .is-dialogue-module-layout>.dialogue-module-rail>nav>button>span { display:none; }
+  :root .workspace-shell.is-dialogue .is-dialogue-module-layout>.dialogue-module-rail>nav>button.is-active>span { display:block; font-size:10px; }
+}
+:root .workspace-shell.is-dialogue .klio-glass :is(.klio-aui-tool-menu,.klio-chatkit-results-list) { background:var(--ui-tray)!important; color:var(--ui-text); border-color:#ffffff18; border-radius:20px; box-shadow:0 12px 28px #0003; }
+:root .workspace-shell.is-dialogue .klio-glass :is(.klio-aui-tool-menu,.klio-chatkit-results-list) button { background:transparent!important; color:var(--ui-text); border:0; border-radius:12px; }
+:root .workspace-shell.is-dialogue .klio-glass :is(.klio-aui-tool-menu,.klio-chatkit-results-list) button:is(:hover,:focus-visible,[aria-pressed="true"]) { background:var(--ui-selected)!important; }
+/* Keep active pills neutral in both palettes, including legacy module tabs. */
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-rail>nav>button[aria-label]:is(:hover,:focus-visible,.is-active,[aria-current="page"]) { background:var(--ui-selected)!important; color:var(--ui-text)!important; box-shadow:none!important; }
+:root .workspace-shell.is-dialogue .is-dialogue-module-layout #brand-profile .brand-tabs button[aria-selected="true"] { background:var(--ui-selected)!important; color:var(--ui-text)!important; }
+:root .workspace-shell:is(.is-dialogue,.is-professional) .klio-glass .glass-calendar-controls .glass-calendar-add,
+:root .workspace-shell:is(.is-dialogue,.is-professional) .klio-glass .glass-calendar-day-title .glass-calendar-day-add { background:var(--ui-action)!important; color:var(--ui-action-text)!important; }
+:root .workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .dialogue-module-rail>nav>button.is-active[aria-current="page"] { background:var(--ui-selected)!important; color:var(--ui-text)!important; box-shadow:none!important; }
+
+/* Labels must use the material of their control, not the page's ink colour.
+   This also covers menus portaled outside the workspace shell. */
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) .workspace-shell.is-dialogue {
+  --profile-accent:var(--glass-accent); --profile-help-bg:var(--ui-control);
+  --profile-rule:var(--ck-line); --profile-text:var(--ck-text);
+}
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) :is(
+  .module-select-trigger,.module-select-list button,.klio-chatkit-brand-select>button,
+  .klio-chatkit-brand-options button,.klio-chatkit-thread-menu button,
+  .klio-chatkit-settings-popover button,.klio-aui-tool-menu button,
+  .klio-chatkit-results-list button,.klio-chatkit-thread-dialog button
+) {
+  background:var(--ui-control)!important; color:var(--ui-text)!important;
+  border-color:transparent!important; box-shadow:none!important; border-radius:999px;
+}
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) :is(
+  .module-select-trigger,.module-select-list button,.klio-chatkit-brand-select>button,
+  .klio-chatkit-brand-options button,.klio-chatkit-thread-menu button,
+  .klio-chatkit-settings-popover button,.klio-aui-tool-menu button,
+  .klio-chatkit-results-list button,.klio-chatkit-thread-dialog button,
+  .workspace-history-filters button,.brand-tabs button,.profile-help-trigger,.help-tip-trigger,
+  .publications-editor-modal button,.archive-editor-modal button,.publications-channel-modal button
+) :is(span,b,strong,small,em,i,svg) { color:inherit!important; }
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) .module-select-list {
+  background:var(--ui-tray)!important; color:var(--ui-text)!important;
+  border:1px solid #ffffff24!important; border-radius:20px;
+  box-shadow:0 12px 32px #0003!important; padding:5px;
+}
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) .module-select-list button {
+  min-height:38px; height:auto; padding:10px 12px; line-height:1.4;
+  white-space:normal; text-align:left; background:transparent!important; border-radius:14px;
+}
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) .module-select-list button:is(.active,:hover,:focus-visible),
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) .klio-chatkit-brand-options button:is(:hover,[aria-selected="true"]) { background:var(--ui-selected)!important; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-select>button { background:transparent!important; }
+:root .workspace-shell.is-dialogue .klio-glass .workspace-history-filters>button>b {
+  background:#ffffff1c!important; color:var(--ui-text)!important; border:0; box-shadow:none;
+}
+:root .workspace-shell.is-dialogue .klio-glass .klio-mark-dot { color:var(--glass-accent)!important; }
+:root body .workspace-shell.is-dialogue :is(button,a,input,textarea,select,[tabindex]):focus-visible,
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) .module-select-list button:focus-visible {
+  outline:2px solid var(--glass-accent)!important; outline-offset:3px;
+}
+/* Neutral, opaque help surfaces stay legible over either page palette. */
+:root .workspace-shell.is-dialogue :is(.profile-field-help,.help-tip-panel) {
+  background:var(--ui-control)!important; color:var(--ui-text)!important;
+  border:1px solid #ffffff24!important; border-radius:16px;
+  box-shadow:0 10px 28px #0003!important; font-size:12px; line-height:1.6;
+}
+:root .workspace-shell.is-dialogue :is(.profile-field-help,.help-tip-panel) :is(span,b,strong,a) { color:inherit!important; }
+:root .workspace-shell.is-dialogue .klio-glass :is(.profile-help-trigger,.help-tip-trigger) {
+  display:inline-grid; place-items:center; flex:0 0 28px; width:28px; height:28px;
+  min-height:28px; padding:0!important; border:0!important; border-radius:50%;
+  background:var(--ui-control)!important; color:var(--ui-text)!important;
+}
+:root .workspace-shell.is-dialogue .klio-glass :is(.profile-help-trigger,.help-tip-trigger)>span {
+  border:0!important; font-size:15px; line-height:1; width:auto; height:auto;
+}
+/* Long action labels can grow vertically; icon buttons retain their size. */
+:root .workspace-shell.is-dialogue .klio-glass :is(
+  .brand-profile-footer button,.brand-website-row button,.brand-manager button,
+  .workspace-history-list .material-card footer :is(button,a),.publications-channels-bar>.button
+),
+:root .workspace-shell.is-dialogue :is(.publications-editor-actions,.archive-editor-actions,.publications-editor-channels,.publications-telegram-delivery) button {
+  display:inline-flex; align-items:center; justify-content:center; gap:7px;
+  min-width:0; max-width:100%; height:auto!important; min-height:38px;
+  padding:10px 16px; font-size:12px; line-height:1.4; font-weight:500;
+  white-space:normal; overflow-wrap:break-word; text-align:center;
+  background:var(--ui-control)!important; color:var(--ui-text)!important;
+  border:0!important; border-radius:999px; box-shadow:none!important;
+}
+:root .workspace-shell.is-dialogue .klio-glass .material-card footer a { text-decoration:none; }
+:root .workspace-shell.is-dialogue .klio-glass .material-card footer .material-delete {
+  width:38px; flex:0 0 38px; padding:9px;
+}
+:root .workspace-shell.is-dialogue .klio-glass .brand-profile-footer {
+  display:flex; flex-wrap:wrap; align-items:center; gap:16px;
+}
+:root .workspace-shell.is-dialogue .klio-glass .brand-profile-footer>p {
+  flex:1 1 230px; min-width:0; color:var(--ck-muted); line-height:1.55;
+}
+:root .workspace-shell.is-dialogue .klio-glass .brand-profile-footer>p>i {
+  flex:0 0 6px; width:6px; height:6px; background:var(--glass-accent); box-shadow:none;
+}
+:root .workspace-shell.is-dialogue .klio-glass .brand-profile-footer>p>i.error { background:#ed786b; }
+:root .workspace-shell.is-dialogue .klio-glass .brand-profile-footer>div {
+  display:flex; flex-wrap:wrap; flex:1 1 340px; gap:8px; justify-content:flex-end;
+}
+:root .workspace-shell.is-dialogue .klio-glass .brand-profile-footer>div>button {
+  flex:1 1 150px; width:auto; min-height:42px;
+}
+:root .workspace-shell.is-dialogue .klio-glass .brand-profile-footer>div>.primary {
+  background:var(--ui-action)!important; color:var(--ui-action-text)!important;
+}
+:root .workspace-shell.is-dialogue .klio-glass .brand-tab-shell :is(input,textarea) {
+  box-shadow:none!important; background:var(--glass-control)!important;
+}
+:root .workspace-shell.is-dialogue .publications-upload-button {
+  background:var(--ui-control)!important; color:var(--ui-text)!important;
+  border:0!important; border-radius:999px; padding:10px 16px; line-height:1.4;
+}
+:root .workspace-shell:is(.is-dialogue,.is-professional) .glass-calendar-week-strip button[aria-pressed="true"] :is(small,span) { color:var(--ui-text)!important; }
+:root .workspace-shell.is-dialogue :is(.publications-editor-modal,.archive-editor-modal,.publications-channel-modal) :is(h2,h3,label,.field-label-help) { color:var(--ck-text)!important; }
+:root .workspace-shell.is-dialogue :is(.publications-editor-modal,.archive-editor-modal,.publications-channel-modal) :is(small,.archive-editor-head p) { color:var(--ck-muted); }
+
+/* The legacy page-level .button rules also match editor overlays. */
+:root[data-theme] body .workspace-shell.is-dialogue .workspace-content .archive-editor-overlay :is(button.button,.module-select-trigger,.publications-upload-button) {
+  background:var(--ui-control)!important; color:var(--ui-text)!important;
+  border-color:transparent!important; box-shadow:none!important; border-radius:999px;
+}
+:root[data-theme] body .workspace-shell.is-dialogue .workspace-content .archive-editor-overlay button.button.primary {
+  background:var(--ui-action)!important; color:var(--ui-action-text)!important;
+}
+:root .workspace-shell.is-dialogue .archive-editor-overlay button:is(.active,[aria-pressed="true"]) { background:var(--ui-selected)!important; }
+:root .workspace-shell.is-dialogue .archive-editor-overlay { background:#100d12b8; }
+:root .workspace-shell.is-dialogue .archive-editor-overlay .publications-signature-control {
+  background:var(--glass-control); border-color:var(--ck-line);
+}
+:root .workspace-shell.is-dialogue .klio-glass .brand-tab-shell {
+  --profile-text:var(--ck-text); --profile-muted:var(--ck-muted);
+  --profile-accent:var(--glass-accent); --profile-rule:var(--ck-line);
+}
+:root .workspace-shell.is-dialogue .klio-glass :is(.brand-profile-field,.profile-field-heading) { color:var(--ck-text)!important; }
+:root .workspace-shell.is-dialogue .klio-glass :is(.brand-score small,.brand-score em,.brand-checklist small,.profile-fill-replace-help) { color:var(--ck-muted)!important; }
+:root .workspace-shell.is-dialogue .publications-channel-chip :is(.publications-channel-chip-photo,.publications-channel-chip-photo-connect) { color:var(--ck-muted); }
+:root .workspace-shell.is-dialogue :is(.klio-mark-dot,.brand b span) { background:var(--glass-accent)!important; }
+:root .workspace-shell.is-dialogue .workspace-account:focus-visible>i { outline-color:var(--glass-accent); }
+:root .workspace-shell.is-dialogue .is-dialogue-module-layout :is(#brand-profile,#history) button:not(.profile-help-trigger):not(.help-tip-trigger) :is(span,b,strong,em,small,svg) { color:inherit!important; }
+:root .workspace-shell.is-dialogue .is-dialogue-module-layout #brand-profile .brand-profile-footer>div>.button.primary { background:var(--ui-action)!important; color:var(--ui-action-text)!important; }
+:root .workspace-shell.is-dialogue .is-dialogue-module-layout #history .module-select-trigger,
+:root .workspace-shell.is-dialogue .is-dialogue-module-layout #history .module-select-trigger :is(b,em) { color:var(--ui-text)!important; }
+:root .workspace-shell.is-dialogue .klio-glass .material-card footer button svg { flex-shrink:0; width:16px; height:16px; }
+:root .workspace-shell.is-dialogue .publication-platform-icon { background:var(--ui-selected)!important; color:var(--ui-text)!important; }
+:root .workspace-shell.is-dialogue .brand-score strong span { color:var(--ck-muted)!important; }
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) :is(.klio-chatkit-settings-popover,.klio-chatkit-thread-menu,.module-select-list) {
+  --ck-text:var(--ui-text)!important; --ck-muted:var(--ui-muted)!important;
+  --ck-bg:var(--ui-tray)!important; --ck-panel:var(--ui-control)!important;
+  --ck-hover:var(--ui-selected)!important; --ck-line:#ffffff24!important;
+  color:var(--ui-text)!important; background:var(--ui-tray)!important;
+}
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) .klio-chatkit-thread-dialog button {
+  border:0!important; border-radius:999px; min-height:38px;
+  height:auto; padding:9px 16px; line-height:1.4; white-space:normal;
+}
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) .klio-chatkit-thread-dialog button:is([type="submit"],footer>button:last-child),
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) .klio-chatkit-thread-dialog .klio-card-generation-submit {
+  background:var(--ui-action)!important; color:var(--ui-action-text)!important;
+}
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) .klio-chatkit-thread-dialog .klio-card-generation-choices button[aria-pressed="true"] {
+  background:var(--ui-selected)!important; color:var(--ui-text)!important;
+}
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) :is(.klio-chatkit-thread-dialog,.klio-chatkit-thread-menu,.klio-chatkit-settings-popover) :is(button,input,textarea):focus-visible {
+  outline:2px solid var(--glass-accent)!important; outline-offset:3px;
+}
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) .help-tip-panel {
+  color:var(--ui-text)!important; background:var(--ui-control)!important;
+  border:1px solid #ffffff24!important; border-radius:16px;
+}
+/* Grid keeps action widths from turning into tall flex bases on phones. */
+:root .workspace-shell.is-dialogue .klio-glass .brand-profile-footer {
+  display:grid; grid-template-columns:minmax(0,1fr); gap:14px;
+}
+:root .workspace-shell.is-dialogue .klio-glass .brand-profile-footer>p { flex:none; margin:0; }
+:root .workspace-shell.is-dialogue .klio-glass .brand-profile-footer>div {
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); flex:none;
+  width:100%; min-width:0; align-items:stretch;
+}
+:root .workspace-shell.is-dialogue .klio-glass .brand-profile-footer>div>button {
+  flex:none; order:0; width:100%; margin:0; align-self:stretch;
+}
+@media(min-width:1200px) {
+  :root .workspace-shell.is-dialogue .klio-glass .brand-profile-footer { grid-template-columns:minmax(0,1fr) minmax(340px,1.15fr); }
+}
+:root .workspace-shell.is-dialogue .archive-editor-overlay .archive-editor-head { display:flex; flex-direction:row; align-items:flex-start; gap:12px; }
+:root .workspace-shell.is-dialogue .archive-editor-overlay .archive-editor-head>div:first-child { flex:1; min-width:0; }
+:root .workspace-shell.is-dialogue .archive-editor-overlay .archive-editor-head>.archive-editor-head-actions { flex:0 0 auto; width:auto; }
+:root .workspace-shell.is-dialogue .archive-editor-overlay .archive-editor-head-actions>button {
+  display:grid; place-items:center; flex:none; width:36px; height:36px; min-height:36px; padding:0; border-radius:50%; font-size:22px; line-height:1;
+}
+/* The composer has its own caret feedback; no nested rectangular focus frame. */
+:root body .workspace-shell.is-dialogue .klio-glass .klio-aui-root textarea.klio-aui-input:is(:focus,:focus-visible) {
+  outline:none!important; box-shadow:none!important; border-color:transparent!important;
+}
+:root[data-theme="light"] .workspace-shell.is-dialogue .klio-glass .klio-glass-input-panel:focus-within { border-color:var(--ck-line); }
+.klio-glass-writing-field:not(:focus-within) .klio-glass-caret>i { opacity:0; }
+.klio-glass-writing-field .klio-glass-caret>i { animation:none!important; }
+.klio-glass-writing-field .klio-glass-caret { animation:none; opacity:1; }
+.klio-glass-writing-field:focus-within .klio-glass-caret>i { animation:klio-cursor-line 1.1s steps(1,end) infinite!important; }
+@keyframes klio-cursor-line { 0%,49% { opacity:1; } 50%,99% { opacity:0; } }
+:root[data-theme="light"] .klio-glass-writing-field .klio-glass-caret:before {
+  background:radial-gradient(ellipse at 17% 50%,rgba(113,20,54,.8) 0%,rgba(136,30,65,.62) 18%,rgba(149,38,75,.34) 42%,rgba(149,38,75,.12) 63%,transparent 80%);
+}
+:root[data-theme="light"] .klio-glass-writing-field .klio-glass-caret>i {
+  background:#681331; box-shadow:0 0 4px #9e2d59,0 0 13px #9e2d5980;
+}
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-new .klio-glass-new-icon svg { display:block; margin:0; vertical-align:middle; }
+@media(prefers-reduced-motion:reduce) { .klio-glass-writing-field:focus-within .klio-glass-caret>i { animation:none!important; } }
+/* Light mode keeps the same capsules with porcelain and rose surfaces. */
+:root[data-theme="light"] body:has(.workspace-shell.is-dialogue > .klio-glass) {
+  --ui-tray:#fff8fa; --ui-control:#fffafb; --ui-hover:#f4dfe7; --ui-selected:#ecd0dc;
+  --ui-text:#54313e; --ui-muted:#805365; --ui-action:#f5c481; --ui-action-text:#442916;
+}
+:root[data-theme="light"] body .workspace-shell.is-dialogue .klio-glass :is(.workspace-mode-switch,.klio-chatkit-rail>nav,.klio-chatkit-brand) { border:1px solid #9c597b18!important; }
+:root[data-theme="light"] body:has(.workspace-shell.is-dialogue > .klio-glass) :is(.klio-chatkit-thread-menu,.klio-chatkit-settings-popover,.module-select-list,.help-tip-panel) { border-color:#9c597b28!important; box-shadow:0 12px 30px #64243c12; }
+/* The halo belongs to the insertion caret, so it disappears on blur. */
+.klio-glass-writing-field:not(:focus-within) .klio-glass-caret { opacity:0!important; visibility:hidden; }
+/* Neutral daylight, with only a trace of rose in the accents. */
+:root[data-theme="light"] body:has(.workspace-shell.is-dialogue > .klio-glass) {
+  --ui-tray:#fffefa; --ui-control:#fffefa; --ui-hover:#eeebe7; --ui-selected:#e3deda;
+  --ui-text:#403b3d; --ui-muted:#6f666a;
+  background:#e8e6e2;
+}
+:root[data-theme="light"] body .workspace-shell.is-dialogue:has(> .klio-glass) {
+  --ck-bg:#faf9f5; --ck-rail:#fffefa99; --ck-panel:#fffefbbd; --ck-hover:#ede9e5;
+  --ck-text:#403b3d; --ck-muted:#766a70; --ck-line:#75666c26;
+  --glass-control:#fffdf8b3; --glass-control-hover:#fffefaeb; --glass-popup:#fffefa;
+  --glass-accent:#9e5c75; --glass-highlight:#ffffffd9;
+  --glass-surface:linear-gradient(135deg,#ffffffb3,#f6f2ed80);
+  --glass-elevated:linear-gradient(135deg,#ffffffd9,#eee8e2b3);
+  background:radial-gradient(ellipse at 20% 110%,#d5c3c236,transparent 66%),linear-gradient(150deg,#fffefa,#f0eeea)!important;
+}
+:root[data-theme="light"] body .workspace-shell.is-dialogue .klio-glass .klio-glass-input-panel { background:linear-gradient(135deg,#ffffffc9,#f4f0eab3); border-color:#ffffff; }
+:root[data-theme="light"] body .workspace-shell.is-dialogue .material-bento { background:var(--ui-tray); }
+:root[data-theme="light"] body .workspace-shell.is-dialogue .material-bento-search { background:#eeebe7; }
+:root[data-theme="light"] body .workspace-shell.is-dialogue .klio-glass #history button.material-bento-tile.tile-compact { background:#eeebe7!important; color:var(--ck-text)!important; }
+
+/* Selected controls use the same warm action colour in both workspaces. */
+html:root body main.workspace-shell:is(.is-dialogue,.is-professional) :is(
+  button.active,button.is-active,button.is-selected,button[aria-pressed=true],button[aria-selected=true],button[aria-checked=true],
+  .workspace-sidebar nav>a.active,button[aria-current=page]
+),
+html:root body main.workspace-shell:is(.is-dialogue,.is-professional) :is(#history,#brand-profile,#generator,#images,#content-plan,#adaptation,#semantics,#competitors,#publications) :is(
+  button.active,button.is-active,button.is-selected,button[aria-pressed=true],button[aria-selected=true],button[aria-checked=true]
+) { background:var(--ui-action,#ffcc83)!important; color:var(--ui-action-text,#302012)!important; border-color:transparent!important; box-shadow:none!important; }
+html:root body main.workspace-shell:is(.is-dialogue,.is-professional) :is(
+  button.active,button.is-active,button.is-selected,button[aria-pressed=true],button[aria-selected=true],button[aria-checked=true],
+  .workspace-sidebar nav>a.active,button[aria-current=page]
+) :is(span,b,strong,i,svg,small) { color:inherit!important; }
+html:root body main.workspace-shell:is(.is-dialogue,.is-professional) #history .workspace-history-filters>button.active>b { background:#00000012!important; color:inherit!important; }
+/* Navigation and brand controls sit directly on the page, without a tray. */
+html:root body main.workspace-shell.is-professional .workspace-sidebar,
+html:root body main.workspace-shell.is-professional .workspace-sidebar>nav,
+html:root body main.workspace-shell.is-professional .workspace-sidebar .workspace-project,
+html:root body main.workspace-shell.is-dialogue .dialogue-module-rail,
+html:root body main.workspace-shell.is-dialogue .dialogue-module-rail>nav,
+html:root body main.workspace-shell.is-dialogue .dialogue-module-rail .klio-chatkit-brand,
+html:root body main.workspace-shell.is-dialogue .klio-glass .klio-chatkit-rail,
+html:root body main.workspace-shell.is-dialogue .klio-glass .klio-chatkit-rail>nav,
+html:root body main.workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand {
+  background:transparent!important; box-shadow:none!important; backdrop-filter:none!important;
+}
+html:root body main.workspace-shell:is(.is-dialogue,.is-professional) .workspace-content :is(#history,#brand-profile,#generator,#images,#content-plan,#adaptation,#semantics,#competitors,#publications) button:is(.active,.is-active,.is-selected,[aria-pressed=true],[aria-selected=true],[aria-checked=true]):not(:disabled) {
+  background:var(--ui-action,#ffcc83)!important; color:var(--ui-action-text,#302012)!important;
+}
+:root body:has(main.workspace-shell) :is(.module-select-list,.klio-chatkit-brand-options) button[aria-selected=true] {
+  background:var(--ui-action,#ffcc83)!important; color:var(--ui-action-text,#302012)!important;
+}
+/* Specific navigation rules must also win over the legacy module theme. */
+html:root body main.workspace-shell.is-dialogue .workspace-header .workspace-mode-switch button[aria-pressed=true],
+html:root body main.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .dialogue-module-rail>nav>button.is-active[aria-current=page],
+html:root body main.workspace-shell.is-dialogue .klio-glass .klio-chatkit-rail>nav>button.is-active[aria-label],
+html:root body main.workspace-shell:is(.is-dialogue,.is-professional) #history .editorial-materials .editorial-view-switch>button[aria-pressed=true] {
+  background:var(--ui-action,#ffcc83)!important; color:var(--ui-action-text,#302012)!important; box-shadow:none!important;
+}
+/* An active rail item keeps its action surface when its label expands. */
+html:root body main.workspace-shell.is-dialogue .klio-chatkit-rail>nav>button.is-active,
+html:root body main.workspace-shell.is-professional .workspace-sidebar>nav>a.active {
+  --rail-expansion-bg:var(--ui-action,#ffcc83);
+}
+html:root body main.workspace-shell.is-dialogue .klio-chatkit-rail>nav>button.is-active:focus-visible,
+html:root body main.workspace-shell.is-professional .workspace-sidebar>nav>a.active:focus-visible {
+  outline-color:var(--ui-action,#ffcc83)!important;
+}
+/* Native form fields use the same focus-only warm halo as the chat composer. */
+.workspace-writing-glow-clip { position:fixed; z-index:10000; pointer-events:none; overflow:hidden; }
+.workspace-writing-glow-clip[hidden] { display:none; }
+.workspace-writing-glow-clip>span { position:absolute; width:150px; height:88px; transform:translate(-12px,-50%); border-radius:50%; filter:blur(9px); background:radial-gradient(ellipse at 17% 50%,#ffc7aceb,#f99778a8 19%,#e972644d 43%,transparent 78%); }
+:root[data-theme=light] .workspace-writing-glow-clip>span { background:radial-gradient(ellipse at 17% 50%,#711436bf,#881e4199 18%,#95264b52 42%,transparent 80%); }

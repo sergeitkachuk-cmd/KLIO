@@ -3,20 +3,26 @@
 // Adapted from assistant-ui's MIT-licensed ChatGPT example. See
 // THIRD_PARTY_NOTICES.md. Runtime, input and message primitives are bundled
 // with KLIO; no hosted widget, assistant-cloud account or iframe is used.
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import Image from "next/image";
+import { KlioResponseActivity } from "./klio-activity";
+import "./dialogue-card-photos.css";
+import { HelpTip } from "./help-tip";
+
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AssistantRuntimeProvider, ComposerPrimitive, MessagePrimitive, ThreadPrimitive, useExternalStoreRuntime, type ThreadMessageLike } from "@assistant-ui/react";
 import { MarkdownTextPrimitive } from "@assistant-ui/react-markdown";
 import { ArrowDown, ArrowUp, Copy, ImageIcon, Images, Lightbulb, MessageCircle, SquarePen, X } from "lucide-react";
 import { isStandaloneImage, type DialogueCard } from "./dialogue-model";
 import { DialogueResultActions, imageDownloadUrl } from "./dialogue-result-actions";
+import { DialogueWritingField } from "./dialogue-writing-field";
 import type { DialogueSession } from "./dialogue-session";
 
 const TOOLS = [
   { id: "chat", label: "Общение", placeholder: "Спросите КЛИО или поставьте задачу", Icon: MessageCircle },
-  { id: "topics", label: "Предложить темы", placeholder: "Уточните пожелания к темам (необязательно)", Icon: Lightbulb },
-  { id: "text", label: "Написать текст", placeholder: "О чём и для какой площадки написать?", Icon: SquarePen },
-  { id: "image", label: "Создать изображение", placeholder: "Опишите изображение", Icon: ImageIcon },
-  { id: "carousel", label: "Создать карусель", placeholder: "Опишите тему или дайте текст для слайдов", Icon: Images },
+  { id: "topics", label: "Предложить темы", description: "Найдём идею для вашей истории", placeholder: "Уточните пожелания к темам (необязательно)", Icon: Lightbulb },
+  { id: "text", label: "Написать текст", description: "От первого слова до публикации", placeholder: "О чём и для какой площадки написать?", Icon: SquarePen },
+  { id: "image", label: "Создать изображение", description: "Придадим вашему замыслу форму", placeholder: "Опишите изображение", Icon: ImageIcon },
+  { id: "carousel", label: "Создать карусель", description: "Соберём мысли в серию слайдов", placeholder: "Опишите тему или дайте текст для слайдов", Icon: Images },
 ];
 function Markdown() { return <MarkdownTextPrimitive className="klio-aui-markdown" smooth={false} />; }
 const convertMessage = (message: ThreadMessageLike) => message;
@@ -91,7 +97,39 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
     return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", key); };
   }, [menuOpen]);
   const activeTool = TOOLS.find((item) => item.id === tool) || TOOLS[0];
-  const empty = !messages.length && !loading;
+  const empty = !messages.length && !loading && !running;
+  const composerPanel = useRef<HTMLDivElement>(null);
+  const previousPosition = useRef<{ empty: boolean; top: number } | null>(null);
+  const dockingAnimation = useRef<Animation | null>(null);
+  useLayoutEffect(() => {
+    const panel = composerPanel.current;
+    if (!panel) return;
+    const top = panel.getBoundingClientRect().top;
+    const previous = previousPosition.current;
+    if (previous?.empty && !empty && typeof panel.animate === "function" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const footer = panel.closest<HTMLElement>(".klio-aui-footer");
+      if (footer) {
+        dockingAnimation.current?.cancel();
+        footer.style.willChange = "transform";
+        const animation = footer.animate([
+          { transform: `translate3d(0,${previous.top - top}px,0)` },
+          { transform: "translate3d(0,0,0)" },
+        ], { duration: 360, easing: "cubic-bezier(.4,0,.2,1)" });
+        dockingAnimation.current = animation;
+        const finish = () => {
+          if (dockingAnimation.current !== animation) return;
+          footer.style.willChange = "";
+          dockingAnimation.current = null;
+        };
+        // Cancellation on navigation rejects finished; handle both outcomes.
+        void animation.finished.then(finish, finish);
+      }
+    }
+    previousPosition.current = { empty, top };
+  }, [empty]);
+
+  useEffect(() => () => { dockingAnimation.current?.cancel(); }, []);
+
   // A revised card may be referenced by several messages. Render its current
   // version once, at the last reference, so result navigation has one target.
   const cardOwners = new Map<string, string>();
@@ -121,9 +159,21 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
   }
   return <AssistantRuntimeProvider runtime={runtime}>
     <ThreadPrimitive.Root className={`klio-aui-root ${empty ? "is-empty" : ""}`}>
-      <ThreadPrimitive.Viewport ref={viewport} className="klio-aui-viewport" autoScroll>
+      <ThreadPrimitive.Viewport ref={viewport} className="klio-aui-viewport" autoScroll={!empty}>
         {loading && <p className="klio-aui-status" role="status">Загружаю диалог…</p>}
-        {empty && <div className="klio-aui-welcome"><h1>Чем я могу помочь?</h1></div>}
+        {empty && <div className="klio-aui-welcome">
+          <div className="klio-glass-floating-ideas" aria-label="Предложения для начала диалога">
+            <button type="button" className="klio-glass-floating-card is-story" onClick={() => { session.setDraft("Помоги рассказать историю моего бренда"); onTool("text"); input.current?.focus(); }}>
+              <span>История бренда</span><small>Найти свои слова</small>
+              <span className="klio-card-photo-frame is-floating"><Image src="/dialogue/card-photos/writing.jpg" alt="" fill sizes="140px" unoptimized/></span>
+            </button>
+            <button type="button" className="klio-glass-floating-card is-visual" onClick={() => { session.setDraft("Помоги придумать визуальную концепцию для моего бренда"); onTool("image"); input.current?.focus(); }}>
+              <span>Визуальная идея</span><small>Посмотреть иначе</small>
+              <span className="klio-card-photo-frame is-floating"><Image src="/dialogue/card-photos/ocean.jpg" alt="" fill sizes="140px" unoptimized/></span>
+            </button>
+          </div>
+          <h1>Приступим<span>?</span></h1>
+        </div>}
         <div className="klio-aui-messages">
           <ThreadPrimitive.Messages>{({ message }) => {
             const original = thread?.data.messages.find((item) => item.id === message.id);
@@ -143,7 +193,7 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
             </MessagePrimitive.Root>;
           }}</ThreadPrimitive.Messages>
           {thread?.data.cards.filter((card) => !cardOwners.has(card.id)).map(renderCard)}
-          {running && <div className="klio-aui-status" role="status"><span className="klio-aui-pulse" />Готовлю ответ…</div>}
+          <KlioResponseActivity running={running}/>
           {thread?.error && !running && <div className="klio-aui-error" role="alert"><p>{thread.error}</p><button type="button" onClick={() => {
             const last = thread.data.messages.findLast((message) => message.role === "user");
             if (last) {
@@ -154,13 +204,28 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
         </div>
         <ThreadPrimitive.ViewportFooter className="klio-aui-footer">
           {!empty && <ThreadPrimitive.ScrollToBottom className="klio-aui-icon klio-aui-to-bottom" aria-label="К последнему сообщению"><ArrowDown size={18} /></ThreadPrimitive.ScrollToBottom>}
-          <ComposerPrimitive.Root className="klio-aui-composer" onSubmit={(event) => {
+          {empty && <div className="klio-aui-suggestions" aria-label="Начать с инструмента">
+            {TOOLS.slice(1).map(({ id, label, ...item }) => <button type="button" className="klio-glass-tool-card" data-tool={id} aria-label={label} aria-pressed={tool === id} key={id} onClick={() => { onTool(id); input.current?.focus(); }}>
+              <span className="klio-glass-tool-name">{label}</span>
+              <span className="klio-glass-tool-description">{"description" in item ? String(item.description) : ""}</span>
+              <span className={`klio-card-photo-frame is-${id}`} aria-hidden="true">
+                <Image src={`/dialogue/card-photos/${id === "topics" ? "ideas" : id === "text" ? "writing" : id === "image" ? "ocean" : "architecture"}.jpg`} alt="" fill sizes="(max-width: 720px) 100px, 140px" unoptimized/>
+                {id === "carousel" && <span className="klio-card-photo-pages"><i/><i/><i/></span>}
+              </span>
+              <span className="klio-glass-tool-arrow" aria-hidden="true">↗</span>
+            </button>)}
+          </div>}
+          <div ref={composerPanel} className="klio-glass-input-panel">
+          <ComposerPrimitive.Root className="klio-aui-composer" onSubmitCapture={() => {
+            if (empty && composerPanel.current) previousPosition.current = { empty: true, top: composerPanel.current.getBoundingClientRect().top };
+          }} onSubmit={(event) => {
             // Topic ideation is already specified by the selected mode/settings.
             // Use the same form submission for the button and desktop Enter.
             if (tool !== "topics" || runtime.thread.composer.getState().text.trim()) return;
             event.preventDefault();
             if (!sendDisabled) void onSend("");
           }}>
+            <DialogueWritingField inputRef={input} value={draft}>
             <ComposerPrimitive.Input ref={input} className="klio-aui-input" aria-label="Сообщение КЛИО" placeholder={activeTool.placeholder} rows={1} maxLength={8000} autoFocus={false} cancelOnEscape={false} addAttachmentOnPaste={false} unstable_insertNewlineOnTouchEnter onChange={(event) => {
               // ComposerPrimitive.Input composes this callback before it writes
               // the new value to its own store. Deferring our external draft
@@ -170,6 +235,7 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
               const nextDraft = event.target.value;
               queueMicrotask(() => session.setDraft(nextDraft));
             }} />
+            </DialogueWritingField>
             <div className="klio-aui-compose-tools">
               <div className="klio-aui-picker" ref={picker}>
                 <button type="button" className="klio-aui-icon" aria-label="Открыть меню задач" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><svg className="klio-aui-tool-menu-icon" aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="7" cy="7" r="4"/><circle cx="17" cy="7" r="4"/><circle cx="7" cy="17" r="4"/><circle cx="17" cy="17" r="4"/></svg></button>
@@ -183,11 +249,9 @@ export function DialogueAssistantThread({ session, snapshot, tool, onTool, onSen
                 : <ComposerPrimitive.Send className="klio-aui-send" aria-label="Отправить сообщение"><ArrowUp size={21} /></ComposerPrimitive.Send>}
             </div>
           </ComposerPrimitive.Root>
+          </div>
           {options}
-          {empty && <div className="klio-aui-suggestions">
-            {TOOLS.slice(1).map(({ id, label, Icon }) => <button type="button" key={id} onClick={() => { onTool(id); input.current?.focus(); }}><Icon size={16} />{label}</button>)}
-          </div>}
-          <p className="klio-aui-disclaimer">КЛИО может ошибаться. Проверяйте важные факты перед публикацией.</p>
+          <div className="klio-aui-disclaimer klio-quiet-note"><HelpTip label="О точности ответов КЛИО" text="КЛИО может ошибаться. Проверяйте важные факты перед публикацией."/></div>
         </ThreadPrimitive.ViewportFooter>
       </ThreadPrimitive.Viewport>
       <span className="klio-aui-sr" role="status">{copyNotice}</span>

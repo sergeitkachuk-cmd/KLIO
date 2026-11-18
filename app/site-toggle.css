@@ -1,0 +1,34 @@
+/* Same 44 × 26 geometry as the existing brand-context switch. */
+html:root body .site-toggle {
+  position:relative!important; display:inline-flex!important; vertical-align:middle;
+  flex:0 0 44px!important; width:44px!important; height:26px!important;
+  min-width:44px!important; min-height:26px!important; margin:0!important; padding:0!important;
+  border:0!important; border-radius:999px!important; background:transparent!important;
+  box-shadow:none!important; line-height:1!important;
+}
+html:root body .site-toggle>input.site-toggle-input {
+  position:absolute!important; inset:0!important; z-index:2; width:100%!important; height:100%!important;
+  min-width:0!important; min-height:0!important; margin:0!important; padding:0!important;
+  opacity:0!important; clip:auto!important; clip-path:none!important; transform:none!important;
+  cursor:pointer; border:0!important; box-shadow:none!important; appearance:none;
+}
+html:root body .site-toggle>.site-toggle-track {
+  display:block!important; position:relative!important; inset:auto!important;
+  width:44px!important; height:26px!important; min-width:44px!important; padding:0!important; margin:0!important;
+  border:1px solid #ffffff24!important; border-radius:999px!important; background:#59545c!important;
+  box-shadow:none!important; pointer-events:none; transition:background-color .14s ease;
+}
+html:root body .site-toggle>.site-toggle-track::after {
+  content:""; position:absolute; top:2px; left:2px; width:20px; height:20px;
+  border:0; border-radius:50%; background:#fff!important; box-shadow:0 1px 2px #0002;
+  transform:translateX(0); transition:transform .14s ease;
+}
+html:root body .site-toggle>input:checked+.site-toggle-track { background:var(--pro-accent,#ffb1c0)!important; border-color:transparent!important; }
+html:root body .site-toggle>input:checked+.site-toggle-track::after { transform:translateX(18px); }
+html:root body .site-toggle>input:focus-visible+.site-toggle-track { outline:2px solid var(--pro-accent,#ffb1c0); outline-offset:3px; }
+html:root body .site-toggle:has(input:disabled) { opacity:.45; }
+html:root body .site-toggle>input:disabled { cursor:not-allowed; }
+html:root[data-theme=light] body .site-toggle>.site-toggle-track { background:#c6bec4!important; border-color:#403b3d26!important; }
+@media(prefers-reduced-motion:reduce) { html:root body .site-toggle>.site-toggle-track,html:root body .site-toggle>.site-toggle-track::after { transition:none; } }
+html:root body .site-toggle>input.site-toggle-input { pointer-events:auto!important; }
+html:root body .generator-context-options>label:has(>.site-toggle) { grid-template-columns:44px minmax(0,1fr); }

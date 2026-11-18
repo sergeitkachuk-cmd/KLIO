@@ -117,3 +117,9 @@
      mode selector and account in the narrow header. */
   :root .workspace-shell .workspace-header-actions > .telegram-header-link { display: none; }
 }
+/* Keep the score and unit in one baseline-aligned text run. */
+:root body .workspace-shell .brand-score>div { flex-shrink:0; }
+:root body .workspace-shell .brand-score>div>b { margin:0; white-space:nowrap; line-height:1; font-size:26px; font-variant-numeric:tabular-nums; letter-spacing:-.04em; }
+:root body .workspace-shell .brand-score>div>b>span { position:static; inset:auto; display:inline; margin-left:3px; font-size:14px!important; line-height:1; letter-spacing:0; vertical-align:baseline; }
+:root body .workspace-shell .brand-score>p { min-width:0; overflow-wrap:anywhere; }
+:root body .workspace-shell .brand-score>div { width:88px; height:88px; }

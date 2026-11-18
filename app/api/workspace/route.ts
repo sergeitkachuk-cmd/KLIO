@@ -72,6 +72,8 @@ function cleanProfile(value: unknown) {
     // regardless of the file itself).
     logoFileName: clean(source.logoFileName, 200),
     logoKey: clean(source.logoKey, 400),
+    photoKey: clean(source.photoKey, 400),
+    photoFileName: clean(source.photoFileName, 200),
   };
 }
 

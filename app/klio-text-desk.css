@@ -1,0 +1,43 @@
+:root body .workspace-shell.is-professional .klio-text-desk .adaptation-shell { overflow:visible; background:transparent; border:0; border-radius:0; align-items:start; gap:28px; }
+:root body .workspace-shell.is-professional .klio-text-desk .adaptation-input-card,
+:root body .workspace-shell.is-professional .klio-text-desk .adaptation-result-card { background:transparent; border:0; box-shadow:none; padding:0; border-radius:0; min-width:0; }
+:root body .workspace-shell.is-professional .klio-text-desk .adaptation-card-head h3 { font-size:28px; line-height:1.2; margin:16px 0; }
+.text-desk-eyebrow { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:8px 16px; min-width:0; padding:2px; overflow-wrap:anywhere; font-size:14px; line-height:1.5; color:var(--pro-muted,#c4afb8); }
+.text-desk-settings { margin:20px 0; border:1px solid var(--pro-line,#ffffff26); border-radius:20px; padding:18px; }
+.text-desk-settings summary { display:flex; justify-content:space-between; cursor:pointer; font-size:17px; list-style:none; }
+.text-desk-settings summary::-webkit-details-marker { display:none; }
+.text-desk-settings[open] summary { margin-bottom:20px; }
+:root body .workspace-shell.is-professional .klio-text-desk .adaptation-goals { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+:root body .workspace-shell.is-professional .klio-text-desk .adaptation-goals article { min-width:0; position:relative; background:transparent; border:0; padding:0; }
+:root body .workspace-shell.is-professional .klio-text-desk .adaptation-goals article>button { width:100%; min-height:64px; padding:14px 48px 14px 16px; border-radius:20px; background:var(--pro-tray,#111113); color:var(--pro-text,#fff3f5); text-align:left; }
+:root body .workspace-shell.is-professional .klio-text-desk .adaptation-goals article>button.active { background:var(--pro-action,#ffcc83); color:var(--pro-action-text,#302012); }
+:root body .workspace-shell.is-professional .klio-text-desk .adaptation-goals b { font-size:17px; line-height:1.4; font-weight:500; }
+.text-desk-preview { display:grid; gap:24px; min-width:0; padding:2px; }
+:root body .workspace-shell.is-professional .klio-text-desk .adaptation-result-card:has(.text-desk-preview)>.adaptation-result-head { display:none; }
+.text-desk-manuscript { background:#f4efe3; color:#3d352f; border-radius:8px 8px 26px 26px; padding:clamp(24px,3vw,40px); box-shadow:0 14px 40px #00000014; min-height:330px; }
+.text-desk-paper-head,.text-desk-paper-foot { display:flex; justify-content:space-between; gap:16px; font-size:14px; line-height:1.5; color:#7b7066; }
+.text-desk-paper-head { border-bottom:1px solid #70604b30; padding-bottom:18px; letter-spacing:.09em; }
+:root body .workspace-shell.is-professional .text-desk-manuscript h3 { font-family:Georgia,serif; font-size:clamp(25px,2.6vw,36px); line-height:1.2; color:#3d352f; margin:30px 0 24px; }
+:root body .workspace-shell.is-professional .text-desk-source-preview { white-space:pre-wrap; overflow-wrap:anywhere; font-family:Georgia,serif; font-size:18px; line-height:1.8; color:#51463e; margin:0 0 30px; }
+.text-desk-paper-foot { border-top:1px solid #70604b30; padding-top:18px; margin-top:30px; }
+.text-desk-paper-lines { display:grid; gap:14px; padding:4px 0 28px; }
+.text-desk-paper-lines i { display:block; height:5px; background:#70604b15; border-radius:4px; }
+.text-desk-paper-lines i:nth-child(3) { width:85%; }.text-desk-paper-lines i:last-child { width:62%; }
+.text-desk-plan { padding:24px; border:1px solid var(--pro-line,#ffffff26); border-radius:24px; }
+:root body .workspace-shell.is-professional .text-desk-plan h3 { margin:16px 0 12px; font-size:25px; color:var(--pro-text,#fff3f5); }
+:root body .workspace-shell.is-professional .text-desk-plan p { font-size:17px; line-height:1.6; color:var(--pro-muted,#c4afb8); }
+.text-desk-plan ol { display:grid; gap:16px; list-style:none; padding:20px 0 0; margin:0; }
+.text-desk-plan li { display:flex; align-items:baseline; gap:14px; font-size:16px; line-height:1.6; color:var(--pro-text,#fff3f5); }
+.text-desk-plan li>span { color:var(--pro-action,#ffcc83); font-size:14px; flex:none; }
+.text-desk-compare { border:1px solid var(--pro-line,#ffffff26); border-radius:20px; padding:20px; margin:20px 0; }
+.text-desk-compare summary { display:flex; justify-content:space-between; cursor:pointer; list-style:none; font-size:18px; }
+.text-desk-compare>div { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
+.text-desk-compare section { min-width:0; }
+.text-desk-compare h4 { font-size:17px; }.text-desk-compare p { font-size:16px; line-height:1.7; white-space:pre-wrap; overflow-wrap:anywhere; }
+.text-desk-compare>p { color:var(--pro-muted,#c4afb8); font-size:14px; }
+.text-desk-compare mark { background:#ffcc8333; color:inherit; border-radius:3px; }
+@media(min-width:1000px) { :root body .workspace-shell.is-professional .klio-text-desk .adaptation-result-card { position:sticky; top:24px; max-height:calc(100dvh - 48px); overflow:auto; scrollbar-width:thin; } }
+@media(max-width:700px) { .text-desk-compare>div { grid-template-columns:1fr; } :root body .workspace-shell.is-professional .klio-text-desk .adaptation-goals { grid-template-columns:1fr; } }
+
+:root body .workspace-shell.is-professional .klio-text-desk .adaptation-card-head>b { font-size:14px; }
+@media(max-width:700px) { :root body .workspace-shell.is-professional .klio-text-desk .adaptation-card-head h3 { font-size:22px; } }

@@ -1,0 +1,45 @@
+/* Reading sizes shared by the landing page's descriptions and supporting text. */
+html:root body .cinematic-home { --kl-copy-size:17px;--kl-caption-size:14px;--kl-detail-size:12px; }
+html:root body .cinematic-home :is(.kl-hero-copy>p,.kl-heading p,.kl-brand-description>p,.kl-feature p,.kl-audience article>p,.kl-closing p,.kl-faq-list details>p) {
+  font-size:var(--kl-copy-size);line-height:1.75;
+}
+html:root body .cinematic-home :is(.kl-price-grid article>p:not(.kl-price-limit),.kl-price-limit,.kl-price-grid li) { font-size:16px;line-height:1.65; }
+html:root body .cinematic-home .kl-price-grid li { gap:10px; }
+html:root body .cinematic-home .kl-price-grid li svg { width:17px;height:17px;margin-top:4px; }
+html:root body .cinematic-home :is(.kl-price>span,.kl-price-grid article>small,.kl-payment-note,.kl-audience article>small,.kl-footer>div>p,.kl-footer nav a,.kl-footer-bottom small,.kl-footer-bottom nav a) { font-size:var(--kl-caption-size);line-height:1.65; }
+html:root body .cinematic-home .kl-price-grid .kl-button { font-size:16px; }
+html:root body .cinematic-home :is(.kl-label,.kl-brand-formats span,.kl-price-index,.kl-price-badge,.kl-billing small,.kl-announcement,.kl-faq-list summary>span,.kl-audience-grid>article>span) { font-size:var(--kl-detail-size);line-height:1.5; }
+html:root body .cinematic-home .kl-price-index { padding-top:22px; }
+html:root body .cinematic-home .kl-price-badge { top:16px;right:20px; }
+html:root body .cinematic-home .kl-billing button { font-size:16px; }
+html:root body .cinematic-home .kl-faq-list summary>b { font-size:18px;line-height:1.5; }
+html:root body .cinematic-home .kl-brand-floating { font-size:13px; }
+html:root body .cinematic-home .kl-brand-visual-caption { font-size:11px; }
+html:root body .cinematic-home .kl-network-node small { font-size:12px; }
+html:root body .cinematic-home .kl-paper-stack>div { gap:12px;padding:16px; }
+html:root body .cinematic-home :is(.kl-paper-stack span,.kl-visual-art>span,.kl-calendar-art>span,.kl-calendar-art small,.kl-calendar-art>p) { font-size:10px; }
+html:root body .cinematic-home .kl-opening>span { font-size:12px; }
+html:root body .cinematic-home .kl-demo-tabs button { font-size:16px; }
+html:root body .cinematic-home :is(.kl-example-meta,.kl-example-text-foot,.kl-example-caption,.kl-example-image-copy>small,.kl-example-topic-toggle small,.kl-example-topic-brief small,.kl-example-topic-outline li,.kl-example-post-date>span,.kl-example-post-meta,.kl-example-post-foot) { font-size:var(--kl-caption-size);line-height:1.6; }
+html:root body .cinematic-home :is(.kl-example-kicker,.kl-example-topic-category,.kl-example-topic-category em,.kl-example-topic-outline li:before,.kl-example-week small) { font-size:var(--kl-detail-size); }
+html:root body .cinematic-home .kl-example-prose p { font-size:17px; }
+html:root body .cinematic-home .kl-example-post p { font-size:17px; }
+@media(max-width:700px) {
+ html:root body .cinematic-home { --kl-copy-size:16px;--kl-caption-size:13px; }
+ html:root body .cinematic-home .kl-billing { width:100%; }
+ html:root body .cinematic-home .kl-billing button { flex:1;min-width:0;flex-wrap:wrap;font-size:14px;padding:10px 9px;gap:4px; }
+ html:root body .cinematic-home .kl-example-prose p,html:root body .cinematic-home .kl-example-post p { font-size:16px; }
+ html:root body .cinematic-home .kl-opening>span { font-size:10px;letter-spacing:.1em; }
+}
+html:root body .cinematic-home .kl-brand-floating-two { top:145px; }
+@media(max-width:700px) {
+ html:root body .cinematic-home .kl-brand-visual { min-height:330px; }
+}
+/* A stable logo column and equal link slots stay aligned as the header contracts. */
+@media(min-width:901px) {
+ html:root body .cinematic-home .kl-nav { display:grid;grid-template-columns:120px minmax(0,1fr);gap:20px;padding:10px 20px; }
+ html:root body .cinematic-home .kl-nav>.kl-logo { margin:0; }
+ html:root body .cinematic-home .kl-nav>nav { display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:center;width:100%;margin:0;gap:2px; }
+ html:root body .cinematic-home .kl-nav>nav a { display:flex;align-items:center;justify-content:center;margin:0;padding:12px 8px;font-size:14px;line-height:1.3;border-radius:999px;transition:color .25s ease,background-color .25s ease; }
+ html:root body .cinematic-home .kl-nav>nav a:hover { background:#ffffff0c; }
+}

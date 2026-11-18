@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AuthEditorial } from "../auth-editorial";
 import { useEffect, useState, type FormEvent } from "react";
 import { trackMetricaGoal } from "../analytics-consent";
 import YandexIcon from "../yandex-icon";
@@ -87,46 +88,40 @@ export default function SignupPage() {
 
   if (sentTo) {
     return (
-      <main className="auth-shell">
-        <div className="auth-card">
-          <Link className="wordmark" href="/" aria-label="КЛИО — на главную">
-            <span className="brand"><i aria-hidden="true"/><b>КЛИО<span aria-hidden="true">.</span></b><small>Цифровая редакция</small></span>
-          </Link>
+      <AuthEditorial signup returnTo={safeReturnTo()}>
+
+
           <h1>Проверьте почту</h1>
           <p className="auth-subtitle">Мы отправили письмо со ссылкой подтверждения на <b>{sentTo}</b>. Перейдите по ней, чтобы открыть кабинет — ссылка действует 24 часа.</p>
           <p className="auth-spam-note"><b>Загляните в папку «Спам»</b> — почтовые сервисы (особенно iCloud/Mail на Apple-устройствах) нередко отправляют туда письма от новых сервисов.</p>
           {resendMessage && <p className="auth-error" style={{ color: "#d3ffd8", background: "rgba(92,255,140,0.12)", borderColor: "rgba(118,255,118,0.35)" }}>{resendMessage}</p>}
           <button className="button ghost large" type="button" onClick={() => void handleResend()} disabled={resendBusy}>{resendBusy ? "Отправляю…" : "Отправить письмо ещё раз"}</button>
           <p className="auth-switch">Уже подтвердили? <Link href={{ pathname: "/login", query: { return_to: safeReturnTo() } }}>Войти</Link></p>
-        </div>
-      </main>
+      </AuthEditorial>
     );
   }
 
   return (
-    <main className="auth-shell">
-      <div className="auth-card">
-        <Link className="wordmark" href="/" aria-label="КЛИО — на главную">
-          <span className="brand"><i aria-hidden="true"/><b>КЛИО<span aria-hidden="true">.</span></b><small>Цифровая редакция</small></span>
-        </Link>
-        <h1>Личный кабинет</h1>
+    <AuthEditorial signup returnTo={safeReturnTo()}>
+
+
+        <span className="login-eyebrow">Начните свою историю</span><h1>Создать аккаунт<span>.</span></h1>
         <p className="auth-subtitle">Регистрация занимает минуту — дальше доступны генератор, профиль бренда и архив материалов.</p>
-        <a className="button ghost" href={`/api/auth/yandex/start?return_to=${encodeURIComponent(safeReturnTo())}`}>
+        <div className="login-providers"><a className="button ghost" href={`/api/auth/yandex/start?return_to=${encodeURIComponent(safeReturnTo())}`}>
           <YandexIcon />
           Продолжить с Яндекс
         </a>
-        <VkSignIn returnTo={safeReturnTo()} />
+        <VkSignIn returnTo={safeReturnTo()} /></div>
         <div className="auth-divider"><span>или по email</span></div>
         <form onSubmit={handleSubmit}>
-          <label className="field">Имя<input required autoComplete="name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} /></label>
-          <label className="field">Email<input type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-          <PasswordField label="Пароль" value={password} onChange={setPassword} autoComplete="new-password" minLength={8} hint={<small>Не короче 8 символов</small>} />
-          <PasswordField label="Повторите пароль" value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" minLength={8} />
+          <div className="login-fields"><label className="field"><span className="login-field-label">Имя</span><input placeholder="Ваше имя" aria-label="Ваше имя" required autoComplete="name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} /></label>
+          <label className="field"><span className="login-field-label">Электронная почта</span><input placeholder="Электронная почта" aria-label="Электронная почта" type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+          <PasswordField placeholder="Пароль · от 8 символов" label="Пароль" value={password} onChange={setPassword} autoComplete="new-password" minLength={8} />
+          <PasswordField placeholder="Повторите пароль" label="Повторите пароль" value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" minLength={8} /></div>
           {error && <p className="auth-error">{error}</p>}
           <button className="button primary large" type="submit" disabled={busy}>{busy ? "Создаю…" : "Создать кабинет"}</button>
         </form>
         <p className="auth-switch">Уже есть аккаунт? <Link href={{ pathname: "/login", query: { return_to: safeReturnTo() } }}>Войти</Link></p>
-      </div>
-    </main>
+    </AuthEditorial>
   );
 }

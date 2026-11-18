@@ -1,0 +1,155 @@
+/* Remaining professional workspace surfaces. */
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors { --comp-panel:#21191e; --comp-field:#191418; --comp-rule:#e1c2ae30; --comp-text:#fff3eb; --comp-muted:#c4afb8; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors :is(.competitor-setup-card,.competitor-optional-shell,.competitor-optional-body) { background:transparent!important; border:0!important; padding:0!important; box-shadow:none!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-setup-head { margin-bottom:22px; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-mode { background:var(--comp-panel)!important; border:1px solid var(--comp-rule)!important; color:var(--comp-muted)!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-query-row>label { border:0!important; background:transparent!important; padding:0!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-query-sources>button { background:var(--comp-panel)!important; border:1px solid var(--comp-rule)!important; color:var(--comp-text)!important; border-radius:18px!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-query-sources>button>i { background:#efbf79!important; color:#30271c!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors :is(input:not([type=checkbox]),textarea) { background:var(--comp-field)!important; color:var(--comp-text)!important; border:1px solid var(--comp-rule)!important; box-shadow:none!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-source-row { background:#ffffff04!important; border:1px solid var(--comp-rule)!important; border-radius:20px!important; padding:16px!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-source-row:before { background:transparent!important; border:0!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-add { background:var(--comp-panel)!important; color:var(--comp-text)!important; border:1px dashed var(--comp-rule)!important; border-radius:18px!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-requirement { background:#edcbb6!important; border:0!important; border-radius:20px!important; padding:20px!important; color:#382b26!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-requirement :is(b,small,span) { color:#503b31!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-requirement>i { background:#3a2e29!important; color:#fff7e7!important; border:0!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-summary-grid { gap:12px!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-summary-grid>article { background:var(--comp-panel)!important; border:1px solid var(--comp-rule)!important; border-radius:22px!important; padding:20px!important; min-height:0!important; height:auto!important; box-shadow:none!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-summary-grid>article b { color:var(--comp-text)!important; font-size:34px!important; line-height:1.2; margin:14px 0; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-summary-grid>article :is(span,p,small) { color:var(--comp-muted)!important; font-size:12px!important; line-height:1.5; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-summary-grid>article.competitor-summary-accent { background:#e5c7a2!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-summary-grid>article.competitor-summary-accent :is(span,b,p) { color:#463324!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors :is(.competitor-matrix-card,.competitor-insights-grid>article,.competitor-generator-context) { background:var(--comp-panel)!important; border:1px solid var(--comp-rule)!important; color:var(--comp-text)!important; border-radius:24px!important; box-shadow:none!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-table :is(th,td) { border-color:var(--comp-rule)!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-table thead th { background:var(--comp-field)!important; color:var(--comp-text)!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-table .brand-column { background:#e8b67f12!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-table-hint { background:transparent!important; border-color:var(--comp-rule)!important; color:var(--comp-muted)!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-matrix-footer { background:transparent!important; border-color:var(--comp-rule)!important; color:var(--comp-muted)!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-matrix-head { border-color:var(--comp-rule)!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-legend .coverage-partial { color:#d8ad69!important; background:transparent!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-legend .coverage-unknown { color:var(--comp-muted)!important; background:transparent!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-source-note>i { background:var(--comp-panel)!important; color:var(--comp-muted)!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-insights-grid :is(li,button) { border-color:var(--comp-rule)!important; }
+html:root[data-theme=light] body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors { --comp-panel:#fffaf4; --comp-field:#f4eee7; --comp-rule:#725b432b; --comp-text:#40352d; --comp-muted:#726054; }
+@media(min-width:901px) {
+html:root body main.workspace-shell.is-professional:not([data-professional-rail-collapsed=true]) .workspace-sidebar>nav>a { height:var(--pro-rail-item-height,44px)!important; min-height:var(--pro-rail-item-height,44px)!important; padding-top:0!important; padding-bottom:0!important; }
+html:root body main.workspace-shell.is-professional:not([data-professional-rail-collapsed=true]) .workspace-sidebar>nav>a>span>b { white-space:normal!important; font-size:14px!important; line-height:1.2!important; overflow-wrap:normal; }
+html:root body main.workspace-shell.is-professional[data-professional-rail-collapsed=true] .workspace-sidebar>nav>a>span>b { white-space:nowrap!important; line-height:1.3!important; }
+}
+
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors :is(.competitor-search-status,.competitor-serp-card,.competitor-serp-recommendation,.competitor-discovery-note) { background:var(--comp-panel)!important; border:1px solid var(--comp-rule)!important; color:var(--comp-text)!important; box-shadow:none!important; border-radius:20px!important; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #competitors .competitor-source-row :is(label,.competitor-url-field) { border-color:var(--comp-rule)!important; }
+html:root body main.workspace-shell #competitors .competitor-remove {
+  display:flex!important; align-items:center!important; justify-content:center!important;
+  width:34px!important; height:34px!important; min-height:34px!important;
+  padding:0!important; line-height:1!important; font-size:22px!important; align-self:center; flex:none;
+}
+html:root body dialog.brand-create-dialog {
+  position:fixed; inset:0; margin:auto; width:min(440px,calc(100vw - 32px)); max-height:calc(100dvh - 32px);
+  padding:28px; border:1px solid #fff8; border-radius:28px; background:#f6ece2; color:#382d30;
+  box-shadow:0 24px 80px #130d1640; overflow:auto; font-family:var(--font-sans),sans-serif;
+}
+html:root body .brand-create-dialog::backdrop { background:#130f1766; backdrop-filter:blur(5px); }
+html:root body .brand-create-dialog header { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+html:root body .brand-create-dialog h2 { margin:0; font-size:28px; letter-spacing:-.04em; }
+html:root body .brand-create-dialog header button { display:flex; align-items:center; justify-content:center; width:34px; height:34px; flex:none; padding:0; border:1px solid #705e7130; border-radius:50%; background:#fff8; color:#382d30; cursor:pointer; }
+html:root body .brand-create-dialog p { color:#72616a; font-size:14px; line-height:1.6; margin:18px 0 24px; }
+html:root body .brand-create-dialog>label { display:block; font-size:13px; margin-bottom:8px; }
+html:root body .brand-create-dialog .brand-create-form { display:flex; flex-direction:column; gap:14px; margin:0; padding:0; position:static; width:100%; }
+html:root body .brand-create-dialog input { box-sizing:border-box; width:100%; min-width:0; padding:14px 16px; border:1px solid #705e7130; border-radius:14px; background:#fffcf8; color:#382d30; font:inherit; }
+html:root body .brand-create-dialog .brand-create-form button { width:100%; min-height:46px; border:0; border-radius:999px; background:#f5c57e; color:#382b23; font:inherit; cursor:pointer; }
+html:root body .brand-create-dialog .brand-create-form button:disabled { opacity:.5; cursor:default; }
+html:root body main.workspace-shell #competitors .competitor-remove svg { display:block; flex:none; width:16px; height:16px; }
+
+@media(min-width:901px) {
+html:root body main.workspace-shell.is-professional .workspace-sidebar>nav { min-height:0; flex:0 1 auto; }
+html:root body main.workspace-shell.is-professional .workspace-project { flex-shrink:0; }
+html:root body main.workspace-shell.is-professional .professional-rail-account { flex-shrink:0; margin-bottom:0; }
+}
+@media(min-width:901px) {
+html:root body main.workspace-shell.is-professional:not([data-professional-rail-collapsed=true]) .workspace-sidebar>nav>a[href="#images"] { height:auto!important; min-height:38px!important; padding-block:2px!important; }
+}
+html:root body main.workspace-shell .support-overlay { background:#130f1766!important; backdrop-filter:blur(5px); padding:20px; }
+html:root body main.workspace-shell .support-overlay .feedback-modal {
+  width:min(640px,100%); max-height:calc(100dvh - 40px); padding:26px; gap:20px;
+  background:radial-gradient(ellipse at 0 0,#e1daf5,transparent 65%),linear-gradient(145deg,#efdfeb,#f4e3c8)!important;
+  color:#382f38!important; border:1px solid #ffffff90!important; border-radius:30px;
+  box-shadow:0 24px 80px #130d1633!important;
+}
+html:root body main.workspace-shell .support-overlay .archive-editor-head { background:transparent!important; border:0!important; margin:0; padding:0!important; align-items:flex-start; }
+html:root body main.workspace-shell .support-overlay .archive-editor-head>div>span { color:#73616f!important; font-size:10px; letter-spacing:.12em; }
+html:root body main.workspace-shell .support-overlay h2 { color:#302931!important; font-size:34px!important; line-height:1.15; letter-spacing:-.045em; margin:10px 0 0; }
+html:root body main.workspace-shell .support-overlay .archive-editor-head-actions button { display:flex; align-items:center; justify-content:center; width:34px!important; height:34px!important; min-height:34px!important; padding:0!important; border:1px solid #ffffff80!important; background:#ffffff8c!important; color:#403344!important; border-radius:50%; }
+html:root body main.workspace-shell .support-overlay .feedback-modal-empty { background:#fffbf5c9!important; border:1px solid #fff9!important; color:#665468!important; border-radius:20px; padding:22px; font-size:14px; line-height:1.7; }
+html:root body main.workspace-shell .support-overlay .feedback-thread { gap:16px; }
+html:root body main.workspace-shell .support-overlay .feedback-thread-bubbles { max-height:38dvh; padding:2px; gap:12px; scrollbar-width:thin; }
+html:root body main.workspace-shell .support-overlay .feedback-bubble { padding:14px 16px; border:1px solid #fff9; border-radius:20px; color:#403344!important; box-shadow:none!important; }
+html:root body main.workspace-shell .support-overlay .feedback-bubble.is-client { background:#eed4c3!important; border-bottom-right-radius:6px; }
+html:root body main.workspace-shell .support-overlay .feedback-bubble:is(.is-admin,.is-bot) { background:#fffbf5e6!important; border-bottom-left-radius:6px; }
+html:root body main.workspace-shell .support-overlay .feedback-bubble p { color:#403344!important; font-size:14px; line-height:1.65; overflow-wrap:anywhere; }
+html:root body main.workspace-shell .support-overlay .feedback-bubble time { color:#796773!important; font-size:10px; }
+html:root body main.workspace-shell .support-overlay .publications-editor-field>span { color:#665468!important; font-size:12px; }
+html:root body main.workspace-shell .support-overlay textarea { background:#fffbf5e6!important; color:#403344!important; border:1px solid #8a6e7d30!important; box-shadow:none!important; border-radius:20px; padding:16px; font-size:14px; min-height:110px; resize:vertical; }
+html:root body main.workspace-shell .support-overlay textarea::placeholder { color:#8b7786!important; }
+html:root body main.workspace-shell .support-overlay textarea:focus { outline:none!important; border-color:#93718380!important; }
+html:root body main.workspace-shell .support-overlay .publications-editor-actions { padding:0; margin:0; min-height:0; }
+html:root body main.workspace-shell .support-overlay .button.primary { background:#f4c780!important; color:#3c2c23!important; border:0!important; min-height:42px; padding:10px 24px!important; border-radius:999px; }
+html:root body main.workspace-shell .support-overlay .button.primary:hover { background:#edba6b!important; color:#3c2c23!important; }
+html:root body main.workspace-shell .support-overlay .generation-error { background:#f9e5df!important; color:#923c33!important; border-color:#c9837230!important; }
+@media(max-width:600px) {
+  html:root body main.workspace-shell .support-overlay { padding:12px; }
+  html:root body main.workspace-shell .support-overlay .feedback-modal { padding:20px; max-height:calc(100dvh - 24px); border-radius:26px; }
+  html:root body main.workspace-shell .support-overlay .feedback-bubble { max-width:90%; }
+}
+html:root body main.workspace-shell .support-overlay #feedback-modal-title { color:#302931!important; -webkit-text-fill-color:#302931!important; }
+html:root body main.workspace-shell .support-overlay #feedback-message { background:#fffbf5e6!important; color:#403344!important; -webkit-text-fill-color:#403344!important; border:1px solid #8a6e7d30!important; border-radius:20px!important; box-shadow:none!important; }
+html:root body main.workspace-shell .support-overlay #feedback-message::placeholder { color:#8b7786!important; -webkit-text-fill-color:#8b7786!important; }
+html:root body main.workspace-shell .support-overlay .feedback-thread-bubbles:empty { display:none; }
+html:root body main.workspace-shell .support-overlay #feedback-message { min-height:240px; height:clamp(240px,32dvh,340px); }
+html:root body main.workspace-shell .support-overlay #feedback-message:focus { outline:none!important; box-shadow:none!important; border-color:#8a6e7d30!important; }
+@media(max-height:650px) { html:root body main.workspace-shell .support-overlay #feedback-message { min-height:140px; height:26dvh; } }
+html:root body:has(.support-overlay) .workspace-writing-glow-clip { display:none!important; }
+/* Menu selection starts immediately and settles softly. */
+html:root body main.workspace-shell .workspace-sidebar>nav>a,
+html:root body main.workspace-shell .professional-rail-account,
+html:root body main.workspace-shell .dialogue-module-rail button {
+  transition:background-color .32s ease,color .28s ease,box-shadow .32s ease!important;
+}
+html:root body main.workspace-shell .workspace-sidebar>nav>a :is(i,b,svg),
+html:root body main.workspace-shell .professional-rail-account :is(span,svg) {
+  transition:color .28s ease!important;
+}
+@media(prefers-reduced-motion:reduce) {
+  html:root body main.workspace-shell .workspace-sidebar>nav>a,
+  html:root body main.workspace-shell .workspace-sidebar>nav>a :is(i,b,svg),
+  html:root body main.workspace-shell .professional-rail-account,
+  html:root body main.workspace-shell .professional-rail-account :is(span,svg),
+  html:root body main.workspace-shell .dialogue-module-rail button { transition:none!important; }
+}
+/* A single expanding pill avoids seams between the icon and its label. */
+@media(min-width:901px) {
+html:root body main.workspace-shell.is-professional[data-professional-rail-collapsed=true] .professional-rail-account {
+  display:flex!important; justify-content:flex-start; align-items:center; position:relative;
+  width:max-content!important; min-width:44px; max-width:340px; height:44px; min-height:44px;
+  padding:0 12px!important; gap:0!important; border-radius:999px!important; overflow:hidden;
+  box-sizing:border-box; background:var(--pro-tray)!important;
+}
+html:root body main.workspace-shell.is-professional[data-professional-rail-collapsed=true] .professional-rail-account>svg { width:20px; height:20px; flex:0 0 20px; }
+html:root body main.workspace-shell.is-professional[data-professional-rail-collapsed=true] .professional-rail-account>span,
+html:root body main.workspace-shell.is-professional[data-professional-rail-collapsed=true] .professional-rail-account:is(:hover,:focus-visible)>span {
+  display:block; position:static; width:auto; max-width:0; height:auto; min-height:0;
+  padding:0; opacity:0; overflow:hidden; white-space:nowrap; clip-path:none; transform:none;
+  background:transparent!important; border-radius:0; pointer-events:auto;
+  transition:max-width .3s cubic-bezier(.22,1,.36,1),padding .3s cubic-bezier(.22,1,.36,1),opacity .18s ease,color .28s ease!important;
+}
+html:root body main.workspace-shell.is-professional[data-professional-rail-collapsed=true] .professional-rail-account:is(:hover,:focus-visible)>span { max-width:260px; padding-left:12px; padding-right:6px; opacity:1; }
+}
+@media(prefers-reduced-motion:reduce) {
+html:root body main.workspace-shell.is-professional[data-professional-rail-collapsed=true] .professional-rail-account>span { transition:none!important; }
+}
+@media(min-width:901px) {
+html:root body main.workspace-shell.is-professional[data-professional-rail-collapsed=true] .professional-rail-account {
+  align-self:flex-start!important; margin-left:0!important; margin-right:0!important;
+  left:0!important; right:auto!important; transform:none!important;
+}
+}

@@ -6,6 +6,8 @@ export type SharedGeneration = {
   brandId: string | null;
 };
 export type DialogueWorkspaceProps = {
+  railCollapsed?: boolean;
+  onRailToggle?: () => void;
   theme: "dark" | "light";
   brandId: string;
   brandName: string;

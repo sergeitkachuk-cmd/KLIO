@@ -1,13 +1,33 @@
 "use client";
 
+import "./professional-workspace.css";
 import { useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode, TextareaHTMLAttributes } from "react";
+import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode, TextareaHTMLAttributes } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { UserRound, X } from "lucide-react";
+import { BufferedWorkspaceInput, WorkspaceInput, WorkspaceTextarea } from "./workspace-text-field";
+import { BrandCreateDialog } from "./brand-create-dialog";
+import { WorkspaceNews } from "./workspace-news";
+import "./workspace-polish.css";
+import { WorkspaceWritingGlow } from "./workspace-writing-glow";
+import { DialogueRailToggle } from "./dialogue-rail-toggle";
+import { EditorialDesk } from "./editorial-desk";
+import { WorkspaceBrandContext } from "./workspace-brand-context";
+import { EditorialVisualCarousel } from "./editorial-visual-carousel";
+import { KlioActivity } from "./klio-activity";
+import { KlioTextManuscript, KlioRevisionCompare } from "./klio-text-desk";
+import { ImageCreationFlow } from "./image-creation-flow";
+import { ImageCanvasPreview } from "./image-canvas-preview";
+import { DialogueMaterialGallery } from "./dialogue-material-gallery";
+import { DialoguePublicationCalendar } from "./dialogue-publication-calendar";
 import { DialogueWorkspace } from "./dialogue-workspace";
+import { ContentPlanDeck } from "./content-plan-deck";
+import { SiteToggle } from "./site-toggle";
 import { ProfileField } from "./profile-field";
+import { BrandProfileCanvas } from "./brand-profile-canvas";
+import { BrandPhotoCard } from "./brand-photo-card";
 import { createWorkspaceSaveQueue } from "./workspace-save-queue";
-import { startFeedbackSync, type FeedbackMessageRecord, type AnnouncementRecord } from "./feedback-sync";
 import { HelpTip } from "./help-tip";
 import { ModuleSelect } from "./module-select";
 import { IMAGE_STYLE_OPTIONS, IMAGE_TEXT_OPTIONS, LOGO_PLACEMENT_OPTIONS, LOGO_POSITION_OPTIONS } from "./dialogue-generation-settings";
@@ -16,6 +36,7 @@ import { PublicationImagePicker } from "./publication-image-picker";
 import { ImageLightbox } from "./image-lightbox";
 import ImageMaskEditor from "./image-mask-editor";
 import { LandingImageShowcase } from "./landing-image-showcase";
+import { startFeedbackSync } from "./feedback-sync";
 import { FOUNDATION_FIELDS, VOICE_FIELDS, mergeProfileFill, missingVoiceFoundation } from "./brand-profile-fill";
 import { russianGeoTree } from "./geo-data";
 import { ADAPTATION_PLANS, TONE_PLANS } from "./content-plans";
@@ -229,6 +250,8 @@ type BrandProfile = {
   // придумывал логотип при генерации изображения").
   logoFileName: string;
   logoKey: string;
+  photoKey: string;
+  photoFileName: string;
 };
 
 type GeneratedMaterial = {
@@ -294,6 +317,17 @@ type WorkspaceAccount = {
   // Null falls back to the initials circle, same as before this existed.
   avatarUrl: string | null;
 };
+
+// Mirrors a row of feedbackMessages (db/schema.ts) — one message in this
+// visitor's own "Задать вопрос" thread, tagged by who sent it. Ordered
+// oldest-first by the API (see api/feedback/route.ts's GET) for a
+// Telegram-style top-to-bottom read.
+type FeedbackMessageRecord = { id: string; sender: "client" | "admin" | "bot"; body: string; createdAt: string };
+
+// Mirrors a row of announcements (db/schema.ts) — the opposite direction of
+// FeedbackMessageRecord above (site owner writing to clients, not replying
+// to their questions). One-way: no reply field, nothing to answer here.
+type AnnouncementRecord = { id: string; message: string; createdAt: string };
 
 type BrandWorkspaceSnapshot = {
   useBrand?: boolean;
@@ -522,7 +556,7 @@ const MATERIALS_DATE_RANGE_OPTIONS: { value: MaterialsDateRange; label: string }
   { value: "year", label: "Год" },
 ];
 
-// Публикации' time field: <input type="time">'s own dropdown is a native
+// Публикации' time field: <WorkspaceInput type="time">'s own dropdown is a native
 // system widget with no CSS hook at all, but a single flat ModuleSelect
 // covering every minute (or even a 30-minute-step compromise, tried and
 // rejected — real feedback: too restrictive, 14:07 needs to be pickable)
@@ -609,6 +643,8 @@ const defaultBrand: BrandProfile = {
   brandBookKey: "",
   logoFileName: "",
   logoKey: "",
+  photoKey: "",
+  photoFileName: "",
 };
 
 // Demo data belongs only to the public example. A brand created in a real
@@ -635,6 +671,8 @@ function emptyBrandProfile(name = "Мой бренд"): BrandProfile {
     brandBookKey: "",
     logoFileName: "",
     logoKey: "",
+  photoKey: "",
+  photoFileName: "",
   };
 }
 
@@ -1520,15 +1558,6 @@ function localDayKey(date: Date) {
     .join("-");
 }
 
-function publicationPeriodLabel(view: "month" | "week" | "list", cursor: Date) {
-  if (view !== "week") return cursor.toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
-  const start = startOfWeek(cursor);
-  const end = addDays(start, 6);
-  const startLabel = start.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
-  const endLabel = end.toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" });
-  return `${startLabel} – ${endLabel}`;
-}
-
 async function requestPublications(brandId: string, from: string, to: string) {
   const response = await fetch(`/api/publications?brandId=${encodeURIComponent(brandId)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, {
     cache: "no-store",
@@ -1710,7 +1739,7 @@ function AutoTextarea({ value, className, onInput, ...props }: AutoTextareaProps
     };
   }, []);
 
-  return <textarea
+  return <WorkspaceTextarea
     {...props}
     ref={fieldRef}
     className={className}
@@ -1772,6 +1801,16 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // entry instead of a header-only toggle button) is reached and left the
   // same way, so there's no separate toggle-to-close behavior anywhere.
   const [activeModule, setActiveModule] = useState<WorkspaceModule>("start");
+  const workspaceContentRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const content = workspaceContentRef.current;
+    if (!workspace || !content || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const animation = content.animate([
+      { opacity: .55, transform: "translateY(6px)" },
+      { opacity: 1, transform: "translateY(0)" },
+    ], { duration: 380, easing: "cubic-bezier(.22,1,.36,1)" });
+    return () => animation.cancel();
+  }, [activeModule, workspace]);
   const [workspaceModuleRestored, setWorkspaceModuleRestored] = useState(false);
   // Also pushes a browser history entry (via the hash) so the phone/
   // browser back button steps between modules instead of leaving the
@@ -1786,7 +1825,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     setActiveModule(id);
     if (workspace) {
       const hash = WORKSPACE_MODULE_HASH[id];
-      if (window.location.hash !== hash) window.location.hash = hash;
+      if (window.location.hash !== hash) {
+        if (workspaceMode === "professional") window.history.pushState(null, "", hash);
+        else window.location.hash = hash;
+      }
+      if (workspaceMode === "professional") window.scrollTo({ top: 0, behavior: "instant" });
     }
   }
 
@@ -1850,7 +1893,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     return () => window.clearInterval(timer);
   }, [activeModule]);
   const [brandSaved, setBrandSaved] = useState(false);
-  const [brandTab, setBrandTab] = useState<BrandTab>("foundation");
   const [voiceBusy, setVoiceBusy] = useState(false);
   const [voiceError, setVoiceError] = useState("");
   const [replaceFoundation, setReplaceFoundation] = useState(false);
@@ -1916,14 +1958,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // Any date within the visible month/week — navigation just moves this,
   // the grid itself is always derived from it (see pubGridDays below).
   const [pubCursor, setPubCursor] = useState(() => new Date());
-  const [pubDraggingId, setPubDraggingId] = useState<string | null>(null);
+  const [, setPubDraggingId] = useState<string | null>(null);
   const [pubDropDayKey, setPubDropDayKey] = useState<string | null>(null);
   const [pubMovingId, setPubMovingId] = useState<string | null>(null);
   const pubPointerDragRef = useRef<{
     item: PubItem;
     pointerId: number;
     pointerType: string;
-    target: HTMLButtonElement;
+    target: HTMLElement;
     startX: number;
     startY: number;
     active: boolean;
@@ -1978,23 +2020,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     return Array.from({ length: count }, (_, index) => addDays(start, index));
   }, [pubView, pubCursor]);
 
-  const pubByDay = useMemo(() => {
-    const map = new Map<string, PubItem[]>();
-    for (const item of pubItems) {
-      const key = localDayKey(new Date(item.scheduledAt));
-      const list = map.get(key);
-      if (list) list.push(item); else map.set(key, [item]);
-    }
-    for (const list of map.values()) list.sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt));
-    return map;
-  }, [pubItems]);
-
-  const pubSelectedDay = useMemo(
-    () => pubSelectedDayKey ? pubGridDays.find((day) => localDayKey(day) === pubSelectedDayKey) || null : null,
-    [pubGridDays, pubSelectedDayKey],
-  );
-  const pubSelectedItems = pubSelectedDayKey ? pubByDay.get(pubSelectedDayKey) || [] : [];
-
   // A day selection belongs to the visible period; moving the calendar starts
   // a new selection instead of leaving a stale list from the previous month.
   // Compares against the last *actual* pubCursor/pubView instead of a plain
@@ -2020,8 +2045,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   // react-hooks/exhaustive-deps only ever needs the primitives already
   // listed, never a function identity that would be new every render.
   useEffect(() => {
-    if (activeModule !== "publications" || !activeBrandId) return;
-    const gridStart = pubView === "week" ? startOfWeek(pubCursor) : startOfWeek(startOfMonth(pubCursor));
+    if ((activeModule !== "publications" && activeModule !== "start") || !activeBrandId) return;
+    const gridStart = activeModule === "start" ? new Date() : pubView === "week" ? startOfWeek(pubCursor) : startOfWeek(startOfMonth(pubCursor));
     const gridEnd = addDays(gridStart, pubView === "week" ? 7 : 42);
     let cancelled = false;
     setPubLoading(true);
@@ -2086,26 +2111,6 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
     }
   }
 
-  function handlePublicationDragStart(event: ReactDragEvent<HTMLButtonElement>, item: PubItem) {
-    if (item.status !== "scheduled" || pubMovingId) {
-      event.preventDefault();
-      return;
-    }
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", item.id);
-    setPubDraggingId(item.id);
-  }
-
-  function handlePublicationDrop(event: ReactDragEvent<HTMLDivElement>, day: Date) {
-    event.preventDefault();
-    const itemId = event.dataTransfer.getData("text/plain");
-    const item = pubItems.find((candidate) => candidate.id === itemId);
-    setPubDraggingId(null);
-    setPubDropDayKey(null);
-    if (!item || item.status !== "scheduled" || pubMovingId) return;
-    movePublicationToDay(item, day);
-  }
-
   function movePublicationToDay(item: PubItem, day: Date) {
     const previous = new Date(item.scheduledAt);
     const next = new Date(day);
@@ -2126,7 +2131,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       : null;
   }
 
-  function handlePublicationPointerDown(event: ReactPointerEvent<HTMLButtonElement>, item: PubItem) {
+  function handlePublicationPointerDown(event: ReactPointerEvent<HTMLElement>, item: PubItem) {
     if (event.pointerType === "mouse" || item.status !== "scheduled" || pubMovingId) return;
     const target = event.currentTarget;
     target.setPointerCapture?.(event.pointerId);
@@ -2738,9 +2743,34 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   const [workspaceUserName, setWorkspaceUserName] = useState("Сергей");
   const [workspaceUserKey, setWorkspaceUserKey] = useState("");
   const [workspaceMode, setWorkspaceMode] = useState<"dialogue" | "professional">("professional");
+  const [dialogueRailCollapsed, setDialogueRailCollapsed] = useState(true);
+  const [professionalRailCollapsed, setProfessionalRailCollapsed] = useState(false);
+
   const [modeSaving, setModeSaving] = useState(false);
   const [dialogueImport, setDialogueImport] = useState<{ id: string; nonce: number } | null>(null);
   const [workspaceReady, setWorkspaceReady] = useState(!workspace);
+  useLayoutEffect(() => {
+    if (!workspace || !workspaceReady || workspaceMode !== "professional") return;
+    const rail = document.querySelector<HTMLElement>(".workspace-shell.is-professional .workspace-sidebar");
+    if (!rail) return;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const top = Math.max(16, rail.getBoundingClientRect().top);
+      const space = `${Math.max(0, Math.floor(window.innerHeight - top - 16))}px`;
+      if (rail.style.getPropertyValue("--professional-rail-space") !== space) rail.style.setProperty("--professional-rail-space", space);
+    };
+    const schedule = () => { if (!frame) frame = window.requestAnimationFrame(measure); };
+    measure();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+    };
+  }, [workspace, workspaceReady, workspaceMode, activeModule, professionalRailCollapsed]);
+
   const [workspaceSaving, setWorkspaceSaving] = useState(false);
   const [workspaceDataError, setWorkspaceDataError] = useState("");
   const historyOpen = activeModule === "history";
@@ -3005,7 +3035,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   ]);
   const workspaceSnapshotJson = useMemo(() => JSON.stringify(workspaceSnapshot), [workspaceSnapshot]);
   const latestBrandSaveSnapshot = useRef("");
-  latestBrandSaveSnapshot.current = JSON.stringify({ action: "save_brand", brandId: activeBrandId, profile: effectiveBrand, workspace: workspaceSnapshot });
+  latestBrandSaveSnapshot.current = useMemo(() => JSON.stringify({ action: "save_brand", brandId: activeBrandId, profile: effectiveBrand, workspace: workspaceSnapshot }), [activeBrandId, effectiveBrand, workspaceSnapshot]);
   const activeWorkspaceBrand = useMemo(
     () => workspaceBrands.find((item) => item.id === activeBrandId) ?? null,
     [activeBrandId, workspaceBrands],
@@ -3288,8 +3318,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
   };
 
   // Shared by both account-menu rows ("Новости"/"Обращения" below) — opens
-  // the same modal already showing the right content. The sync above marks
-  // only this view as read after loading its latest messages.
+  // the same modal already showing the right content, and marks only that
+  // row's own badge as seen (api/feedback/route.ts's PATCH takes `kind` for
+  // exactly this - opening one must never clear the other's unread count).
+  // Optimistic clear so the badge doesn't flash while the request is in flight.
   function openFeedback(kind: "news" | "support") {
     setAccountMenuOpen(false);
     setFeedbackTab(kind);
@@ -6642,7 +6674,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       return <main className="workspace-shell workspace-loading is-error"><Brand/><div><h1>Кабинет временно недоступен</h1><p>{workspaceDataError}</p><button className="button primary" type="button" onClick={() => window.location.reload()}>Повторить</button></div></main>;
     }
 
-    return <main className={`workspace-shell ${workspaceMode === "dialogue" ? "is-dialogue" : ""}`} data-active-module={activeModule}>
+    return <BufferedWorkspaceInput value={workspaceMode === "professional"}><main className={`workspace-shell ${workspaceMode === "dialogue" ? "is-dialogue" : "is-professional"}`} data-active-module={activeModule} data-professional-rail-collapsed={workspaceMode === "professional" && professionalRailCollapsed ? "true" : undefined} data-rail-collapsed={workspaceMode === "dialogue" && dialogueRailCollapsed ? "true" : undefined}>
+      {activeModule !== "brand" && !(feedbackOpen && feedbackTab === "support") && <WorkspaceWritingGlow/>}
       <header className="workspace-header">
         <Link className="wordmark" href="/" aria-label="КЛИО — вернуться на сайт"><Brand/></Link>
         <div className="workspace-header-actions">
@@ -6691,22 +6724,15 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         </div>
       </header>
 
-      {feedbackOpen && <div className="archive-editor-overlay" onMouseDown={handleOverlayBackdropDown} onClick={(event) => handleOverlayBackdropClick(event, () => { if (!feedbackBusy) setFeedbackOpen(false); })}>
+      {feedbackOpen && feedbackTab === "news" && <WorkspaceNews items={announcements} onClose={() => setFeedbackOpen(false)}/>}
+      {feedbackOpen && feedbackTab === "support" && <div className="archive-editor-overlay support-overlay" onMouseDown={handleOverlayBackdropDown} onClick={(event) => handleOverlayBackdropClick(event, () => { if (!feedbackBusy) setFeedbackOpen(false); })}>
         <section className="feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-modal-title">
           <div className="archive-editor-head">
-            <div><span>КЛИО / Обратная связь</span><h2 id="feedback-modal-title">{feedbackTab === "news" ? "Новости" : "Обращения"}</h2></div>
-            <div className="archive-editor-head-actions"><button type="button" onClick={() => setFeedbackOpen(false)} aria-label="Закрыть">×</button></div>
+            <div><span>КЛИО / Обратная связь</span><h2 id="feedback-modal-title">Обращения</h2></div>
+            <div className="archive-editor-head-actions"><button type="button" onClick={() => setFeedbackOpen(false)} aria-label="Закрыть обращения"><X size={19}/></button></div>
           </div>
-          {feedbackTab === "news" ? <div className="feedback-news-list">
-            {announcements.length > 0 ? announcements.map((item) => (
-              <article className="feedback-letter" key={item.id}>
-                <header><span className="feedback-letter-badge">КЛИО</span><time>{new Date(item.createdAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}</time></header>
-                <p>{item.message}</p>
-              </article>
-            )) : <p className="feedback-modal-empty">Пока новостей нет — здесь будут появляться обновления и объявления от команды КЛИО.</p>}
-          </div> : <div className="feedback-thread">
+          <div className="feedback-thread">
             <div className="feedback-thread-bubbles" ref={feedbackThreadRef}>
-              {feedbackHistory.length === 0 && <p className="feedback-modal-empty">Вопрос, пожелание или что-то не работает — напишите ниже, мы ответим вам прямо в этом окне.</p>}
               {feedbackHistory.map((item) => (
                 <div key={item.id} className={`feedback-bubble is-${item.sender}`}>
                   <p>{item.body}</p>
@@ -6716,13 +6742,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </div>
             <label className="publications-editor-field">
               <span>Новое сообщение</span>
-              <textarea rows={3} value={feedbackMessage} onChange={(event) => setFeedbackMessage(event.target.value)} placeholder="Опишите вопрос или пожелание…"/>
+              <WorkspaceTextarea id="feedback-message" rows={8} value={feedbackMessage} onChange={(event) => setFeedbackMessage(event.target.value)} placeholder="Опишите вопрос или пожелание…"/>
             </label>
             {feedbackError && <p className="generation-error" role="alert">{feedbackError}</p>}
             <div className="publications-editor-actions">
               <button type="button" className="button primary" disabled={feedbackBusy} onClick={() => void submitFeedback()}>{feedbackBusy ? "Отправляю…" : "Отправить"}</button>
             </div>
-          </div>}
+          </div>
         </section>
       </div>}
 
@@ -6741,6 +6767,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
       {workspaceReady && workspaceUserKey && <DialogueWorkspace
         key={`${workspaceUserKey}:${activeBrandId}`} userKey={workspaceUserKey}
         theme={theme}
+        railCollapsed={dialogueRailCollapsed} onRailToggle={() => setDialogueRailCollapsed(value => !value)}
         visible={workspaceMode === "dialogue" && activeModule === "start"}
         brandId={activeBrandId} brandName={activeWorkspaceBrand?.name || ""} brands={workspaceBrands}
         hasLogo={Boolean(activeBrandLogoUrl)} brandLogoUrl={activeBrandLogoUrl}
@@ -6756,19 +6783,19 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
         beforeProfile={() => activeBrandId ? saveActiveWorkspaceBrand(false) : Promise.resolve(true)}
         onSchedule={source => void openPublicationDraft(source)} importMaterial={dialogueImport}
       />}
-      <div className={`workspace-layout ${workspaceMode === "dialogue" && activeModule !== "start" ? "is-dialogue-module-layout" : ""}`} style={workspaceMode === "dialogue" && activeModule === "start" ? { display: "none" } : undefined}>
+      <div className={`workspace-layout ${workspaceMode === "dialogue" && activeModule !== "start" ? "is-dialogue-module-layout klio-glass" : workspaceMode === "professional" ? "is-professional-module-layout" : ""}`} style={workspaceMode === "dialogue" && activeModule === "start" ? { display: "none" } : undefined}>
         {workspaceMode === "dialogue" && activeModule !== "start" && <aside className="klio-chatkit-rail dialogue-module-rail" aria-label="Разделы КЛИО">
-          <button type="button" className="klio-chatkit-new" onClick={() => openModule("start")}>
-            <span aria-hidden="true">＋</span> Диалоги
+          <div className="klio-chatkit-rail-head"><span className="klio-glass-rail-caption">Ваше пространство</span><DialogueRailToggle collapsed={dialogueRailCollapsed} onToggle={() => { setBrandMenuOpen(false); setDialogueRailCollapsed(value => !value); }}/></div>
+          <button type="button" className="klio-chatkit-new" aria-label="Диалоги" title="Диалоги" onClick={() => openModule("start")}>
+            <span className="klio-glass-new-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5m7-7-7 7 7 7"/></svg></span><span className="klio-compact-label">Диалоги</span>
           </button>
           <nav>
-            <button type="button" className={activeModule === "brand" ? "is-active" : ""} onClick={() => openModule("brand")}><i><Icon name="building"/></i><span><b>Мой бизнес</b></span></button>
-            <button type="button" className={activeModule === "history" ? "is-active" : ""} onClick={() => openModule("history")}><i><Icon name="folder"/></i><span><b>Материалы</b></span></button>
-            <button type="button" className={activeModule === "publications" ? "is-active" : ""} onClick={() => openModule("publications")}><i><Icon name="calendar"/></i><span><b>Публикации</b></span></button>
+            <button type="button" aria-label="Мой бизнес" title="Мой бизнес" aria-current={activeModule === "brand" ? "page" : undefined} className={activeModule === "brand" ? "is-active" : ""} onClick={() => openModule("brand")}><i><Icon name="building"/></i><span><b>Мой бизнес</b></span></button>
+            <button type="button" aria-label="Материалы" title="Материалы" aria-current={activeModule === "history" ? "page" : undefined} className={activeModule === "history" ? "is-active" : ""} onClick={() => openModule("history")}><i><Icon name="folder"/></i><span><b>Материалы</b></span></button>
+            <button type="button" aria-label="Публикации" title="Публикации" aria-current={activeModule === "publications" ? "page" : undefined} className={activeModule === "publications" ? "is-active" : ""} onClick={() => openModule("publications")}><i><Icon name="calendar"/></i><span><b>Публикации</b></span></button>
           </nav>
           <div className="dialogue-module-rail-spacer" />
           <div className="klio-chatkit-brand">
-            <span>Ваш бизнес</span>
             <div className="klio-chatkit-brand-select" ref={dialogueBrandPickerRef}>
               <button type="button" aria-label="Выбрать бизнес" aria-expanded={brandMenuOpen} disabled={brandSwitchBusy} onClick={() => workspaceBrands.length ? setBrandMenuOpen((value) => !value) : openModule("brand")}>
                 <i>{activeBrandLogoUrl ? <Image className="workspace-brand-avatar-logo" src={activeBrandLogoUrl} alt="" width={30} height={30} unoptimized/> : (activeWorkspaceBrand?.name || brand.name || "Л").trim().charAt(0).toLocaleUpperCase("ru-RU")}</i>
@@ -6783,11 +6810,11 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </div>}
             </div>
           </div>
-          <Link className="klio-chatkit-account" href="/account">Тариф и аккаунт</Link>
+          <Link className="klio-chatkit-account" href="/account" aria-label="Тариф и аккаунт" title="Тариф и аккаунт"><UserRound size={18}/><span>Тариф и аккаунт</span></Link>
         </aside>}
         <aside className="workspace-sidebar">
+          {workspaceMode === "professional" && <div className="professional-rail-head"><span>Рабочее пространство</span><DialogueRailToggle collapsed={professionalRailCollapsed} onToggle={() => setProfessionalRailCollapsed(value => !value)}/></div>}
           <div className={`workspace-project brand-project-switcher${brandMenuOpen ? " brand-menu-layer-open" : ""}`}>
-            <span>Активный бренд</span>
             <div className={`brand-menu ${brandMenuOpen ? "is-open" : ""}`} ref={brandPickerRef}>
               <button className="brand-menu-trigger" type="button" onClick={() => workspaceBrands.length ? setBrandMenuOpen((value) => !value) : setBrandCreatorOpen(true)} disabled={brandSwitchBusy} aria-haspopup={workspaceBrands.length ? "listbox" : undefined} aria-expanded={workspaceBrands.length ? brandMenuOpen : undefined}>
                 <i>{activeBrandLogoUrl ? <Image className="workspace-brand-avatar-logo" src={activeBrandLogoUrl} alt="" width={34} height={34} unoptimized/> : workspaceBrands.length ? (activeWorkspaceBrand?.name || brand.name || "К").trim().charAt(0).toLocaleUpperCase("ru-RU") : "+"}</i>
@@ -6808,39 +6835,32 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </div>}
             </div>
             <small>{workspaceBrands.length} из {workspaceAccount.brandLimit} брендов · данные раздельны</small>
-            {brandCreatorOpen && <div className="brand-create-form"><input value={newBrandName} onChange={(event) => setNewBrandName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void createWorkspaceBrand(); }} placeholder="Название бренда" autoFocus autoComplete="off"/><button type="button" onClick={() => void createWorkspaceBrand()} disabled={brandSwitchBusy || !newBrandName.trim()}>{brandSwitchBusy ? "Создаю…" : "Создать"}</button></div>}
+            {brandCreatorOpen && <BrandCreateDialog onClose={() => setBrandCreatorOpen(false)}><div className="brand-create-form"><WorkspaceInput id="new-workspace-brand" value={newBrandName} onChange={(event) => setNewBrandName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void createWorkspaceBrand(); }} placeholder="Название бренда" autoFocus autoComplete="off"/><button type="button" onClick={() => void createWorkspaceBrand()} disabled={brandSwitchBusy || !newBrandName.trim()}>{brandSwitchBusy ? "Создаю…" : "Создать"}</button></div></BrandCreateDialog>}
           </div>
           <nav aria-label="Рабочие модули">
-            <a href="#start" className={activeModule === "start" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("start"); }}><i><Icon name="home"/></i><span><b>{workspaceMode === "dialogue" ? "Диалоги" : "Начните здесь"}</b></span></a>
-            <a href="#brand-profile" className={activeModule === "brand" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("brand"); }}><i><Icon name="building"/></i><span><b>Профиль бренда</b></span></a>
-            <a href="#history" className={activeModule === "history" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("history"); }}><i><Icon name="folder"/></i><span><b>Материалы</b></span></a>
-            <a href="#content-plan" className={activeModule === "content-plan" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("content-plan"); }}><i><Icon name="list"/></i><span><b>Контент‑план</b></span></a>
-            <a href="#generator" className={activeModule === "generator" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("generator"); }}><i><Icon name="spark"/></i><span><b>Генератор текстов</b></span></a>
-            <a href="#images" className={activeModule === "images" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("images"); }}><i><Icon name="image"/></i><span><b>Генератор изображений</b></span></a>
-            <a href="#adaptation" className={activeModule === "adaptation" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("adaptation"); }}><i><Icon name="edit"/></i><span><b>Редакторы КЛИО</b></span></a>
-            <a href="#publications" className={activeModule === "publications" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("publications"); }}><i><Icon name="calendar"/></i><span><b>Публикации</b></span></a>
-            <a href="#semantics" className={activeModule === "semantics" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("semantics"); }}><i><Icon name="search"/></i><span><b>Семантика</b></span></a>
-            <a href="#competitors" className={activeModule === "competitors" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("competitors"); }}><i><Icon name="barChart"/></i><span><b>Конкуренты</b></span></a>
+            <a href="#start" aria-label="Начните здесь" className={activeModule === "start" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("start"); }}><i><Icon name="home"/></i><span><b>{workspaceMode === "dialogue" ? "Диалоги" : "Начните здесь"}</b></span></a>
+            <a href="#brand-profile" aria-label="Профиль бренда" className={activeModule === "brand" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("brand"); }}><i><Icon name="building"/></i><span><b>Профиль бренда</b></span></a>
+            <a href="#history" aria-label="Материалы" className={activeModule === "history" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("history"); }}><i><Icon name="folder"/></i><span><b>Материалы</b></span></a>
+            <a href="#content-plan" aria-label="Контент-план" className={activeModule === "content-plan" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("content-plan"); }}><i><Icon name="list"/></i><span><b>Контент‑план</b></span></a>
+            <a href="#generator" aria-label="Генератор текстов" className={activeModule === "generator" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("generator"); }}><i><Icon name="spark"/></i><span><b>Генератор текстов</b></span></a>
+            <a href="#images" aria-label="Генератор изображений" className={activeModule === "images" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("images"); }}><i><Icon name="image"/></i><span><b>Генератор изображений</b></span></a>
+            <a href="#adaptation" aria-label="Редакторы КЛИО" className={activeModule === "adaptation" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("adaptation"); }}><i><Icon name="edit"/></i><span><b>Редакторы КЛИО</b></span></a>
+            <a href="#publications" aria-label="Публикации" className={activeModule === "publications" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("publications"); }}><i><Icon name="calendar"/></i><span><b>Публикации</b></span></a>
+            <a href="#semantics" aria-label="Семантика" className={activeModule === "semantics" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("semantics"); }}><i><Icon name="search"/></i><span><b>Семантика</b></span></a>
+            <a href="#competitors" aria-label="Конкуренты" className={activeModule === "competitors" ? "active" : ""} onClick={(event) => { event.preventDefault(); openModule("competitors"); }}><i><Icon name="barChart"/></i><span><b>Конкуренты</b></span></a>
           </nav>
           <div className="workspace-stage workspace-quota-stage"><span>Ваш тариф</span><b>{workspaceAccount.planName}</b><div className="workspace-quota-list"><p><span>Материалы</span><em>{workspaceAccount.generationsRemaining} / {workspaceAccount.generationLimit}</em><i><u style={{ width: `${generationProgress}%` }}/></i></p><p><span>Исследования</span><em>{workspaceAccount.researchRemaining} / {workspaceAccount.researchLimit}</em><i><u style={{ width: `${researchProgress}%` }}/></i></p><p><span>AI‑редактура</span><em>{workspaceAccount.editorActionsRemaining} / {workspaceAccount.editorActionLimit}</em><i><u style={{ width: `${editorProgress}%` }}/></i></p></div></div>
+          {workspaceMode === "professional" && <Link className="professional-rail-account" href="/account" aria-label="Тариф и аккаунт"><UserRound size={19}/><span>Тариф и аккаунт</span></Link>}
         </aside>
 
-        <section className="workspace-content">
+        <section className="workspace-content" ref={workspaceContentRef}>
           <div className="workspace-heading">
             {activeModule === "start" && <div><p>Рабочее пространство / выпуск 01</p><h1>Редакционная система<span className="klio-mark-dot">.</span></h1><span>Ваше рабочее пространство с инструментами КЛИО — от первого черновика до готовой публикации.</span></div>}
             <div className="workspace-heading-status">
-              <div className={`workspace-brand-pill ${useBrand ? "is-on" : "is-off"}`}>
-                <button type="button" className="workspace-brand-pill-info" onClick={() => openModule("brand")}>
-                  <span>
-                    <b>Профиль бренда</b>
-                    <small>{useBrand ? (generatorBrandReady ? `Включён · заполнен на ${brandScore}%` : "Включён · заполните карточку") : "Выключен в этой сессии"}</small>
-                  </span>
-                </button>
-                <label className="brand-switch workspace-brand-pill-switch" title={useBrand ? "Отключить профиль бренда" : "Включить профиль бренда"}>
-                  <input type="checkbox" checked={useBrand} onChange={(event) => { setUseBrand(event.target.checked); setSemanticNeedsRefresh(true); setContentPlanNeedsRefresh(true); }}/>
-                  <span/>
-                </label>
-              </div>
+              <WorkspaceBrandContext checked={useBrand}
+                status={useBrand ? (generatorBrandReady ? `Включён · заполнен на ${brandScore}%` : "Включён · заполните карточку") : "Выключен в этой сессии"}
+                onOpen={() => openModule("brand")}
+                onChange={checked => { setUseBrand(checked); setSemanticNeedsRefresh(true); setContentPlanNeedsRefresh(true); }}/>
             </div>
           </div>
 
@@ -6859,14 +6879,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             {archiveLoading && <p role="status">Загружаю материалы бренда…</p>}
             {archiveLoadError && <p role="alert">{archiveLoadError} <button type="button" onClick={() => void loadArchivePage(activeBrandId, archivePage?.brandId === activeBrandId ? archivePage : null)}>Повторить</button></p>}
             {archivePage?.brandId === activeBrandId && (archivePage.history || archivePage.materials) && <div><p>Показана часть архива. Счётчики и фильтры относятся к загруженным материалам.</p><button className="button ghost" type="button" disabled={archiveLoading} onClick={() => void loadArchivePage(activeBrandId, archivePage)}>Загрузить ещё материалы</button></div>}
-            <div className="workspace-history-head workspace-module-banner"><div><span>{activeWorkspaceBrand?.name || "Личное пространство"}</span><h2>Материалы<span className="klio-mark-dot">.</span></h2></div><p>{workspaceMode === "dialogue" ? "Сохранённые тексты, темы и заметки. Продолжайте работу в диалоге или редакторе." : "Здесь хранятся тексты, темы, заметки, планы и исследования текущего бренда. Откройте материал, чтобы продолжить работу."}</p></div>
+            <div className="workspace-history-head workspace-module-banner"><div><span>{activeWorkspaceBrand?.name || "Личное пространство"}</span><h2>Материалы<span className="klio-mark-dot">.</span><HelpTip label="Материалы" text="Здесь хранятся материалы выбранного бренда. Нажмите на карточку, чтобы открыть полный текст и продолжить работу в диалоге или редакторе."/></h2></div></div>
             {activeMaterialCount > 0 && <div className="workspace-history-toolbar">
               <div className="workspace-history-filters" role="group" aria-label="Фильтр материалов по типу">
                 {materialsFilterOptions.filter(option => workspaceMode !== "dialogue" || option.count > 0 || ["all", "article", "dialogue_topic", "dialogue_note"].includes(option.id)).map((option) => <button type="button" className={materialsFilter === option.id ? "active" : ""} aria-pressed={materialsFilter === option.id} onClick={() => setMaterialsFilter(option.id)} key={option.id}><span>{option.label}</span><b>{option.count}</b></button>)}
               </div>
               <ModuleSelect label="Период" value={materialsDateRange} options={MATERIALS_DATE_RANGE_OPTIONS} onChange={(value) => setMaterialsDateRange(value as MaterialsDateRange)}/>
             </div>}
-            {visibleMaterials.length ? <div className={`workspace-history-list ${materialsFilter === "content_plan" ? "is-content-plan-filter" : ""}`}>{visibleMaterials.map(({ kind, item }) => {
+            {visibleMaterials.length ? <DialogueMaterialGallery enabled={true} className={`workspace-history-list ${materialsFilter === "content_plan" ? "is-content-plan-filter" : ""}`} items={visibleMaterials.map(({ kind, item }) => ({ id: `${kind}:${item.id}`, title: item.title, label: kind === "article" ? materialFormatLabel(item) : item.type === "content_plan" ? "Контент-план" : item.type === "semantics" ? "Семантика" : "Исследование", date: archiveDate(item.createdAt), body: kind === "article" ? item.body : item.status, imageUrl: kind === "article" ? item.imageUrl : undefined }))}>{visibleMaterials.map(({ kind, item }) => {
               if (kind === "article") {
                 const formatLabel = materialFormatLabel(item);
                 const isImageOnly = item.topic === "Изображение";
@@ -6874,7 +6894,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 const hasImage = Boolean(item.imageUrl);
                 const materialPreview = item.body.replace(/\s+/g, " ").trim();
                 const materialExcerpt = materialPreview.length > 180 ? `${materialPreview.slice(0, 180).trimEnd()}…` : materialPreview;
-                return <article className={`material-card material-article ${isImageOnly ? "is-image-only" : hasImage ? "is-text-with-image" : ""} ${isCarousel ? "is-carousel-material" : ""} ${item.origin === "editor" ? "is-editor" : ""} ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><div className="material-card-badges"><span className="material-format-badge">{formatLabel}</span>{item.origin === "editor" && <span className="material-origin-badge">РЕД</span>}</div><small>{archiveDate(item.createdAt)}</small></div>{!isImageOnly && <><h3>{item.title}</h3>{materialExcerpt && <p>{materialExcerpt}</p>}</>}{item.imageUrl && <button type="button" className="image-generator-result-trigger" aria-label={isCarousel ? "Открыть карусель" : "Открыть изображение крупнее"} onClick={() => openMaterialImage(item)}><Image className="material-card-image" src={item.imageUrl} alt={item.title || "Изображение КЛИО"} width={720} height={720} unoptimized/></button>}<footer><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал" title="Удалить материал"><Icon name="trash"/></button><button type="button" className="material-archive" onClick={() => void archiveArchiveItem(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" className="material-publish" onClick={() => openPublicationDraftForMaterial(item)}>Публикация</button>{item.imageUrl && <a className="material-export" href={item.imageUrl} download>Скачать {imageFormatLabel(item.imageUrl)}</a>}{item.topic !== "Изображение" && item.topic !== "Карусель" && <><button type="button" onClick={() => prepareImageGeneration({ generationId: item.id }, buildArticleImagePrompt(item.title, item.subtitle, item.body), item.title)}>Создать картинку</button><button type="button" onClick={() => prepareImageGeneration({ text: buildArticleCarouselSource(item.title, item.subtitle, item.body) }, buildArticleCarouselSource(item.title, item.subtitle, item.body), item.title, "carousel")}>Создать карусель</button></>}<button type="button" onClick={() => void openMaterialInDialogue(item.id)}>В диалог</button><button type="button" onClick={() => item.topic === "Карусель" ? openCarouselResult(item) : openArchiveItem(item)}>Редактор <Icon name="arrow"/></button></div></footer></article>;
+                return <article className={`material-card material-article ${isImageOnly ? "is-image-only" : hasImage ? "is-text-with-image" : ""} ${isCarousel ? "is-carousel-material" : ""} ${item.origin === "editor" ? "is-editor" : ""} ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><div className="material-card-badges"><span className="material-format-badge">{formatLabel}</span>{item.origin === "editor" && <span className="material-origin-badge">РЕД</span>}</div><small>{archiveDate(item.createdAt)}</small></div>{!isImageOnly && <><h3>{item.title}</h3>{materialExcerpt && <p>{item.body}</p>}</>}{item.imageUrl && <button type="button" className="image-generator-result-trigger" aria-label={isCarousel ? "Открыть карусель" : "Открыть изображение крупнее"} onClick={() => openMaterialImage(item)}><Image className="material-card-image" src={item.imageUrl} alt={item.title || "Изображение КЛИО"} width={720} height={720} unoptimized/></button>}<footer><div><button type="button" className="material-delete" onClick={() => void deleteArchiveItem(item)} aria-label="Удалить материал" title="Удалить материал"><Icon name="trash"/></button><button type="button" className="material-archive" onClick={() => void archiveArchiveItem(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" className="material-publish" onClick={() => openPublicationDraftForMaterial(item)}>Публикация</button>{item.imageUrl && <a className="material-export" href={item.imageUrl} download>Скачать {imageFormatLabel(item.imageUrl)}</a>}{item.topic !== "Изображение" && item.topic !== "Карусель" && <><button type="button" onClick={() => prepareImageGeneration({ generationId: item.id }, buildArticleImagePrompt(item.title, item.subtitle, item.body), item.title)}>Создать картинку</button><button type="button" onClick={() => prepareImageGeneration({ text: buildArticleCarouselSource(item.title, item.subtitle, item.body) }, buildArticleCarouselSource(item.title, item.subtitle, item.body), item.title, "carousel")}>Создать карусель</button></>}<button type="button" onClick={() => void openMaterialInDialogue(item.id)}>В диалог</button><button type="button" onClick={() => item.topic === "Карусель" ? openCarouselResult(item) : openArchiveItem(item)}>Редактор <Icon name="arrow"/></button></div></footer></article>;
               }
               const typeLabel = item.type === "content_plan" ? "Контент‑план" : item.type === "semantics" ? "Семантика" : "Анализ конкурентов";
               // Full items (not just title strings) so each topic can be sent
@@ -6896,7 +6916,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               const planExpanded = expandedPlanMaterialId === item.id;
               const visiblePlanItems = planExpanded ? planItems : planItems.slice(0, 3);
               return <article className={`material-card material-${item.type} ${item.archivedAt ? "is-archived" : ""}`} key={item.id}><div><span>{typeLabel}</span><small>{archiveDate(item.createdAt)} · версия {item.versionNumber}</small></div>{item.type === "content_plan" && planTopics.length ? <><h3 className="material-plan-heading">Темы в плане</h3><ul className="material-plan-preview">{visiblePlanItems.map((planItem, index) => <li key={planItem.id || `${item.id}-${index}`} title={planItem.title}><span>{planItem.title}</span><button type="button" className="material-plan-send" onClick={() => sendSavedPlanTopicToGenerator(item, planItem)} title="Отправить эту тему в генератор" aria-label={`Отправить в генератор: ${planItem.title}`}><Icon name="arrow"/></button></li>)}{planTopics.length > 3 && <li className="material-plan-more"><button type="button" className={planExpanded ? "is-expanded" : ""} onClick={() => setExpandedPlanMaterialId(planExpanded ? null : item.id)} aria-expanded={planExpanded}><span>{planExpanded ? "Свернуть темы" : `Показать ещё ${planTopics.length - 3} ${planTopics.length - 3 === 1 ? "тему" : "тем"}`}</span><i className="ui-chevron" aria-hidden="true" /></button></li>}</ul></> : <h3>{item.title}</h3>}<p className={item.type === "content_plan" && planTopics.length ? "material-plan-status-summary" : ""}>{item.type === "content_plan" && planTopics.length ? `${planTotalLabel} · ${planStatusCounts.ready} готово · ${planStatusCounts.working} в работе` : item.status}</p><footer><div><button type="button" className="material-delete" onClick={() => void deleteSavedMaterial(item)} aria-label="Удалить материал" title="Удалить материал"><Icon name="trash"/></button><button type="button" className="material-archive" onClick={() => void archiveSavedMaterial(item, !item.archivedAt)}>{item.archivedAt ? "Из архива" : "В архив"}</button><button type="button" className="material-export" onClick={() => exportSavedMaterial(item)}>Скачать</button><button type="button" onClick={() => openSavedMaterial(item)}>Модуль <Icon name="arrow"/></button></div></footer></article>;
-            })}</div> : <div className="workspace-history-empty"><i>Аа</i><div><h3>{activeMaterialCount > 0 ? "Нет материалов за выбранный период" : "У этого бренда пока нет материалов"}</h3><p>{activeMaterialCount > 0 ? "Попробуйте выбрать другой период или фильтр." : "Сгенерированные тексты появятся здесь автоматически. Семантику, анализ конкурентов и контент‑планы можно зафиксировать кнопкой «Сохранить в материалы»."}</p></div></div>}
+            })}</DialogueMaterialGallery> : <div className="workspace-history-empty"><i>Аа</i><div><h3>{activeMaterialCount > 0 ? "Нет материалов за выбранный период" : "У этого бренда пока нет материалов"}</h3><p>{activeMaterialCount > 0 ? "Попробуйте выбрать другой период или фильтр." : "Сгенерированные тексты появятся здесь автоматически. Семантику, анализ конкурентов и контент‑планы можно зафиксировать кнопкой «Сохранить в материалы»."}</p></div></div>}
           </section>}
 
           {lightboxUrl && <ImageLightbox src={lightboxUrl} alt="Изображение" onClose={() => setLightboxUrl(null)} />}
@@ -6966,7 +6986,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <div className="archive-transform-tools">{adaptationGoals.map((item) => {
                     const active = archiveTransformGoal === item.id;
                     return <article className={active ? "active" : ""} key={item.id}>
-                      <button type="button" className={active ? "active" : ""} onClick={() => setArchiveTransformGoal(item.id)} aria-expanded={active}><i>{active ? "✓" : ""}</i><span><b>{item.label}</b><small>{item.detail}</small></span></button>
+                      <button type="button" className={active ? "active" : ""} onClick={() => setArchiveTransformGoal(item.id)} aria-pressed={active}><i>{active ? "✓" : ""}</i><span><b>{item.label}</b></span></button><HelpTip label={item.label} text={item.detail}/>
                       {active && <div className="archive-transform-inline"><span>Сценарий режима</span><b>{ADAPTATION_PLANS[item.id].result}</b><ol>{ADAPTATION_PLANS[item.id].steps.map((step) => <li key={step}>{step}</li>)}</ol></div>}
                     </article>;
                   })}</div>
@@ -6979,6 +6999,20 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           </div>}
 
           {activeModule === "start" && <section className="workspace-start" id="start" aria-label="Обзор кабинета">
+            {workspaceMode === "professional" ? <EditorialDesk
+              material={activeBrandArticlesLive[0]}
+              publication={pubItems.filter(item=>item.status==="scheduled"&&new Date(item.scheduledAt).getTime()>=Date.now()).sort((a,b)=>new Date(a.scheduledAt).getTime()-new Date(b.scheduledAt).getTime())[0]}
+              count={activeMaterialCount} tools={WORKSPACE_MODULE_GUIDE}
+              statistics={[
+                {label:"дней с КЛИО",value:workspaceAccount.daysWithKlio},
+                {label:"материалов создано",value:workspaceAccount.lifetimeGenerationsUsed},
+                {label:"исследований проведено",value:workspaceAccount.lifetimeResearchUsed},
+                {label:"правок в редакторах",value:workspaceAccount.lifetimeEditorActionsUsed},
+                {label:"сохранено у бренда",value:activeMaterialCount},
+              ]}
+              onOpenMaterial={()=>{if(activeBrandArticlesLive[0])openArchiveItem(activeBrandArticlesLive[0]);}}
+              onPublications={()=>openModule("publications")} onCreate={()=>openModule("generator")} onTool={id=>openModule(id as WorkspaceModule)}
+            /> : <>
             <div className="workspace-start-stats-bar">
               <span>Ваша статистика</span>
               <div className="workspace-start-stats-bar-items">
@@ -7046,6 +7080,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <span>{item.cta} <Icon name="arrow"/></span>
               </button>)}
             </div>
+            </>}
           </section>}
 
           {pubEditor && <div className="archive-editor-overlay" onMouseDown={handleOverlayBackdropDown} onClick={(event) => handleOverlayBackdropClick(event, () => { if (!pubEditor.busy) setPubEditor(null); })}>
@@ -7060,7 +7095,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <label className="publications-editor-field"><span>Текст публикации</span><AutoTextarea rows={8} value={pubEditor.body} onChange={(event) => setPubEditor((current) => current && { ...current, body: event.target.value })} placeholder="Текст, который уйдёт в канал"/></label>
               <div className="publications-signature-control">
                 <label className="publications-signature-toggle">
-                  <input type="checkbox" checked={pubEditor.signatureEnabled} onChange={(event) => setPubEditor((current) => current && { ...current, signatureEnabled: event.target.checked })}/>
+                  <SiteToggle checked={pubEditor.signatureEnabled} onChange={(event) => setPubEditor((current) => current && { ...current, signatureEnabled: event.target.checked })}/>
                   <span>Добавить фирменную подпись</span>
                 </label>
                 {pubEditor.signatureEnabled && <label className="publications-editor-field"><span>Подпись</span><AutoTextarea rows={2} value={pubEditor.signatureText} onChange={(event) => setPubEditor((current) => current && { ...current, signatureText: event.target.value })} placeholder="Напишите подпись для этой публикации"/></label>}
@@ -7078,7 +7113,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <div className="publications-image-row">
                   <label className={`publications-upload-button ${pubImageUploadBusy ? "is-busy" : ""}`}>
                     {pubImageUploadBusy ? "Загрузка…" : pubEditor.imageUrl ? "Заменить с телефона" : "Загрузить с телефона"}
-                    <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden disabled={pubImageUploadBusy} onChange={(event) => {
+                    <WorkspaceInput type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden disabled={pubImageUploadBusy} onChange={(event) => {
                       const file = event.target.files?.[0];
                       event.target.value = "";
                       if (file) void uploadPubImage(file);
@@ -7106,7 +7141,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <small>{pubEditor.telegramDeliveryMode === "photo_continue" ? "Картинка будет с началом текста, а оставшаяся часть придёт следующим сообщением." : "Картинка не будет отправлена. Если текст слишком длинный для одного сообщения, он будет продолжен следующим."}</small>
               </div>}
               <div className="publications-editor-row">
-                <label><span>Дата</span><input type="date" value={pubEditor.date} onChange={(event) => setPubEditor((current) => current && { ...current, date: event.target.value })}/></label>
+                <label><span>Дата</span><WorkspaceInput type="date" value={pubEditor.date} onChange={(event) => setPubEditor((current) => current && { ...current, date: event.target.value })}/></label>
                 <div className="publications-time-fields">
                   <ModuleSelect label="Час" value={pubEditor.time.slice(0, 2) || "12"} options={PUBLICATION_HOUR_OPTIONS} onChange={(hour) => setPubEditor((current) => current && { ...current, time: `${hour}:${current.time.slice(3, 5) || "00"}` })}/>
                   <ModuleSelect label="Минуты" value={pubEditor.time.slice(3, 5) || "00"} options={PUBLICATION_MINUTE_OPTIONS} onChange={(minute) => setPubEditor((current) => current && { ...current, time: `${current.time.slice(0, 2) || "12"}:${minute}` })}/>
@@ -7158,8 +7193,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <li>В своём канале: «Управление каналом» → «Администраторы» → «Добавить администратора» → найдите бота по имени.</li>
                   <li>Id канала: если канал <b>публичный</b> — впишите ниже его <code>@username</code>. Если <b>приватный</b> — перешлите любое сообщение из канала боту <b>@userinfobot</b>, он пришлёт числовой id вида <code>-100…</code>.</li>
                 </ol>
-                <label className="publications-editor-field"><span>Токен бота</span><input type="text" value={pubChannelTelegram.botToken} onChange={(event) => setPubChannelTelegram((current) => ({ ...current, botToken: event.target.value }))} placeholder="123456789:AA…"/></label>
-                <label className="publications-editor-field"><span>Id канала</span><input type="text" value={pubChannelTelegram.chatId} onChange={(event) => setPubChannelTelegram((current) => ({ ...current, chatId: event.target.value }))} placeholder="@your_channel или -100…"/></label>
+                <label className="publications-editor-field"><span>Токен бота</span><WorkspaceInput type="text" value={pubChannelTelegram.botToken} onChange={(event) => setPubChannelTelegram((current) => ({ ...current, botToken: event.target.value }))} placeholder="123456789:AA…"/></label>
+                <label className="publications-editor-field"><span>Id канала</span><WorkspaceInput type="text" value={pubChannelTelegram.chatId} onChange={(event) => setPubChannelTelegram((current) => ({ ...current, chatId: event.target.value }))} placeholder="@your_channel или -100…"/></label>
               </> : <>
                 <p className="publications-vk-note"><b>Для текста и изображений нужен один ключ сообщества.</b> Изображения загружаются как графические документы и прикрепляются к записи.</p>
                 <ol className="publications-channel-steps">
@@ -7168,8 +7203,8 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <li>Для ключа сообщества отметьте права <b>«Стена»</b> и <b>«Документы/файлы»</b>.</li>
                   <li>Id сообщества — можно вписать и красивое имя из адреса (<code>vk.com/kliopress</code> → <code>kliopress</code>), и числовой id из «Работа с API»: КЛИО сам определит нужное число.</li>
                 </ol>
-                <label className="publications-editor-field"><span>Сообщество VK</span><input type="text" value={pubChannelVk.groupId} onChange={(event) => setPubChannelVk((current) => ({ ...current, groupId: event.target.value }))} placeholder="vk.com/kliopress, kliopress или 123456789"/></label>
-                <label className="publications-editor-field"><span>Токен сообщества</span><input type="text" value={pubChannelVk.accessToken} onChange={(event) => setPubChannelVk((current) => ({ ...current, accessToken: event.target.value }))} placeholder="vk1.a…"/></label>
+                <label className="publications-editor-field"><span>Сообщество VK</span><WorkspaceInput type="text" value={pubChannelVk.groupId} onChange={(event) => setPubChannelVk((current) => ({ ...current, groupId: event.target.value }))} placeholder="vk.com/kliopress, kliopress или 123456789"/></label>
+                <label className="publications-editor-field"><span>Токен сообщества</span><WorkspaceInput type="text" value={pubChannelVk.accessToken} onChange={(event) => setPubChannelVk((current) => ({ ...current, accessToken: event.target.value }))} placeholder="vk1.a…"/></label>
               </>}
               {pubChannelError && <p className="generation-error" role="alert">{pubChannelError}</p>}
               <div className="publications-editor-actions">
@@ -7178,55 +7213,39 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </section>
           </div>}
 
-          <section className="brand-profile is-open" id="brand-profile" style={{ display: activeModule === "brand" ? undefined : "none" }}>
-            <div className="brand-profile-head workspace-module-banner">
-              <div><span>Стиль и голос бренда</span><h3>Профиль бренда<span className="klio-mark-dot">.</span></h3></div>
-              <p>КЛИО использует эти данные как редакционную память — факты и интонация переходят в каждый новый материал.</p>
-            </div>
+          {activeModule === "brand" && <BrandProfileCanvas><section className="brand-profile brand-bento is-open" id="brand-profile" style={{ display: activeModule === "brand" ? undefined : "none" }}>
+            <header className="brand-board-header">
+              <div><span>ПАМЯТЬ БРЕНДА</span><h3>Профиль бренда<span>.</span></h3></div>
+              <div className="brand-board-readiness"><span>Заполненность <b>{brandScore}%</b></span><div role="progressbar" aria-label="Заполненность профиля" aria-valuenow={brandScore} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${brandScore}%` }}/></div></div>
+            </header>
             <div className="brand-profile-body">
-              <div className="brand-profile-overview">
-                <div className="brand-score" style={{ "--profile-score": `${brandScore}%` } as CSSProperties}>
-                  <div><b>{brandScore}</b><span>%</span></div>
-                  <p><strong>Готовность профиля</strong><small>{brandScore === 100 ? "Данных достаточно для теста" : "Заполните недостающие разделы"}</small></p>
-                </div>
-                <div className="brand-checklist">
-                  {brandChecklist.map((item) => <div className={item.complete ? "is-complete" : ""} key={item.label}><i>{item.complete ? "✓" : "·"}</i><span><b>{item.label}</b><small>{item.detail}</small></span></div>)}
-                </div>
-              </div>
-
               <div className="brand-tab-shell">
-              <div className="brand-tab-navigation">
-                <div className="brand-tabs" role="tablist" aria-label="Разделы профиля бренда"
-                  onKeyDown={(event) => {
-                    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-                    event.preventDefault();
-                    const next = event.key === "Home" ? "foundation" : event.key === "End" ? "voice" : brandTab === "foundation" ? "voice" : "foundation";
-                    setBrandTab(next);
-                    document.getElementById(`brand-tab-${next}`)?.focus();
-                  }}>
-                  <button id="brand-tab-foundation" type="button" className={brandTab === "foundation" ? "active" : ""} onClick={() => setBrandTab("foundation")} role="tab" aria-selected={brandTab === "foundation"} aria-controls="brand-panel-foundation" tabIndex={brandTab === "foundation" ? 0 : -1}><b>Основа бренда</b></button>
-                  <button id="brand-tab-voice" type="button" className={brandTab === "voice" ? "active" : ""} onClick={() => setBrandTab("voice")} role="tab" aria-selected={brandTab === "voice"} aria-controls="brand-panel-voice" tabIndex={brandTab === "voice" ? 0 : -1}><b>Голос и ограничения</b></button>
-                </div>
-              </div>
-
-              <div className="brand-field-group" role="tabpanel" id="brand-panel-foundation" aria-labelledby="brand-tab-foundation" hidden={brandTab !== "foundation"}>
+              <div className="brand-field-group" id="brand-panel-foundation">
+                <div className="brand-board-section"><span>01 / ОСНОВА БРЕНДА</span><span>Карандаш — редактировать ↙</span></div>
                 <div className="brand-fields">
-                  <ProfileField id="brand-name" label="Компания" help="Полное название, которое можно использовать в публикации."><input id="brand-name" aria-describedby="brand-name-help" value={brand.name} onChange={(event) => updateBrand("name", event.target.value)} autoComplete="off"/></ProfileField>
-                  <ProfileField id="brand-website" label="Сайт" help="КЛИО использует сайт при сборе семантики и генерации. Кнопка заполняет профиль по сайту; результат можно отредактировать. Недоступные сведения не додумываются.">
+                  <BrandPhotoCard name={brand.name} brandId={activeBrandId || ""} photoKey={brand.photoKey || ""} onChange={(photoKey, photoFileName) => { setBrand(current => ({ ...current, photoKey, photoFileName })); setBrandSaved(false); }}/>
+                  <ProfileField id="brand-name" value={brand.name} label="Компания" help="Полное название, которое можно использовать в публикации."><WorkspaceInput id="brand-name" aria-describedby="brand-name-help" value={brand.name} onChange={(event) => updateBrand("name", event.target.value)} autoComplete="off"/></ProfileField>
+                  <ProfileField id="brand-description" value={brand.description} label="О компании" help="Короткая фактическая справка: сфера, география, услуги и масштаб." wide><AutoTextarea id="brand-description" aria-describedby="brand-description-help" rows={3} value={brand.description} onChange={(event) => updateBrand("description", event.target.value)}/></ProfileField>
+                  <ProfileField id="brand-positioning" value={brand.positioning} label="Позиционирование" help="Какое место бренд хочет занимать в сознании аудитории — не рекламный слоган, а редакционный ориентир." wide><AutoTextarea id="brand-positioning" aria-describedby="brand-positioning-help" rows={3} value={brand.positioning} onChange={(event) => updateBrand("positioning", event.target.value)}/></ProfileField>
+                  <ProfileField id="brand-audience" value={brand.audience} label="Основная аудитория" help="Кто читатель, с какой задачей и на каком уровне понимания темы."><AutoTextarea id="brand-audience" aria-describedby="brand-audience-help" rows={4} value={brand.audience} onChange={(event) => updateBrand("audience", event.target.value)}/></ProfileField>
+                  <ProfileField id="brand-advantages" value={brand.advantages} label="Факты и преимущества" help="Только подтверждённые особенности, на которые можно опираться в тексте."><AutoTextarea id="brand-advantages" aria-describedby="brand-advantages-help" rows={4} value={brand.advantages} onChange={(event) => updateBrand("advantages", event.target.value)}/></ProfileField>
+                  <ProfileField id="brand-products" value={brand.products} label="Продукты и программы" help="Конкретные предложения бренда; не включайте предположения."><AutoTextarea id="brand-products" aria-describedby="brand-products-help" rows={3} value={brand.products} onChange={(event) => updateBrand("products", event.target.value)}/></ProfileField>
+                  <ProfileField id="brand-services" value={brand.services} label="Услуги" help="Что компания реально делает для аудитории."><AutoTextarea id="brand-services" aria-describedby="brand-services-help" rows={3} value={brand.services} onChange={(event) => updateBrand("services", event.target.value)}/></ProfileField>
+                  <ProfileField id="brand-proof" value={brand.proof} label="Подтверждения и ссылки" help="Напишите, чем подтверждаются ваши преимущества: результаты проектов, отзывы, сертификаты или условия гарантии. Добавьте ссылку на источник, если она есть. Например: «Гарантия 2 года — ссылка на условия». Файлы сюда прикреплять не нужно."><AutoTextarea id="brand-proof" aria-describedby="brand-proof-help" rows={3} value={brand.proof} onChange={(event) => updateBrand("proof", event.target.value)}/></ProfileField>
+                  <ProfileField id="brand-geography" value={brand.geography} label="География бренда" help="Рынок и территория работы. Не путайте с географией поискового спроса."><AutoTextarea id="brand-geography" aria-describedby="brand-geography-help" rows={3} value={brand.geography} onChange={(event) => updateBrand("geography", event.target.value)}/></ProfileField>
+                  <ProfileField id="brand-website" label="Сайт" help="КЛИО использует сайт при сборе семантики и генерации. Кнопка заполняет профиль по сайту; результат можно отредактировать. Недоступные сведения не додумываются. Заполнение расходует 1 исследование. По умолчанию заполняются только пустые поля; включите перезапись, чтобы заменить уже заполненные.">
                     <div className="brand-website-row">
-                      <input id="brand-website" aria-describedby="brand-website-help brand-website-cost" aria-invalid={Boolean(brandAnalyzeError)} value={brand.website} onChange={(event) => updateBrand("website", event.target.value)} autoComplete="off"/>
+                      <WorkspaceInput id="brand-website" aria-describedby="brand-website-help" aria-invalid={Boolean(brandAnalyzeError)} value={brand.website} onChange={(event) => updateBrand("website", event.target.value)} autoComplete="off"/>
                       <button type="button" className={brandAnalyzeBusy ? "is-busy" : ""} onClick={() => void fillBrandTab("foundation")} disabled={brandAnalyzeBusy || voiceBusy || !brand.website.trim() || aiConnection !== "connected"} title="КЛИО прочитает сайт и предложит описание, позиционирование, аудиторию и факты — каждое поле можно будет скорректировать вручную">{brandAnalyzeBusy ? "Читаю сайт…" : !brand.website.trim() ? "Укажите сайт" : aiConnection !== "connected" ? "ИИ не подключён" : workspaceAccount.researchRemaining <= 0 ? "Лимит исчерпан" : "Заполнить по сайту с КЛИО"}</button>
                     </div>
-                    <small id="brand-website-cost">КЛИО заполнит профиль — спишется 1 исследование</small>
-                    <label className="profile-fill-replace"><input type="checkbox" checked={replaceFoundation} onChange={event => setReplaceFoundation(event.target.checked)} disabled={brandAnalyzeBusy || voiceBusy}/>Перезаписать поля, которые уже заполнены</label>
-                    <small className="profile-fill-replace-help">По умолчанию заполняются только пустые поля.</small>
+                    <label className="profile-fill-replace"><SiteToggle checked={replaceFoundation} onChange={event => setReplaceFoundation(event.target.checked)} disabled={brandAnalyzeBusy || voiceBusy}/>Перезаписать поля, которые уже заполнены</label>
                     {brandAnalyzeError && <small className="is-error" role="alert">{brandAnalyzeError}</small>}
                   </ProfileField>
-                  <ProfileField id="brand-book" label="Брендбук (PDF)" help="Если у бренда нет сайта — например, только группа или страница в соцсетях — загрузите PDF с брендбуком или описанием компании. КЛИО прочитает текст файла и предложит те же поля, что и по сайту.">
+                  <ProfileField id="brand-book" label="Брендбук (PDF)" help="Если у бренда нет сайта — например, только группа или страница в соцсетях — загрузите PDF с брендбуком или описанием компании. КЛИО прочитает текст файла и предложит те же поля, что и по сайту. Если в файле найдётся текст, заполнение расходует 1 исследование.">
                     <div className="brand-website-row">
                       <span className="brand-book-status">{brand.brandBookFileName || "Файл не прикреплён"}</span>
                       <button type="button" className={brandAnalyzeBusy ? "is-busy" : ""} disabled={brandAnalyzeBusy || voiceBusy} onClick={() => brandBookInputRef.current?.click()}>{brandAnalyzeBusy ? "Читаю файл…" : brand.brandBookFileName ? "Заменить файл" : "Загрузить PDF"}</button>
-                      <input ref={brandBookInputRef} type="file" accept="application/pdf" hidden disabled={brandAnalyzeBusy || voiceBusy} onChange={(event) => {
+                      <WorkspaceInput ref={brandBookInputRef} type="file" accept="application/pdf" hidden disabled={brandAnalyzeBusy || voiceBusy} onChange={(event) => {
                         const file = event.target.files?.[0];
                         event.target.value = "";
                         if (file) void uploadBrandBook(file);
@@ -7234,40 +7253,30 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                       {brand.brandBookFileName && activeBrandId && <a className="brand-book-link" href={`/api/brand/book?brandId=${encodeURIComponent(activeBrandId)}`} target="_blank" rel="noreferrer">Скачать</a>}
                       {brand.brandBookFileName && <button type="button" className="brand-book-remove" onClick={removeBrandBook} disabled={brandAnalyzeBusy || voiceBusy}>Открепить</button>}
                     </div>
-                    <small>КЛИО попробует дополнить профиль по файлу — спишется 1 исследование, если в файле найдётся текст</small>
                   </ProfileField>
-                  <ProfileField id="brand-logo" label="Логотип" help="Загрузите файл логотипа, чтобы использовать его при генерации изображений — КЛИО разместит именно ваш логотип на картинке вместо того, чтобы придумывать свой на каждой генерации.">
+                  <ProfileField id="brand-logo" label="Логотип" help="Загрузите файл логотипа, чтобы использовать его при генерации изображений — КЛИО разместит именно ваш логотип на картинке вместо того, чтобы придумывать свой на каждой генерации. Поддерживаются PNG, JPEG, WEBP и GIF размером до 8 МБ.">
                     <div className="brand-website-row">
                       {brand.logoKey && activeBrandId && <Image className="brand-logo-preview" src={`/api/brand/logo?brandId=${encodeURIComponent(activeBrandId)}`} alt="Логотип бренда" width={48} height={48} unoptimized/>}
                       <span className="brand-book-status">{brand.logoFileName || "Файл не прикреплён"}</span>
                       <button type="button" className={brandLogoBusy ? "is-busy" : ""} disabled={brandLogoBusy} onClick={() => brandLogoInputRef.current?.click()}>{brandLogoBusy ? "Загружаю…" : brand.logoFileName ? "Заменить файл" : "Загрузить логотип"}</button>
-                      <input ref={brandLogoInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden disabled={brandLogoBusy} onChange={(event) => {
+                      <WorkspaceInput ref={brandLogoInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden disabled={brandLogoBusy} onChange={(event) => {
                         const file = event.target.files?.[0];
                         event.target.value = "";
                         if (file) void uploadBrandLogo(file);
                       }}/>
                       {brand.logoFileName && <button type="button" className="brand-book-remove" onClick={removeBrandLogo} disabled={brandLogoBusy}>Открепить</button>}
                     </div>
-                    <small>PNG, JPEG, WEBP или GIF — до 8 МБ</small>
                     {brandLogoError && <small className="is-error" role="alert">{brandLogoError}</small>}
                   </ProfileField>
-                  <ProfileField id="brand-description" label="О компании" help="Короткая фактическая справка: сфера, география, услуги и масштаб." wide><AutoTextarea id="brand-description" aria-describedby="brand-description-help" rows={3} value={brand.description} onChange={(event) => updateBrand("description", event.target.value)}/></ProfileField>
-                  <ProfileField id="brand-positioning" label="Позиционирование" help="Какое место бренд хочет занимать в сознании аудитории — не рекламный слоган, а редакционный ориентир." wide><AutoTextarea id="brand-positioning" aria-describedby="brand-positioning-help" rows={3} value={brand.positioning} onChange={(event) => updateBrand("positioning", event.target.value)}/></ProfileField>
-                  <ProfileField id="brand-audience" label="Основная аудитория" help="Кто читатель, с какой задачей и на каком уровне понимания темы."><AutoTextarea id="brand-audience" aria-describedby="brand-audience-help" rows={4} value={brand.audience} onChange={(event) => updateBrand("audience", event.target.value)}/></ProfileField>
-                  <ProfileField id="brand-advantages" label="Факты и преимущества" help="Только подтверждённые особенности, на которые можно опираться в тексте."><AutoTextarea id="brand-advantages" aria-describedby="brand-advantages-help" rows={4} value={brand.advantages} onChange={(event) => updateBrand("advantages", event.target.value)}/></ProfileField>
-                  <ProfileField id="brand-products" label="Продукты и программы" help="Конкретные предложения бренда; не включайте предположения."><AutoTextarea id="brand-products" aria-describedby="brand-products-help" rows={3} value={brand.products} onChange={(event) => updateBrand("products", event.target.value)}/></ProfileField>
-                  <ProfileField id="brand-services" label="Услуги" help="Что компания реально делает для аудитории."><AutoTextarea id="brand-services" aria-describedby="brand-services-help" rows={3} value={brand.services} onChange={(event) => updateBrand("services", event.target.value)}/></ProfileField>
-                  <ProfileField id="brand-proof" label="Подтверждения и ссылки" help="Напишите, чем подтверждаются ваши преимущества: результаты проектов, отзывы, сертификаты или условия гарантии. Добавьте ссылку на источник, если она есть. Например: «Гарантия 2 года — ссылка на условия». Файлы сюда прикреплять не нужно."><AutoTextarea id="brand-proof" aria-describedby="brand-proof-help" rows={3} value={brand.proof} onChange={(event) => updateBrand("proof", event.target.value)}/></ProfileField>
-                  <ProfileField id="brand-geography" label="География бренда" help="Рынок и территория работы. Не путайте с географией поискового спроса."><AutoTextarea id="brand-geography" aria-describedby="brand-geography-help" rows={3} value={brand.geography} onChange={(event) => updateBrand("geography", event.target.value)}/></ProfileField>
                 </div>
               </div>
 
-              <div className="brand-field-group" role="tabpanel" id="brand-panel-voice" aria-labelledby="brand-tab-voice" hidden={brandTab !== "voice"}>
+              <div className="brand-field-group" id="brand-panel-voice">
+                <div className="brand-board-section"><span>02 / ГОЛОС И ПРАВИЛА</span></div>
                 <div className="profile-voice-fill">
                   <button type="button" className="button primary" onClick={() => void fillBrandTab("voice")} disabled={brandAnalyzeBusy || voiceBusy || voiceMissing.length > 0 || aiConnection !== "connected"}>{voiceBusy ? "Подбираю голос…" : "Подобрать голос с КЛИО"}</button>
-                  <small>{voiceMissing.length ? `На первой вкладке заполните ${voiceMissing.join(", ")}.` : aiConnection !== "connected" ? "КЛИО сейчас недоступна" : workspaceAccount.researchRemaining <= 0 ? "Лимит исследований исчерпан" : "По основе бренда · 1 исследование"}</small>
-                  <label className="profile-fill-replace"><input type="checkbox" checked={replaceVoice} onChange={event => setReplaceVoice(event.target.checked)} disabled={voiceBusy || brandAnalyzeBusy}/>Перезаписать поля, которые уже заполнены</label>
-                  <small className="profile-fill-replace-help">По умолчанию заполняются только пустые поля.</small>
+                  <HelpTip label="Подобрать голос с КЛИО" text={<>{voiceMissing.length ? `В основе бренда заполните ${voiceMissing.join(", ")}.` : aiConnection !== "connected" ? "КЛИО сейчас недоступна." : workspaceAccount.researchRemaining <= 0 ? "Лимит исследований исчерпан." : "КЛИО подберёт голос по основе бренда. Запрос расходует 1 исследование."} По умолчанию заполняются только пустые поля. Включите перезапись, чтобы заменить уже заполненные.</>}/>
+                  <label className="profile-fill-replace"><SiteToggle checked={replaceVoice} onChange={event => setReplaceVoice(event.target.checked)} disabled={voiceBusy || brandAnalyzeBusy}/>Перезаписать поля, которые уже заполнены</label>
                   {voiceError && <p className="profile-fill-error" role="alert">{voiceError}</p>}
                   {/* Not blind: only once real usage exists (lifetimeGenerationsUsed
                       counts real materials, not drafts) — a brand-new account's
@@ -7275,12 +7284,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   {workspaceAccount.lifetimeGenerationsUsed >= 3 && !brand.voice.trim() && !brand.vocabulary.trim() && renderAdviceTip("brand-voice-thin", <>Вижу, вы уже создали несколько материалов, а голос бренда пока не описан — тексты выходят нейтральными. Заполните «Голос бренда» и «Словарь бренда» ниже или нажмите «Подобрать голос с КЛИО» — и я буду точнее держать вашу интонацию.</>)}
                 </div>
                   <div className="brand-fields">
-                    <ProfileField id="brand-voice" label="Голос бренда" help="Интонация, сложность языка, длина фраз и степень эмоциональности."><AutoTextarea id="brand-voice" aria-describedby="brand-voice-help" rows={4} value={brand.voice} onChange={(event) => updateBrand("voice", event.target.value)}/></ProfileField>
-                    <ProfileField id="brand-vocabulary" label="Словарь бренда" help="Предпочтительные термины и формулировки, которые помогают узнаваемости."><AutoTextarea id="brand-vocabulary" aria-describedby="brand-vocabulary-help" rows={4} value={brand.vocabulary} onChange={(event) => updateBrand("vocabulary", event.target.value)}/></ProfileField>
-                    <ProfileField id="brand-cta" label="Желаемое действие читателя" help="Например: оставить заявку, записаться на консультацию или узнать условия. КЛИО использует этот призыв, только когда он уместен в материале."><AutoTextarea id="brand-cta" aria-describedby="brand-cta-help" rows={2} value={brand.cta} onChange={(event) => updateBrand("cta", event.target.value)}/></ProfileField>
-                    <ProfileField id="brand-signature" label="Фирменная подпись" help="Финальная формулировка для постов; КЛИО добавляет её только там, где она уместна."><AutoTextarea id="brand-signature" aria-describedby="brand-signature-help" rows={2} value={brand.signature} onChange={(event) => updateBrand("signature", event.target.value)}/></ProfileField>
-                    <ProfileField id="brand-restrictions" label="Ограничения" help="Что нельзя обещать, утверждать или придумывать без проверки."><AutoTextarea id="brand-restrictions" aria-describedby="brand-restrictions-help" rows={4} value={brand.restrictions} onChange={(event) => updateBrand("restrictions", event.target.value)}/></ProfileField>
-                    <ProfileField id="brand-prohibited" label="Стоп-слова и клише" help="Разделяйте слова и выражения точкой с запятой — они попадут в автоматическую проверку."><AutoTextarea id="brand-prohibited" aria-describedby="brand-prohibited-help" rows={4} value={brand.prohibited} onChange={(event) => updateBrand("prohibited", event.target.value)}/></ProfileField>
+                    <ProfileField id="brand-voice" value={brand.voice} label="Голос бренда" help="Интонация, сложность языка, длина фраз и степень эмоциональности."><AutoTextarea id="brand-voice" aria-describedby="brand-voice-help" rows={4} value={brand.voice} onChange={(event) => updateBrand("voice", event.target.value)}/></ProfileField>
+                    <ProfileField id="brand-vocabulary" value={brand.vocabulary} label="Словарь бренда" help="Предпочтительные термины и формулировки, которые помогают узнаваемости."><AutoTextarea id="brand-vocabulary" aria-describedby="brand-vocabulary-help" rows={4} value={brand.vocabulary} onChange={(event) => updateBrand("vocabulary", event.target.value)}/></ProfileField>
+                    <ProfileField id="brand-cta" value={brand.cta} label="Желаемое действие читателя" help="Например: оставить заявку, записаться на консультацию или узнать условия. КЛИО использует этот призыв, только когда он уместен в материале."><AutoTextarea id="brand-cta" aria-describedby="brand-cta-help" rows={2} value={brand.cta} onChange={(event) => updateBrand("cta", event.target.value)}/></ProfileField>
+                    <ProfileField id="brand-signature" value={brand.signature} label="Фирменная подпись" help="Финальная формулировка для постов; КЛИО добавляет её только там, где она уместна."><AutoTextarea id="brand-signature" aria-describedby="brand-signature-help" rows={2} value={brand.signature} onChange={(event) => updateBrand("signature", event.target.value)}/></ProfileField>
+                    <ProfileField id="brand-restrictions" value={brand.restrictions} label="Ограничения" help="Что нельзя обещать, утверждать или придумывать без проверки."><AutoTextarea id="brand-restrictions" aria-describedby="brand-restrictions-help" rows={4} value={brand.restrictions} onChange={(event) => updateBrand("restrictions", event.target.value)}/></ProfileField>
+                    <ProfileField id="brand-prohibited" value={brand.prohibited} label="Стоп-слова и клише" help="Разделяйте слова и выражения точкой с запятой — они попадут в автоматическую проверку."><AutoTextarea id="brand-prohibited" aria-describedby="brand-prohibited-help" rows={4} value={brand.prohibited} onChange={(event) => updateBrand("prohibited", event.target.value)}/></ProfileField>
                   </div>
 
               </div>
@@ -7288,10 +7297,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
               <div className="brand-profile-footer"><p role={workspaceDataError ? "alert" : "status"}><i className={brandSaved ? "saved" : workspaceDataError ? "error" : ""}/>{workspaceDataError ? `Не удалось сохранить: ${workspaceDataError}` : workspaceSaving ? "Сохраняю изменения…" : brandSaved ? "Все изменения профиля сохранены автоматически" : "Изменения сохраняются автоматически"}</p><div><button type="button" onClick={restoreBrand}>Восстановить базовый профиль</button><button className="button primary" type="button" onClick={() => void saveBrand()}>{workspaceDataError ? "Повторить сохранение" : "Сохранить сейчас"}</button></div></div>
             </div>
-          </section>
+          </section></BrandProfileCanvas>}
 
-          <section className="workspace-module semantics-module" id="semantics" style={{ display: activeModule === "semantics" ? undefined : "none" }}>
-            <div className="workspace-module-heading tool-heading workspace-module-banner"><div><h2>Поисковые запросы<span className="klio-mark-dot">.</span></h2></div><p>Укажите, чем интересуются ваши будущие клиенты. КЛИО найдёт реальные запросы и предложит: создать одну статью или получить план тем для сайта.</p></div>
+          {activeModule === "semantics" && <section className="workspace-module semantics-module" id="semantics" style={{ display: activeModule === "semantics" ? undefined : "none" }}>
+            <div className="workspace-module-heading tool-heading workspace-module-banner"><div><h2>Поисковые запросы<span className="klio-mark-dot">.</span><HelpTip label="Поисковые запросы" text="Укажите, чем интересуются ваши будущие клиенты. КЛИО найдёт реальные запросы и предложит: создать одну статью или получить план тем для сайта."/></h2></div></div>
             <div className="semantic-shell">
               <div className="semantic-search-card">
                 <div className="semantic-search-head">
@@ -7324,7 +7333,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
                   {semanticGeoOpen && <div className="semantic-geo-menu" id="semantic-geo-tree">
                     <div className="semantic-geo-menu-head">
-                      <label><span>Найти территорию</span><input autoFocus value={semanticGeoSearch} onChange={(event) => setSemanticGeoSearch(event.target.value)} placeholder="Округ, регион или город" autoComplete="off"/></label>
+                      <label><span>Найти территорию</span><WorkspaceInput autoFocus value={semanticGeoSearch} onChange={(event) => setSemanticGeoSearch(event.target.value)} placeholder="Округ, регион или город" autoComplete="off"/></label>
                       <button type="button" onClick={clearSemanticGeo} disabled={!selectedGeoCityIds.size}>Сбросить выбор</button>
                     </div>
                     <div className="semantic-geo-tree" role="tree" aria-label="Округа, регионы и города России">
@@ -7436,7 +7445,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
 
               <div className="semantic-actionbar">
                 <div className="semantic-actionbar-copy"><span className="field-label-help">Что сделать дальше<HelpTip label="Что сделать дальше" text="Одна статья отвечает на один вопрос читателя. Для раздела со статьями нажмите «Получить план статей» — КЛИО сама разложит все найденные темы по отдельным публикациям."/></span><b>{selectedSemanticKeywords.length ? `${selectedSemanticKeywords.length} близких запросов выбраны для одной статьи` : "Выберите одну группу близких запросов"}</b></div>
-                <label className="semantic-brand-route"><input type="checkbox" checked={useBrand} onChange={(event) => { setUseBrand(event.target.checked); setSemanticNeedsRefresh(true); setContentPlanNeedsRefresh(true); persistSemantics(semanticResult, selectedSemanticIds, semanticMode, semanticQuery, semanticRegion, semanticGeo, true); }}/><i/><span><b>Учесть профиль бренда</b><small>{useBrand ? "Модуль 01, включая открытые данные сайта, усилит факты и голос" : "Выключено — статья создаётся только по модулю 02"}</small></span></label>
+                <label className="semantic-brand-route"><WorkspaceInput type="checkbox" checked={useBrand} onChange={(event) => { setUseBrand(event.target.checked); setSemanticNeedsRefresh(true); setContentPlanNeedsRefresh(true); persistSemantics(semanticResult, selectedSemanticIds, semanticMode, semanticQuery, semanticRegion, semanticGeo, true); }}/><i/><span><b>Учесть профиль бренда</b><small>{useBrand ? "Модуль 01, включая открытые данные сайта, усилит факты и голос" : "Выключено — статья создаётся только по модулю 02"}</small></span></label>
                 <div className="semantic-action-buttons">
                   <button className="button ghost" type="button" onClick={openSemanticContentPlan} disabled={semanticNeedsRefresh}>Получить план статей</button>
                   <button className="button ghost" type="button" onClick={sendSemanticsToGenerator} disabled={!selectedSemanticKeywords.length || semanticNeedsRefresh}>Настроить статью</button>
@@ -7451,10 +7460,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <ol><li><i>1</i><span>Введите тему</span></li><li><i>2</i><span>Проверьте географию</span></li><li><i>3</i><span>Запустите анализ</span></li></ol>
               </div>}
             </div>
-          </section>
+          </section>}
 
-          <section className="workspace-module competitor-module" id="competitors" style={{ display: activeModule === "competitors" ? undefined : "none" }}>
-            <div className="workspace-module-heading tool-heading workspace-module-banner"><div><span>Самостоятельный инструмент · по желанию</span><h2>Анализ конкурентов<span className="klio-mark-dot">.</span></h2></div><p>Посмотрите, как сильные игроки отвечают на вопросы ваших будущих клиентов, и найдите полезные темы для своего сайта. КЛИО соберёт прямых конкурентов и подскажет, что стоит раскрыть в материале.</p></div>
+          {activeModule === "competitors" && <section className="workspace-module competitor-module" id="competitors" style={{ display: activeModule === "competitors" ? undefined : "none" }}>
+            <div className="workspace-module-heading tool-heading workspace-module-banner"><div><span>Самостоятельный инструмент · по желанию</span><h2>Анализ конкурентов<span className="klio-mark-dot">.</span><HelpTip label="Анализ конкурентов" text="Посмотрите, как сильные игроки отвечают на вопросы ваших будущих клиентов, и найдите полезные темы для своего сайта. КЛИО соберёт прямых конкурентов и подскажет, что стоит раскрыть в материале."/></h2></div></div>
 
             <div className="competitor-optional-shell">
               <div className="competitor-optional-body">
@@ -7466,7 +7475,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               </div>
 
               <div className="competitor-query-row">
-                <label><span>Тема, основной запрос или категория бренда <em>{competitorFocusSource === "semantics" ? "из семантики" : competitorFocusSource === "brand" ? "из профиля бренда" : "ручной ввод"}</em></span><input value={competitorQuery} onChange={(event) => { const next = event.target.value; setCompetitorQuery(next); setCompetitorFocusSource("manual"); setCompetitorNeedsRefresh(true); persistCompetitorWorkspace({ query: next, focusSource: "manual", needsRefresh: true }); }} placeholder="Например: санаторий для восстановления" autoComplete="off"/></label>
+                <label><span>Тема, основной запрос или категория бренда <em>{competitorFocusSource === "semantics" ? "из семантики" : competitorFocusSource === "brand" ? "из профиля бренда" : "ручной ввод"}</em></span><WorkspaceInput value={competitorQuery} onChange={(event) => { const next = event.target.value; setCompetitorQuery(next); setCompetitorFocusSource("manual"); setCompetitorNeedsRefresh(true); persistCompetitorWorkspace({ query: next, focusSource: "manual", needsRefresh: true }); }} placeholder="Например: санаторий для восстановления" autoComplete="off"/></label>
                 <div className="competitor-query-sources">
                   <button type="button" className={competitorFocusSource === "semantics" ? "is-active" : ""} onClick={useCurrentSemanticsForCompetitors}><i>02</i><span><b>Из семантики</b><small>{semanticAnalysisReady ? semanticResult.primaryQuery : "сначала выполните анализ"}</small></span></button>
                   <button type="button" className={competitorFocusSource === "brand" ? "is-active" : ""} onClick={useBrandForCompetitors}><i>01</i><span><b>Из бренда</b><small>{effectiveBrand.name}</small></span></button>
@@ -7480,7 +7489,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <button type="button" className={competitorMarketScope === "demand" ? "is-active" : ""} onClick={() => chooseCompetitorMarketScope("demand")}>По географии спроса</button>
                   <button type="button" className={competitorMarketScope === "brand" ? "is-active" : ""} onClick={() => chooseCompetitorMarketScope("brand")}>По территории работы бренда</button>
                 </div>
-                {competitorMarketScope !== "national" && <label className="competitor-market-region"><span>{competitorMarketScope === "demand" ? "Где ищут ваши клиенты" : "Где вы работаете"}</span><input value={competitorMarketRegion} onChange={(event) => { const next = event.target.value; setCompetitorMarketRegion(next); setCompetitorNeedsRefresh(true); persistCompetitorWorkspace({ marketRegion: next, needsRefresh: true }); }} placeholder={competitorMarketScope === "demand" ? "Например: Карелия, Санкт‑Петербург" : "Например: Россия или Москва и область"} autoComplete="off"/></label>}
+                {competitorMarketScope !== "national" && <label className="competitor-market-region"><span>{competitorMarketScope === "demand" ? "Где ищут ваши клиенты" : "Где вы работаете"}</span><WorkspaceInput value={competitorMarketRegion} onChange={(event) => { const next = event.target.value; setCompetitorMarketRegion(next); setCompetitorNeedsRefresh(true); persistCompetitorWorkspace({ marketRegion: next, needsRefresh: true }); }} placeholder={competitorMarketScope === "demand" ? "Например: Карелия, Санкт‑Петербург" : "Например: Россия или Москва и область"} autoComplete="off"/></label>}
                 <small>{competitorMarketScope === "national" ? "Подходит для онлайн-сервисов и брендов, которые работают по всей России." : "Можно указать регион самостоятельно. Данные из семантики и профиля только подставляются для удобства."}</small>
               </div>
 
@@ -7495,9 +7504,9 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 {competitorDiscoveryNote && <p className="competitor-discovery-note"><Icon name="check"/>{competitorDiscoveryNote}</p>}
                 {competitors.map((competitor, index) => <div className="competitor-source-row" key={competitor.id}>
                   <i>{String(index + 1).padStart(2, "0")}</i>
-                  <label><span>Название {competitor.origin === "ai" && <em>{competitor.segment === "industry_leader" ? "лидер отрасли" : competitor.segment === "regional_competitor" ? "конкурент в выбранной географии" : "конкурент за аудиторию"}</em>}</span><input value={competitor.label} onChange={(event) => updateCompetitorEntry(competitor.id, "label", event.target.value)} placeholder={`Конкурент ${index + 1}`} autoComplete="off"/></label>
-                  <label className="competitor-url-field"><span>Ссылка на страницу компании</span><input type="url" value={competitor.url} onChange={(event) => updateCompetitorEntry(competitor.id, "url", event.target.value)} placeholder="https://site.ru/usluga" autoComplete="off"/>{competitor.origin === "ai" && /^https?:\/\//i.test(competitor.url) && <><a href={competitor.url} target="_blank" rel="noreferrer">Открыть найденную страницу <Icon name="arrow"/></a>{competitor.note && <small>{competitor.note}</small>}</>}</label>
-                  <button type="button" className="competitor-remove" onClick={() => removeCompetitorEntry(competitor.id)} aria-label={`Удалить строку ${index + 1}`}>×</button>
+                  <label><span>Название {competitor.origin === "ai" && <em>{competitor.segment === "industry_leader" ? "лидер отрасли" : competitor.segment === "regional_competitor" ? "конкурент в выбранной географии" : "конкурент за аудиторию"}</em>}</span><WorkspaceInput value={competitor.label} onChange={(event) => updateCompetitorEntry(competitor.id, "label", event.target.value)} placeholder={`Конкурент ${index + 1}`} autoComplete="off"/></label>
+                  <label className="competitor-url-field"><span>Ссылка на страницу компании</span><WorkspaceInput type="url" value={competitor.url} onChange={(event) => updateCompetitorEntry(competitor.id, "url", event.target.value)} placeholder="https://site.ru/usluga" autoComplete="off"/>{competitor.origin === "ai" && /^https?:\/\//i.test(competitor.url) && <><a href={competitor.url} target="_blank" rel="noreferrer">Открыть найденную страницу <Icon name="arrow"/></a>{competitor.note && <small>{competitor.note}</small>}</>}</label>
+                  <button type="button" className="competitor-remove" onClick={() => removeCompetitorEntry(competitor.id)} aria-label={`Удалить строку ${index + 1}`}><X size={16}/></button>
                 </div>)}
                 <button type="button" className="competitor-add" onClick={addCompetitorEntry} disabled={competitors.length >= 5}>+ Добавить конкурента <span>{competitors.length}/5</span></button>
               </div>
@@ -7565,10 +7574,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </div>
               </div>
             </div>
-          </section>
+          </section>}
 
-          <section className="workspace-module image-generator-module" id="images" style={{ display: activeModule === "images" ? undefined : "none" }}>
-            <div className="workspace-module-heading tool-heading workspace-module-banner"><div><span>Визуальные материалы</span><h2>Генератор изображений<span className="klio-mark-dot">.</span></h2></div><p>Опишите, что должно быть на картинке. КЛИО создаст её и сохранит в «Материалы».</p></div>
+          {activeModule === "images" && <section className="workspace-module image-generator-module" id="images" style={{ display: activeModule === "images" ? undefined : "none" }}>
+            <div className="workspace-module-heading tool-heading workspace-module-banner"><div><span>Визуальные материалы</span><h2>Генератор изображений<span className="klio-mark-dot">.</span><HelpTip label="Генератор изображений" text="Опишите, что должно быть на картинке. КЛИО создаст её и сохранит в «Материалы»."/></h2></div></div>
             <div className="image-generator-mode-switch" role="tablist" aria-label="Режим генератора изображений">
               <button type="button" role="tab" aria-selected={imageGeneratorMode === "create"} className={imageGeneratorMode === "create" ? "is-active" : ""} disabled={imageBusy || carouselBusy || imageReferenceBusy} onClick={startFreshImage}>
                 <span className="image-generator-mode-index">01</span><span><strong>Изображение</strong><small>Создать с нуля или по образцу</small></span>
@@ -7582,12 +7591,13 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
             </div>
             <div className="image-generator-layout">
               <div className="image-generator-form">
+                <div className="image-brief-heading"><span>01 / Замысел</span><h3>{imageGeneratorMode === "edit" ? "Новый взгляд на готовое" : imageGeneratorMode === "carousel" ? "История в нескольких кадрах" : "Всё начинается с идеи"}</h3></div>
                 <div className={`image-generator-reference ${imageGeneratorMode === "edit" && !imageEditSourceId && !imageReferenceUrl && !imageReferenceSourceId ? "is-source-step" : ""}`} style={{ display: imageGeneratorMode === "carousel" ? "none" : undefined }}>
                   <div className="image-generator-reference-heading"><strong className="field-label-help">{imageGeneratorMode === "edit" ? "Шаг 1. Выберите исходник" : <>Добавить референс <em>(необязательно)</em></>}<HelpTip label={imageGeneratorMode === "edit" ? "Исходник для доработки" : "Референс для изображения"} text={imageGeneratorMode === "edit" ? "Загрузите изображение или выберите сохранённое. После выбора появятся быстрые действия. Дополнительный файл можно использовать как стиль обработки или объект для добавления." : "Исходник можно использовать как основу новой картинки, а дополнительный файл — как стиль обработки или объект для добавления."}/></strong></div>
                   <div className="image-generator-reference-actions">
                     <label className={`button primary image-generator-reference-upload image-source-primary ${imageReferenceBusy ? "is-busy" : ""}`}>
                       {imageReferenceBusy ? "Загрузка…" : imageReferenceUrl ? "Заменить исходник" : "Загрузить исходник"}
-                      <input ref={imageReferenceInputRef} type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={imageReferenceBusy || imageBusy || carouselBusy} onChange={event => {
+                      <WorkspaceInput ref={imageReferenceInputRef} type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={imageReferenceBusy || imageBusy || carouselBusy} onChange={event => {
                         const file = event.target.files?.[0];
                         event.target.value = "";
                         if (file) void uploadProfessionalImageReference(file);
@@ -7608,7 +7618,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     />}
                     {imageGeneratorMode !== "edit" && Boolean(imageReferenceUrl || imageReferenceSourceId) && <label className={`button ghost image-generator-reference-upload ${imageReferenceBusy ? "is-busy" : ""}`} title="Загрузите референс стиля или объект для добавления">
                       {imageReferenceBusy ? "Загрузка…" : imageReferenceUrl ? "Загрузить референс стиля / объект" : "Загрузить референс после исходника"}
-                      <input ref={imageAdditionalReferenceInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden disabled={imageReferenceBusy || imageBusy || carouselBusy || imageAdditionalReferences.length >= 1 || !imageReferenceUrl} onChange={event => {
+                      <WorkspaceInput ref={imageAdditionalReferenceInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden disabled={imageReferenceBusy || imageBusy || carouselBusy || imageAdditionalReferences.length >= 1 || !imageReferenceUrl} onChange={event => {
                         const files = Array.from(event.target.files || []);
                         event.target.value = "";
                         if (files.length) void uploadAdditionalImageReferences(files);
@@ -7616,7 +7626,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     </label>}
                     {(imageReferenceUrl || imageEditSourceId) && imageGeneratorMode === "edit" && <label className={`button ghost image-generator-reference-upload ${imageReferenceBusy ? "is-busy" : ""}`} title="Загрузите референс стиля или объект для добавления">
                       {imageReferenceBusy ? "Загрузка…" : "Загрузить референс стиля / объект"}
-                      <input ref={imageAdditionalReferenceInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden disabled={imageReferenceBusy || imageBusy || carouselBusy || imageAdditionalReferences.length >= 1} onChange={event => {
+                      <WorkspaceInput ref={imageAdditionalReferenceInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden disabled={imageReferenceBusy || imageBusy || carouselBusy || imageAdditionalReferences.length >= 1} onChange={event => {
                         const files = Array.from(event.target.files || []);
                         event.target.value = "";
                         if (files.length) void uploadAdditionalImageReferences(files);
@@ -7634,8 +7644,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   </div>}
                   {imageReferenceError && <small ref={imageReferenceErrorRef} className="generation-error" role="alert" tabIndex={-1}>{imageReferenceError}</small>}
                 </div>
+                <div className="image-prompt-card">
                 <label htmlFor="image-prompt">{imageGeneratorMode === "carousel" ? "Статья или тема для карусели" : imageGeneratorMode === "edit" ? `Что изменить в изображении (необязательно при ${imageAdditionalReferences.length ? "выбранном референсе" : "быстрых действиях"})` : canGenerateFromVisualReference ? "Что изобразить (необязательно при выбранном образце)" : "Что изобразить"}</label>
-                <textarea id="image-prompt" value={imagePrompt} onChange={event => { setImagePrompt(event.target.value); setImageSourceTitle(""); setPendingCarouselSource(null); if (imageTextMode === "title") setImageTextMode("auto"); }} placeholder={imageGeneratorMode === "carousel" ? "Вставьте статью или опишите тему, которую нужно раскрыть в серии слайдов" : imageGeneratorMode === "edit" && imageAdditionalReferences.length ? "Описание необязательно — КЛИО применит выбранный стиль или добавит объект автоматически" : imageGeneratorMode === "edit" ? "Например: добавь мягкий вечерний свет и убери кружку справа" : canGenerateFromVisualReference ? "Описание необязательно — КЛИО создаст новую картинку на основе выбранного образца" : "Например: чашка кофе на деревянном столе у окна, мягкий утренний свет, без надписей"} rows={6} maxLength={imageGeneratorMode === "carousel" ? MAX_CAROUSEL_SOURCE_CHARACTERS : 1800}/>
+                <WorkspaceTextarea id="image-prompt" value={imagePrompt} onChange={event => { setImagePrompt(event.target.value); setImageSourceTitle(""); setPendingCarouselSource(null); if (imageTextMode === "title") setImageTextMode("auto"); }} placeholder={imageGeneratorMode === "carousel" ? "Вставьте статью или опишите тему, которую нужно раскрыть в серии слайдов" : imageGeneratorMode === "edit" && imageAdditionalReferences.length ? "Описание необязательно — КЛИО применит выбранный стиль или добавит объект автоматически" : imageGeneratorMode === "edit" ? "Например: добавь мягкий вечерний свет и убери кружку справа" : canGenerateFromVisualReference ? "Описание необязательно — КЛИО создаст новую картинку на основе выбранного образца" : "Например: чашка кофе на деревянном столе у окна, мягкий утренний свет, без надписей"} rows={6} maxLength={imageGeneratorMode === "carousel" ? MAX_CAROUSEL_SOURCE_CHARACTERS : 1800}/>
+                </div>
                 {imageGeneratorMode === "carousel" && <small className="image-generator-source-count">{imagePrompt.length.toLocaleString("ru-RU")} / {MAX_CAROUSEL_SOURCE_CHARACTERS.toLocaleString("ru-RU")} символов</small>}
                 {imageGeneratorMode === "edit" && Boolean(imageEditSourceId || imageReferenceUrl || imageReferenceSourceId) && <div className="image-edit-quick-actions">
                   <div className="image-edit-quick-heading"><strong className="field-label-help">Шаг 2. Быстрые действия<HelpTip label="Быстрые действия с изображением" text="Выбранное действие сразу запускает одну обработку изображения и расходует одну генерацию."/></strong></div>
@@ -7646,10 +7658,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 {imageGeneratorMode === "create" && <div className="image-format-presets">
                   <div className="image-edit-quick-heading"><strong className="field-label-help">Формат результата<HelpTip label="Формат результата" text="Выберите готовый размер холста или укажите свой размер от 300 до 3840 пикселей по каждой стороне."/></strong></div>
                   <div className="image-format-preset-grid">
-                    {IMAGE_FORMAT_PRESETS.map(preset => <button key={preset.id} type="button" className={`button ghost ${imageCanvasSize === preset.size ? "is-selected" : ""}`} onClick={() => setImageCanvasSize(preset.size)} disabled={imageBusy || carouselBusy} title={`${preset.label}: ${preset.size}`}>{preset.label}</button>)}
+                    {IMAGE_FORMAT_PRESETS.map(preset => <button key={preset.id} type="button" className={`button ghost ${imageCanvasSize === preset.size ? "is-selected" : ""}`} onClick={() => setImageCanvasSize(preset.size)} disabled={imageBusy || carouselBusy} title={`${preset.label}: ${preset.size}`} aria-pressed={imageCanvasSize === preset.size}><span className="image-format-shape" aria-hidden="true" style={{ aspectRatio: preset.size.replace("x", "/") }}/><span>{preset.label}<small>{preset.size.replace("x", " × ")}</small></span></button>)}
                   </div>
                   <label className="image-custom-size">Свой размер
-                    <input value={imageCanvasSize && !IMAGE_FORMAT_PRESETS.some(preset => preset.size === imageCanvasSize) ? imageCanvasSize : ""} onChange={event => setImageCanvasSize(event.target.value.replace(/[^0-9x]/gi, "").slice(0, 9))} placeholder="например, 1536x864" inputMode="numeric" disabled={imageBusy || carouselBusy}/>
+                    <WorkspaceInput value={imageCanvasSize && !IMAGE_FORMAT_PRESETS.some(preset => preset.size === imageCanvasSize) ? imageCanvasSize : ""} onChange={event => setImageCanvasSize(event.target.value.replace(/[^0-9x]/gi, "").slice(0, 9))} placeholder="например, 1536x864" inputMode="numeric" disabled={imageBusy || carouselBusy}/>
                   </label>
                 </div>}
                 {imageGeneratorMode === "create" && imageAdditionalReferences.length > 0 && <div className="image-edit-quick-actions image-reference-combine-action">
@@ -7660,7 +7672,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <div className="image-generator-style-field">
                     <div className="image-generator-style-heading"><span className="field-label-help">Стиль изображения<HelpTip label="Стиль изображения" text={IMAGE_STYLE_OPTIONS.find(option => option.value === imageStyle)?.instruction || "КЛИО выберет визуальный подход по смыслу задачи."}/></span></div>
                     <div className="image-generator-style-picker" role="radiogroup" aria-label="Стиль изображения">
-                      {IMAGE_STYLE_OPTIONS.map(option => <button key={option.value || "auto"} type="button" className={imageStyle === option.value ? "is-selected" : ""} role="radio" aria-checked={imageStyle === option.value} title={option.instruction} disabled={imageBusy || carouselBusy} onClick={() => setImageStyle(option.value)}><span>{option.label}</span>{imageStyle === option.value && <i aria-hidden="true">✓</i>}</button>)}
+                      {IMAGE_STYLE_OPTIONS.map(option => <button key={option.value || "auto"} type="button" className={imageStyle === option.value ? "is-selected" : ""} data-visual-style={option.value || "auto"} role="radio" aria-checked={imageStyle === option.value} title={option.instruction} disabled={imageBusy || carouselBusy} onClick={() => setImageStyle(option.value)}><span className="image-style-swatch" aria-hidden="true"/><span>{option.label}</span>{imageStyle === option.value && <i aria-hidden="true">✓</i>}</button>)}
                     </div>
                   </div>
                   {imageGeneratorMode !== "carousel" && <ModuleSelect
@@ -7677,7 +7689,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 {useBrand && activeBrandId && (brand.logoKey ? (
                   <>
                     <label className={`image-generator-logo-toggle${imageEditMask || imageAdditionalReferences.length ? " is-disabled" : ""}`} title={imageEditMask ? "Сначала очистите выделение кистью" : imageAdditionalReferences.length ? "При дополнительном референсе логотип отключён: relay принимает два изображения за запрос" : undefined}>
-                      <input type="checkbox" checked={useLogoInImage} disabled={Boolean(imageEditMask) || imageAdditionalReferences.length > 0} onChange={(event) => setUseLogoInImage(event.target.checked)}/>
+                      <SiteToggle checked={useLogoInImage} disabled={Boolean(imageEditMask) || imageAdditionalReferences.length > 0} onChange={(event) => setUseLogoInImage(event.target.checked)}/>
                       <span>Использовать логотип бренда на картинке</span>
                     </label>
                     {imageEditMask && <small className="image-generator-logo-toggle-note">Чтобы добавить логотип, сначала очистите выделение кистью.</small>}
@@ -7697,12 +7709,12 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     {useBrand && brand.logoKey && useLogoInImage && (logoPlacement === "corner" || logoPlacement === "both") && <ModuleSelect label="Угол для логотипа" value={logoPosition} onChange={setLogoPosition} options={LOGO_POSITION_OPTIONS} />}
                   </div>
                   {imageTextMode === "title" && <p>На изображении: {imageSourceTitle}</p>}
-                  {imageTextMode === "custom" && <><label htmlFor="professional-image-text">Текст для изображения</label><textarea id="professional-image-text" rows={2} maxLength={200} value={imageText} onChange={event => setImageText(event.target.value)} placeholder="Например: Закулисье нашей студии" /></>}
+                  {imageTextMode === "custom" && <><label htmlFor="professional-image-text">Текст для изображения</label><WorkspaceTextarea id="professional-image-text" rows={2} maxLength={200} value={imageText} onChange={event => setImageText(event.target.value)} placeholder="Например: Закулисье нашей студии" /></>}
                   {useBrand && brand.logoKey && useLogoInImage && <small>{logoPlacement === "corner" ? "Логотип будет отдельным небольшим знаком в выбранном углу." : logoPlacement === "both" ? "Один логотип станет частью сцены, второй будет отдельным знаком в выбранном углу." : "Логотип станет частью сцены."} Модель может немного изменить мелкие детали знака.</small>}
                   </fieldset>
                 </details>
                 {imageError && <p ref={imageErrorRef} className="generation-error" role="alert" tabIndex={-1}>{imageError}</p>}
-                <button className={`button primary large generation-action ${imageBusy ? "is-busy" : ""}`} style={{ display: imageGeneratorMode === "carousel" ? "none" : undefined }} type="button" onClick={() => void generateProfessionalImage()} disabled={imageBusy || carouselBusy || !workspaceReady || imageGeneratorMode === "edit" && !imageEditSourceId && !imageReferenceUrl && !imageReferenceSourceId || (!canGenerateWithoutImagePrompt && imagePrompt.trim().length < 8) || workspaceAccount.generationsRemaining <= 0}><Icon name="image"/>{imageBusy ? "Создаю изображение…" : workspaceAccount.generationsRemaining <= 0 ? "Лимит генераций исчерпан" : imageGeneratorMode === "edit" ? "Применить изменения" : "Создать изображение"}</button>
+                <button className={`button primary large generation-action ${imageBusy ? "is-busy" : ""}`} style={{ display: imageGeneratorMode === "carousel" ? "none" : undefined }} type="button" onClick={() => void generateProfessionalImage()} disabled={imageBusy || carouselBusy || !workspaceReady || imageGeneratorMode === "edit" && !imageEditSourceId && !imageReferenceUrl && !imageReferenceSourceId || (!canGenerateWithoutImagePrompt && imagePrompt.trim().length < 8) || workspaceAccount.generationsRemaining <= 0}>{imageBusy ? <KlioActivity/> : <Icon name="image"/>}{imageBusy ? "Создаю изображение…" : workspaceAccount.generationsRemaining <= 0 ? "Лимит генераций исчерпан" : imageGeneratorMode === "edit" ? "Применить изменения" : "Создать изображение"}</button>
                 <div className="image-generator-carousel" style={{ display: imageGeneratorMode === "carousel" ? undefined : "none" }}>
                   <div><span>Карусель</span><h3>Несколько слайдов из этого текста<span className="klio-mark-dot">.</span></h3><p>КЛИО выделит главные мысли и создаст для каждого слайда отдельную сцену с коротким текстом внутри изображения. Весь введённый текст учитывается; один слайд — одна генерация.</p></div>
                   <div className="image-generator-carousel-controls">
@@ -7749,13 +7761,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     </div>
                   </div>
                   {carouselError && <p className="generation-error" role="alert">{carouselError}</p>}
-                  <button className={`button ghost large generation-action ${carouselBusy ? "is-busy" : ""}`} type="button" onClick={() => void generateCarousel(pendingCarouselSource ?? { text: imagePrompt })} disabled={imageBusy || carouselBusy || !workspaceReady || imagePrompt.trim().length < 20 || workspaceAccount.generationsRemaining < Number(carouselSlideCount)}><Icon name="image"/>{carouselBusy ? "Создаю карусель…" : workspaceAccount.generationsRemaining < Number(carouselSlideCount) ? "Не хватает генераций" : `Создать карусель (${carouselSlideCount})`}</button>
+                  <button className={`button ghost large generation-action ${carouselBusy ? "is-busy" : ""}`} type="button" onClick={() => void generateCarousel(pendingCarouselSource ?? { text: imagePrompt })} disabled={imageBusy || carouselBusy || !workspaceReady || imagePrompt.trim().length < 20 || workspaceAccount.generationsRemaining < Number(carouselSlideCount)}>{carouselBusy ? <KlioActivity/> : <Icon name="image"/>}{carouselBusy ? "Создаю карусель…" : workspaceAccount.generationsRemaining < Number(carouselSlideCount) ? "Не хватает генераций" : `Создать карусель (${carouselSlideCount})`}</button>
                 </div>
               </div>
+              <ImageCreationFlow busy={imageBusy || carouselBusy}/>
               {imageBusy && imageStreamPreview && <div className="image-generator-stream-preview" aria-live="polite"><Image src={imageStreamPreview} alt="Промежуточный вариант изображения" width={1024} height={1024} unoptimized/><span>КЛИО уже рисует — это промежуточный кадр</span></div>}
               <div className="image-generator-preview" ref={imageGeneratorPreviewRef} aria-live="polite">
                 {imageGeneratorMode === "carousel" && carouselResult ? <>
-                  <div className="image-generator-carousel-slides">
+                  <EditorialVisualCarousel labels={carouselResult.slides.map(slide=>slide.headline)}>
                     {carouselResult.slides.map((slide, index) => <div className={`image-generator-carousel-slide ${carouselSlideBusy === index ? "is-regenerating" : ""}`} key={`${slide.imageUrl}-${index}`}>
                       <button type="button" className="image-generator-result-trigger" style={{ aspectRatio: typeof slide.aspectRatio === "string" && /^\d+:\d+$/.test(slide.aspectRatio) ? slide.aspectRatio.replace(":", " / ") : "auto" }} aria-label={`Открыть слайд ${index + 1}: ${slide.headline}`} onClick={() => setCarouselLightboxIndex(index)}><Image src={slide.imageUrl} alt={slide.headline} width={480} height={480} unoptimized/></button>
                       <b>{slide.headline}</b>
@@ -7765,7 +7778,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                         <small>1 генерация</small>
                       </div>
                     </div>)}
-                  </div>
+                  </EditorialVisualCarousel>
                   <p>Карусель из {carouselResult.slides.length} слайдов сохранена в «Материалы».</p>
                   <div><button className="button ghost" type="button" onClick={() => { setMaterialsFilter("all"); openModule("history"); }}>Открыть материалы</button><button className="button ghost" type="button" onClick={() => void openPublicationDraft(carouselPublicationDraft(carouselResult.slides, carouselResult.archive))}>В публикацию</button></div>
                 </> : imageGeneratorMode !== "carousel" && imageResult?.imageUrl ? <>
@@ -7779,19 +7792,22 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                       <span className="image-before-after-label is-after">После</span>
                       <i className="image-before-after-divider" style={{ left: `${imageComparisonPosition}%` }} aria-hidden="true" />
                     </div>
-                    <label className="image-before-after-control"><span>Сравнить до и после</span><input type="range" min="0" max="100" value={imageComparisonPosition} onChange={event => setImageComparisonPosition(Number(event.target.value))} aria-label="Положение границы сравнения исходного и доработанного изображения"/></label>
+                    <label className="image-before-after-control"><span>Сравнить до и после</span><WorkspaceInput type="range" min="0" max="100" value={imageComparisonPosition} onChange={event => setImageComparisonPosition(Number(event.target.value))} aria-label="Положение границы сравнения исходного и доработанного изображения"/></label>
                     <button type="button" className="image-before-after-open" onClick={() => setLightboxUrl(imageResult.imageUrl)}>Открыть результат крупнее</button>
                   </div> : <button type="button" className="image-generator-result-trigger" aria-label="Открыть изображение крупнее" onClick={() => setLightboxUrl(imageResult.imageUrl)}><Image src={imageResult.imageUrl} alt={imageResult.title} width={1024} height={1024} unoptimized/></button>}
                   <p>Изображение сохранено в «Материалы».</p>
                   <div className="image-generator-result-icons"><a className="button ghost" href={imageResult.imageUrl} download aria-label={`Скачать ${imageFormatLabel(imageResult.imageUrl)}`} title={`Скачать ${imageFormatLabel(imageResult.imageUrl)}`}><Icon name="download"/></a><button className="button ghost" type="button" onClick={startImageEdit} aria-label="Доработать изображение" title="Доработать изображение"><Icon name="edit"/></button><button className="button ghost" type="button" onClick={() => { setMaterialsFilter("image"); openModule("history"); }} aria-label="Открыть материалы" title="Открыть материалы"><Icon name="folder"/></button></div>
                   {imageSourceMaterial ? <><p className="image-generator-publication-note">Изображение создано для статьи «{imageSourceMaterial.title}». Выберите, что поставить в публикацию:</p><div className="image-generator-publication-actions"><button className="button primary" type="button" onClick={() => openImagePublicationDraft(true)}>Картинка + текст статьи</button><button className="button ghost" type="button" onClick={() => openImagePublicationDraft(false)}>Только картинка</button></div></> : <div className="image-generator-result-actions"><button className="button ghost" type="button" onClick={() => openImagePublicationDraft(false)}>В публикацию</button></div>}
-                </> : <div className="image-generator-empty">{imageBusy || carouselBusy ? <div className="klio-gen-noise klio-gen-noise-panel" aria-hidden="true" /> : <Icon name="image"/>}<span>{imageBusy ? "КЛИО рисует. Обычно это занимает до минуты." : carouselBusy ? "КЛИО собирает карусель. Это может занять пару минут." : "Готовое изображение появится здесь"}</span></div>}
+                </> : <div className="image-generator-empty">
+                  <div className="image-canvas-caption"><span>02 / Воплощение</span><span>{imageGeneratorMode === "carousel" ? "Серия кадров" : "Ваш холст"}</span></div>
+                  <ImageCanvasPreview size={imageCanvasSize} visualStyle={imageStyle} formatLabel={IMAGE_FORMAT_PRESETS.find(preset => preset.size === imageCanvasSize)?.label || "Свой формат"} fileFormat={imageOutputFormat} mode={imageGeneratorMode}/>
+                  {imageBusy || carouselBusy ? <KlioActivity/> : <strong>Из идеи — в изображение</strong>}<span>{imageBusy ? "КЛИО рисует. Обычно это занимает до минуты." : carouselBusy ? "КЛИО собирает карусель. Это может занять пару минут." : "Готовое изображение появится здесь"}</span></div>}
               </div>
             </div>
-          </section>
+          </section>}
 
-          <section className="workspace-module generator-module" id="generator" style={{ display: activeModule === "generator" ? undefined : "none" }}>
-            <div className="workspace-module-heading tool-heading workspace-module-banner"><div><span>Главный экран</span><h2>Генератор текстов<span className="klio-mark-dot">.</span></h2></div><p>Укажите формат, тему, ключевые слова и то, что важно раскрыть. Остальные инструменты подключаются только по необходимости.</p></div>
+          {activeModule === "generator" && <section className="workspace-module generator-module" id="generator" style={{ display: activeModule === "generator" ? undefined : "none" }}>
+            <div className="workspace-module-heading tool-heading workspace-module-banner"><div><span>Главный экран</span><h2>Генератор текстов<span className="klio-mark-dot">.</span><HelpTip label="Генератор текстов" text="Укажите формат, тему, ключевые слова и то, что важно раскрыть. Остальные инструменты подключаются только по необходимости."/></h2></div></div>
             <div className={`studio ${hasGeneratedResult ? "has-result" : ""}`}>
               <aside className="brief-panel">
                 <div className="brief-step"><div className="brief-step-label"><span>Шаг 01</span><b>Бриф материала</b></div><button type="button" className="brief-reset" onClick={resetGeneratorBrief}>Начать заново</button></div>
@@ -7802,14 +7818,14 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 {generatorMode === "quick" && <div className="generator-quick">
                   <label className="field"><span className="field-label-help">Опишите задачу для КЛИО<HelpTip label="Опишите задачу для КЛИО" text="Опишите бренд, сайт или тему и что нужно написать — формат, тон и объём КЛИО определит сама. Если назван реальный бренд или сайт, КЛИО проверит факты в вебе, а не будет их выдумывать."/></span><AutoTextarea rows={6} value={quickPrompt} onChange={(event) => setQuickPrompt(event.target.value)} placeholder="Например: напиши SEO-статью про ORCA (сайт theorca.pro) — платформа для трейдеров с no-code сканерами и стратегиями. Аудитория — активные трейдеры."/><small>{generatorBrandReady ? <>Профиль бренда «{effectiveBrand.name}» включён — КЛИО учтёт его факты и голос, если задача с ним связана.</> : "Профиль бренда сейчас не используется — включите его выше и заполните основу, если хотите писать в голосе бренда без пересказа задачи."}</small></label>
                   <ModuleSelect label="Объём" value={quickLength} help="Если оставить «Автоматически», КЛИО сама оценит объём по формату и задаче — например, короткий пост для соцсетей или полноценную статью. Если результат обычно выходит не того размера, выберите объём вручную." options={QUICK_LENGTH_OPTIONS} onChange={setQuickLength}/>
-                  {quickLength === "custom" && <label className="field custom-length">Свой объём<div><input type="number" min="300" max="30000" step="100" value={quickCustomLengthInput} onChange={(event) => setQuickManualLength(event.target.value)} onBlur={commitQuickManualLength} inputMode="numeric"/><span>знаков</span></div><small>Укажите от 300 до 30 000 знаков с пробелами</small></label>}
+                  {quickLength === "custom" && <label className="field custom-length">Свой объём<div><WorkspaceInput type="number" min="300" max="30000" step="100" value={quickCustomLengthInput} onChange={(event) => setQuickManualLength(event.target.value)} onBlur={commitQuickManualLength} inputMode="numeric"/><span>знаков</span></div><small>Укажите от 300 до 30 000 знаков с пробелами</small></label>}
                   {quickError && <p className="generation-error" role="alert">{quickError}</p>}
                   {/* Not blind: only after real generator use (not right after
                       signup) and only while semantics has never been run once —
                       the moment "на глаз" keyword guessing is the actual pattern,
                       not a one-off. */}
                   {workspaceAccount.lifetimeGenerationsUsed >= 3 && semanticMode === "idle" && renderAdviceTip("generator-try-semantics", <>Вижу, вы уже сделали несколько материалов на глаз, без реальных поисковых запросов. Загляните в «Семантика» — я найду формулировки, которые реально ищут по вашей теме, и материалы точнее попадут в спрос.</>)}
-                  <button className={`button primary generate generation-action ${quickBusy ? "is-busy" : ""}`} type="button" onClick={() => void generateQuick()} disabled={!workspaceReady || quickBusy || aiConnection !== "connected"}><Icon name="spark"/>{quickBusy ? "КЛИО пишет…" : !workspaceReady ? "Загружаю кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
+                  <button className={`button primary generate generation-action ${quickBusy ? "is-busy" : ""}`} type="button" onClick={() => void generateQuick()} disabled={!workspaceReady || quickBusy || aiConnection !== "connected"}>{quickBusy ? <KlioActivity/> : <Icon name="spark"/>}{quickBusy ? "КЛИО пишет…" : !workspaceReady ? "Загружаю кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
                 </div>}
                 {generatorMode === "advanced" && <>
                 <div className="field"><label>Формат</label><div className="format-tabs">{formats.map((item) => <button type="button" className={format === item.id ? "active" : ""} onClick={() => { changeFormat(item.id); if (editorialBrief) setEditorialBrief(null); }} key={item.id}>{item.label}</button>)}</div></div>
@@ -7823,41 +7839,38 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                   <ModuleSelect label="Стиль" value={tone} help="Стиль меняет лексику и ритм, но не превращает выбранный формат в другой тип материала." options={styles.map((item) => ({ value: item, label: item }))} onChange={(value) => { setTone(value); if (editorialBrief) setEditorialBrief(null); }}/>
                   <ModuleSelect label="Объём" value={customLength ? "custom" : String(length)} options={[...lengthPresets[format].map((item) => ({ value: String(item.value), label: item.label })), { value: "custom", label: "Свой объём…" }]} onChange={changeLength}/>
                 </div>
-                {customLength && <label className="field custom-length">Свой объём<div><input type="number" min="300" max="30000" step="100" value={manualLengthInput} onChange={(event) => setManualLength(event.target.value)} onBlur={commitManualLength} inputMode="numeric"/><span>знаков</span></div><small>Укажите от 300 до 30 000 знаков с пробелами</small></label>}
+                {customLength && <label className="field custom-length">Свой объём<div><WorkspaceInput type="number" min="300" max="30000" step="100" value={manualLengthInput} onChange={(event) => setManualLength(event.target.value)} onBlur={commitManualLength} inputMode="numeric"/><span>знаков</span></div><small>Укажите от 300 до 30 000 знаков с пробелами</small></label>}
                 <div className="generator-context-card">
                   <div className="generator-context-head"><span className="field-label-help">Дополнительные данные<HelpTip label="Дополнительные данные" text="Отметьте, какие сведения учитывать в материале: профиль бренда, поисковые запросы или выводы анализа конкурентов."/></span><small>Выберите, что добавить к генерации.</small></div>
                   <div className="generator-context-options">
                     <label className={`${generatorBrandReady ? "is-ready" : "is-pending"} ${generatorUseBrand ? "is-checked" : ""}`}>
-                      <input type="checkbox" checked={generatorUseBrand} onChange={(event) => {
+                      <SiteToggle checked={generatorUseBrand} onChange={(event) => {
                         const checked = event.target.checked;
                         setGeneratorUseBrand(checked);
                         if (checked && !generatorBrandReady) showToast("Чтобы добавить данные бренда, включите и заполните профиль.");
                       }}/>
-                      <i aria-hidden="true">✓</i>
                       <span><b>Профиль бренда</b><small>{generatorBrandContextDescription}</small></span>
                     </label>
                     <label className={`${generatorSemanticsReady ? "is-ready" : "is-pending"} ${generatorUseSemantics ? "is-checked" : ""}`}>
-                      <input type="checkbox" checked={generatorUseSemantics} onChange={(event) => {
+                      <SiteToggle checked={generatorUseSemantics} onChange={(event) => {
                         const checked = event.target.checked;
                         setGeneratorUseSemantics(checked);
                         if (checked && !generatorSemanticsReady) showToast("Чтобы добавить запросы, подготовьте их и выберите нужные в разделе «Семантика».");
                       }}/>
-                      <i aria-hidden="true">✓</i>
                       <span><b>Поисковые запросы</b><small>{generatorSemanticsContextDescription}</small></span>
                     </label>
                     <label className={`${generatorCompetitorsReady ? "is-ready" : "is-pending"} ${generatorUseCompetitors ? "is-checked" : ""}`}>
-                      <input type="checkbox" checked={generatorUseCompetitors} onChange={(event) => {
+                      <SiteToggle checked={generatorUseCompetitors} onChange={(event) => {
                         const checked = event.target.checked;
                         setGeneratorUseCompetitors(checked);
                         if (checked && !generatorCompetitorsReady) showToast("Чтобы добавить выводы, постройте матрицу и выберите темы в разделе «Анализ конкурентов».");
                       }}/>
-                      <i aria-hidden="true">✓</i>
                       <span><b>Анализ конкурентов</b><small>{generatorCompetitorsContextDescription}</small></span>
                     </label>
                   </div>
                 </div>
                 {generationError && <p className="generation-error" role="alert">{generationError}</p>}
-                <button className={`button primary generate generation-action ${busy ? "is-busy" : ""}`} type="button" onClick={generate} disabled={!workspaceReady || busy || aiConnection !== "connected"}><Icon name="spark"/>{busy ? busySteps[busyStep] : !workspaceReady ? "Загружаю кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
+                <button className={`button primary generate generation-action ${busy ? "is-busy" : ""}`} type="button" onClick={generate} disabled={!workspaceReady || busy || aiConnection !== "connected"}>{busy ? <KlioActivity/> : <Icon name="spark"/>}{busy ? busySteps[busyStep] : !workspaceReady ? "Загружаю кабинет" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.generationsRemaining <= 0 ? "Лимит материалов исчерпан" : "Сгенерировать материал"}</button>
                 {busy && <>
                   {/* Once the last step lands, this stops being a real
                       progress readout (nothing after it is measured) and
@@ -7887,10 +7900,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </div>
               </article>
             </div>
-          </section>
+          </section>}
 
-          <section className="workspace-module content-plan-module" id="content-plan" style={{ display: activeModule === "content-plan" ? undefined : "none" }}>
-            <div className="workspace-module-heading tool-heading workspace-module-banner"><div><h2>План статей<span className="klio-mark-dot">.</span></h2></div><p>КЛИО подготовит очередь тем для сайта. Откройте любую тему, проверьте краткий план и одним нажатием отправьте её в генератор.</p></div>
+          {activeModule === "content-plan" && <section className="workspace-module content-plan-module" id="content-plan" style={{ display: activeModule === "content-plan" ? undefined : "none" }}>
+            <div className="workspace-module-heading tool-heading workspace-module-banner"><div><h2>План статей<span className="klio-mark-dot">.</span><HelpTip label="План статей" text="КЛИО подготовит очередь тем для сайта. Откройте любую тему, проверьте краткий план и одним нажатием отправьте её в генератор."/></h2></div></div>
             <div className="content-plan-shell">
               <article className="content-plan-setup">
                 <div className="content-plan-setup-head">
@@ -7899,7 +7912,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </div>
 
                 <div className="content-plan-query-row">
-                  <label><span>Тема или фокус <small>необязательно</small></span><input value={contentPlanQuery} onChange={(event) => { const next = event.target.value; setContentPlanQuery(next); setContentPlanNeedsRefresh(true); setContentPlanError(""); persistContentPlan({ query: next, needsRefresh: true }); }} placeholder="Оставьте пустым для общего плана по вашему бизнесу" autoComplete="off"/>
+                  <label><span>Тема или фокус <small>необязательно</small></span><WorkspaceInput value={contentPlanQuery} onChange={(event) => { const next = event.target.value; setContentPlanQuery(next); setContentPlanNeedsRefresh(true); setContentPlanError(""); persistContentPlan({ query: next, needsRefresh: true }); }} placeholder="Оставьте пустым для общего плана по вашему бизнесу" autoComplete="off"/>
                   </label>
                   <div className="content-plan-basis-actions">
                     <button type="button" className={brandPlanBasisSelected ? "is-active" : ""} aria-pressed={brandPlanBasisSelected} onClick={useBrandForPlan} disabled={!useBrand || !foundationReady}><Icon name="arrow"/> По профилю бренда{brandPlanBasisSelected && <b aria-label="Выбрано">✓</b>}</button>
@@ -7907,7 +7920,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     <HelpTip label="Из найденных тем" text={semanticAnalysisReady
                       ? "Нажмите «Из найденных тем», чтобы использовать карту запросов. Без неё КЛИО расширит план вокруг отрасли, задач аудитории и уместных сезонных поводов."
                       : <>Кнопка «Из найденных тем» включится, когда в модуле <button type="button" className="inline-text-link" onClick={() => openModule("semantics")}>«Семантика»</button> будут найдены реальные запросы — оттуда их можно передать сюда. Без них КЛИО расширит план вокруг отрасли, задач аудитории и уместных сезонных поводов.</>}/>
-                    <label className="content-plan-news-toggle"><input type="checkbox" checked={contentPlanNewsAware} onChange={(event) => { setContentPlanNewsAware(event.target.checked); setContentPlanNeedsRefresh(true); }}/><span>Учитывать актуальные новости отрасли</span></label>
+                    <label className="content-plan-news-toggle"><SiteToggle checked={contentPlanNewsAware} onChange={(event) => { setContentPlanNewsAware(event.target.checked); setContentPlanNeedsRefresh(true); }}/><span>Учитывать актуальные новости отрасли</span></label>
                     <HelpTip label="Актуальные новости" text="КЛИО сместит акцент плана на свежие отраслевые изменения, тренды и вопросы аудитории вместо общих тем — часть заголовков будет привязана к тому, что происходит в отрасли прямо сейчас."/>
                   </div>
                 </div>
@@ -7949,23 +7962,29 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                     relevant, not a guess shown to everyone regardless of behavior. */}
                 {contentPlanProgress.working + contentPlanProgress.ready > 0 && renderAdviceTip("content-plan-regenerate-selected", <>Вижу, вы уже взяли часть тем в работу. Если какие-то не подошли — отметьте их «Выбрать» ниже и нажмите «Заменить выбранные»: я подберу другие варианты, а остальной план не трону.</>)}
 
-                <div className="content-plan-list">
+                <div className="content-plan-deck-intro"><b>От идеи — к материалу.</b><span>Прокручивайте: темы раскрываются по очереди. Нажмите на название, чтобы открыть вручную.</span></div>
+                <ContentPlanDeck>
                   {contentPlanResult.items.map((item) => {
                     const originalIndex = contentPlanResult.items.findIndex((candidate) => candidate.id === item.id);
                     const expanded = expandedPlanItem === item.id;
                     const statusClass = item.status === "Готово" ? "done" : item.status === "В работе" ? "work" : "plan";
                     return <article className={`content-plan-item status-${statusClass} ${expanded ? "is-expanded" : ""}`} key={item.id}>
                       <div className="content-plan-item-main">
-                        <label className={`content-plan-select ${selectedPlanItemIds.includes(item.id) ? "is-selected" : ""}`}><input type="checkbox" checked={selectedPlanItemIds.includes(item.id)} onChange={() => togglePlanItemSelection(item.id)}/><i>{selectedPlanItemIds.includes(item.id) ? "✓" : ""}</i><span>Выбрать</span></label>
+                        <label className={`content-plan-select ${selectedPlanItemIds.includes(item.id) ? "is-selected" : ""}`}><WorkspaceInput type="checkbox" checked={selectedPlanItemIds.includes(item.id)} onChange={() => togglePlanItemSelection(item.id)}/><i>{selectedPlanItemIds.includes(item.id) ? "✓" : ""}</i><span>Выбрать</span></label>
                         <span className="content-plan-index">{String(originalIndex + 1).padStart(2, "0")}</span>
                         <div className="content-plan-item-copy">
                           <div><span>{item.cluster}</span><i>{item.format}</i><i>{item.pillar}</i><i>{item.intent}</i><i>{item.stage}</i><em className={`priority-${item.priority === "Высокий" ? "high" : item.priority === "Средний" ? "medium" : "extra"}`}>{item.priority}</em></div>
-                          <h3>{item.title}</h3>
+                          <h3><button type="button" data-topic-toggle aria-expanded={false} aria-controls={`topic-preview-${item.id}`}>{item.title}<span aria-hidden="true">↗</span></button></h3>
                           <p><span>Основной запрос</span><b>{item.primaryKeyword}</b></p>
                         </div>
-                        <div className={`content-plan-status status-${statusClass}`}><ModuleSelect label="Статус" value={item.status} options={CONTENT_PLAN_STATUS_OPTIONS} onChange={(value) => updateContentPlanStatus(item.id, value as ContentPlanStatus)}/></div>
+                        <div className={`content-plan-status status-${statusClass}`}><ModuleSelect variant="topic-status" label="Статус" value={item.status} options={CONTENT_PLAN_STATUS_OPTIONS} onChange={(value) => updateContentPlanStatus(item.id, value as ContentPlanStatus)}/></div>
                         <div className="content-plan-item-actions"><button type="button" onClick={() => setExpandedPlanItem(expanded ? null : item.id)}>{expanded ? "Скрыть детали" : "Показать детали"}</button><button type="button" onClick={() => sendPlanItemToGenerator(item)}>В генератор <Icon name="arrow"/></button></div>
                       </div>
+                      <div className="content-plan-focus" id={`topic-preview-${item.id}`}><div className="content-plan-focus-inner">
+                        <div className="topic-cover" aria-hidden="true" style={{ backgroundImage: `url(/dialogue/card-photos/${["architecture", "ideas", "writing", "ocean"][originalIndex % 4]}.jpg)` }}><span>{String(originalIndex + 1).padStart(2, "0")} / ИДЕЯ МАТЕРИАЛА</span></div>
+                        <div className="topic-direction"><span>Редакционный ракурс</span><p>{item.angle}</p><small>{item.objective}</small><div className="topic-keywords">{item.lsi.slice(0, 3).map(phrase => <i key={phrase}>{phrase}</i>)}</div></div>
+                        <div className="topic-outline"><span>Внутри материала</span><ol>{item.structure.slice(0, 4).map((text, index) => <li key={index}><i>{String(index + 1).padStart(2, "0")}</i>{text}</li>)}</ol></div>
+                      </div></div>
                       {expanded && <div className="content-plan-brief">
                         <div className="content-plan-strategy"><section><span>Редакционный ракурс</span><p>{item.angle}</p></section><section><span>Коммуникационная цель</span><p>{item.objective}</p></section><section><span>Следующий шаг</span><p>{item.cta || "Определяется редактором"}</p></section></div>
                         <div className="content-plan-seo"><label><span className="seo-field-label"><b>Зацепка статьи</b></span><p>{item.subtitle || "Будет создана при подготовке материала"}</p><button type="button" className="seo-field-copy" onClick={() => copyPlainText(item.subtitle, "Зацепка статьи")}><Icon name="copy"/> Копировать</button></label><label><span className="seo-field-label"><b>SEO‑заголовок</b><small>{item.metaTitle.length} знаков</small></span><p>{item.metaTitle}</p><button type="button" className="seo-field-copy" onClick={() => copyPlainText(item.metaTitle, "SEO‑заголовок")}><Icon name="copy"/> Копировать</button></label><label><span className="seo-field-label"><b>Описание страницы для поиска</b><small>{item.metaDescription.length} знаков</small></span><p>{item.metaDescription}</p><button type="button" className="seo-field-copy" onClick={() => copyPlainText(item.metaDescription, "Описание страницы для поиска")}><Icon name="copy"/> Копировать</button></label></div>
@@ -7973,7 +7992,7 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                       </div>}
                     </article>;
                   })}
-                </div>
+                </ContentPlanDeck>
 
                 <div className="content-plan-actions">
                   <div className="content-plan-toolbar-actions">
@@ -8003,29 +8022,31 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 </section>}
               </> : <div className="content-plan-empty"><i>25</i><div><span>Контент‑стратегия</span><h3>Одна тема превращается в управляемую очередь</h3><p>AI‑стратег разведёт интенты, этапы воронки и форматы, подготовит SEO‑заголовок, метаописание, основной запрос, поддерживающую семантику, цель, фактуру и структуру. Любую строку можно передать в генератор одним действием.</p></div></div>}
             </div>
-          </section>
+          </section>}
 
-          <section className="workspace-module adaptation-module" id="adaptation" style={{ display: activeModule === "adaptation" ? undefined : "none" }}>
-            <div className="workspace-module-heading tool-heading workspace-module-banner"><div><span>Самостоятельный инструмент · по желанию</span><h2>Редакторы КЛИО<span className="klio-mark-dot">.</span></h2></div><p>15 режимов для готового текста: вычитка, ясность, углубление темы, пересборка, SEO, соцсети, реклама, адаптация под голос бренда и смена интонации.</p></div>
+          {activeModule === "adaptation" && <section className="workspace-module adaptation-module klio-text-desk" id="adaptation" style={{ display: activeModule === "adaptation" ? undefined : "none" }}>
+            <div className="workspace-module-heading tool-heading workspace-module-banner"><div><span>Самостоятельный инструмент · по желанию</span><h2>Редакторы КЛИО<span className="klio-mark-dot">.</span><HelpTip label="Редакторы КЛИО" text="15 режимов для готового текста: вычитка, ясность, углубление темы, пересборка, SEO, соцсети, реклама, адаптация под голос бренда и смена интонации."/></h2></div></div>
             <div className="adaptation-shell">
               <article className="adaptation-input-card">
-                <div className="adaptation-card-head"><div><span>Исходник заказчика</span><h3 className="field-label-help">Вставьте готовый текст<HelpTip label="Вставьте готовый текст" text="Поле увеличивается вместе с текстом, а для длинного материала включает внутреннюю прокрутку. Исходник не перезаписывается."/></h3></div><b>{adaptationSource.trim().length.toLocaleString("ru-RU")} знаков</b></div>
-                <label className="adaptation-source-field"><AutoTextarea className="adaptation-source-textarea" rows={10} value={adaptationSource} onChange={(event) => setAdaptationSource(event.target.value)} placeholder="Вставьте статью, пост, описание услуги или другой готовый материал…"/></label>
+                <div className="adaptation-card-head"><div><span>01 / Ваш текст</span><h3 className="field-label-help">Дайте словам новую форму<HelpTip label="Вставьте готовый текст" text="Поле увеличивается вместе с текстом, а для длинного материала включает внутреннюю прокрутку. Исходник не перезаписывается."/></h3></div><b>{adaptationSource.trim().length.toLocaleString("ru-RU")} знаков</b></div>
+                <label className="adaptation-source-field"><AutoTextarea aria-label="Исходный текст для редактуры" className="adaptation-source-textarea" rows={10} value={adaptationSource} onChange={(event) => setAdaptationSource(event.target.value)} placeholder="Вставьте статью, пост, описание услуги или другой готовый материал…"/></label>
 
+                <details className="text-desk-settings"><summary>Уточнения к тексту <span>+</span></summary>
                 <label className="adaptation-field"><span>Ключевые фразы <small>необязательно</small></span><AutoTextarea rows={2} value={adaptationKeywords} onChange={(event) => setAdaptationKeywords(event.target.value)} placeholder="Например: санаторий в Карелии, восстановление"/></label>
                 <label className="adaptation-field"><span>Комментарий редактору <small>необязательно</small></span><AutoTextarea rows={2} value={adaptationInstructions} onChange={(event) => setAdaptationInstructions(event.target.value)} placeholder="Что важно сохранить, убрать или подчеркнуть"/></label>
+
+                </details>
 
                 <div className="adaptation-task"><span>Выберите режим КЛИО</span><div className="adaptation-goals">{adaptationGoals.map((item) => {
                   const active = adaptationGoal === item.id;
                   return <article className={active ? "active" : ""} key={item.id}>
-                    <button type="button" className={active ? "active" : ""} onClick={() => { setAdaptationGoal(item.id); setAdaptationResult(null); setAdaptationMode("example"); }} aria-expanded={active}><i>{active ? "✓" : ""}</i><span><b>{item.label}</b><small>{item.detail}</small></span></button>
-                    {active && <div className="adaptation-goal-scenario"><span>Сценарий режима</span><b>{ADAPTATION_PLANS[item.id].result}</b><ol>{ADAPTATION_PLANS[item.id].steps.map((step) => <li key={step}>{step}</li>)}</ol></div>}
+                    <button type="button" className={active ? "active" : ""} onClick={() => { setAdaptationGoal(item.id); setAdaptationResult(null); setAdaptationMode("example"); }} aria-pressed={active}><i>{active ? "✓" : ""}</i><span><b>{item.label}</b></span></button><HelpTip label={item.label} text={item.detail}/>
                   </article>;
                 })}</div></div>
 
                 <div className="editor-tone-picker"><span>Интонация результата</span><div>{styles.map((item) => <button type="button" className={adaptationTone === item ? "active" : ""} onClick={() => { setAdaptationTone(item); setAdaptationResult(null); setAdaptationMode("example"); }} key={item}>{item}</button>)}</div></div>
 
-                <label className="adaptation-brand-switch"><input type="checkbox" checked={useBrand} onChange={(event) => setUseBrand(event.target.checked)}/><i/><span><b>Использовать профиль бренда</b><small>Можно отключить и работать только с исходным текстом</small></span></label>
+                <label className="adaptation-brand-switch"><WorkspaceInput type="checkbox" checked={useBrand} onChange={(event) => setUseBrand(event.target.checked)}/><i/><span><b>Использовать профиль бренда</b><small>Можно отключить и работать только с исходным текстом</small></span></label>
                 {!useBrand && adaptationSource.trim().length > 0 && brandProfileFillRatio(effectiveBrand) >= 50 && renderAdviceTip("adaptation-use-brand", <>Вижу, профиль бренда неплохо заполнен, но сейчас он выключен — включите его, и я буду держать ваш голос и факты при редактуре, а не просто менять форму текста.</>)}
                 {adaptationError && <p className="generation-error" role="alert">{adaptationError}</p>}
                 <button className={`button primary large adaptation-submit ${adaptationBusy ? "is-busy" : ""}`} type="button" onClick={adaptText} disabled={adaptationBusy || aiConnection !== "connected"}><Icon name="edit"/>{adaptationBusy ? "КЛИО редактирует…" : aiConnection !== "connected" ? "Сначала подключите ИИ" : workspaceAccount.editorActionsRemaining <= 0 ? "Лимит AI‑редактуры исчерпан" : `Запустить «${activeAdaptationPlan.title}»`}</button>
@@ -8035,24 +8056,23 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
               <article className={`adaptation-result-card ${adaptationResult ? "has-result" : "is-empty"}`}>
                 <div className="adaptation-result-head"><div><span className={`status status-${adaptationMode}`}><i/>{adaptationMode === "ai" ? activeAdaptationPlan.title : adaptationMode === "demo" ? "Сохранённая версия" : aiConnection === "connected" ? "Ожидает исходник" : "ИИ не подключён"}</span><small>{adaptationResult ? `${adaptationResult.body.trim().length.toLocaleString("ru-RU")} знаков с пробелами · ${adaptationTone}` : "результат появится здесь"}</small></div></div>
                 {adaptationResult ? <>
+                  <KlioRevisionCompare before={adaptationSource} after={adaptationResult.body}/>
                   <AutoTextarea className="adaptation-result-title" rows={1} value={adaptationResult.title} onChange={(event) => setAdaptationResult((current) => current ? { ...current, title: event.target.value } : current)} aria-label="Заголовок адаптированного текста"/>
                   <AutoTextarea className="adaptation-result-body" value={adaptationResult.body} onChange={(event) => setAdaptationResult((current) => current ? { ...current, body: event.target.value } : current)} aria-label="Адаптированный текст"/>
                   <div className="adaptation-seo-fields"><label><span className="seo-field-label"><b>SEO‑заголовок</b></span><AutoTextarea rows={1} value={adaptationResult.metaTitle} onChange={(event) => setAdaptationResult((current) => current ? { ...current, metaTitle: event.target.value } : current)}/><button type="button" className="seo-field-copy" onClick={() => copyPlainText(adaptationResult.metaTitle, "SEO‑заголовок")}><Icon name="copy"/> Копировать</button></label><label><span className="seo-field-label"><b>Метаописание</b></span><AutoTextarea rows={2} value={adaptationResult.metaDescription} onChange={(event) => setAdaptationResult((current) => current ? { ...current, metaDescription: event.target.value } : current)}/><button type="button" className="seo-field-copy" onClick={() => copyPlainText(adaptationResult.metaDescription, "Метаописание")}><Icon name="copy"/> Копировать</button></label></div>
                   <aside className="adaptation-changes"><span>Что изменено</span><div>{adaptationResult.changes.map((item) => <p key={item}><i>✓</i>{item}</p>)}</div></aside>
                   <div className="adaptation-result-footer"><span>Новая версия автоматически сохранена в «Материалы»</span><div><button type="button" className="button ghost" onClick={copyAdaptation}><Icon name="copy"/> Копировать</button><button type="button" className="button ghost" onClick={() => void openPublicationDraft({ title: adaptationResult.title, body: [adaptationResult.subtitle, adaptationResult.body].filter(Boolean).join("\n\n"), generationId: generatedArchiveId })}>В публикацию</button><button type="button" className="button ghost" onClick={() => prepareImageGeneration(generatedArchiveId ? { generationId: generatedArchiveId } : { text: buildArticleImagePrompt(adaptationResult.title, adaptationResult.subtitle, adaptationResult.body) }, buildArticleImagePrompt(adaptationResult.title, adaptationResult.subtitle, adaptationResult.body), adaptationResult.title)}>Создать картинку</button><button type="button" className="button ghost" onClick={() => prepareImageGeneration({ text: buildArticleCarouselSource(adaptationResult.title, adaptationResult.subtitle, adaptationResult.body) }, buildArticleCarouselSource(adaptationResult.title, adaptationResult.subtitle, adaptationResult.body), adaptationResult.title, "carousel")}>Создать карусель</button></div></div>
-                </> : <div className="adaptation-empty-state"><i>Аа</i><h3>Вторая версия без потери фактов</h3><p>Выберите задачу и запустите редактуру. КЛИО не будет придумывать сведения, которых нет в исходном тексте или профиле бренда.</p><div><span>Исходник</span><b>→</b><span>Нужный формат</span></div></div>}
+                </> : <KlioTextManuscript source={adaptationSource} plan={activeAdaptationPlan} busy={adaptationBusy}/> }
               </article>
             </div>
-          </section>
+          </section>}
 
-          <section className="workspace-module publications-module" id="publications" style={{ display: activeModule === "publications" ? undefined : "none" }}>
+          {activeModule === "publications" && <section className="workspace-module publications-module" id="publications" style={{ display: activeModule === "publications" ? undefined : "none" }}>
             <div className="workspace-module-heading tool-heading workspace-module-banner">
-              <div><h2>Публикации<span className="klio-mark-dot">.</span></h2></div>
-              <p>Ставьте готовый материал в календарь на нужную дату, время и канал — публикация уходит в VK и Telegram прямо из КЛИО.</p>
+              <div><h2>Публикации<span className="klio-mark-dot">.</span><HelpTip label="Публикации" text="Ставьте готовый материал в календарь на нужную дату, время и канал — публикация уходит в VK и Telegram прямо из КЛИО. Выберите день, чтобы открыть его план. Дни можно листать стрелками, свайпом или горизонтальным жестом тачпада. Telegram поддерживает текст и изображения; VK — текст и изображения как документ, а после подключения фото — как фотографию."/></h2></div>
             </div>
 
             {!activeBrandId ? <p className="publications-empty-note">Сначала выберите или создайте бренд слева — каналы и календарь публикаций привязаны к нему.</p> : <>
-              <p className="publications-vk-note"><b>Telegram:</b> текст и изображения. <b>VK:</b> текст всегда; изображения — как документ по умолчанию, или как настоящее фото после кнопки «+ фото» на подключённом канале VK.</p>
               {pubChannels.length === 0 && workspaceAccount.lifetimeGenerationsUsed > 0 && renderAdviceTip("publications-connect-channel", <>У вас уже есть готовые материалы, а канал ещё не подключён — нажмите «+ Подключить канал» ниже, и я смогу ставить публикации в календарь прямо в VK или Telegram.</>)}
               <div className="publications-channels-bar">
                 <div className="publications-channels-list">
@@ -8069,82 +8089,32 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
                 <button type="button" className="button ghost" onClick={() => setPubChannelModalOpen(true)} disabled={pubChannels.length >= pubChannelLimit}>+ Подключить канал</button>
               </div>
 
-              <div className="publications-toolbar">
-                <div className="publications-view-switch" role="group" aria-label="Вид календаря">
-                  <button type="button" className={pubView === "month" ? "active" : ""} onClick={() => setPubView("month")}>Месяц</button>
-                  <button type="button" className={pubView === "week" ? "active" : ""} onClick={() => setPubView("week")}>Неделя</button>
-                  <button type="button" className={pubView === "list" ? "active" : ""} onClick={() => setPubView("list")}>Список</button>
-                </div>
-                <div className="publications-nav">
-                  <button type="button" onClick={() => setPubCursor((current) => pubView === "week" ? addDays(current, -7) : addMonths(current, -1))} aria-label="Предыдущий период">‹</button>
-                  <b>{publicationPeriodLabel(pubView, pubCursor)}</b>
-                  <button type="button" onClick={() => setPubCursor((current) => pubView === "week" ? addDays(current, 7) : addMonths(current, 1))} aria-label="Следующий период">›</button>
-                  <button type="button" className="publications-today" onClick={() => setPubCursor(new Date())}>Сегодня</button>
-                </div>
-                <button type="button" className="button primary" onClick={() => openPubEditor(new Date())}>+ Добавить публикацию</button>
-              </div>
-
-              {pubError && <p className="generation-error" role="alert">{pubError}</p>}
-
-              {pubView === "list" ? <div className={`publications-list-view ${pubLoading ? "is-loading" : ""}`} aria-label="Список публикаций">
-                {pubItems.length === 0 ? <p className="publications-list-empty">В этом периоде публикаций нет.</p> : [...pubItems].sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt)).map((item) => <button
-                  type="button"
-                  className={`publications-list-item publications-list-item-${item.status} publications-list-item-${item.channel?.platform || "unknown"}`}
-                  draggable={item.status === "scheduled" && pubMovingId !== item.id}
-                  onDragStart={(event) => handlePublicationDragStart(event, item)}
-                  onDragEnd={() => setPubDraggingId(null)}
-                  onClick={() => openPubEditor(new Date(item.scheduledAt), item)}
-                  key={item.id}
-                >
-                  <time dateTime={item.scheduledAt}>{new Date(item.scheduledAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}<br />{new Date(item.scheduledAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</time>
-                  <i className={`publications-list-platform publications-list-platform-${item.channel?.platform || "unknown"}`} aria-label={item.channel?.platform === "telegram" ? "Telegram" : item.channel?.platform === "vk" ? "VK" : "Канал отключён"}>{item.channel?.platform === "telegram" ? "TG" : item.channel?.platform === "vk" ? "VK" : "—"}</i>
-                  <span><b>{item.title || item.body || "Без названия"}</b><small>{item.channel?.label || "Канал отключён"}</small></span>
-                  <em>{item.status === "failed" ? "Ошибка" : item.status === "published" ? "Опубликовано" : item.status === "publishing" ? "Публикуется" : "Запланировано"}</em>
-                </button>)}
-              </div> : <div className="publications-calendar-scroll" onPointerMove={handlePublicationPointerMove} onPointerUp={handlePublicationPointerUp} onPointerCancel={handlePublicationPointerCancel}>
-                <div className={`publications-grid publications-grid-${pubView} ${pubLoading ? "is-loading" : ""}`}>
-                {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((label) => <div className="publications-weekday" key={label}>{label}</div>)}
-                {pubGridDays.map((day) => {
-                  const key = localDayKey(day);
-                  const items = pubByDay.get(key) || [];
-                  const isToday = key === localDayKey(new Date());
-                  const inMonth = pubView === "week" || day.getMonth() === pubCursor.getMonth();
-                  return <div data-publication-day={key} className={`publications-day ${isToday ? "is-today" : ""} ${inMonth ? "" : "is-outside"} ${pubSelectedDayKey === key ? "is-selected" : ""} ${pubDropDayKey === key ? "is-drop-target" : ""}`} onClick={() => setPubSelectedDayKey(key)} onDragEnter={(event) => { if (pubDraggingId || event.dataTransfer.types.includes("text/plain")) { event.preventDefault(); setPubDropDayKey(key); } }} onDragOver={(event) => { if (pubDraggingId || event.dataTransfer.types.includes("text/plain")) { event.preventDefault(); event.dataTransfer.dropEffect = "move"; setPubDropDayKey(key); } }} onDragLeave={() => { if (pubDropDayKey === key) setPubDropDayKey(null); }} onDrop={(event) => handlePublicationDrop(event, day)} key={key}>
-                    <div className="publications-day-head"><span>{day.getDate()}</span><button type="button" onClick={(event) => { event.stopPropagation(); openPubEditor(day); }} aria-label="Добавить публикацию на этот день">+</button></div>
-                    <div className="publications-day-items">
-                      {items.slice(0, 3).map((item) => <button type="button" className={`publications-chip publications-chip-${item.status} publications-chip-${item.channel?.platform || "unknown"} ${pubDraggingId === item.id ? "is-dragging" : ""}`} draggable={item.status === "scheduled" && pubMovingId !== item.id} onPointerDown={(event) => handlePublicationPointerDown(event, item)} onDragStart={(event) => { event.stopPropagation(); handlePublicationDragStart(event, item); }} onDragEnd={() => { setPubDraggingId(null); setPubDropDayKey(null); }} onClick={(event) => { event.stopPropagation(); if (pubSuppressClickRef.current) { event.preventDefault(); return; } setPubSelectedDayKey(key); }} key={item.id}>
-                        <i className={`publications-chip-platform publications-chip-platform-${item.channel?.platform || "unknown"}`} aria-label={item.channel?.platform === "telegram" ? "Telegram" : item.channel?.platform === "vk" ? "VK" : "Канал отключён"}>{item.channel?.platform === "telegram" ? "TG" : item.channel?.platform === "vk" ? "VK" : "—"}</i>
-                        <b>{new Date(item.scheduledAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</b>
-                        <span>{item.title || "Без названия"}</span>
-                        {item.status === "failed" && <em>Ошибка</em>}
-                        {item.status === "scheduled" && item.retryCount > 0 && <em>Повтор</em>}
-                        {item.status === "published" && <em>✓</em>}
-                      </button>)}
-                      {items.length > 3 && <button type="button" className="publications-chip-more" onClick={(event) => { event.stopPropagation(); setPubSelectedDayKey(key); }}>+ ещё {items.length - 3}</button>}
-                    </div>
-                  </div>;
-                })}
-                </div>
-              </div>}
-              {pubView !== "list" && <div className="publications-mobile-list" aria-label="Список публикаций">
-                <h3>{pubSelectedDay ? `Публикации · ${pubSelectedDay.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}` : "Выберите день"}</h3>
-                {!pubSelectedDay ? <p className="publications-mobile-empty">Нажмите на дату в календаре, чтобы посмотреть её публикации.</p> : !pubSelectedItems.length ? <p className="publications-mobile-empty">На этот день публикаций нет.</p> : pubSelectedItems.map((item) => <button type="button" className={`publications-mobile-item publications-mobile-item-${item.status} publications-mobile-item-${item.channel?.platform || "unknown"}`} onClick={() => openPubEditor(new Date(item.scheduledAt), item)} key={item.id}>
-                    {item.imageUrl && <i className="publications-mobile-thumb" style={{ backgroundImage: `url(${item.imageUrl})` }} aria-hidden="true"/>}
-                    <i className={`publications-mobile-platform publications-mobile-platform-${item.channel?.platform || "unknown"}`} aria-label={item.channel?.platform === "telegram" ? "Telegram" : item.channel?.platform === "vk" ? "VK" : "Канал отключён"}>{item.channel?.platform === "telegram" ? "TG" : item.channel?.platform === "vk" ? "VK" : "—"}</i>
-                    <span className="publications-mobile-time">{item.channel?.platform === "telegram" ? "Telegram" : item.channel?.platform === "vk" ? "VK" : "Канал отключён"} · {new Date(item.scheduledAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</span>
-                    <b>{item.title || "Без названия"}</b>
-                    <em>{item.status === "failed" ? "Ошибка" : item.status === "published" ? "✓ Опубликовано" : item.retryCount > 0 ? "Повторяем" : "Запланировано"}</em>
-                  </button>)}
-              </div>}
+              {<>
+                {pubError && <p className="generation-error" role="alert">{pubError}</p>}
+                <DialoguePublicationCalendar days={pubGridDays} cursor={pubCursor} items={pubItems} selectedKey={pubSelectedDayKey} view={pubView} loading={pubLoading}
+                  onSelect={setPubSelectedDayKey} onView={setPubView}
+                  onNavigateDay={day => {
+                    // Explicit day navigation retains its selection while loading a new period.
+                    pubSelectionCursorRef.current = day;
+                    pubSelectionViewRef.current = pubView;
+                    setPubCursor(day);
+                    setPubSelectedDayKey(localDayKey(day));
+                  }}
+                  onPrevious={() => setPubCursor(current => pubView === "week" ? addDays(current, -7) : addMonths(current, -1))}
+                  onNext={() => setPubCursor(current => pubView === "week" ? addDays(current, 7) : addMonths(current, 1))}
+                  onToday={() => setPubCursor(new Date())} onEdit={openPubEditor} onMove={movePublicationToDay}
+                  onPointerStart={handlePublicationPointerDown} onPointerMove={handlePublicationPointerMove} onPointerEnd={handlePublicationPointerUp} onPointerCancel={handlePublicationPointerCancel}
+                  movingDay={pubDropDayKey} isClickSuppressed={() => pubSuppressClickRef.current}/>
+              </>}
             </>}
-          </section>
+          </section>}
         </section>
       </div>
       {toast && <div className="toast" role="status"><Icon name="check"/><span>{toast}</span></div>}
-    </main>;
+    </main></BufferedWorkspaceInput>;
   }
 
-  return <main className={`site-shell ${intro ? "intro-active" : ""}`}>
+  return <main className={`site-shell landing-editorial ${intro ? "intro-active" : ""}`}>
     <noindex className="search-excluded">
     <div className={`cover-intro ${intro ? "is-open" : "is-gone"}`} aria-hidden={!intro}>
       <div className="cover-shine"/><div className="cover-orbit orbit-one"/><div className="cover-orbit orbit-two"/>
@@ -8174,11 +8144,10 @@ export default function TextoraExperience({ workspace = false }: { workspace?: b
           <p className="hero-lead">КЛИО — цифровая редакция для брендов: помогает находить темы, готовить SEO‑статьи, посты и рекламу, учитывать голос бренда и планировать публикации.</p>
           <div className="hero-actions"><Link className="button primary large" href="/workspace">Открыть редакцию <Icon name="arrow"/></Link><a className="telegram-cta" href="https://t.me/kliopress" target="_blank" rel="noreferrer">Подписаться на Telegram КЛИО</a><a href="#modules" className="text-link">Листать выпуск ↓</a></div>
         </div>
-        <div className="hero-visual">
-          <div className="visual-orbit"/>
-          <div className="cover-story" aria-label="Пример готового материала"><span className="story-no">01</span><span className="story-label">Материал номера</span><h2>Хорошие бренды<br/>говорят<br/><i>постоянно</i></h2><p>Аналитика на входе. Редакционный уровень на выходе.</p></div>
-          <div className="floating-leaf leaf-one"><small>ГОЛОС БРЕНДА</small><b>Точно<br/>и узнаваемо</b><span>Профиль изучен ✓</span></div>
-          <div className="floating-leaf leaf-two"><span>ПОИСКОВЫЙ СПРОС</span><b>8 420</b><small>запросов в месяц</small></div>
+        <div className="hero-visual editorial-hero-board">
+          <div className="editorial-board-top"><span>КЛИО / ВАША РЕДАКЦИЯ</span><span>От идеи до публикации ↗</span></div>
+          <div className="editorial-cover"><span>Голос вашего бренда</span><div className="editorial-asterisk" aria-hidden="true">{Array.from({length:8},(_,i)=><i key={i} style={{rotate:`${i*45}deg`}}/>)}</div><h2>Есть идея.<br/>Будет история<span>.</span></h2><small>Тексты с характером. Контент со смыслом.</small></div>
+          <div className="editorial-board-notes"><div><span>01 / ОСНОВА</span><b>Ваш бренд.<br/>Ваш голос.</b><small>Узнаваемо в каждом тексте</small></div><div><span>02 / РЕЗУЛЬТАТ</span><b>Готово<br/>к публикации ↗</b><small>Текст, визуал и нужный формат</small></div></div>
         </div>
       </div>
       <div className="scroll-cue"><i/> Листайте, чтобы открыть выпуск</div>

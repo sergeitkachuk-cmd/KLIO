@@ -1,0 +1,74 @@
+/* One independent material per card, arranged in a quiet editorial grid. */
+.material-bento { --bento-paper:#fff3c7; --bento-ink:#29271f; container-type:inline-size; min-width:0; padding:9px; border-radius:29px; background:transparent; color:#faf7f0; }
+.material-bento-bar { display:flex; align-items:center; gap:18px; padding:5px 8px 14px; }
+.material-bento-brand { font-size:9px; letter-spacing:.1em; white-space:nowrap; color:#e0dcd2; }
+.material-bento-search { display:flex; align-items:center; gap:8px; min-width:0; flex:1; padding:8px 12px; border-radius:999px; background:#232225; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) #history .material-bento-search { color:#d6d1c8!important; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) #history .material-bento-search input { width:100%; min-width:0; padding:0; height:auto; min-height:20px; border:0!important; border-radius:0; background:transparent!important; box-shadow:none!important; color:#faf7f0!important; font-size:11px; outline:none; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) #history .material-bento-search input::placeholder { color:#bcb8b1; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) #history .material-bento-search input::-webkit-search-cancel-button { appearance:none; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) #history .material-bento-search button { display:grid; place-items:center; padding:0; width:20px; height:20px; min-height:20px; background:transparent!important; color:#faf7f0!important; }
+.material-bento-total { font-size:15px; color:var(--bento-paper); white-space:nowrap; }.material-bento-total>span { font-size:9px; color:#c2beb7; margin-left:4px; }
+.material-bento-cards { display:grid; grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr); grid-template-rows:190px minmax(290px,auto); grid-auto-rows:minmax(230px,auto); gap:9px; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) #history button.material-bento-tile {
+  display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start; gap:22px; position:relative; isolation:isolate; min-width:0; padding:26px; overflow:hidden;
+  border:1px solid transparent!important; border-radius:25px; background:#2d2930!important; color:#faf7f0!important; text-align:left;
+}
+:root body .workspace-shell:is(.is-dialogue,.is-professional) #history button.material-bento-tile:hover { border-color:#ffffff55!important; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) #history button.material-bento-tile.tile-feature { grid-column:1; grid-row:2; background:var(--bento-paper)!important; color:var(--bento-ink)!important; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) #history button.material-bento-tile.tile-preview { grid-column:2; grid-row:1 / span 2; padding:34px; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) #history button.material-bento-tile:nth-child(3) { grid-column:1; grid-row:1; }
+:root[data-theme="light"] body .workspace-shell:is(.is-dialogue,.is-professional) #history button.material-bento-tile.tile-preview { background:#f6eee7!important; color:#54313e!important; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) #history button.material-bento-tile.has-image { background:#262128!important; color:#fff7f0!important; }
+.material-bento-tile>img { object-fit:cover; z-index:-2; }.material-bento-tile.has-image:after { content:""; position:absolute; inset:0; z-index:-1; background:linear-gradient(0deg,#19141af2, #19141a66 80%); pointer-events:none; }
+.material-bento-tile-meta { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px 15px; font-size:9px; line-height:1.4; opacity:.7; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) #history .material-bento-tile>strong { color:inherit!important; font-size:29px; line-height:1.12; letter-spacing:-.05em; font-weight:450; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) #history .material-bento-tile.tile-preview>strong { font-size:38px; margin-top:15px; }
+.material-bento-tile-excerpt { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:4; overflow:hidden; font-size:12px; line-height:1.8; opacity:.8; }
+.material-bento-tile.tile-preview .material-bento-tile-excerpt { -webkit-line-clamp:9; font-size:13px; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) #history .material-bento-tile.tile-compact { padding:21px; gap:14px; }.material-bento-tile.tile-compact .material-bento-tile-excerpt { display:none; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) #history .material-bento-tile.tile-compact>strong { font-size:23px; }
+.material-bento-tile-bottom { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top:auto; padding-top:16px; border-top:1px solid currentColor; font-size:10px; }
+.material-bento-tile-bottom>i { display:grid; place-items:center; flex:none; width:33px; height:33px; border:1px solid currentColor; border-radius:50%; }
+.material-bento-tile.tile-compact .material-bento-tile-bottom { padding-top:0; border:0; }
+.material-bento-cards.count-1 { grid-template-rows:minmax(320px,auto); }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) #history .material-bento-cards.count-1>.material-bento-tile { grid-column:1 / -1; grid-row:1; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) #history .material-bento-cards.count-2>.material-bento-tile.tile-feature { grid-row:1 / span 2; }
+.material-bento-empty { display:grid; place-items:center; gap:15px; padding:70px 20px; text-align:center; }.material-bento-empty h3 { color:#f2ece4!important; font-size:24px; }.material-bento-empty p { color:#c2beb7; font-size:12px; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) #history .material-bento-empty button { padding:10px 16px; background:var(--ui-action)!important; color:var(--ui-action-text)!important; }
+/* The complete original material is shown only after opening its own card. */
+:root body:has(.workspace-shell:is(.is-dialogue,.is-professional)) .klio-chatkit-thread-dialog:has(.material-bento-detail) { width:min(860px,calc(100vw - 32px)); max-height:88dvh; overflow-y:auto; }
+:root body:has(.workspace-shell:is(.is-dialogue,.is-professional)) .material-bento-detail.workspace-history-list { display:block; }
+:root body:has(.workspace-shell:is(.is-dialogue,.is-professional)) .material-bento-detail>article { padding:0; border:0!important; background:transparent!important; box-shadow:none!important; border-radius:0; color:var(--ck-text)!important; }
+:root body:has(.workspace-shell:is(.is-dialogue,.is-professional)) .material-bento-detail>article>h3 { display:none; }
+:root body:has(.workspace-shell:is(.is-dialogue,.is-professional)) .material-bento-detail>article>p { white-space:pre-wrap; font-size:14px; line-height:1.85; color:var(--ck-text)!important; margin:24px 0; }
+:root body:has(.workspace-shell:is(.is-dialogue,.is-professional)) .material-bento-detail .material-card-badges>span { color:var(--ck-text)!important; border-color:var(--ck-line)!important; background:var(--ck-panel)!important; }
+:root body:has(.workspace-shell:is(.is-dialogue,.is-professional)) .material-bento-detail>article>div>small { color:var(--ck-muted)!important; }
+:root body:has(.workspace-shell:is(.is-dialogue,.is-professional)) .material-bento-detail footer { margin-top:20px; border-color:var(--ck-line)!important; }
+:root body:has(.workspace-shell:is(.is-dialogue,.is-professional)) .material-bento-detail footer>div { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+:root body:has(.workspace-shell:is(.is-dialogue,.is-professional)) .material-bento-detail footer :is(button,a) { display:inline-flex; justify-content:center; align-items:center; gap:7px; height:auto; min-height:38px; max-width:100%; padding:9px 15px; border:0; border-radius:999px; background:var(--ui-control)!important; color:var(--ui-text)!important; text-decoration:none; font-size:12px; line-height:1.4; white-space:normal; }
+:root body:has(.workspace-shell:is(.is-dialogue,.is-professional)) .material-bento-detail footer svg { flex-shrink:0; width:16px; height:16px; color:inherit; }
+:root body:has(.workspace-shell:is(.is-dialogue,.is-professional)) .material-bento-detail footer .material-delete { width:38px; height:38px; padding:9px; }
+:root body:has(.workspace-shell:is(.is-dialogue,.is-professional)) .material-bento-detail .image-generator-result-trigger { background:transparent!important; border:0; border-radius:15px; padding:0; }
+.material-bento-detail .material-card-image { max-height:55dvh; object-fit:contain; }
+@container(max-width:680px) {
+  .material-bento-bar { gap:10px; padding:4px 4px 12px; }.material-bento-brand { display:none; }.material-bento-total>span { display:none; }
+  .material-bento-cards { grid-template-columns:minmax(0,1fr); grid-template-rows:none; grid-auto-rows:minmax(230px,auto); }
+  :root body .workspace-shell:is(.is-dialogue,.is-professional) #history .material-bento-cards>button.material-bento-tile { grid-column:1; grid-row:auto; padding:24px; }
+  :root body .workspace-shell:is(.is-dialogue,.is-professional) #history .material-bento-tile.tile-preview>strong { font-size:30px; }
+}
+:root body:has(.workspace-shell:is(.is-dialogue,.is-professional)) .material-bento-detail .material-card-badges>span { color:var(--ui-text)!important; border-color:transparent!important; background:var(--ui-selected)!important; }
+:root[data-theme="light"] .material-bento { background:#fff8fa; color:#54313e; border:1px solid #9c597b18; }
+:root[data-theme="light"] .material-bento-search { background:#f1e3e9; }
+:root[data-theme="light"] .material-bento-brand { color:#805365; }
+:root[data-theme="light"] .material-bento-total { color:#713b52; }
+:root[data-theme="light"] .material-bento-total>span { color:#805365; }
+:root[data-theme="light"] body .workspace-shell:is(.is-dialogue,.is-professional) #history .material-bento-search { color:#805365!important; }
+:root[data-theme="light"] body .workspace-shell:is(.is-dialogue,.is-professional) #history .material-bento-search :is(input,button) { color:#54313e!important; }
+:root[data-theme="light"] body .workspace-shell:is(.is-dialogue,.is-professional) #history .material-bento-search input::placeholder { color:#805365; }
+:root[data-theme="light"] body .workspace-shell:is(.is-dialogue,.is-professional) #history button.material-bento-tile.tile-compact { background:#f2e3e9!important; color:#54313e!important; }
+:root[data-theme="light"] body .workspace-shell:is(.is-dialogue,.is-professional) #history button.material-bento-tile.has-image { background:#262128!important; color:#fff7f0!important; }
+:root[data-theme="light"] body .workspace-shell:is(.is-dialogue,.is-professional) #history .material-bento-empty :is(h3,p) { color:#54313e!important; }
+
+/* The collection is a layout on the workspace background, not a tray. */
+html:root body main.workspace-shell:is(.is-dialogue,.is-professional) #history .material-bento { background:transparent!important; border:0!important; box-shadow:none!important; }

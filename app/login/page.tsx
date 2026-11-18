@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AuthEditorial } from "../auth-editorial";
 import { useEffect, useState, type FormEvent } from "react";
 import YandexIcon from "../yandex-icon";
 import VkSignIn from "../vk-signin";
@@ -120,22 +121,21 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="auth-shell">
-      <div className="auth-card">
-        <Link className="wordmark" href="/" aria-label="КЛИО — на главную">
-          <span className="brand"><i aria-hidden="true"/><b>КЛИО<span aria-hidden="true">.</span></b><small>Цифровая редакция</small></span>
-        </Link>
-        <h1>Вход в кабинет</h1>
-        <p className="auth-subtitle">Личный кабинет с генератором материалов, профилями брендов и архивом.</p>
+    <AuthEditorial returnTo={safeReturnTo()}>
+        <span className="login-eyebrow">С возвращением</span>
+        <h1>Войти в КЛИО<span>.</span></h1>
+        <p className="auth-subtitle">Ваши бренды, материалы и новые идеи — всё здесь.</p>
+        <div className="login-providers">
         <a className="button ghost" href={`/api/auth/yandex/start?return_to=${encodeURIComponent(safeReturnTo())}`}>
           <YandexIcon />
           Войти через Яндекс
         </a>
         <VkSignIn returnTo={safeReturnTo()} />
+        </div>
         <div className="auth-divider"><span>или по email</span></div>
         <form onSubmit={handleSubmit}>
-          <label className="field">Email<input type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-          <PasswordField label="Пароль" value={password} onChange={setPassword} autoComplete="current-password" />
+          <div className="login-fields"><label className="field"><span className="login-field-label">Электронная почта</span><input aria-label="Электронная почта" placeholder="Электронная почта" type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+          <PasswordField placeholder="Введите пароль" label="Пароль" value={password} onChange={setPassword} autoComplete="current-password" /></div>
           <button className="auth-forgot" type="button" onClick={() => void handleForgotPassword()} disabled={forgotBusy}>
             {forgotBusy ? "Отправляю…" : "Забыли пароль?"}
           </button>
@@ -147,10 +147,9 @@ export default function LoginPage() {
             </button>
           )}
           {resendMessage && <p className="auth-error" style={{ color: "#d3ffd8", background: "rgba(92,255,140,0.12)", borderColor: "rgba(118,255,118,0.35)" }}>{resendMessage}</p>}
-          <button className="button primary large" type="submit" disabled={busy}>{busy ? "Выполняю вход…" : "Войти"}</button>
+          <button className="button primary large" type="submit" disabled={busy}>{busy ? "Входим…" : <><span>Войти</span><span aria-hidden="true">↗</span></>}</button>
         </form>
         <p className="auth-switch">Нет аккаунта? <Link href={{ pathname: "/signup", query: { return_to: safeReturnTo() } }}>Зарегистрироваться</Link></p>
-      </div>
-    </main>
+    </AuthEditorial>
   );
 }

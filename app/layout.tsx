@@ -4,6 +4,7 @@ import "./globals.css";
 import "../public/workspace-refresh-20260816-2.css";
 import "./workspace-module-headers.css";
 import "./workspace-typography.css";
+import "./warm-controls.css";
 import CookieConsent from "./cookie-consent";
 import YandexMetrica from "./yandex-metrica";
 import { SITE_BASE_URL } from "./site-url";
@@ -64,7 +65,7 @@ export const metadata: Metadata = {
 // localStorage can throw in some privacy-mode/embedded contexts, and a
 // dead script here must never block the rest of the page from loading.
 const themeBootstrapScript = `try {
-  var t = localStorage.getItem("klio-theme");
+  var t = window.location.pathname === "/" ? "dark" : localStorage.getItem("klio-theme");
   document.documentElement.setAttribute("data-theme", t === "light" ? "light" : "dark");
 } catch (e) { document.documentElement.setAttribute("data-theme", "dark"); }`;
 

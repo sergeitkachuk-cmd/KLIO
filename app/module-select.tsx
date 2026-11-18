@@ -62,7 +62,10 @@ export function ModuleSelect({ label, value, options, onChange, help, variant, d
     };
     const closeOnFocusOutside = (event: FocusEvent) => {
       const target = event.target as Node;
-      if (target === triggerRef.current || !listRef.current?.contains(target)) setOpen(false);
+      // A pointer click focuses the trigger before its click handler runs.
+      // Closing here would make that click toggle the list open again.
+      if (containerRef.current?.contains(target) || listRef.current?.contains(target)) return;
+      setOpen(false);
     };
     // Reposition on scroll instead of closing — the list is portaled and
     // position:fixed, so it needs to track the trigger if the page scrolls.
@@ -78,9 +81,11 @@ export function ModuleSelect({ label, value, options, onChange, help, variant, d
       const spaceBelow = Math.max(0, window.innerHeight - rect.bottom - edgeGap);
       const spaceAbove = Math.max(0, rect.top - edgeGap);
       const maxHeight = Math.max(120, Math.min(maxMenuHeight, openUp ? spaceAbove : spaceBelow));
+      const width = Math.min(variant === "topic-status" ? Math.max(196, rect.width) : rect.width, window.innerWidth - edgeGap * 2);
+      const left = Math.max(edgeGap, Math.min(variant === "topic-status" ? rect.right - width : rect.left, window.innerWidth - width - edgeGap));
       setMenuRect(openUp
-        ? { bottom: window.innerHeight - rect.top + 8, left: rect.left, width: rect.width, maxHeight }
-        : { top: rect.bottom + 8, left: rect.left, width: rect.width, maxHeight });
+        ? { bottom: window.innerHeight - rect.top + 8, left, width, maxHeight }
+        : { top: rect.bottom + 8, left, width, maxHeight });
     };
     const repositionOnScroll = (event: Event) => {
       if (listRef.current?.contains(event.target as Node)) return;
@@ -98,7 +103,7 @@ export function ModuleSelect({ label, value, options, onChange, help, variant, d
       window.removeEventListener("scroll", repositionOnScroll, true);
       window.removeEventListener("resize", repositionOnScroll);
     };
-  }, [open]);
+  }, [open, variant]);
 
   useEffect(() => {
     if (!open || !options.length) return;
@@ -116,9 +121,11 @@ export function ModuleSelect({ label, value, options, onChange, help, variant, d
       const openUp = spaceBelow < 240 && spaceAbove > spaceBelow;
       openUpRef.current = openUp;
       const maxHeight = Math.max(120, Math.min(maxMenuHeight, openUp ? spaceAbove : spaceBelow));
+      const width = Math.min(variant === "topic-status" ? Math.max(196, rect.width) : rect.width, window.innerWidth - edgeGap * 2);
+      const left = Math.max(edgeGap, Math.min(variant === "topic-status" ? rect.right - width : rect.left, window.innerWidth - width - edgeGap));
       setMenuRect(openUp
-        ? { bottom: window.innerHeight - rect.top + 8, left: rect.left, width: rect.width, maxHeight }
-        : { top: rect.bottom + 8, left: rect.left, width: rect.width, maxHeight });
+        ? { bottom: window.innerHeight - rect.top + 8, left, width, maxHeight }
+        : { top: rect.bottom + 8, left, width, maxHeight });
     }
     setOpen((current) => !current);
   }

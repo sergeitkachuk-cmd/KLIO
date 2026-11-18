@@ -1,4 +1,6 @@
 "use client";
+
+import { SiteToggle } from "../site-toggle";
 import { useEffect, useRef, useState } from "react";
 import {
   BILLING_PERIODS,
@@ -160,8 +162,8 @@ export default function BillingActions({
         />
       </div>
       <label className="account-billing-consent">
-        <input
-          type="checkbox"
+        <SiteToggle role="checkbox"
+
           checked={accepted}
           onChange={(event) => setAccepted(event.target.checked)}
         />

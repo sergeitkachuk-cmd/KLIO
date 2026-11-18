@@ -1,0 +1,126 @@
+/* Readable interface copy: Manrope, 15px controls and 14px supporting text. */
+:root body .workspace-shell.is-dialogue { --ui-label-size:15px; --ui-meta-size:14px; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) :is(
+  .workspace-mode-switch button,.klio-chatkit-new,.klio-chatkit-rail>nav>button,
+  .klio-chatkit-brand-select>button,.klio-chatkit-brand-options button,.klio-chatkit-account,
+  .klio-chatkit-thread-open,.klio-chatkit-all-history,.klio-aui-tool-chip,.klio-aui-tool-menu button,
+  .klio-chatkit-results-trigger,.klio-chatkit-results-list button,.klio-chatkit-brand-context,
+  .module-select-trigger,.workspace-history-filters button,.workspace-materials-filters button,
+  .brand-tabs button,.brand-profile-tabs button,.brand-profile-footer button,
+  .brand-website-row button,.brand-manager button,.publications-channels-bar>.button,
+  .glass-calendar-controls button,.glass-calendar-filters button,.calendar-morph-return,
+  .glass-calendar-empty>button,.archive-editor-actions button,.publications-editor-actions button
+) { font-size:var(--ui-label-size)!important; font-weight:500; line-height:1.45; letter-spacing:-.015em; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) :is(
+  .klio-glass-rail-caption,.klio-chatkit-recent p,.klio-chatkit-recent h2,.klio-chatkit-recent h3,
+  .klio-chatkit-brand>span,.klio-aui-disclaimer,.klio-aui-quota,.klio-chatkit-results-list small,
+  .workspace-module-banner p,.brand-profile-head p,.workspace-history-head p,
+  .publications-channel-limit,.publications-channel-chip,.glass-calendar-weekday,
+  .glass-calendar-hint,.glass-calendar-day-title>span,.glass-calendar-day-title p,
+  .calendar-morph-weekday,.glass-calendar-post-meta,.glass-calendar-post-foot,
+  .glass-calendar-post-foot em,.glass-calendar-day-events>small,.calendar-event-count,
+  .material-bento-brand,.material-bento-total>span,.material-bento-tile-meta,
+  .material-bento-tile-bottom,.material-bento-empty p,.profile-field-help,.help-tip-panel
+) { font-size:var(--ui-meta-size)!important; line-height:1.5; font-weight:450; letter-spacing:0; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) :is(.glass-calendar-post-excerpt,.material-bento-tile-excerpt) { font-size:15px!important; line-height:1.65; }
+:root body .workspace-shell.is-dialogue .material-bento-search input { font-size:15px!important; min-height:24px!important; }
+:root body .workspace-shell.is-dialogue .material-bento-bar { flex-wrap:wrap; }
+:root body .workspace-shell.is-dialogue .material-bento-brand { letter-spacing:.04em; font-size:12px!important; }
+:root body .workspace-shell.is-dialogue .material-bento-tile-meta { opacity:.85; font-size:13px!important; }
+:root body .workspace-shell.is-dialogue .material-bento-cards { grid-template-rows:minmax(215px,auto) minmax(330px,auto); }
+:root body .workspace-shell.is-dialogue .material-bento-tile { gap:18px!important; }
+:root body .workspace-shell.is-dialogue .material-bento-cards.count-1 { grid-template-rows:minmax(350px,auto); }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) .glass-calendar-controls button { min-height:42px; padding:10px 15px; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) .glass-calendar-filters button { min-height:40px; padding:9px 14px; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) .glass-calendar-post-foot { flex-wrap:wrap; gap:10px; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) .calendar-morph-caption>span { font-size:16px; line-height:1.5; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) .glass-calendar-day-add>span { font-size:15px!important; line-height:22px; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) .glass-calendar-day-add:is(:hover,:focus-visible)>span { max-width:190px; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) .glass-calendar-day-title>.glass-calendar-day-add { min-height:42px; height:auto; }
+/* Portaled menus and dialogs inherit the same scale. */
+:root body:has(.workspace-shell.is-dialogue) :is(.module-select-list,.klio-chatkit-thread-menu,.klio-chatkit-settings-popover,.klio-chatkit-thread-dialog,.help-tip-panel) { font-size:14px; line-height:1.55; }
+:root body:has(.workspace-shell.is-dialogue) :is(.module-select-list,.klio-chatkit-thread-menu,.klio-chatkit-settings-popover) :is(button,label,input,select) { font-size:15px!important; line-height:1.45; }
+:root body:has(.workspace-shell.is-dialogue) .klio-chatkit-thread-dialog :is(small,label,footer button,footer a) { font-size:14px!important; line-height:1.5; }
+:root body .workspace-shell.is-dialogue .material-bento-detail footer :is(button,a) { font-size:15px!important; }
+/* Expanded icon labels need enough room at the new reading size. */
+@media(min-width:821px) {
+  :root body .workspace-shell.is-dialogue[data-rail-collapsed=true] :is(.klio-compact-label,.klio-chatkit-account>span,.klio-chatkit-rail>nav>button>span:not(.klio-glass-nav-icon)) { font-size:15px!important; }
+  :root body .workspace-shell.is-dialogue[data-rail-collapsed=true] :is(.klio-chatkit-new,.klio-compact-history,.klio-chatkit-account,.klio-chatkit-rail>nav>button):is(:hover,:focus-visible) { width:228px; }
+  :root body .workspace-shell.is-dialogue[data-rail-collapsed=true] :is(.klio-chatkit-new,.klio-compact-history,.klio-chatkit-account,.klio-chatkit-rail>nav>button):is(:hover,:focus-visible)>span:not(.klio-glass-nav-icon) { max-width:182px; }
+}
+:root body .workspace-shell.is-dialogue .klio-chatkit-toolbar .klio-chatkit-history-button:after { font-size:14px; }
+:root body .workspace-shell.is-dialogue .klio-chatkit-toolbar .klio-chatkit-history-button:is(:hover,:focus-visible) { width:126px; }
+:root body .workspace-shell.is-dialogue .klio-chatkit-toolbar .klio-chatkit-history-button:is(:hover,:focus-visible):after { max-width:86px; }
+@media(max-width:720px) {
+  :root body .workspace-shell.is-dialogue .workspace-mode-switch button { font-size:14px!important; }
+  :root body .workspace-shell.is-dialogue .dialogue-module-rail>nav>button.is-active>span { font-size:14px!important; }
+  :root body .workspace-shell:is(.is-dialogue,.is-professional) .calendar-morph-caption { align-items:flex-start; }
+  :root body .workspace-shell:is(.is-dialogue,.is-professional) .calendar-morph-caption>span { font-size:14px; }
+  :root body .workspace-shell:is(.is-dialogue,.is-professional) .calendar-morph-return { font-size:14px!important; padding:9px 12px; }
+  :root body .workspace-shell:is(.is-dialogue,.is-professional) .glass-calendar-controls { flex-wrap:wrap; }
+  :root body .workspace-shell:is(.is-dialogue,.is-professional) .glass-calendar-period { flex-wrap:wrap; }
+  :root body .workspace-shell.is-dialogue .material-bento-cards { grid-template-rows:none; }
+  :root body .workspace-shell.is-dialogue .material-bento-total>span { display:none; }
+}
+:root body .workspace-shell.is-dialogue :is(.workspace-history-head>div>span,.brand-profile-head>div>span,.workspace-module-heading>span) { font-size:14px!important; line-height:1.5; }
+:root body .workspace-shell.is-dialogue #brand-profile small { font-size:14px!important; line-height:1.55; }
+:root body .workspace-shell.is-dialogue #brand-profile .brand-score strong>span { font-size:14px!important; }
+:root body .workspace-shell.is-dialogue #history :is([role="tab"],[role="tab"]>span) { font-size:15px!important; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) #publications .glass-calendar-event { font-size:14px!important; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) #publications .glass-calendar-day-number { font-size:16px; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) #publications .glass-calendar-grid.is-compact .glass-calendar-day-number { font-size:24px; }
+:root body .workspace-shell.is-dialogue .klio-aui-suggestions { width:min(520px,calc(100% - 24px)); }
+:root body .workspace-shell.is-dialogue .klio-aui-suggestions .klio-glass-tool-card { height:142px; min-height:142px; padding:12px 10px; }
+:root body .workspace-shell.is-dialogue .klio-glass-tool-name { font-size:14px; line-height:1.35; font-weight:500; }
+:root body .workspace-shell.is-dialogue .klio-glass-tool-arrow { font-size:15px; }
+:root body .workspace-shell.is-dialogue .klio-glass-floating-card { width:120px; height:142px; font-size:14px; line-height:1.35; }
+:root body .workspace-shell.is-dialogue .klio-glass-floating-card>small { font-size:13px; line-height:1.4; }
+:root body .workspace-shell.is-dialogue .klio-glass-floating-ideas { height:166px; }
+:root body .workspace-shell.is-dialogue :is(.klio-aui-card-body,.klio-aui-message,.klio-chatkit-toast) { font-size:15px; }
+:root body .workspace-shell.is-dialogue .workspace-history-filters button>span { font-size:15px!important; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) #publications .calendar-morph .glass-calendar-day-add:is(:hover,:focus-visible)>span { max-width:190px; }
+:root body .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions { width:min(520px,calc(100% - 24px)); }
+:root body .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions .klio-glass-tool-card { height:142px; min-height:142px; padding:12px 10px; }
+:root body .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-name { font-size:14px!important; line-height:1.35; font-weight:500; }
+:root body .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-arrow { font-size:15px!important; }
+:root body .workspace-shell.is-dialogue .klio-glass .klio-glass-floating-card { width:120px; height:150px; font-size:14px!important; line-height:1.35; }
+:root body .workspace-shell.is-dialogue .klio-glass .klio-glass-floating-card>span { font-size:14px!important; line-height:1.35; }
+:root body .workspace-shell.is-dialogue .klio-glass .klio-glass-floating-card>small { font-size:14px!important; line-height:1.4; }
+:root body .workspace-shell.is-dialogue .klio-glass .klio-glass-floating-ideas { height:175px; }
+:root body .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-name { overflow-wrap:anywhere; hyphens:auto; }
+:root body .workspace-shell.is-dialogue .klio-glass .klio-glass-floating-card { overflow:hidden; }
+@media(max-width:720px) {
+  :root body .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions .klio-glass-tool-card { padding:12px 6px; }
+  :root body .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-name { letter-spacing:-.025em; }
+}
+:root body .workspace-shell.is-dialogue :is(.material-bento-brand,.material-bento-tile-meta) { font-size:14px!important; }
+:root body .workspace-shell.is-dialogue .brand-score>div>span { font-size:14px!important; }
+/* Explanations live beside headings, rather than taking up whole rows. */
+:root body .workspace-shell.is-dialogue .workspace-module-banner :is(h2,h3) { display:flex; align-items:center; gap:0; flex-wrap:wrap; }
+:root body .workspace-shell.is-dialogue .workspace-module-banner :is(h2,h3)>.help-tip { display:inline-flex; align-items:center; margin-left:12px; letter-spacing:normal; }
+:root body .workspace-shell.is-dialogue .workspace-module-banner .help-tip-panel { font-size:14px!important; line-height:1.6; letter-spacing:0; font-weight:400; text-transform:none; }
+:root body .workspace-shell.is-dialogue .brand-checklist>div>span { display:flex; align-items:center; gap:8px; }
+:root body .workspace-shell.is-dialogue .profile-voice-fill>.help-tip { align-self:flex-start; }
+:root body .workspace-shell.is-dialogue .klio-quiet-note { display:flex; justify-content:center; margin-top:10px; }
+:root body .workspace-shell.is-dialogue .klio-quiet-note .help-tip-trigger { width:24px; height:24px; min-height:24px; opacity:.7; }
+:root body .workspace-shell.is-dialogue .klio-quiet-note .help-tip-panel { text-align:left; }
+:root body .workspace-shell:is(.is-dialogue,.is-professional) .glass-calendar-empty>.help-tip { justify-self:start; }
+:root body .workspace-shell.is-dialogue .profile-fill-replace { font-size:14px; line-height:1.5; }
+:root body .workspace-shell.is-dialogue :is(.adaptation-goals,.archive-transform-tools)>article:has(>.help-tip) { position:relative; }
+:root body .workspace-shell.is-dialogue :is(.adaptation-goals,.archive-transform-tools)>article:has(>.help-tip)>button { padding-right:50px; }
+:root body .workspace-shell.is-dialogue :is(.adaptation-goals,.archive-transform-tools)>article>.help-tip { position:absolute; top:12px; right:12px; }
+/* Small screens reserve the available space for the active destination. */
+@media(max-width:420px) {
+  :root body .workspace-shell.is-dialogue .is-dialogue-module-layout>.dialogue-module-rail>.klio-chatkit-new { width:44px; min-width:44px; flex:0 0 44px; justify-content:center; padding:0; }
+  :root body .workspace-shell.is-dialogue .is-dialogue-module-layout>.dialogue-module-rail>.klio-chatkit-new>.klio-compact-label { display:none; }
+  :root body .workspace-shell.is-dialogue .is-dialogue-module-layout>.dialogue-module-rail>nav { flex:1; min-width:0; display:flex; padding:4px; gap:2px; }
+  :root body .workspace-shell.is-dialogue .is-dialogue-module-layout>.dialogue-module-rail>nav>button { flex:0 0 40px; min-width:0; width:auto; padding:8px; gap:6px; justify-content:center; }
+  :root body .workspace-shell.is-dialogue .is-dialogue-module-layout>.dialogue-module-rail>nav>button.is-active { flex:1 1 auto; }
+  :root body .workspace-shell.is-dialogue .is-dialogue-module-layout>.dialogue-module-rail>nav>button.is-active>span { flex:none; white-space:nowrap; }
+}
+:root body .workspace-shell.is-dialogue .calendar-event-count { font-variant-numeric:tabular-nums; }
+:root body .workspace-shell.is-dialogue .calendar-event-count>b { font:inherit; font-weight:550; }
+@media(max-width:359px) {
+  :root body .workspace-shell.is-dialogue .calendar-event-count>span { display:none; }
+  :root body .workspace-shell.is-dialogue .calendar-event-count>b:before { content:'•'; margin-right:3px; color:var(--glass-accent); }
+}

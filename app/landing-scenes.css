@@ -1,0 +1,267 @@
+/* Scene composition: content and graphics share a single scroll timeline. */
+html:root body .cinematic-home .kl-hero-track { height:calc(100svh - 34px); }
+html:root body .cinematic-home .kl-hero-track .kl-hero { height:calc(100svh - 34px); padding:clamp(125px,18svh,190px) 32px 16px; }
+html:root body .cinematic-home .kl-hero-copy { max-width:1040px; }
+html:root body .cinematic-home .kl-hero h1 { font-size:clamp(48px,5.6vw,84px); line-height:1.03; letter-spacing:-.06em; }
+html:root body .cinematic-home .kl-circuit-wide { width:calc(100% + 64px); max-width:1600px; flex:1 1 0; min-height:220px; max-height:440px; margin-top:22px; }
+html:root body .cinematic-home .kl-circuit-wide .kl-chip { top:40%; width:132px; height:122px; border-radius:24px; transform:translate(-50%,-50%); background:linear-gradient(145deg,#332930,#211b23); box-shadow:0 15px 65px #0008,inset 0 1px 0 #ffe5cc1c; }
+html:root body .cinematic-home .kl-chip>b { font-size:25px; display:flex; gap:5px; align-items:center; font-weight:600; }
+html:root body .cinematic-home .kl-chip>b>span { color:#efbc99; font-size:30px; }
+html:root body .cinematic-home .kl-chip small { font-size:5px; }
+html:root body .cinematic-home .kl-network-node { position:absolute; width:72px; height:68px; background:linear-gradient(140deg,#30262d,#211a20); border:1px solid #efd5df16; border-radius:18px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:7px; color:#cbb4c1; box-shadow:0 10px 28px #0005; animation:kl-network-breathe 5s ease-in-out infinite; }
+html:root body .cinematic-home .kl-network-node svg { width:23px; height:23px; }
+html:root body .cinematic-home .kl-network-node small { font-size:7px; }
+html:root body .cinematic-home .kl-network-node-0 { left:9%;top:3%; }
+html:root body .cinematic-home .kl-network-node-1 { left:1%;top:37%;animation-delay:-1s; }
+html:root body .cinematic-home .kl-network-node-2 { left:8%;top:72%;animation-delay:-2s; }
+html:root body .cinematic-home .kl-network-node-3 { right:9%;top:3%;animation-delay:-.5s; }
+html:root body .cinematic-home .kl-network-node-4 { right:1%;top:37%;animation-delay:-1.5s; }
+html:root body .cinematic-home .kl-network-node-5 { right:8%;top:72%;animation-delay:-2.5s; }
+html:root body .cinematic-home .kl-packet-core,html:root body .cinematic-home .kl-packet-aura { stroke:#ffd2a0; stroke-dasharray:3 97; animation:kl-network-flow 3.8s linear infinite; stroke-linecap:round; }
+html:root body .cinematic-home .kl-packet-core { stroke-width:2; }
+html:root body .cinematic-home .kl-packet-aura { stroke-width:8; filter:url(#packet-glow); opacity:.65; }
+html:root body .cinematic-home .kl-scroll-hint { display:none; }
+html:root body .cinematic-home .kl-story { height:auto; min-height:0; border-radius:0; }
+html:root body .cinematic-home .kl-story-sticky { height:auto; min-height:0; position:relative; padding:100px 40px 95px; }
+html:root body .cinematic-home .kl-story-content { padding:0; width:100%; max-width:1200px; opacity:1; gap:20px; }
+html:root body .cinematic-home .kl-story h2 { font-size:clamp(32px,3.7vw,54px); line-height:1.12; }
+html:root body .cinematic-home .kl-brand-scene { display:grid; grid-template-columns:.95fr 1.05fr; gap:70px; width:100%; margin-top:35px; text-align:left; align-items:center; }
+html:root body .cinematic-home .kl-brand-visual { position:relative; min-height:340px; border-radius:24px; overflow:hidden; color:#fff1e9; background:radial-gradient(ellipse at 20% 0%,#a85c7480,transparent 60%),radial-gradient(ellipse at 90% 70%,#d9a16650,transparent 60%),#251b25; box-shadow:0 25px 50px #65435718; }
+html:root body .cinematic-home .kl-brand-visual>.kl-mark { position:absolute; left:calc(50% - 48px); top:70px; scale:1.2; filter:drop-shadow(0 0 20px #e5a49c50); animation:kl-brand-turn 30s linear infinite; }
+html:root body .cinematic-home .kl-brand-orbit { position:absolute; left:-25%; top:-40%; width:150%; aspect-ratio:1; border:1px solid #e1b7ca27; border-radius:50%; box-shadow:0 0 0 35px #e0adca05,0 0 0 70px #e0adca05,0 0 0 105px #e0adca05; }
+html:root body .cinematic-home .kl-brand-visual-caption { position:absolute; left:30px;bottom:30px;font-size:8px;letter-spacing:.13em;color:#d6b5c7; }
+html:root body .cinematic-home .kl-brand-visual-caption strong { display:block;font-size:29px;font-weight:450;line-height:1.15;letter-spacing:-.04em;margin-top:13px;color:#fff1e9; }
+html:root body .cinematic-home .kl-brand-floating { display:flex;align-items:center;gap:12px;position:absolute;padding:12px 15px;border:1px solid #e4bace30;border-radius:12px;background:#3c2a38cc;font-size:10px;animation:kl-network-breathe 6s ease-in-out infinite; }
+html:root body .cinematic-home .kl-brand-floating-one { right:23px;top:55px;rotate:8deg; }
+html:root body .cinematic-home .kl-brand-floating-two { left:23px;top:170px;rotate:-7deg;animation-delay:-3s; }
+html:root body .cinematic-home .kl-brand-description h3 { font-size:clamp(24px,2.4vw,35px);line-height:1.18; }
+html:root body .cinematic-home .kl-brand-description>p { margin:20px 0 25px;max-width:470px;font-size:15px;line-height:1.8; }
+html:root body .cinematic-home .kl-brand-description>.kl-button { color:#553d4b;border-color:#80647430;background:#fff8; }
+html:root body .cinematic-home .kl-brand-formats { display:flex;flex-wrap:wrap;gap:10px;margin-top:35px;max-width:400px; }
+html:root body .cinematic-home .kl-brand-formats span { padding:9px 14px;border-radius:30px;background:#ae899812;color:#806474;font-size:12px; }
+html:root body .cinematic-home .kl-features { padding-top:90px;padding-bottom:80px; }
+html:root body .cinematic-home .kl-feature-grid { max-width:1280px;gap:20px; }
+html:root body .cinematic-home .kl-feature-art { height:260px; }
+html:root body .cinematic-home .kl-feature-copy { padding:26px; }
+html:root body .cinematic-home .kl-feature p { min-height:90px; }
+html:root body .cinematic-home .kl-orbit-track { height:175svh; }
+html:root body .cinematic-home .kl-orbit-track .kl-orbit-section { display:block;padding:100px 24px 0; }
+html:root body .cinematic-home .kl-orbit-section .kl-heading { opacity:calc(1 - clamp(0,calc((var(--globe-progress,0) - .12)*4),1));transform:translateY(calc(var(--globe-progress,0)*-150px)); }
+html:root body .cinematic-home .kl-orbit { position:absolute;left:0;top:0;width:100%;max-width:none;height:100%; }
+html:root body .cinematic-home .kl-globe-canvas { width:min(1100px,100vw);height:min(1100px,100vw);top:100%;left:50%;transform:translate(-50%,calc(-35% - var(--globe-progress,0)*48%)) scale(calc(.9 + var(--globe-progress,0)*.25));transform-origin:center; }
+html:root body .cinematic-home :is(.kl-orbit-tag,.kl-orbit-ring,.kl-orbit-center) { display:none; }
+html:root body .cinematic-home .kl-heading.kl-waiting { opacity:1;translate:none; }
+html:root body .cinematic-home .kl-light-world { margin-top:0; }
+html:root body .cinematic-home .kl-demo-section { padding-top:85px;padding-bottom:60px; }
+html:root body .cinematic-home .kl-audience { padding-top:60px;padding-bottom:90px; }
+html:root body .cinematic-home .kl-closing>div:first-child { opacity:1;translate:none; }
+@keyframes kl-network-flow { from {stroke-dashoffset:100} to {stroke-dashoffset:0} }
+@keyframes kl-network-breathe { 0%,100% {translate:0 0} 50% {translate:0 -5px} }
+@keyframes kl-brand-turn { to {rotate:360deg} }
+@media(max-width:900px) {
+ html:root body .cinematic-home .kl-menu-toggle { display:flex;align-items:center;justify-content:center;background:none;border:0;padding:8px; }
+ html:root body .cinematic-home .kl-brand-scene { gap:28px; }
+ html:root body .cinematic-home .kl-story-sticky { padding:90px 25px 70px; }
+}
+@media(max-width:700px) {
+ html:root body .cinematic-home .kl-hero-track .kl-hero { padding:110px 20px 12px; }
+ html:root body .cinematic-home .kl-hero h1 { font-size:clamp(38px,9vw,58px); }
+ html:root body .cinematic-home .kl-circuit-wide { min-height:190px;width:calc(100% + 40px);margin-top:20px; }
+ html:root body .cinematic-home .kl-circuit-wide .kl-chip { width:100px;height:100px;gap:8px;border-radius:20px; }
+ html:root body .cinematic-home .kl-chip>b { font-size:18px; }
+ html:root body .cinematic-home .kl-network-node { width:48px;height:48px;border-radius:12px; }
+ html:root body .cinematic-home .kl-network-node small { display:none; }
+ html:root body .cinematic-home .kl-network-node svg { width:19px;height:19px; }
+ html:root body .cinematic-home .kl-brand-scene { grid-template-columns:1fr;gap:30px;margin-top:20px; }
+ html:root body .cinematic-home .kl-brand-visual { min-height:290px; }
+ html:root body .cinematic-home .kl-brand-description>p { font-size:14px; }
+ html:root body .cinematic-home .kl-orbit-track { height:150svh; }
+ html:root body .cinematic-home .kl-globe-canvas { width:160vw;height:160vw;top:100%;transform:translate(-50%,calc(-55% - var(--globe-progress,0)*53%)) scale(calc(.8 + var(--globe-progress,0)*.2)); }
+}
+@media(max-height:720px) and (min-width:701px) {
+ html:root body .cinematic-home .kl-hero-track .kl-hero { padding-top:105px; }
+ html:root body .cinematic-home .kl-hero h1 { font-size:52px;margin:14px 0; }
+ html:root body .cinematic-home .kl-circuit-wide { min-height:170px;margin-top:12px; }
+}
+@media(prefers-reduced-motion:reduce) {
+ html:root body .cinematic-home .kl-globe-canvas { top:50%;transform:translate(-50%,-50%) scale(.8); }
+ html:root body .cinematic-home .kl-orbit-section .kl-heading { opacity:1;transform:none; }
+}
+html:root body .cinematic-home .kl-orbit-section .kl-heading.kl-waiting { opacity:calc(1 - clamp(0,calc((var(--globe-progress,0) - .12)*4),1)); }
+@media(min-width:701px) {
+ html:root body .cinematic-home .kl-globe-canvas { width:min(880px,100vw);height:min(880px,100vw);transform:translate(-50%,calc(-35% - var(--globe-progress,0)*65%)) scale(calc(.9 + var(--globe-progress,0)*.25)); }
+}
+@media(prefers-reduced-motion:reduce) {
+ html:root body .cinematic-home .kl-orbit-section .kl-heading.kl-waiting { opacity:1; }
+ html:root body .cinematic-home .kl-globe-canvas { top:50%;transform:translate(-50%,-50%) scale(.8); }
+}
+
+/* Entry choreography and scroll hand-off use distinct properties, so they do not fight. */
+html:root body .cinematic-home .kl-nav { animation:kl-nav-arrive 1s 1.05s cubic-bezier(.16,1,.3,1) both; }
+html:root body .cinematic-home .kl-hero-track { height:125svh; }
+html:root body .cinematic-home .kl-hero-track .kl-hero { height:100svh; overflow:visible; }
+html:root body .cinematic-home .kl-hero-copy {
+  opacity:calc(1 - var(--hero-exit,0));
+  transform:translateY(calc(var(--hero-exit,0)*-65px)) scale(calc(1 - var(--hero-exit,0)*.035));
+}
+html:root body .cinematic-home .kl-circuit-wide {
+  opacity:calc(1 - var(--hero-exit,0));
+  transform:translateY(calc(var(--hero-exit,0)*-40px)) scale(calc(1 - var(--hero-exit,0)*.06));
+  transform-origin:50% 40%;
+}
+html:root body .cinematic-home .kl-beam { animation:kl-beam-arrive 2.2s 1.15s both,kl-beam-breathe 8s 3.35s ease-in-out infinite; }
+html:root body .cinematic-home .kl-circuit-wide .kl-chip { animation:kl-core-arrive 1.25s 1.65s cubic-bezier(.16,1,.3,1) backwards; }
+html:root body .cinematic-home .kl-wire { stroke-dasharray:100; animation:kl-wire-draw 1.6s cubic-bezier(.3,0,.2,1) backwards; }
+html:root body .cinematic-home .kl-network-node {
+  animation:kl-node-arrive 1.2s calc(2s + var(--node-order)*.11s) cubic-bezier(.16,1,.3,1) backwards,kl-network-breathe 5s 3.5s ease-in-out infinite;
+}
+html:root body .cinematic-home .kl-network-node-0 { --node-order:0; }
+html:root body .cinematic-home .kl-network-node-1 { --node-order:2; }
+html:root body .cinematic-home .kl-network-node-2 { --node-order:4; }
+html:root body .cinematic-home .kl-network-node-3 { --node-order:1; }
+html:root body .cinematic-home .kl-network-node-4 { --node-order:3; }
+html:root body .cinematic-home .kl-network-node-5 { --node-order:5; }
+html:root body .cinematic-home .kl-story {
+  margin-top:-25svh;
+  clip-path:ellipse(calc(45% + var(--curtain,1)*55%) calc(35% + var(--curtain,1)*80%) at 50% 50%);
+}
+html:root body .cinematic-home .kl-brand-scene {
+  opacity:var(--story-content-opacity,1);
+  transform:translateY(calc((1 - var(--story-content-opacity,1))*55px));
+}
+html:root body .cinematic-home .kl-brand-visual { transform:perspective(1200px) rotateY(calc((1 - var(--story-content-opacity,1))*-12deg));transform-origin:right center; }
+html:root body .cinematic-home :is(.kl-button,.kl-nav-cta) { min-height:48px;padding:13px 24px;line-height:1.3;gap:16px; }
+html:root body .cinematic-home :is(.kl-button,.kl-nav-cta,.kl-text-link) svg { width:20px;height:20px;flex-shrink:0;transition:transform .35s cubic-bezier(.16,1,.3,1); }
+html:root body .cinematic-home :is(.kl-button,.kl-nav-cta,.kl-text-link):hover svg { transform:translate(2px,-2px); }
+html:root body .cinematic-home .kl-demo-bottom>a { font-size:15px; }
+html:root body .cinematic-home .kl-billing button { font-size:15px; }
+html:root body .cinematic-home .kl-feature { opacity:var(--card-progress,1); }
+@keyframes kl-nav-arrive { from {opacity:0;translate:0 -20px} to {opacity:1;translate:0 0} }
+@keyframes kl-beam-arrive { from {opacity:0;scale:.65;filter:blur(30px)} to {opacity:.6;scale:1;filter:blur(12px)} }
+@keyframes kl-core-arrive { from {opacity:0;scale:.65;filter:blur(12px);rotate:-8deg} to {opacity:1;scale:1;filter:blur(0);rotate:0deg} }
+@keyframes kl-node-arrive { from {opacity:0;scale:.7;filter:blur(8px);transform:translateY(25px)} to {opacity:1;scale:1;filter:blur(0);transform:translateY(0)} }
+@keyframes kl-wire-draw { from {stroke-dashoffset:100;opacity:0} 15% {opacity:1} to {stroke-dashoffset:0;opacity:1} }
+@media(max-width:700px) {
+ html:root body .cinematic-home .kl-hero-track { height:115svh; }
+ html:root body .cinematic-home .kl-story { margin-top:-15svh; }
+ html:root body .cinematic-home :is(.kl-button,.kl-nav-cta,.kl-text-link) { font-size:14px; }
+ html:root body .cinematic-home .kl-nav-cta { padding:11px 15px;min-height:42px;gap:8px; }
+ html:root body .cinematic-home .kl-actions { gap:16px;flex-wrap:wrap; }
+ html:root body .cinematic-home .kl-button { padding:12px 18px; }
+}
+@media(prefers-reduced-motion:reduce) {
+ html:root body .cinematic-home .kl-hero-track { height:auto; }
+ html:root body .cinematic-home .kl-story { margin-top:0;clip-path:none; }
+ html:root body .cinematic-home :is(.kl-hero-copy,.kl-circuit-wide,.kl-brand-scene,.kl-brand-visual) { opacity:1;transform:none; }
+ html:root body .cinematic-home :is(.kl-nav,.kl-network-node,.kl-chip,.kl-wire,.kl-beam) { animation:none; }
+}
+html:root body .cinematic-home .kl-network-node small { font-size:10px; }
+html:root body .cinematic-home .kl-chip small { font-size:7px; }
+html:root body .cinematic-home .kl-chip>span { font-size:10px; }
+
+/* Feather the scene itself: the preceding scene remains visible through its edge. */
+html:root body .cinematic-home :is(.kl-story,.kl-light-world) {
+  clip-path:none;
+  border-radius:0;
+  -webkit-mask-image:linear-gradient(to bottom,transparent,rgba(0,0,0,.2) 6px,rgba(0,0,0,.65) 18px,#000 32px,#000 calc(100% - 32px),rgba(0,0,0,.65) calc(100% - 18px),rgba(0,0,0,.2) calc(100% - 6px),transparent);
+  mask-image:linear-gradient(to bottom,transparent,rgba(0,0,0,.2) 6px,rgba(0,0,0,.65) 18px,#000 32px,#000 calc(100% - 32px),rgba(0,0,0,.65) calc(100% - 18px),rgba(0,0,0,.2) calc(100% - 6px),transparent);
+}
+html:root body .cinematic-home .kl-story-sticky { padding-top:145px;padding-bottom:145px; }
+html:root body .cinematic-home .kl-features { margin-top:0;border-radius:0; }
+html:root body .cinematic-home .kl-light-world { box-shadow:none;margin-top:-70px; }
+html:root body .cinematic-home .kl-demo-section { padding-top:150px; }
+html:root body .cinematic-home .kl-audience { padding-bottom:150px; }
+html:root body .cinematic-home .kl-pricing { padding-top:70px; }
+@media(max-width:700px) {
+ html:root body .cinematic-home .kl-story-sticky { padding-top:125px;padding-bottom:125px; }
+ html:root body .cinematic-home .kl-light-world { margin-top:-45px; }
+}
+html:root body .cinematic-home .kl-orbit-section .kl-heading[data-reveal] {
+  opacity:calc(1 - clamp(0,calc((var(--globe-progress,0) - .12)*4),1));
+}
+@media(prefers-reduced-motion:reduce) {
+ html:root body .cinematic-home .kl-orbit-section .kl-heading[data-reveal] { opacity:1; }
+}
+html:root body .cinematic-home .kl-announcement { min-height:54px;gap:16px; }
+html:root body .cinematic-home .kl-header-tools { display:flex;align-items:center;gap:10px; }
+html:root body .cinematic-home .kl-header-tools :is(a,button) { display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:36px;padding:8px 14px;border:1px solid var(--kl-line);border-radius:999px;background:#ffffff05;color:var(--kl-text);font-size:14px;line-height:1;white-space:nowrap;transition:background .25s,color .25s; }
+html:root body .cinematic-home .kl-header-tools button { width:36px;padding:0;cursor:pointer; }
+html:root body .cinematic-home .kl-header-tools :is(a,button):hover { background:#b58b9c25; }
+@media(max-width:700px) {
+ html:root body .cinematic-home .kl-announcement { justify-content:flex-end;padding:8px 16px;min-height:54px; }
+ html:root body .cinematic-home .kl-announcement>span { display:none; }
+ html:root body .cinematic-home .kl-header-tools { gap:8px; }
+ html:root body .cinematic-home .kl-header-tools :is(a,button) { font-size:13px; }
+ html:root body .cinematic-home .kl-nav { top:60px; }
+ html:root body .cinematic-home .kl-hero-track .kl-hero { padding-top:130px; }
+}
+/* Keep the whole globe readable as it rises, instead of turning it into an oversized rim. */
+@media(min-width:701px) {
+ html:root body .cinematic-home .kl-globe-canvas { width:min(860px,94svh,100vw);height:min(860px,94svh,100vw);transform:translate(-50%,calc(-35% - var(--globe-progress,0)*65%)) scale(calc(.94 + var(--globe-progress,0)*.12)); }
+}
+html:root body .cinematic-home .kl-story-sticky { padding-top:100px;padding-bottom:100px; }
+html:root body .cinematic-home .kl-demo-section { padding-top:110px; }
+html:root body .cinematic-home .kl-audience { padding-bottom:110px; }
+/* Machined processor package, drawn as vectors at every display density. */
+html:root body .cinematic-home .kl-circuit-wide .kl-chip {
+  width:clamp(96px,10.5vw,148px);height:auto;aspect-ratio:160/166;top:40%;
+  padding:0;display:block;gap:0;border:0;border-radius:0;background:none;box-shadow:none;
+  filter:drop-shadow(0 10px 9px #0009);isolation:isolate;
+}
+html:root body .cinematic-home .kl-processor { display:block;width:100%;height:100%;overflow:visible; }
+html:root body .cinematic-home .kl-processor-glint { stroke-dasharray:9 91;stroke-dashoffset:100;opacity:.2;animation:kl-cpu-glint 7s 2.8s linear infinite; }
+html:root body .cinematic-home .kl-network-node { width:65px;height:65px;border-radius:18px;background:linear-gradient(145deg,#302b30,#201c22);border-color:#a896a31a;box-shadow:0 6px 18px #0004,inset 0 1px 0 #f7d4df0b; }
+html:root body .cinematic-home .kl-network-node small { position:absolute;top:calc(100% + 7px);font-size:9px;white-space:nowrap;color:#b39faa; }
+html:root body .cinematic-home .kl-network-node svg { width:25px;height:25px;color:#bcb0ba; }
+html:root body .cinematic-home .kl-packet-core { stroke-width:1.2;stroke-dasharray:1.3 98.7; }
+html:root body .cinematic-home .kl-packet-aura { stroke-width:5;stroke-dasharray:2 98;opacity:.5; }
+@keyframes kl-cpu-glint { from {stroke-dashoffset:100} to {stroke-dashoffset:0} }
+@media(max-width:700px) {
+ html:root body .cinematic-home .kl-circuit-wide .kl-chip { width:94px;height:auto; }
+ html:root body .cinematic-home .kl-network-node { width:43px;height:43px;border-radius:12px; }
+ html:root body .cinematic-home .kl-network-node svg { width:20px;height:20px; }
+}
+@media(prefers-reduced-motion:reduce) {
+ html:root body .cinematic-home .kl-processor-glint { animation:none; }
+}
+
+/* Stacked scenes: a full viewport of overlap, without adding a blank scroll gap. */
+html:root body .cinematic-home .kl-scene-stage {
+  position:relative;z-index:var(--scene-order);padding-bottom:100svh;
+}
+html:root body .cinematic-home .kl-scene-stage+.kl-scene-stage { margin-top:-100svh; }
+html:root body .cinematic-home .kl-scene-dwell { padding-bottom:175svh; }
+html:root body .cinematic-home .kl-scene-last { padding-bottom:0; }
+html:root body .cinematic-home .kl-scene-panel {
+  position:sticky;top:var(--scene-anchor-top,min(0px,calc(100svh - var(--scene-height,100svh))));
+  filter:brightness(calc(1 - var(--scene-covered,0)*.22));
+}
+html:root body .cinematic-home .kl-scene-stage :is(.kl-hero-track,.kl-orbit-track) { height:100svh;min-height:0; }
+html:root body .cinematic-home .kl-scene-stage .kl-hero-track .kl-hero { position:relative;height:100svh; }
+html:root body .cinematic-home .kl-scene-stage .kl-orbit-track .kl-orbit-section { position:relative;height:100svh; }
+html:root body .cinematic-home .kl-scene-stage :is(.kl-story,.kl-light-world) { margin-top:0; }
+html:root body .cinematic-home .kl-scene-stage .kl-story-sticky { position:relative; }
+html:root body .cinematic-home .kl-scene-stage .kl-hero-copy,
+html:root body .cinematic-home .kl-scene-stage .kl-circuit-wide { opacity:1;transform:none; }
+html:root body .cinematic-home .kl-scene-last>.kl-scene-panel { background:var(--kl-bg);min-height:100svh; }
+@media(prefers-reduced-motion:reduce) {
+ html:root body .cinematic-home .kl-scene-stage { padding-bottom:0; }
+ html:root body .cinematic-home .kl-scene-stage+.kl-scene-stage { margin-top:0; }
+ html:root body .cinematic-home .kl-scene-panel { position:relative;top:auto;filter:none; }
+}
+/* The hold area belongs to the containing block, not its padding box. */
+html:root body .cinematic-home .kl-scene-stage { height:calc(var(--scene-height,100svh) + 100svh);padding-bottom:0; }
+html:root body .cinematic-home .kl-scene-dwell { height:calc(var(--scene-height,100svh) + 175svh); }
+html:root body .cinematic-home .kl-scene-last { height:auto; }
+@media(prefers-reduced-motion:reduce) {
+ html:root body .cinematic-home .kl-scene-stage { height:auto; }
+}
+/* Every incoming scene needs an opaque surface; only the narrow feather may reveal its predecessor. */
+html:root body .cinematic-home .kl-scene-stage .kl-orbit-track { background:#151115; }
+html:root body .cinematic-home .kl-scene-stage .kl-features { background:#151115; }
+html:root body .cinematic-home .kl-scene-stage .kl-story-sticky { min-height:100svh; }
+html:root body .cinematic-home .kl-scene-panel { min-height:100svh; }
+html:root body .cinematic-home .kl-scene-stage :is(.kl-orbit-track,.kl-features) {
+  -webkit-mask-image:linear-gradient(to bottom,transparent,#000 24px);
+  mask-image:linear-gradient(to bottom,transparent,#000 24px);
+}

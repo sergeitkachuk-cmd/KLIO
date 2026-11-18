@@ -1,0 +1,156 @@
+/* Shared outlines follow the current warm palette, including portalled controls. */
+html:root {
+  --field-focus:#cf9b72;
+  --field-focus-ring:rgba(207,155,114,.22);
+  --warm-rule:rgba(225,194,174,.24);
+}
+html:root[data-theme=light] {
+  --field-focus:#9a684a;
+  --field-focus-ring:rgba(154,104,74,.18);
+  --warm-rule:rgba(100,75,58,.24);
+}
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) :is(.advice-tip,.brand-menu-trigger>i,.semantic-waiting-mark>span,.competitor-query-row>label) {
+  border-color:var(--warm-rule)!important;
+}
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) .advice-tip {
+  background:rgba(218,184,163,.07)!important;
+}
+html:root body :is(.module-select-list,.account-menu,.brand-menu-list,.cookie-consent,.cookie-consent-secondary) {
+  border-color:var(--warm-rule)!important;
+}
+html:root body .cookie-consent-primary {
+  background:#efbf79!important; border-color:#efbf79!important; color:#30271c!important;
+}
+html:root body :is(.auth-card,.invoice-card,.account-card) :is(input,textarea,select):focus-visible {
+  border-color:var(--field-focus)!important; outline-color:var(--field-focus)!important;
+  box-shadow:0 0 0 3px var(--field-focus-ring)!important;
+}
+html:root body :is(.auth-card,.invoice-card,.account-card,.telegram-header-link,.telegram-cta),
+html:root body :is(.auth-card,.invoice-card,.account-card) :is(input,textarea,select) {
+  border-color:rgba(151,119,96,.24)!important;
+}
+/* Interactive backgrounds and foregrounds are a pair, including body portals. */
+html:root { --choice-hover:#ffcc83; --choice-hover-text:#302012; }
+html:root[data-theme=light] { --choice-hover:#f5c481; --choice-hover-text:#442916; }
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) .module-select:not(.module-select-topic-status)>.module-select-trigger:is(:hover,:focus-visible),
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) .module-select.is-open:not(.module-select-topic-status)>.module-select-trigger,
+html:root body:has(main.workspace-shell:is(.is-professional,.is-dialogue)) .module-select-list[role=listbox]>button:is(:hover,:focus-visible,[aria-selected=true]) {
+  background:var(--choice-hover)!important; color:var(--choice-hover-text)!important;
+  -webkit-text-fill-color:var(--choice-hover-text)!important;
+}
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) .module-select:not(.module-select-topic-status)>.module-select-trigger:is(:hover,:focus-visible) :is(b,em,span),
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) .module-select.is-open:not(.module-select-topic-status)>.module-select-trigger :is(b,em,span),
+html:root body:has(main.workspace-shell:is(.is-professional,.is-dialogue)) .module-select-list[role=listbox]>button:is(:hover,:focus-visible,[aria-selected=true]) :is(span,em) {
+  color:var(--choice-hover-text)!important; -webkit-text-fill-color:var(--choice-hover-text)!important;
+}
+html:root body main.workspace-shell.is-professional :is(.brand-menu-list>button,.account-menu-list button,.account-menu-list a):is(:hover,:focus-visible) {
+  background:var(--pro-selected)!important; color:var(--pro-text)!important;
+}
+html:root body main.workspace-shell.is-professional :is(.brand-menu-list>button,.account-menu-list button,.account-menu-list a):is(:hover,:focus-visible) :is(b,span,small,em) {
+  color:inherit!important; -webkit-text-fill-color:inherit!important;
+}
+html:root body .invoice-consent a { color:var(--ink,#403b3d)!important; }
+html:root body .account-billing-consent a { color:var(--account-text,#403b3d)!important; }
+html:root body :is(.invoice-consent,.account-billing-consent) a:is(:hover,:focus-visible) {
+  text-decoration-thickness:2px; text-decoration-color:currentColor;
+}
+/* Selected actions keep their on-accent text even when a nested label has old colors. */
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) :is(
+  .generator-mode-switch,.image-generator-mode-switch,.image-generator-style-picker,
+  .image-generator-template-picker,.image-format-preset-grid,.adaptation-goals,.editor-tone-picker,
+  .workspace-history-filters,.editorial-view-switch,.publications-editor-modal
+) button:is(.active,.is-active,.is-selected,[aria-pressed=true],[aria-selected=true]) {
+  background:var(--choice-hover)!important; color:var(--choice-hover-text)!important;
+  -webkit-text-fill-color:var(--choice-hover-text)!important;
+}
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) :is(
+  #generator,#images,#adaptation,#history,.publications-editor-modal
+) :is(.generator-mode-switch,.image-generator-mode-switch,.image-generator-style-picker,
+  .image-generator-template-picker,.image-format-preset-grid,.adaptation-goals,.editor-tone-picker,
+  .workspace-history-filters,.editorial-view-switch,.publications-editor-modal
+) button:is(.active,.is-active,.is-selected,[aria-pressed=true],[aria-selected=true]) :is(b,strong,span,small,i,em) {
+  color:var(--choice-hover-text)!important; -webkit-text-fill-color:var(--choice-hover-text)!important;
+}
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #history :is(.workspace-history-filters,.editorial-view-switch) button:is(.active,[aria-pressed=true]) {
+  background:var(--choice-hover)!important; color:var(--choice-hover-text)!important;
+  -webkit-text-fill-color:var(--choice-hover-text)!important;
+}
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) .competitor-query-sources>button>i {
+  background:var(--choice-hover)!important; color:var(--choice-hover-text)!important;
+}
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #publications .glass-calendar-day.is-selected :is(.glass-calendar-day-number,.calendar-morph-weekday) {
+  color:var(--choice-hover-text)!important; -webkit-text-fill-color:var(--choice-hover-text)!important;
+}
+/* Account popovers are outside module surfaces and need their own complete palette. */
+html:root { --menu-panel:#251d20; --menu-ink:#fff3eb; }
+html:root[data-theme=light] { --menu-panel:#fffefa; --menu-ink:#403b3d; }
+html:root body:has(main.workspace-shell) .account-menu .account-menu-list {
+  background:var(--menu-panel)!important; color:var(--menu-ink)!important;
+}
+html:root body:has(main.workspace-shell) .account-menu .account-menu-list :is(a,button) {
+  color:var(--menu-ink)!important; -webkit-text-fill-color:var(--menu-ink)!important;
+}
+html:root body:has(main.workspace-shell) .account-menu .account-menu-list :is(a,button):is(:hover,:focus-visible) {
+  background:var(--choice-hover)!important; color:var(--choice-hover-text)!important;
+  -webkit-text-fill-color:var(--choice-hover-text)!important;
+}
+html:root body:has(main.workspace-shell) .account-menu .account-menu-list :is(a,button):is(:hover,:focus-visible) :is(b,span,em,small) {
+  color:var(--choice-hover-text)!important; -webkit-text-fill-color:var(--choice-hover-text)!important;
+}
+/* Closed cards remain readable against the daylight workspace. */
+html:root[data-theme=light] body main.workspace-shell #content-plan .content-plan-deck .content-plan-item:not([data-scroll-active=true]) {
+  --topic-ink:#403b3d; background:#ffffff60!important; color:#403b3d!important;
+}
+html:root[data-theme=light] body main.workspace-shell #content-plan .content-plan-deck .content-plan-item:not([data-scroll-active=true]) .content-plan-item-actions>button:not(:last-child) {
+  color:#403b3d!important; -webkit-text-fill-color:#403b3d!important;
+}
+html:root[data-theme=light] body main.workspace-shell #brand-profile.brand-bento .brand-profile-footer :is(p,button:not(.primary)) { color:#62594f!important; }
+/* History has older ID-scoped rules; keep its selected and hovered controls paired too. */
+html:root body main.workspace-shell.is-dialogue .workspace-content #history .workspace-history-filters>button.active,
+html:root body main.workspace-shell.is-dialogue .workspace-content #history .editorial-materials .editorial-view-switch>button[aria-pressed=true],
+html:root body main.workspace-shell.is-dialogue .workspace-content #history .module-select>.module-select-trigger:is(:hover,:focus-visible),
+html:root body main.workspace-shell.is-dialogue .workspace-content #history .module-select.is-open>.module-select-trigger {
+  background:var(--choice-hover)!important; color:var(--choice-hover-text)!important;
+  -webkit-text-fill-color:var(--choice-hover-text)!important;
+}
+html:root body main.workspace-shell.is-dialogue .workspace-content #history .module-select>.module-select-trigger:is(:hover,:focus-visible) :is(b,em),
+html:root body main.workspace-shell.is-dialogue .workspace-content #history .module-select.is-open>.module-select-trigger :is(b,em) {
+  color:var(--choice-hover-text)!important; -webkit-text-fill-color:var(--choice-hover-text)!important;
+}
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #publications .glass-calendar-day.is-selected :is(.glass-calendar-event,.calendar-event-count) {
+  background:transparent!important; color:var(--choice-hover-text)!important; -webkit-text-fill-color:var(--choice-hover-text)!important;
+}
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #publications .glass-calendar-day.is-selected :is(.glass-calendar-event,.calendar-event-count) :is(span,b,small) {
+  color:var(--choice-hover-text)!important; -webkit-text-fill-color:var(--choice-hover-text)!important;
+}
+html:root body main.workspace-shell #content-plan .content-plan-deck .content-plan-item .content-plan-item-actions>button:not(:last-child) {
+  color:var(--topic-ink)!important; -webkit-text-fill-color:var(--topic-ink)!important;
+}
+html:root[data-theme=light] body main.workspace-shell.is-professional .workspace-sidebar>nav>a:not(.active),
+html:root[data-theme=light] body main.workspace-shell.is-professional .professional-rail-account {
+  color:#70626a!important; -webkit-text-fill-color:currentColor!important;
+}
+html:root[data-theme=light] body main.workspace-shell.is-professional .workspace-sidebar>nav>a:not(.active):is(:hover,:focus-visible) {
+  color:#403b3d!important; -webkit-text-fill-color:currentColor!important;
+}
+/* These filters also match legacy :not() rules with unusually high specificity. */
+html:root body main.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .workspace-content #history .workspace-history-toolbar .workspace-history-filters[role=group]>button.active,
+html:root body main.workspace-shell.is-dialogue .workspace-layout.is-dialogue-module-layout .workspace-content #history .editorial-materials .editorial-view-switch>button[aria-pressed=true] {
+  background:var(--choice-hover)!important; color:var(--choice-hover-text)!important;
+  -webkit-text-fill-color:var(--choice-hover-text)!important;
+}
+
+/* Shared confirmations across both workspaces and public pages. */
+html:root body .toast {
+  background:#292126!important; color:#fff3eb!important; border:1px solid #d7bba64d!important;
+  box-shadow:0 12px 36px #1e131d30!important; border-radius:18px;
+}
+html:root body .toast :is(span,svg) { color:inherit!important; }
+html:root body .toast svg { color:#efbf79!important; flex:none; }
+html:root[data-theme=light] body .toast { background:#fff5e8!important; color:#403229!important; border-color:#b493713d!important; }
+html:root[data-theme=light] body .toast svg { color:#886132!important; }
+
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #publications .glass-calendar-day .glass-calendar-event,
+html:root body main.workspace-shell:is(.is-professional,.is-dialogue) #publications .glass-calendar-day .glass-calendar-event>span {
+  background:transparent!important; border:0!important; box-shadow:none!important; outline:none!important;
+}

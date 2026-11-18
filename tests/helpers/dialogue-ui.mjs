@@ -29,7 +29,7 @@ export async function mountDialogue(t, { threads = [], selected = null, override
   const sdk = await import("@assistant-ui/react");
   const markdown = await import("@assistant-ui/react-markdown");
   const icons = await import("lucide-react");
-  const externals = { react: React, "react-dom": ReactDOM, "react/jsx-runtime": jsx, "@assistant-ui/react": sdk, "@assistant-ui/react-markdown": markdown, "lucide-react": icons };
+  const externals = { react: React, "react-dom": ReactDOM, "react/jsx-runtime": jsx, "@assistant-ui/react": sdk, "@assistant-ui/react-markdown": markdown, "lucide-react": icons, "next/image": { default: (props) => { const attributes = { ...props }; delete attributes.fill; delete attributes.unoptimized; return React.createElement("img", attributes); } } };
   const cache = new Map();
   function load(path) {
     if (cache.has(path)) return cache.get(path);

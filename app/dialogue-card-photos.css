@@ -1,0 +1,35 @@
+/* Photography replaces the tiny placeholder layouts in the starter cards. */
+:root body .workspace-shell.is-dialogue .klio-glass .klio-card-photo-frame {
+  position:relative; display:block; flex:none; width:100%; height:72px; margin-top:10px;
+  overflow:hidden; border-radius:9px; background:var(--ui-selected); border:1px solid #ffffff24;
+}
+.klio-card-photo-frame>img { object-fit:cover; object-position:center; transition:scale .45s cubic-bezier(.22,1,.36,1); }
+.klio-card-photo-frame.is-topics>img { object-position:center 60%; }
+.klio-card-photo-pages { position:absolute; bottom:6px; left:0; right:0; display:flex; justify-content:center; gap:4px; }
+.klio-card-photo-pages>i { width:4px; height:4px; background:#ffffff8c; border-radius:50%; box-shadow:0 1px 3px #0004; }
+.klio-card-photo-pages>i:first-child { width:12px; border-radius:4px; background:#fff; }
+:root body .workspace-shell.is-dialogue .klio-glass .klio-glass-floating-card .klio-card-photo-frame { height:61px; min-height:0; margin-top:auto; }
+:root body .workspace-shell.is-dialogue .klio-glass .klio-glass-floating-card { display:flex; flex-direction:column; gap:5px; padding:10px; height:170px; }
+/* A selected tool stays in the fan; hover and keyboard focus lift it out. */
+:root body .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions>.klio-glass-tool-card {
+  --card-y:12px; --card-angle:-8deg;
+  transform:translateY(var(--card-y)) rotate(var(--card-angle));
+  transition:transform .4s cubic-bezier(.22,1,.36,1),border-color .25s,background .25s;
+  will-change:transform;
+}
+:root body .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions>.klio-glass-tool-card:nth-child(2) { --card-y:20px; --card-angle:-3deg; }
+:root body .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions>.klio-glass-tool-card:nth-child(3) { --card-y:12px; --card-angle:5deg; }
+:root body .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions>.klio-glass-tool-card:nth-child(4) { --card-y:6px; --card-angle:8deg; }
+:root body .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions>.klio-glass-tool-card[aria-pressed=true] { transform:translateY(var(--card-y)) rotate(var(--card-angle)); border-color:var(--glass-accent); }
+:root body .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions>.klio-glass-tool-card:is(:hover,:focus-visible) { transform:translateY(-30px) rotate(0deg); z-index:5; }
+:root body .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions>.klio-glass-tool-card:is(:hover,:focus-visible) .klio-card-photo-frame>img { scale:1.06; }
+@media(prefers-reduced-motion:reduce) {
+  :root body .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions>.klio-glass-tool-card,.klio-card-photo-frame>img { transition:none; }
+}
+:root body .workspace-shell.is-dialogue .klio-glass .klio-aui-root .klio-aui-suggestions>.klio-glass-tool-card { height:152px; min-height:152px; }
+@media(max-width:720px) { :root body .workspace-shell.is-dialogue .klio-glass .klio-aui-root .klio-aui-suggestions>.klio-glass-tool-card { height:170px; min-height:170px; } }
+:root body .workspace-shell.is-dialogue .klio-glass .klio-aui-root .klio-glass-floating-card { height:176px; }
+@media(max-width:720px) {
+  :root body .workspace-shell.is-dialogue .klio-glass .klio-aui-root .klio-aui-suggestions { width:calc(100% - 8px); gap:5px; }
+  :root body .workspace-shell.is-dialogue .klio-glass .klio-aui-root .klio-aui-suggestions>.klio-glass-tool-card { padding:12px 6px; }
+}

@@ -1,6 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from "react";
+import { SiteToggle } from "./site-toggle";
+
+import { useCallback, useEffect, useEffectEvent, useId, useRef, useState, useSyncExternalStore } from "react";
+import { Building2, FolderClosed, CalendarDays, Plus, ArrowUpRight, History, UserRound } from "lucide-react";
+import { DialogueRailToggle } from "./dialogue-rail-toggle";
 import { DialogueAssistantThread } from "./dialogue-assistant-thread";
 import { createDialogueSession } from "./dialogue-session";
 import { DialogueHistory } from "./dialogue-history";
@@ -30,6 +34,11 @@ import "./dialogue.css";
 import "./dialogue-chatkit.css";
 import "./dialogue-module-theme.css";
 import "./dialogue-assistant.css";
+import "./dialogue-glass.css";
+import "./dialogue-sections.css";
+import "./dialogue-controls.css";
+import "./dialogue-collapsible-rail.css";
+import "./dialogue-typography.css";
 
 type MutationResult = {
   thread: DialogueThread;
@@ -73,6 +82,26 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
   const chatReady = true;
   const [historyOpen, setHistoryOpen] = useState(false);
   const [brandMenuOpen, setBrandMenuOpen] = useState(false);
+  const brandMenu = useRef<HTMLDivElement>(null);
+  const brandMenuId = useId();
+  useEffect(() => {
+    if (!brandMenuOpen) return;
+    const outside = (event: PointerEvent) => {
+      if (!brandMenu.current?.contains(event.target as Node)) setBrandMenuOpen(false);
+    };
+    const key = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setBrandMenuOpen(false);
+      brandMenu.current?.querySelector<HTMLButtonElement>('[aria-label="Выбрать бизнес"]')?.focus();
+    };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", key);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", key);
+    };
+  }, [brandMenuOpen]);
   const [useBrandContext, setUseBrandContext] = useState(false);
   const [railOpen, setRailOpen] = useState(false);
   const [notice, setNotice] = useState("");
@@ -106,7 +135,13 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
   const selectedTool = toolChoice ?? (imageSource ? "image" : null);
   const imageUploading = upload?.view === snapshot.view && upload.busy;
   const updateUsage = useEffectEvent(() => { if (snapshot.thread) props.onUsage(); });
-  useEffect(() => { updateUsage(); }, [snapshot.thread?.id, snapshot.thread?.revision, snapshot.thread?.status]);
+  useEffect(() => {
+    // Updating the global account rerenders the whole workspace. Coalesce it
+    // after the composer has docked instead of blocking its first frames.
+    if (!snapshot.thread?.data.messages.length) return;
+    const timer = window.setTimeout(() => updateUsage(), 450);
+    return () => window.clearTimeout(timer);
+  }, [snapshot.thread?.id, snapshot.thread?.revision, snapshot.thread?.status, snapshot.thread?.data.messages.length]);
   const activeThreadId = snapshot.selectedId;
   const activeThreadRef = useRef(activeThreadId);
   useEffect(() => { activeThreadRef.current = activeThreadId; }, [activeThreadId]);
@@ -460,11 +495,13 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
 
   return (
     <div
-      className={`klio-chatkit-shell ${railOpen ? "rail-open" : ""}`}
+      className={`klio-chatkit-shell klio-glass ${railOpen ? "rail-open" : ""}`}
       hidden={!props.visible}
     >
       <aside className="klio-chatkit-rail" aria-label="Разделы КЛИО">
         <div className="klio-chatkit-rail-head">
+          <span className="klio-glass-rail-caption">Ваше пространство</span>
+          {props.onRailToggle && <DialogueRailToggle collapsed={Boolean(props.railCollapsed)} onToggle={() => { setBrandMenuOpen(false); props.onRailToggle?.(); }}/>}
           <button className="klio-chatkit-close-rail"
             type="button"
             aria-label="Закрыть меню"
@@ -476,23 +513,26 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
         <button
           type="button"
           className="klio-chatkit-new"
+          aria-label="Новый диалог" title="Новый диалог"
           disabled={snapshot.sending || actionBusy}
           onClick={() => void startNewThread()}
         >
-          <span aria-hidden="true">＋</span> Новый диалог
+          <span className="klio-glass-new-icon" aria-hidden="true"><Plus size={18}/></span><span className="klio-compact-label">Новый диалог</span>
         </button>
         <nav>
-          <button type="button" onClick={() => props.onNavigate("brand")}>
-            Мой бизнес
+          <button type="button" aria-label="Мой бизнес" title="Мой бизнес" onClick={() => props.onNavigate("brand")}>
+            <span className="klio-glass-nav-icon" aria-hidden="true"><Building2 size={18}/></span><span>Мой бизнес</span><ArrowUpRight className="klio-glass-nav-arrow" size={14} aria-hidden="true"/>
           </button>
-          <button type="button" onClick={() => props.onNavigate("history")}>
-            Материалы
+          <button type="button" aria-label="Материалы" title="Материалы" onClick={() => props.onNavigate("history")}>
+            <span className="klio-glass-nav-icon" aria-hidden="true"><FolderClosed size={18}/></span><span>Материалы</span><ArrowUpRight className="klio-glass-nav-arrow" size={14} aria-hidden="true"/>
           </button>
           <button
             type="button"
             onClick={() => props.onNavigate("publications")}
+            aria-label="Публикации"
+            title="Публикации"
           >
-            Публикации
+            <span className="klio-glass-nav-icon" aria-hidden="true"><CalendarDays size={18}/></span><span>Публикации</span><ArrowUpRight className="klio-glass-nav-arrow" size={14} aria-hidden="true"/>
           </button>
         </nav>
         <DialogueRecentThreads
@@ -505,13 +545,16 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
           onHistory={() => void openRecentThread()}
           onAction={(action, id) => void prepareThreadAction(action, id)}
         />
-        <div className="klio-chatkit-brand">
+        <button type="button" className="klio-compact-history" aria-label="История диалогов" title="История диалогов" onClick={() => void openRecentThread()}><History size={19}/><span className="klio-compact-label">История диалогов</span></button>
+        <div ref={brandMenu} className="klio-chatkit-brand">
           <span>Ваш бизнес</span>
           <div className="klio-chatkit-brand-select">
             <button
               type="button"
               aria-label="Выбрать бизнес"
               aria-expanded={brandMenuOpen}
+              aria-controls={brandMenuOpen ? brandMenuId : undefined}
+              aria-haspopup="listbox"
               disabled={snapshot.sending || actionBusy}
               onClick={() => setBrandMenuOpen((open) => !open)}
             >
@@ -519,7 +562,7 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
               <span title={props.brandName || "Личное пространство"}>{props.brandName || "Личное пространство"}</span>
               <em aria-hidden="true">⌄</em>
             </button>
-            {brandMenuOpen && <div className="klio-chatkit-brand-options">
+            {brandMenuOpen && <div id={brandMenuId} className="klio-chatkit-brand-options">
               {props.brands.length > 0 && <div role="listbox" aria-label="Выберите бизнес">
                 {props.brands.map((brand) => <button type="button" role="option" aria-selected={brand.id === props.brandId} key={brand.id} onClick={() => {
                   setBrandMenuOpen(false);
@@ -530,8 +573,8 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
             </div>}
           </div>
         </div>
-        <a className="klio-chatkit-account" href="/account">
-          Тариф и аккаунт
+        <a className="klio-chatkit-account" href="/account" aria-label="Тариф и аккаунт" title="Тариф и аккаунт">
+          <UserRound size={18}/><span>Тариф и аккаунт</span>
         </a>
       </aside>
       <button
@@ -582,7 +625,7 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
 <div className="klio-chatkit-composer-options">
           {selectedTool === "image" && generationSettings.imageKind !== "carousel" && <DialogueImageAttachment key={snapshot.view} source={imageSource} url={imageSource ? dialogueImageSourceUrl(imageSource, snapshot.thread?.data) : ""} busy={imageUploading} onBusy={(busy) => setUpload({ view: snapshot.view, busy })} onChange={session.setImageSource} />}
           <label className="klio-chatkit-brand-context">
-            <input type="checkbox" checked={useBrandContext} disabled={!props.brandId} onChange={(event) => setUseBrandContext(event.target.checked)} />
+            <input type="checkbox" role="switch" aria-label="Использовать профиль бренда" checked={useBrandContext} disabled={!props.brandId} onChange={(event) => setUseBrandContext(event.target.checked)} />
             <span>Профиль бренда</span>
             {useBrandContext && props.brandName && <strong title={props.brandName}>{props.brandName}</strong>}
           </label>
@@ -606,7 +649,7 @@ function NativeWorkspace(props: DialogueWorkspaceProps) {
                 <ModuleSelect variant="chatkit" label="Стиль изображения" value={generationSettings.imageStyle || ""} options={IMAGE_STYLE_OPTIONS.map(({ value, label }) => ({ value, label }))} onChange={(value) => changeSetting("imageStyle", value)} />
                 <ModuleSelect variant="chatkit" label="Ориентация" value={generationSettings.imageAspectRatio} options={IMAGE_ASPECT_OPTIONS} onChange={(value) => changeSetting("imageAspectRatio", value)} />
                 <ModuleSelect variant="chatkit" label="Формат файла" value={generationSettings.imageOutputFormat} options={IMAGE_FORMAT_OPTIONS} onChange={(value) => changeSetting("imageOutputFormat", value)} />
-                {props.hasLogo ? <label className="klio-chatkit-settings-logo"><input type="checkbox" checked={generationSettings.useLogo} onChange={(event) => changeSetting("useLogo", event.target.checked)} />Логотип на изображении</label> : <button type="button" className="klio-chatkit-settings-logo" onClick={() => props.onNavigate("brand")}>＋ Добавить логотип</button>}
+                {props.hasLogo ? <label className="klio-chatkit-settings-logo"><SiteToggle checked={generationSettings.useLogo} onChange={(event) => changeSetting("useLogo", event.target.checked)} />Логотип на изображении</label> : <button type="button" className="klio-chatkit-settings-logo" onClick={() => props.onNavigate("brand")}>＋ Добавить логотип</button>}
                 {generationSettings.imageKind !== "carousel" && <>
                   <ModuleSelect variant="chatkit" label="Текст на изображении" help="На обычной картинке надписи не будет, если вы не попросили о ней в описании. Для обложки статьи КЛИО может использовать её заголовок." value={generationSettings.imageTextMode || "auto"} options={IMAGE_TEXT_OPTIONS.filter(option => option.value !== "title")} onChange={value => changeSetting("imageTextMode", value)} />
                   {generationSettings.imageTextMode === "custom" && <label className="klio-image-text-setting">Текст для изображения<textarea rows={2} maxLength={200} value={generationSettings.imageText || ""} onChange={event => changeSetting("imageText", event.target.value)} /></label>}

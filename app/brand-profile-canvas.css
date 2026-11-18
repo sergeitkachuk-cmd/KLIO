@@ -1,0 +1,164 @@
+/* Brand profile board: compact editorial cards, independent of legacy form themes. */
+.brand-canvas { min-width:0; width:100%; }
+html:root body main.workspace-shell #brand-profile.brand-bento { --bento-ink:#202124; background:transparent!important; color:#f5f5f0!important; border:0!important; border-radius:24px!important; padding:0!important; margin:0!important; overflow:visible; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-board-header { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:0 2px 24px; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-board-header>div>span { font-size:10px; letter-spacing:.15em; color:#a2a39c; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-board-header h3 { font-size:28px!important; line-height:1.15; font-weight:550; letter-spacing:-.055em; color:#fafaf5!important; margin:6px 0 0!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-board-header h3>span { color:#dce780; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-board-readiness { width:148px; flex:none; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-board-readiness>span { display:flex; justify-content:space-between; font-size:11px!important; letter-spacing:0!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-board-readiness b { color:#e1e88c; font-size:12px; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-board-readiness>div { height:4px; border-radius:3px; background:#363733; margin-top:9px; overflow:hidden; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-board-readiness i { display:block; height:100%; background:#dce780; border-radius:3px; }
+html:root body main.workspace-shell #brand-profile.brand-bento :is(.brand-profile-body,.brand-tab-shell,.brand-field-group) { padding:0!important; margin:0!important; background:transparent!important; border:0!important; box-shadow:none!important; overflow:visible; max-height:none; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-board-section { display:flex; justify-content:space-between; gap:12px; padding:0 2px 12px; color:#b2b3aa; font-size:10px; letter-spacing:.08em; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-board-section>span:last-child:not(:first-child) { letter-spacing:0; color:#85867f; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-field-group { scroll-margin-top:24px; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-field-group+.brand-field-group { margin-top:28px!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-fields { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:12px; align-items:stretch; padding:0!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field { grid-column:span 3; display:flex; flex-direction:column; justify-content:flex-start; gap:14px; min-width:0; min-height:0!important; height:auto!important; margin:0!important; padding:22px!important; background:#f5e9df!important; color:var(--bento-ink)!important; border:0!important; border-radius:22px!important; box-shadow:none!important; position:relative; transform-origin:center; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-name) { grid-column:span 2; background:#efba48!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-description) { grid-column:span 4; background:#ecc7b7!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-positioning) { grid-column:span 3; background:#5a443d!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-audience) { grid-column:span 3; background:#f5e9df!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-advantages) { grid-column:span 2; background:#efba48!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-products) { grid-column:span 2; background:#e4e3de!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-services) { grid-column:span 2; background:#e8c3ba!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-geography) { grid-column:span 2; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-proof) { grid-column:span 4; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-website) { grid-column:span 6; background:#23252a!important; color:#f5f5ef!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-voice) { grid-column:span 4; background:#ecc7b7!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-vocabulary) { grid-column:span 2; background:#ead8c3!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-cta) { background:#efba48!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .profile-field-heading { display:flex; align-items:center; gap:8px; margin:0!important; padding:0!important; min-height:20px; }
+html:root body main.workspace-shell #brand-profile.brand-bento .profile-field-heading label { font-size:11px!important; line-height:1.3; font-weight:550; letter-spacing:.025em; color:#50514b!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .profile-help-trigger { display:grid; place-items:center; width:18px!important; height:18px!important; min-width:18px!important; min-height:18px!important; margin:0!important; padding:0!important; background:#2021240c!important; color:#565750!important; border:0!important; border-radius:50%!important; font-size:10px!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .profile-help-trigger span { font-size:10px!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .profile-field-help { z-index:20; color:#202124!important; background:#fff!important; border:1px solid #ddd!important; box-shadow:0 10px 24px #0002; font-size:12px; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field :is(input:not([type=checkbox]):not([type=file]),textarea) { width:100%; color:#202124!important; background:transparent!important; border:0!important; border-radius:6px!important; box-shadow:none!important; padding:0!important; margin:0!important; font-size:14px!important; line-height:1.6!important; font-weight:450; min-height:0!important; max-height:none!important; resize:none; outline-offset:5px; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field textarea { flex:1; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-name) input { font-size:clamp(23px,2.8vw,36px)!important; font-weight:600; letter-spacing:-.05em; margin-top:auto!important; margin-bottom:8px!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-description) textarea { font-size:17px!important; line-height:1.55!important; letter-spacing:-.02em; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:focus-within { z-index:3; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field :is(input,textarea):is(:focus,:focus-visible) { outline:none!important; outline-offset:0!important; box-shadow:none!important; border:0!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-website-row { display:flex!important; flex-wrap:wrap; align-items:center; gap:10px; min-width:0; min-height:0!important; padding:0!important; border:0!important; border-radius:0!important; background:transparent!important; box-shadow:none!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-website-row input:not([type=file]) { flex:1 1 180px; width:auto; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-website-row :is(button,a) { flex:0 1 auto; width:auto; min-height:32px; max-width:100%; padding:8px 13px!important; font-size:11px!important; border:0!important; border-radius:999px!important; background:#24262a!important; color:#fafaf4!important; white-space:normal; text-decoration:none; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-website-row button:disabled { opacity:.5; cursor:not-allowed; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-book-status { flex:1 1 120px!important; font-size:12px!important; font-weight:450; color:#66675e!important; white-space:normal!important; overflow-wrap:anywhere; }
+html:root body main.workspace-shell #brand-profile.brand-bento .profile-fill-replace { display:flex; align-items:center; gap:8px; margin:0!important; color:#606158!important; font-size:11px!important; line-height:1.4; }
+html:root body main.workspace-shell #brand-profile.brand-bento .profile-fill-replace input { width:14px!important; height:14px!important; flex:none; accent-color:#77814e; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-website) :is(label,input:not([type=checkbox]),.profile-fill-replace) { color:#dbdcd4!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-website) .profile-help-trigger { background:#ffffff13!important; color:#ddd!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-website) .brand-website-row button { background:#efba48!important; color:#22251b!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .profile-voice-fill { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin:0 0 12px!important; padding:14px 18px!important; background:#23252a!important; border:0!important; border-radius:18px!important; color:#d5d6ce!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .profile-voice-fill .button { background:#efba48!important; color:#22251b!important; font-size:11px!important; min-height:32px; border-radius:999px!important; border:0!important; padding:8px 14px!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .profile-voice-fill .profile-fill-replace { color:#babcb2!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-footer { display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; margin:20px 0 0!important; padding:0!important; background:transparent!important; border:0!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-footer :is(p,button) { font-size:11px!important; color:#b2b3aa!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-footer button { min-height:32px; padding:8px 12px!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-footer .primary { background:#efba48!important; color:#22251b!important; }
+@media(max-width:1100px) {
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-fields .brand-profile-field { grid-column:span 1; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-fields .brand-profile-field:has(#brand-website) { grid-column:span 2; }
+}
+@media(max-width:640px) {
+html:root body main.workspace-shell #brand-profile.brand-bento { padding:16px!important; border-radius:20px!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-fields { grid-template-columns:minmax(0,1fr); }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-fields .brand-profile-field { grid-column:1!important; padding:20px!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-board-header { align-items:flex-start; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-board-header h3 { font-size:23px!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-board-readiness { width:100px; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-board-section>span:last-child:not(:first-child) { display:none; }
+}
+@media(prefers-reduced-motion:reduce) { .brand-canvas .brand-profile-field { transform:none!important; } }
+html:root body main.workspace-shell #brand-profile.brand-bento :is(.brand-profile-body,.brand-tab-shell,.brand-field-group,.brand-fields) { width:100%!important; max-width:100%!important; min-width:0!important; box-sizing:border-box; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-board-readiness>span { gap:10px; white-space:nowrap; }
+@media(max-width:640px) {
+  html:root body main.workspace-shell #brand-profile.brand-bento .brand-board-header { gap:8px; flex-wrap:wrap; }
+  html:root body main.workspace-shell #brand-profile.brand-bento .brand-board-header h3 { font-size:22px!important; }
+  html:root body main.workspace-shell #brand-profile.brand-bento .brand-board-readiness { width:92px; }
+  html:root body main.workspace-shell #brand-profile.brand-bento .brand-board-readiness>span { font-size:9px!important; gap:4px; }
+}
+
+/* Editorial content and cover occupy the cards instead of a wall of inputs. */
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field { gap:18px; overflow:visible; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-name) { background:#f5e9df!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field[data-field=brand-name] { background:#f5e9df!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-photo-card { position:relative; grid-column:span 3; min-height:330px; isolation:isolate; border-radius:25px; overflow:hidden; color:#fff; background:#594b3d; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-photo-card>img { object-fit:cover; z-index:-2; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-photo-card::after { content:""; position:absolute; inset:0; background:linear-gradient(180deg,#171b1945,transparent 35%,#171b19c9); z-index:-1; pointer-events:none; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-photo-top { position:absolute; inset:20px 22px auto; display:flex; justify-content:space-between; align-items:center; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-photo-top>span { display:flex; gap:8px; align-items:center; font-size:10px; letter-spacing:.08em; background:#ffffff1c; backdrop-filter:blur(12px); border-radius:999px; padding:9px 12px; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-photo-caption { position:absolute; inset:auto 24px 24px; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-photo-caption>span { font-size:11px; color:#ffffffe0; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-photo-caption h4 { font-size:clamp(26px,3.5vw,44px); font-weight:550; line-height:1.05; letter-spacing:-.045em; color:white; margin:8px 0 18px; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-photo-caption button { display:inline-flex; align-items:center; gap:8px; padding:10px 14px!important; min-height:34px; border:1px solid #ffffff45!important; border-radius:999px!important; background:#ffffff20!important; backdrop-filter:blur(12px); color:white!important; font-size:11px!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-photo-caption .brand-photo-remove { margin-left:8px; background:transparent!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-photo-error { position:absolute; top:64px; left:20px; right:20px; background:#44221fdc; color:#fff; border-radius:12px; padding:12px; font-size:12px; }
+html:root body main.workspace-shell #brand-profile.brand-bento .profile-field-heading { padding-right:24px!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-field-symbol { flex:none; opacity:.7; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-field-edit { position:absolute; top:17px; right:17px; width:28px; height:28px; min-height:28px!important; padding:0!important; display:grid; place-items:center; border:1px solid #25251d1a!important; border-radius:50%!important; background:transparent!important; color:inherit!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-editorial-value { flex:1; min-width:0; overflow-wrap:anywhere; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-editorial-value p { white-space:pre-wrap; margin:0!important; color:inherit!important; font-size:15px; font-weight:400; line-height:1.65; }
+html:root body main.workspace-shell #brand-profile.brand-bento [data-field=brand-name] .brand-editorial-value { display:flex; align-items:flex-end; }
+html:root body main.workspace-shell #brand-profile.brand-bento [data-field=brand-name] .brand-editorial-value p { font-size:clamp(26px,3.5vw,42px); line-height:1.08; letter-spacing:-.055em; font-weight:550; }
+html:root body main.workspace-shell #brand-profile.brand-bento [data-field=brand-description] .brand-editorial-value p { font-size:20px; line-height:1.45; letter-spacing:-.025em; }
+html:root body main.workspace-shell #brand-profile.brand-bento [data-field=brand-positioning] { background:#5a443d!important; color:#fff0e4!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento [data-field=brand-positioning] .profile-field-heading label { color:#f2d9cb!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento [data-field=brand-positioning] .profile-help-trigger { background:#ffffff15!important; color:#ead8cb!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento [data-field=brand-positioning] .brand-editorial-value p { font-size:22px; line-height:1.4; letter-spacing:-.025em; }
+html:root body main.workspace-shell #brand-profile.brand-bento [data-field=brand-positioning] .brand-editorial-value::before { content:"“"; display:block; font-family:Georgia,serif; font-size:68px; line-height:.65; color:#eabb94; }
+html:root body main.workspace-shell #brand-profile.brand-bento [data-field=brand-positioning] .brand-field-editor textarea { color:#fff0e4!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-editorial-value ul { display:flex; flex-direction:column; gap:8px; list-style:none; padding:0; margin:0; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-editorial-value li { display:flex; gap:9px; align-items:flex-start; padding:10px 12px; background:#ffffff38; border:1px solid #ffffff18; border-radius:14px; font-size:13px; line-height:1.5; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-list-marker { display:grid; place-items:center; flex:0 0 17px; height:17px; border-radius:5px; background:#29271f; color:#fff6e7; font-size:10px; margin-top:2px; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-word-pills { display:flex; flex-wrap:wrap; gap:8px; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-word-pills>span { border:1px solid #3b302b24; border-radius:999px; padding:9px 13px; font-size:13px; line-height:1.5; background:#ffffff35; }
+html:root body main.workspace-shell #brand-profile.brand-bento [data-field=brand-vocabulary] { background:#ead8c3!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento [data-field=brand-voice] .brand-editorial-value p { font-size:23px; letter-spacing:-.03em; line-height:1.45; }
+html:root body main.workspace-shell #brand-profile.brand-bento [data-field=brand-cta] { padding-right:60px!important; background:#efba48!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento [data-field=brand-cta] .brand-editorial-value p { font-size:20px; letter-spacing:-.025em; line-height:1.4; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-cta-arrow { position:absolute; right:23px; bottom:23px; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-field-empty { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; background:transparent!important; color:inherit!important; opacity:.6; border:1px dashed #443b3040!important; border-radius:14px!important; padding:14px!important; font-size:13px!important; text-align:left; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-field-editor[hidden] { display:none!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-field-editor { min-width:0; padding:12px; border:1px solid #39332830; border-radius:12px; background:transparent; }
+html:root body main.workspace-shell #brand-profile.brand-bento .is-editing .brand-field-edit { background:#29271f!important; color:#fff!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field .brand-field-editor :is(input,textarea) { font-size:15px!important; }
+@media(min-width:1101px) {
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-photo-card { grid-column:4 / span 3!important; grid-row:1 / span 2!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento [data-field=brand-name] { grid-column:1 / span 3!important; grid-row:1!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento [data-field=brand-description] { grid-column:1 / span 3!important; grid-row:2!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento [data-field=brand-positioning] { grid-column:1 / span 4!important; grid-row:3!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento [data-field=brand-audience] { grid-column:5 / span 2!important; grid-row:3!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento [data-field=brand-advantages] { grid-column:1 / span 2!important; grid-row:4 / span 2!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento [data-field=brand-products] { grid-column:3 / span 2!important; grid-row:4!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento [data-field=brand-services] { grid-column:5 / span 2!important; grid-row:4!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento [data-field=brand-proof] { grid-column:3 / span 2!important; grid-row:5!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento [data-field=brand-geography] { grid-column:5 / span 2!important; grid-row:5!important; }
+}
+@media(max-width:1100px) {
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-photo-card { grid-column:span 2; min-height:300px; }
+}
+@media(max-width:640px) {
+html:root body main.workspace-shell #brand-profile.brand-bento { padding:0!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-photo-card { grid-column:1; min-height:310px; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-photo-card { order:-1; }
+}
+@media(prefers-reduced-motion:reduce) { .brand-canvas [data-brand-motion] { transform:none!important; } }
+
+/* Keep a single editor boundary in both idle and focused states. */
+html:root body main.workspace-shell.is-professional #brand-profile.brand-bento :is(input:not([type=checkbox]):not([type=file]),textarea):is(:focus,:focus-visible) {
+  outline:none!important; outline-offset:0!important; box-shadow:none!important; border:0!important; background:transparent!important;
+}
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field { --brand-card-text:#202124; --brand-card-label:#49443d; color:var(--brand-card-text)!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-positioning) { --brand-card-text:#fff0e4; --brand-card-label:#f2d9cb; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-website) { --brand-card-text:#f5f5ef; --brand-card-label:#dbdcd4; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field .profile-field-heading label { color:var(--brand-card-label)!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field :is(.brand-editorial-value,.brand-editorial-value p,.brand-editorial-value li,.brand-word-pills>span,.brand-field-editor input,.brand-field-editor textarea) { color:var(--brand-card-text)!important; -webkit-text-fill-color:var(--brand-card-text)!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field :is(input,textarea)::placeholder { color:var(--brand-card-label)!important; -webkit-text-fill-color:var(--brand-card-label)!important; opacity:1; }
+html:root body:has(main.workspace-shell[data-active-module=brand]) .workspace-writing-glow-clip { display:none!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-positioning) .brand-field-editor textarea { color:#fff0e4!important; caret-color:#fff0e4!important; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field:has(#brand-positioning) .brand-field-editor { border-color:#fff0e440; }
+html:root body main.workspace-shell #brand-profile.brand-bento .brand-profile-field .brand-list-marker { color:#fff6e7!important; -webkit-text-fill-color:#fff6e7!important; }

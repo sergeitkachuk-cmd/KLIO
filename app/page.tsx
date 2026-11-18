@@ -1,5 +1,2 @@
-import TextoraExperience from "./textora-experience";
-
-export default function Home() {
-  return <TextoraExperience key="landing" />;
-}
+import CinematicHome from "./cinematic-home";
+export default function Home() { return <CinematicHome/>; }

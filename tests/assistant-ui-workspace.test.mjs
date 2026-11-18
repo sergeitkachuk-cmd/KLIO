@@ -10,7 +10,7 @@ function withCard(value) { return sampleThread("saved", { data: { messages: [{ i
 test("real assistant-ui renders locally with no domain key, script, iframe or fallback", async (t) => {
   const ui = await mountDialogue(t);
   assert.ok(ui.document.querySelector("textarea.klio-aui-input"));
-  assert.ok(ui.document.body.textContent.includes("Чем я могу помочь?"));
+  assert.ok(ui.document.body.textContent.includes("Приступим?"));
   assert.equal(ui.document.querySelector("iframe,script,openai-chatkit"), null);
   await ui.type("Как дела?"); await ui.click(ui.findButton("Отправить сообщение"));
   assert.equal(ui.calls.filter((c) => c.action === "send").length, 1);

@@ -1,0 +1,581 @@
+/* Dialogue-only glass edition. The visible shell is the boundary: landing,
+   professional tools and hidden dialogue instances keep their existing styles. */
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) {
+  background:radial-gradient(ellipse at 50% 115%,#206277 0%,#26363d 42%,#292929 80%);
+}
+:root body .workspace-shell.is-dialogue:has(> .klio-glass) {
+  --ck-bg:#0a0d11;
+  --ck-rail:rgba(18,28,33,.46);
+  --ck-panel:rgba(37,58,67,.38);
+  --ck-hover:rgba(171,226,233,.08);
+  --ck-text:#edf5f5;
+  --ck-muted:#93a9ae;
+  --ck-line:rgba(192,225,229,.13);
+  --glass-surface:linear-gradient(135deg,rgba(202,232,235,.095),rgba(66,100,111,.055) 48%,rgba(6,14,20,.16));
+  --glass-elevated:linear-gradient(145deg,rgba(189,224,230,.16),rgba(52,86,98,.11) 50%,rgba(11,24,31,.28));
+  --glass-highlight:rgba(217,243,245,.22);
+  --glass-accent:#9cdce1;
+  --glass-on-accent:#10262d;
+  --glass-shadow:0 12px 30px rgba(0,7,12,.14),inset 0 1px 0 rgba(236,252,253,.08);
+  position:relative;
+  isolation:isolate;
+  width:calc(100% - 32px);
+  height:calc(100dvh - 32px);
+  min-height:0;
+  margin:16px;
+  padding:0;
+  overflow:hidden;
+  border:1px solid rgba(194,227,231,.19);
+  border-radius:32px;
+  color:var(--ck-text);
+  background:
+    radial-gradient(ellipse at 50% 116%,rgba(14,105,143,.56),transparent 64%),
+    radial-gradient(ellipse at 82% 85%,rgba(19,56,82,.12),transparent 49%),
+    linear-gradient(180deg,#0b0b0e 21%,#0a1017 59%,#0a202e)!important;
+  box-shadow:0 24px 90px rgba(0,0,0,.16),inset 0 1px 0 rgba(239,255,255,.05);
+}
+:root body .workspace-shell.is-dialogue:has(> .klio-glass):before { display:none; }
+:root body .workspace-shell.is-dialogue:has(> .klio-glass)>.workspace-header {
+  position:relative;
+  top:auto;
+  z-index:20;
+  flex-shrink:0;
+  width:100%;
+  max-width:none;
+  height:76px;
+  min-height:76px;
+  margin:0;
+  padding:0 27px;
+  border:0;
+  border-radius:0;
+  color:var(--ck-text);
+  background:transparent!important;
+  box-shadow:none;
+  backdrop-filter:none;
+}
+:root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-header .brand { gap:9px; }
+:root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-header .brand i {
+  width:30px; height:30px; border:1px solid rgba(219,244,246,.35); border-radius:11px;
+  background:var(--glass-surface); color:var(--ck-text); box-shadow:inset 0 1px 1px #ffffff16;
+}
+:root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-header .brand b { color:var(--ck-text); font-size:21px; letter-spacing:-.7px; }
+:root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-header .brand b>span { color:var(--glass-accent); }
+:root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-mode-switch {
+  --mode-bg:transparent; --mode-text:var(--ck-muted); --mode-line:var(--ck-line); --mode-selected-bg:rgba(184,222,227,.13); --mode-selected-text:var(--ck-text);
+  padding:5px; gap:4px; border:1px solid var(--ck-line); border-radius:20px;
+  background:var(--glass-surface); box-shadow:inset 0 1px 0 #ffffff08;
+}
+:root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-mode-switch button {
+  min-height:32px; padding:8px 17px; border:1px solid transparent; border-radius:14px;
+  background:transparent; color:var(--ck-muted); font-size:11px; font-weight:500;
+  box-shadow:none; transition:background .25s,color .25s;
+}
+:root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-mode-switch button[aria-pressed="true"] {
+  border-color:rgba(215,241,243,.15); background:var(--glass-elevated); color:var(--ck-text); box-shadow:0 3px 10px #00000012,inset 0 1px 0 #ffffff0a;
+}
+:root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-header :is(.theme-toggle,.workspace-account i) {
+  width:37px; height:37px; border-radius:14px; background:var(--glass-surface); color:var(--ck-text); border:1px solid var(--ck-line); box-shadow:inset 0 1px 0 #ffffff0a; backdrop-filter:blur(16px);
+}
+:root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-account { background:transparent; box-shadow:none; }
+:root body .workspace-shell.is-dialogue:has(> .klio-glass) .account-menu-list {
+  border:1px solid var(--glass-highlight); border-radius:23px; background:rgba(20,36,43,.95); color:var(--ck-text); box-shadow:0 20px 60px #0004; backdrop-filter:blur(28px);
+}
+/* The rail is an inset frosted panel, with the same material as the composer. */
+:root .workspace-shell.is-dialogue .klio-glass.klio-chatkit-shell {
+  --ck-rail-width:264px;
+  position:relative;
+  grid-template-columns:var(--ck-rail-width) minmax(0,1fr);
+  flex:1; min-height:0;
+  margin:0 13px 13px;
+  border:0; border-radius:0;
+  color:var(--ck-text);
+  background:transparent!important;
+  overflow:hidden;
+}
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-rail {
+  position:relative; z-index:6;
+  min-height:0; gap:8px; padding:20px 15px 17px;
+  border:1px solid rgba(200,231,235,.12); border-top-color:rgba(210,239,242,.2); border-radius:25px;
+  background:linear-gradient(155deg,rgba(128,163,174,.09),rgba(39,65,77,.06) 48%,rgba(88,135,145,.1))!important;
+  box-shadow:inset 0 1px 1px #ffffff06,0 8px 35px #0000000a;
+  backdrop-filter:blur(24px) saturate(120%);
+}
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-rail-head { display:flex; min-height:19px; padding:0 9px 12px; }
+.klio-glass-rail-caption { font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--ck-muted); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-close-rail { display:none; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-new {
+  display:flex; justify-content:flex-start; align-items:center; gap:11px;
+  min-height:53px; padding:10px 13px; margin:0 0 13px;
+  border:1px solid var(--glass-highlight); border-radius:17px;
+  background:var(--glass-elevated); color:var(--ck-text);
+  font-size:13px; font-weight:550; letter-spacing:0; text-transform:none;
+  box-shadow:var(--glass-shadow); transition:background .25s,border-color .25s,transform .25s;
+}
+.klio-glass-new-icon { display:grid; place-items:center; width:29px; height:29px; border:1px solid #e1f8fa16; border-radius:10px; background:#ccf6fb0b; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-new:hover:not(:disabled) { border-color:rgba(190,237,242,.4); background:linear-gradient(145deg,#bdeefb24,#4c929f1a); transform:translateY(-1px); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-rail>nav { display:grid; gap:7px; margin:0 0 21px; padding:0; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-rail>nav>button {
+  display:flex; align-items:center; gap:11px; min-height:46px; padding:8px 11px;
+  border:1px solid rgba(216,240,243,.075); border-radius:15px;
+  background:linear-gradient(120deg,rgba(191,218,224,.035),transparent); color:var(--ck-muted);
+  font-size:13px; font-weight:450; text-transform:none; letter-spacing:0; box-shadow:none;
+  transition:background .25s,border-color .25s,color .25s,transform .25s;
+}
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-rail>nav>button:hover { background:var(--glass-elevated); color:var(--ck-text); border-color:var(--ck-line); transform:translateX(2px); }
+.klio-glass-nav-icon { display:grid; place-items:center; width:29px; height:29px; border-radius:10px; background:rgba(196,230,235,.04); color:var(--ck-text); }
+.klio-glass-nav-arrow { margin-left:auto; opacity:.4; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-recent { flex:1 1 auto; min-height:90px; margin:0; padding:0 4px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-recent h2 { margin:0 0 13px; padding:0 8px; color:var(--ck-muted); font-size:9px; font-weight:500; letter-spacing:.13em; text-transform:uppercase; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-recent>p { padding:0 8px; font-size:11px; color:var(--ck-muted); line-height:1.7; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-recent ul { display:grid; gap:4px; margin:0; padding:0; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-recent li { min-height:40px; border:1px solid transparent; border-radius:12px; transition:background .2s,border-color .2s; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-recent li:hover,
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-recent li:has([aria-current="page"]) { border-color:var(--ck-line); background:rgba(175,218,226,.055); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-thread-open { color:var(--ck-muted); min-height:38px; padding:9px 8px; font-size:12px; border-radius:11px; background:transparent; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-thread-open[aria-current="page"] { color:var(--ck-text); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-all-history { margin:11px 0 0; padding:8px; font-size:10px; background:transparent; color:var(--ck-muted); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand { flex-shrink:0; margin:16px 0 0; padding:13px 11px; border:1px solid var(--ck-line); border-radius:18px; background:var(--glass-surface); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand>span { display:block; margin-bottom:9px; color:var(--ck-muted); font-size:9px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-select>button { display:flex; gap:10px; align-items:center; min-height:38px; padding:0; width:100%; border:0; background:transparent; color:var(--ck-text); box-shadow:none; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-select>button>i { display:grid; place-items:center; width:32px; height:32px; border-radius:11px; border:1px solid var(--glass-highlight); background:linear-gradient(135deg,#c2f5f11a,#429daf12); color:var(--ck-text); font-size:14px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-select>button>span { font-size:11px; font-weight:500; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-account { margin-top:7px; padding:10px 12px 0; color:var(--ck-muted); font-size:10px; }
+/* Empty state, floating tool tiles and the writing panel form one composition. */
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-main { min-width:0; background:transparent!important; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-toolbar { height:42px; min-height:42px; padding:6px 13px 0 18px; background:transparent; color:var(--ck-muted); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-toolbar>button { width:34px; height:34px; border:1px solid var(--ck-line); border-radius:12px; color:var(--ck-muted); background:var(--glass-surface); box-shadow:inset 0 1px 0 #ffffff07; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-viewport { padding:0 34px; scrollbar-color:rgba(178,217,223,.18) transparent; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-welcome,
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-footer,
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-messages { max-width:810px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-root.is-empty .klio-aui-viewport { justify-content:safe center; padding-top:32px; padding-bottom:38px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-welcome { position:relative; z-index:1; flex-shrink:0; padding-bottom:29px; text-align:center; }
+.klio-glass-emblem { position:relative; display:grid; place-items:center; width:65px; height:65px; margin:0 auto 18px; border:1px solid rgba(211,247,249,.3); border-radius:24px; background:radial-gradient(ellipse at 20% 0%,#ccf4f52b,transparent 65%),linear-gradient(145deg,#668b9220,#122c33a6); box-shadow:inset 0 1px 1px #e6fdff38,0 12px 35px #08181b33; transform:rotate(-7deg); }
+.klio-glass-emblem:before { content:""; position:absolute; z-index:-1; inset:-25px; border-radius:50%; background:radial-gradient(ellipse,#55b6c12b,transparent 67%); filter:blur(10px); }
+.klio-glass-emblem>span { color:var(--ck-text); font-size:30px; font-weight:300; transform:rotate(7deg); }
+.klio-glass-emblem>i { position:absolute; bottom:9px; right:9px; width:4px; height:4px; background:#a1e9e7; border-radius:50%; box-shadow:0 0 10px #6de3ea66; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-eyebrow { margin:0 0 11px; font-size:8px; line-height:1.5; letter-spacing:.2em; color:var(--ck-muted); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-welcome h1 { margin:0; color:var(--ck-text); font-size:clamp(28px,3.1vw,44px); line-height:1.18; font-weight:500; letter-spacing:-.055em; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-welcome h1>span { color:#abcacf; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-welcome-copy { max-width:470px; margin:13px auto 0; color:var(--ck-muted); font-size:13px; line-height:1.75; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-footer { max-width:710px; padding:18px 0 14px; background:transparent; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-footer:before { top:12px; bottom:0; border-radius:32px 32px 0 0; clip-path:none; background:linear-gradient(transparent,var(--ck-bg) 96%); backdrop-filter:blur(16px); opacity:.88; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-root.is-empty .klio-aui-footer { padding-top:0; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-root.is-empty .klio-aui-footer:before { display:none; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); position:relative; z-index:1; gap:3px; margin:0 27px -64px; padding-top:42px; align-items:stretch; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions .klio-glass-tool-card {
+  display:flex; position:relative; flex-direction:column; align-items:flex-start; justify-content:flex-start; gap:0;
+  min-height:200px; min-width:0; padding:15px 13px 24px; border:1px solid rgba(206,236,240,.15); border-top-color:rgba(232,252,253,.24); border-radius:22px;
+  background:linear-gradient(145deg,rgba(209,239,244,.075),rgba(77,112,125,.025) 52%,rgba(17,36,45,.08));
+  color:var(--ck-text); text-align:left; box-shadow:0 15px 28px #00000025,inset 0 1px 1px #ffffff1c,inset -1px -1px 0 #ffffff05;
+  backdrop-filter:blur(12px) saturate(115%); transform-origin:50% 100%; transition:transform .55s cubic-bezier(.22,1,.36,1),border-color .3s,background .3s,box-shadow .4s;
+}
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-card:nth-child(1) { transform:translateY(18px) rotate(-9deg); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-card:nth-child(2) { transform:translateY(-7px) rotate(-4deg); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-card:nth-child(3) { transform:translateY(11px) rotate(6deg); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-card:nth-child(4) { transform:translateY(-1px) rotate(10deg); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-card:is(:hover,:focus-visible,[aria-pressed="true"]) { z-index:5; transform:translateY(-45px) rotate(0) scale(1.025); border-color:rgba(185,236,243,.4); background:linear-gradient(145deg,rgba(211,242,246,.12),rgba(81,151,169,.065)); box-shadow:0 14px 25px #00000012,inset 0 1px 0 #ffffff18; color:var(--ck-text); }
+.klio-glass-folder { position:relative; display:grid; place-items:center; width:32px; height:26px; margin-bottom:9px; border:1px solid #bbf0f62e; border-radius:7px; background:linear-gradient(150deg,#b9f0f61c,#2a7b920a); color:#b5e4e8; box-shadow:0 4px 9px #00101722,inset 0 1px 1px #ffffff1a; }
+.klio-glass-folder:before { content:""; position:absolute; left:2px; top:-5px; width:14px; height:5px; border:1px solid #c5f4f62e; border-bottom:0; border-radius:4px 4px 0 0; background:#96cddc25; }
+.klio-glass-tool-name { display:block; font-size:12px; font-weight:500; line-height:1.5; color:var(--ck-text); letter-spacing:-.015em; }
+.klio-glass-tool-description { display:block; max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:5px; font-size:10px; font-weight:400; line-height:1.6; color:var(--ck-muted); }
+.klio-glass-tool-arrow { position:absolute; top:13px; right:14px; font-size:14px; color:var(--ck-muted); opacity:.6; }
+.klio-glass-input-panel { position:relative; z-index:2; padding:13px 18px 10px; border:1px solid rgba(209,240,244,.22); border-top-color:rgba(228,252,254,.35); border-radius:29px; background:linear-gradient(130deg,rgba(196,233,241,.12),rgba(68,117,134,.07) 55%,rgba(17,34,42,.2)); box-shadow:0 20px 50px #0000001a,inset 0 1px 0 #efffff0d; backdrop-filter:blur(30px) saturate(125%); }
+.klio-glass-input-panel:before { content:""; pointer-events:none; position:absolute; inset:-1px; border-radius:29px; background:radial-gradient(ellipse at 15% 0%,#c0f8ff13,transparent 50%); }
+.klio-glass-input-caption { display:flex; align-items:center; justify-content:space-between; gap:15px; margin:0 0 9px; font-size:9px; color:var(--ck-muted); }
+.klio-glass-input-caption>span:first-child { display:flex; align-items:center; gap:6px; }.klio-glass-input-caption i { width:4px; height:4px; border-radius:50%; background:#a0dadb; box-shadow:0 0 7px #8ad5dc33; }.klio-glass-input-caption>span:last-child { font-size:7px; letter-spacing:.13em; opacity:.75; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-composer { display:flex; flex-direction:column; gap:8px; align-items:stretch; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-composer .klio-aui-input { display:block; width:100%; min-height:30px; max-height:180px; margin:0; padding:2px 0 3px; border:0; border-radius:0; background:transparent; color:var(--ck-text); font-family:inherit; font-size:15px; line-height:1.7; box-shadow:none; resize:none; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-input::placeholder { color:var(--ck-muted); opacity:.88; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-input:focus { outline:none; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-compose-tools { display:flex; align-items:center; justify-content:flex-start; gap:9px; min-height:36px; width:100%; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-picker { position:relative; flex-shrink:0; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-icon { width:35px; height:35px; border:1px solid var(--glass-highlight); border-radius:12px; background:linear-gradient(145deg,#ddfbff12,#5c9fa106); color:var(--ck-text); box-shadow:0 6px 13px #00000025,inset 0 1px 1px #ffffff1c; transform:translateY(-1px); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-root .klio-aui-send { width:37px; height:37px; min-width:37px; margin-left:auto; padding:0; border:1px solid #d1f1f633; border-radius:15px; background:linear-gradient(145deg,#cef3f525,#6bb7c00e); color:var(--ck-text); box-shadow:0 7px 16px #00101838,inset 0 1px 1px #ffffff30; transform:translateY(-1px); transition:filter .2s,transform .2s; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-send:disabled { opacity:.45; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-send:hover:not(:disabled) { filter:brightness(1.12); transform:translateY(-1px); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-send:active:not(:disabled) { transform:translateY(1px); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-tool-chip { min-width:0; padding:8px 11px; border:1px solid var(--ck-line); border-radius:13px; font-size:10px; background:var(--glass-surface); color:var(--ck-text); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-tool-chip>svg { flex-shrink:0; width:14px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-footer .klio-chatkit-composer-options { padding:8px 0 0; margin-top:8px; border-top:1px solid var(--ck-line); gap:8px 13px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-context { min-height:24px; padding:2px 6px; gap:7px; color:var(--ck-muted); font-size:10px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-context input { appearance:none; -webkit-appearance:none; position:relative; flex:0 0 32px; width:32px; height:19px; margin:0; border:1px solid var(--glass-highlight); border-radius:20px; background:rgba(171,207,227,.07); cursor:pointer; box-shadow:inset 0 2px 5px #0002; transition:background .25s,border-color .25s; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-context strong { font-size:9px; font-weight:450; padding:3px 7px; border:1px solid var(--ck-line); border-radius:7px; background:#dbfaff06; color:var(--ck-text); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-tool-menu { width:230px; bottom:48px; left:0; padding:8px; border:1px solid rgba(198,238,243,.2); border-radius:21px; color:var(--ck-text); background:rgba(20,38,45,.96); box-shadow:0 18px 45px #0004; backdrop-filter:blur(28px); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-tool-menu button { padding:11px; border-radius:13px; font-size:12px; color:var(--ck-text); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-tool-menu button:is(:hover,[aria-pressed="true"]) { background:rgba(188,234,240,.09); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-disclaimer { max-width:100%; margin:13px 0 0; color:var(--ck-muted); font-size:9px; line-height:1.5; opacity:.7; text-align:center; }
+/* Conversation and results use the same readable glass surfaces. */
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-messages { padding-top:18px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-message { color:var(--ck-text); font-size:14px; font-weight:400; line-height:1.8; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-message.is-user .klio-aui-message-text { padding:14px 20px; border:1px solid var(--ck-line); border-top-color:var(--glass-highlight); border-radius:23px 23px 7px 23px; background:var(--glass-surface); backdrop-filter:blur(15px); box-shadow:inset 0 1px 0 #ffffff05; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-card:not(.is-image) { padding:23px; border:1px solid var(--ck-line); border-top-color:var(--glass-highlight); border-radius:25px; background:var(--glass-surface); box-shadow:var(--glass-shadow); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-card h3 { color:var(--ck-text); font-weight:550; font-size:18px; letter-spacing:-.02em; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-card-body { color:var(--ck-text); font-size:14px; line-height:1.85; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-result-actions-buttons :is(button,a) { border:1px solid var(--ck-line); border-radius:11px; color:var(--ck-muted); background:var(--glass-surface); box-shadow:none; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-copy { width:30px; height:30px; border-radius:10px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-toast { margin:5px 24px 10px; padding:11px 15px; border:1px solid var(--ck-line); border-radius:15px; color:var(--ck-text); background:var(--glass-elevated); backdrop-filter:blur(20px); font-size:11px; }
+:root .workspace-shell.is-dialogue .klio-glass :is(button,a):focus-visible { outline:2px solid var(--glass-accent); outline-offset:4px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-input:focus-visible { outline:0; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-input-panel:focus-within { border-color:rgba(163,224,234,.45); box-shadow:0 20px 50px #0000001a,0 0 0 3px #9cdce105,inset 0 1px 0 #efffff12; }
+/* Portals leave the shell, so their palette is bound to the visible dialogue. */
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) :is(.klio-chatkit-thread-menu,.klio-chatkit-thread-dialog-layer,.klio-chatkit-settings-popover,.module-select-chatkit) {
+  --ck-bg:#101c22; --ck-rail:#13262d; --ck-panel:#19313a; --ck-hover:#bddfe812; --ck-text:#edf5f5; --ck-muted:#93a9ae; --ck-line:#c0e1e521;
+}
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) :is(.klio-chatkit-thread-menu,.klio-chatkit-settings-popover,.module-select-list.module-select-chatkit) { border:1px solid #c6eef333; border-radius:20px; background:rgba(19,36,43,.97); color:var(--ck-text); box-shadow:0 24px 60px #0005; backdrop-filter:blur(28px); }
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) .klio-chatkit-thread-dialog { border-radius:25px; border:1px solid #c6eef333; background:#13232af5; color:var(--ck-text); }
+/* Menus with text retain their own width; only toolbar icons are square. */
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-results-trigger { display:inline-flex; align-items:center; gap:7px; width:auto; min-height:34px; padding:7px 11px; border:1px solid var(--ck-line); border-radius:12px; color:var(--ck-muted); background:var(--glass-surface); font-size:10px; box-shadow:inset 0 1px 0 #ffffff07; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-results-list { padding:9px; border:1px solid var(--glass-highlight); border-radius:21px; background:rgba(19,36,43,.97); color:var(--ck-text); box-shadow:0 20px 50px #0004; backdrop-filter:blur(25px); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-results-list>button { width:100%; height:auto; padding:12px; border:0; border-radius:13px; color:var(--ck-text); background:transparent; text-align:left; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-results-list>button:hover { background:var(--ck-hover); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-results-list>button small { color:var(--ck-muted); font-size:8px; }
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) .klio-chatkit-thread-dialog-layer { background:rgba(2,10,15,.55); backdrop-filter:blur(10px); }
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) .klio-chatkit-thread-dialog { background:linear-gradient(145deg,#243d47ed,#10252ef5); backdrop-filter:blur(30px); box-shadow:0 30px 80px #0004,inset 0 1px 0 #ffffff0d; }
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) .klio-chatkit-thread-dialog :is(input,textarea) { border:1px solid var(--ck-line); border-radius:14px; background:#e7fbff08; color:var(--ck-text); }
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) .klio-chatkit-thread-dialog footer>button { border:1px solid var(--ck-line); border-radius:12px; color:var(--ck-text); background:linear-gradient(145deg,#d6f8fc12,#426b7812); box-shadow:inset 0 1px 0 #ffffff08; }
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) .klio-chatkit-thread-dialog footer>button[type="submit"]:not([data-action="delete"]) { background:linear-gradient(#bee3e7,#74b9c3); color:#112930; border-color:#c5e6ea66; }
+
+/* Light mode is a misted version of the same material. */
+:root[data-theme="light"] body:has(.workspace-shell.is-dialogue > .klio-glass) { background:radial-gradient(ellipse at 50% 120%,#d99aaf,#f0d5de 65%); }
+:root[data-theme="light"] body .workspace-shell.is-dialogue:has(> .klio-glass) {
+  --ck-bg:#fbedf2; --ck-rail:#fff1f76b; --ck-panel:#fff8fc91; --ck-hover:#ffffff80; --ck-text:#54313e; --ck-muted:#916578; --ck-line:rgba(143,76,109,.16);
+  --glass-surface:linear-gradient(135deg,#ffffff80,#ffffff30); --glass-elevated:linear-gradient(140deg,#ffffffb8,#f4d4ca75); --glass-highlight:rgba(255,255,255,.8); --glass-accent:#b45f7e; --glass-on-accent:#fff; --glass-shadow:0 12px 30px #8b4b4009,inset 0 1px 0 #ffffff9c;
+  border-color:#ffffffa6;
+  background:radial-gradient(ellipse at 53% 115%,#ed9eb8aa,transparent 65%),linear-gradient(160deg,#fff5f7,#f0d3df)!important;
+}
+:root[data-theme="light"] .workspace-shell.is-dialogue .klio-glass .klio-aui-welcome h1>span { color:#b66584; }
+:root[data-theme="light"] .workspace-shell.is-dialogue .klio-glass .klio-glass-emblem { background:linear-gradient(135deg,#ffffffa1,#f1d1c3a6); border-color:#ffffffb3; box-shadow:inset 0 1px 1px #ffffffb3,0 14px 30px #a8605112; }
+:root[data-theme="light"] .workspace-shell.is-dialogue .klio-glass .klio-glass-emblem>i { background:#ba6e5d; }
+:root[data-theme="light"] .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions .klio-glass-tool-card { border-color:#ffffff9c; background:linear-gradient(135deg,#ffffff9c,#fae5da4d); box-shadow:inset 0 1px 1px #ffffff91,0 12px 24px #99574b08; }
+:root[data-theme="light"] .workspace-shell.is-dialogue .klio-glass .klio-glass-folder { color:#ad6858; border-color:#c9958140; background:linear-gradient(#f0cdbda6,#e8bcac61); }
+:root[data-theme="light"] .workspace-shell.is-dialogue .klio-glass .klio-glass-folder:before { border-color:#c9958140; background:#ecc5b366; }
+:root[data-theme="light"] .workspace-shell.is-dialogue .klio-glass .klio-glass-input-panel { border-color:#ffffffc9; background:linear-gradient(135deg,#ffffffa6,#fff1e752); box-shadow:0 20px 45px #a3625116,inset 0 1px 1px #ffffffe6; }
+:root[data-theme="light"] .workspace-shell.is-dialogue .klio-glass :is(.klio-aui-tool-menu,.klio-chatkit-results-list) { background:#fff0e8f7; }
+:root[data-theme="light"] body:has(.workspace-shell.is-dialogue > .klio-glass) :is(.klio-chatkit-thread-menu,.klio-chatkit-settings-popover,.module-select-chatkit,.klio-chatkit-thread-dialog-layer) { --ck-bg:#fff0e8; --ck-panel:#f5ded3; --ck-hover:#efcec3; --ck-text:#593431; --ck-muted:#92645e; --ck-line:#8f4c4226; }
+:root[data-theme="light"] body:has(.workspace-shell.is-dialogue > .klio-glass) :is(.klio-chatkit-thread-menu,.klio-chatkit-settings-popover,.module-select-list.module-select-chatkit,.klio-chatkit-thread-dialog) { border-color:#fff; background:#fff0e8f7; color:var(--ck-text); box-shadow:0 20px 60px #8b4b4022; }
+/* Small samples live inside the floating glass cards, never in the composer. */
+.klio-glass-work-preview { position:relative; display:block; flex:0 0 auto; width:100%; height:95px; margin-top:12px; overflow:hidden; border:1px solid #edf9ff20; border-radius:10px; box-shadow:0 7px 13px #02071230,inset 0 1px 0 #fff2; text-align:left; }
+.klio-glass-work-preview.is-topics { padding:12px 10px; color:#24394c; background:linear-gradient(135deg,#b7c8c7,#87aab1); }
+.klio-glass-preview-kicker { position:relative; z-index:2; display:block; font-size:5px; font-weight:500; letter-spacing:.12em; }
+.klio-glass-preview-note { position:relative; z-index:2; display:block; margin-top:9px; font-size:11px; line-height:1.2; letter-spacing:-.03em; }
+.klio-glass-work-preview.is-topics i { position:absolute; width:43px; height:48px; right:-10px; bottom:-11px; border:1px solid #edf8f359; border-radius:6px; background:#dfeddf66; transform:rotate(-20deg); }
+.klio-glass-work-preview.is-topics i:last-child { right:15px; bottom:-26px; transform:rotate(12deg); background:#d4e5f380; }
+.klio-glass-work-preview.is-text { padding:10px 11px; background:linear-gradient(130deg,#d7d9ce,#b7c9c8); color:#344651; }
+.klio-glass-preview-heading { display:block; font-family:Georgia,serif; font-size:14px; line-height:1.1; margin:8px 0; letter-spacing:-.035em; }
+.klio-glass-work-preview.is-text i { display:block; width:90%; height:2px; margin-top:3px; background:#34465130; border-radius:2px; }
+.klio-glass-work-preview.is-text i:last-child { width:55%; }
+.klio-glass-work-preview.is-image { background:linear-gradient(#6f93b2,#a8c4ce 58%,#9aa9b9); }
+.klio-glass-preview-sun { position:absolute; width:29px; height:29px; border-radius:50%; top:14px; right:28px; background:#e1e7d5; box-shadow:0 0 20px #e8eacc40; }
+.klio-glass-preview-land { position:absolute; inset:42% -15% -40%; border-radius:50% 55% 0 0; transform:rotate(-18deg); background:linear-gradient(120deg,#244254,#789baf); box-shadow:30px 18px 0 12px #294457; }
+.klio-glass-work-preview.is-image .klio-glass-preview-kicker { position:absolute; bottom:10px; left:9px; color:#ecf3f6; }
+.klio-glass-work-preview.is-carousel { overflow:visible; border:0; box-shadow:none; }
+.klio-glass-preview-slide { position:absolute; top:0; bottom:3px; width:68%; padding:10px 8px; border:1px solid #edf9ff44; border-radius:9px; background:linear-gradient(140deg,#8ba4b1,#4e728b); color:#f0f5f8; box-shadow:0 5px 10px #07142630; }
+.klio-glass-preview-slide:first-child { z-index:3; transform:rotate(-7deg); }.klio-glass-preview-slide:nth-child(2) { z-index:2; left:22%; transform:rotate(5deg); background:linear-gradient(140deg,#385568,#21374b); }.klio-glass-preview-slide:nth-child(3) { left:35%; transform:rotate(12deg); background:#b4c5cc; color:#324756; }
+.klio-glass-preview-slide small { display:block; font-size:5px; letter-spacing:.08em; }.klio-glass-preview-slide b { display:block; margin-top:18px; font-family:Georgia,serif; font-size:16px; font-weight:400; line-height:1.05; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-context { border:1px solid var(--ck-line); border-radius:12px; padding:5px 9px; gap:9px; background:var(--glass-surface); transition:border-color .25s,background .25s; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-context:has(input:checked) { border-color:var(--glass-highlight); background:var(--glass-elevated); color:var(--ck-text); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-context input:before { content:""; position:absolute; top:3px; left:3px; width:11px; height:11px; border-radius:50%; background:var(--ck-muted); box-shadow:0 1px 3px #0004; transition:transform .25s,background .25s; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-context input:checked { background:rgba(139,194,223,.2); border-color:var(--glass-accent); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-context input:checked:before { transform:translateX(13px); background:var(--glass-accent); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-context input:focus-visible { outline:2px solid var(--glass-accent); outline-offset:4px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-context:has(input:disabled) { opacity:.45; cursor:not-allowed; }
+
+/* Small screens keep a full-width composer and an accessible drawer. */
+@media(min-width:1500px) { :root .workspace-shell.is-dialogue .klio-glass .klio-aui-welcome { padding-bottom:34px; }.klio-glass-emblem { width:74px; height:74px; margin-bottom:23px; border-radius:26px; }:root .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions .klio-glass-tool-card { min-height:210px; padding:18px 15px 24px; } }
+@media(max-height:790px) and (min-width:821px) { .klio-glass-emblem { width:49px; height:49px; border-radius:18px; margin-bottom:12px; }.klio-glass-emblem>span { font-size:25px; }:root .workspace-shell.is-dialogue .klio-glass .klio-aui-welcome { padding-bottom:20px; }:root .workspace-shell.is-dialogue .klio-glass .klio-glass-welcome-copy { margin-top:9px; font-size:11px; }:root .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions .klio-glass-tool-card { min-height:190px; padding:12px 12px 24px; }.klio-glass-folder { margin-bottom:10px; }:root .workspace-shell.is-dialogue .klio-glass .klio-aui-root.is-empty .klio-aui-viewport { padding-bottom:20px; } }
+@media(max-width:1100px) { :root .workspace-shell.is-dialogue .klio-glass.klio-chatkit-shell { --ck-rail-width:234px; }:root .workspace-shell.is-dialogue .klio-glass .klio-aui-viewport { padding:0 25px; }:root .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions { gap:9px; margin-inline:3px; }:root .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions .klio-glass-tool-card { padding:13px 11px; border-radius:19px; }.klio-glass-tool-name { font-size:10px; }.klio-glass-tool-description { font-size:8px; } }
+@media(max-width:820px) {
+  :root body .workspace-shell.is-dialogue:has(> .klio-glass) { width:calc(100% - 20px); height:calc(100dvh - 20px); margin:10px; border-radius:26px; }
+  :root body .workspace-shell.is-dialogue:has(> .klio-glass)>.workspace-header { height:65px; min-height:65px; padding:0 19px; }
+  :root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-header-actions { gap:10px; }
+  :root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-mode-switch { padding:4px; border-radius:17px; gap:3px; }
+  :root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-mode-switch button { min-height:30px; padding:7px 12px; font-size:10px; border-radius:12px; }
+  :root .workspace-shell.is-dialogue .klio-glass.klio-chatkit-shell { display:flex; margin:0 8px 8px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-rail { position:fixed; top:10px; left:10px; bottom:10px; width:min(295px,84vw); z-index:302; border-radius:25px; border-color:var(--glass-highlight); background:linear-gradient(145deg,rgba(28,48,56,.94),rgba(13,31,40,.96))!important; backdrop-filter:blur(35px); box-shadow:20px 0 60px #0004; transform:translateX(calc(-100% - 25px)); transition:transform .32s cubic-bezier(.2,.8,.2,1); }
+  :root .workspace-shell.is-dialogue .klio-glass.rail-open .klio-chatkit-rail { transform:translateX(0); }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-rail-head { min-height:35px; padding-bottom:12px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-close-rail { display:grid; place-items:center; width:29px; height:29px; border:1px solid var(--ck-line); border-radius:10px; background:var(--glass-surface); color:var(--ck-text); }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-backdrop { border:0; border-radius:0; background:rgba(2,11,17,.48); backdrop-filter:blur(8px); }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-main { width:100%; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-toolbar { padding:0 7px; height:37px; min-height:37px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-toolbar .klio-chatkit-mobile-menu { display:grid; place-items:center; padding:0; font-size:16px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-aui-viewport { padding-inline:20px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-aui-root.is-empty .klio-aui-viewport { padding-bottom:30px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-aui-welcome h1 { font-size:36px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions .klio-glass-tool-card { min-height:200px; padding:15px 13px 24px; }
+  .klio-glass-tool-name { font-size:12px; }.klio-glass-tool-description { font-size:10px; }
+  :root[data-theme="light"] .workspace-shell.is-dialogue .klio-glass .klio-chatkit-rail { background:linear-gradient(145deg,#fff0e8f7,#f3d8cdf5)!important; }
+}
+@media(max-width:600px) {
+  :root body .workspace-shell.is-dialogue:has(> .klio-glass) { width:100%; height:100dvh; margin:0; border:0; border-radius:0; }
+  :root body .workspace-shell.is-dialogue:has(> .klio-glass)>.workspace-header { height:61px; min-height:61px; padding:0 16px; }
+  :root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-header .brand i { width:25px; height:25px; border-radius:9px; }
+  :root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-header .brand b { font-size:18px; }
+  :root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-header .brand { gap:6px; }
+  :root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-header-actions { gap:8px; }
+  :root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-mode-switch button { font-size:9px; padding:6px 10px; min-height:27px; border-radius:10px; }
+  :root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-mode-switch { padding:3px; gap:2px; border-radius:14px; }
+  :root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-account i { width:31px; height:31px; border-radius:11px; font-size:11px; }
+  :root .workspace-shell.is-dialogue .klio-glass.klio-chatkit-shell { margin:0 7px 7px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-aui-viewport { padding-inline:12px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-aui-root.is-empty .klio-aui-viewport { padding-top:10px; padding-bottom:24px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-aui-welcome { padding-bottom:22px; }
+  .klio-glass-emblem { width:49px; height:49px; margin-bottom:13px; border-radius:18px; }.klio-glass-emblem>span { font-size:25px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-glass-eyebrow { font-size:7px; letter-spacing:.16em; margin-bottom:9px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-aui-welcome h1 { font-size:30px; letter-spacing:-.055em; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-glass-welcome-copy { max-width:290px; font-size:10px; margin-top:10px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions { grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px 9px; margin:0 10px -38px; padding-top:16px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions .klio-glass-tool-card { min-height:141px; padding:12px 12px 16px; border-radius:18px; justify-content:flex-start; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-card:nth-child(1) { transform:rotate(-3deg); }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-card:nth-child(2) { transform:rotate(3deg); }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-card:nth-child(n+3) { min-height:159px; padding-bottom:31px; transform:rotate(-3deg); }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-card:nth-child(4) { transform:rotate(3deg); }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-card:is(:hover,:focus-visible,[aria-pressed="true"]) { transform:translateY(-20px) rotate(0); }
+  .klio-glass-folder { position:absolute; left:12px; top:21px; width:26px; height:22px; margin:0; border-radius:6px; }.klio-glass-folder>svg { width:14px; }
+  .klio-glass-folder:before { width:11px; top:-4px; height:4px; }
+  .klio-glass-tool-name { font-size:10px; line-height:1.4; }.klio-glass-tool-description { white-space:normal; margin-top:4px; font-size:8px; line-height:1.6; }.klio-glass-tool-arrow { top:7px; right:9px; font-size:10px; opacity:.45; }
+  .klio-glass-work-preview { height:70px; margin-top:9px; }
+  .klio-glass-preview-heading { font-size:12px; margin-top:6px; }
+  .klio-glass-preview-note { font-size:10px; margin-top:6px; }
+  .klio-glass-preview-slide b { font-size:13px; margin-top:12px; }
+  .klio-glass-input-panel { padding:12px 15px 9px; border-radius:24px; }
+  .klio-glass-input-panel:before { border-radius:24px; }
+  .klio-glass-input-caption { margin-bottom:8px; font-size:8px; }.klio-glass-input-caption>span:last-child { font-size:6px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-aui-composer .klio-aui-input { min-height:29px; font-size:14px; line-height:1.65; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-aui-compose-tools { min-height:37px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-aui-icon { width:34px; height:34px; border-radius:12px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-aui-root .klio-aui-send { width:38px; height:38px; min-width:38px; border-radius:13px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-aui-tool-chip { font-size:9px; padding:7px 9px; border-radius:11px; gap:6px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-aui-footer .klio-chatkit-composer-options { padding-top:7px; margin-top:7px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-context { font-size:9px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-aui-disclaimer { font-size:7px; line-height:1.6; padding:0 8px; margin-top:11px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-aui-message { font-size:13px; line-height:1.8; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-aui-card:not(.is-image) { border-radius:21px; padding:17px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-aui-card-body { font-size:13px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-toast { margin-inline:11px; font-size:10px; }
+}
+/* Compact previews sit low behind the writing panel. */
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions {
+  width:min(360px,calc(100% - 24px)); grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:5px; margin:0 auto -44px; padding-top:30px;
+}
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-suggestions .klio-glass-tool-card {
+  height:104px; min-height:104px; padding:9px 7px 10px; border-radius:13px;
+  box-shadow:0 5px 12px #00000012,inset 0 1px 0 #ffffff0b;
+}
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-card:nth-child(1) { transform:translateY(10px) rotate(-8deg); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-card:nth-child(2) { transform:translateY(-3px) rotate(-3deg); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-card:nth-child(3) { transform:translateY(7px) rotate(5deg); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-card:nth-child(4) { transform:rotate(8deg); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-card:is(:hover,:focus-visible,[aria-pressed="true"]) { transform:translateY(-24px) rotate(0); box-shadow:0 8px 16px #00000018,inset 0 1px 0 #ffffff12; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-name { min-height:24px; padding-right:3px; font-size:9px; line-height:1.3; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-description { display:none; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-arrow { top:6px; right:5px; font-size:8px; opacity:.35; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-work-preview { height:47px; margin-top:7px; border-radius:5px; box-shadow:0 2px 5px #02071218; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-work-preview:is(.is-text,.is-topics) { padding:6px 5px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-preview-kicker { font-size:3px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-preview-heading { font-size:7px; margin:4px 0; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-preview-note { font-size:6px; margin-top:5px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-work-preview.is-text i { height:1px; margin-top:2px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-preview-sun { width:15px; height:15px; top:7px; right:14px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-work-preview.is-image .klio-glass-preview-kicker { left:4px; bottom:5px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-preview-slide { padding:5px 4px; border-radius:5px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-preview-slide small { font-size:3px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-preview-slide b { font-size:8px; margin-top:9px; }
+@media(max-width:600px) {
+  :root .workspace-shell.is-dialogue .klio-glass .klio-aui-root.is-empty .klio-aui-viewport { padding-top:28px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-glass-tool-name { font-size:8px; }
+}
+/* A quiet, compact writing surface with suggestions floating above it. */
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-footer { max-width:560px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-input-panel {
+  padding:13px 16px 12px; border-radius:23px; box-shadow:0 8px 24px #00000012;
+  backdrop-filter:blur(20px) saturate(110%);
+}
+:root:not([data-theme="light"]) .workspace-shell.is-dialogue .klio-glass .klio-glass-input-panel { background:rgba(22,36,49,.78); border-color:rgba(209,230,243,.22); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-input-panel:before { display:none; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-input-panel:focus-within { box-shadow:0 8px 24px #00000012; border-color:rgba(163,210,234,.45); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-footer .klio-chatkit-composer-options { margin-top:10px; padding:0 5px; border:0; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-context { padding:4px 7px; border-color:transparent; background:transparent; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-welcome { padding-bottom:25px; }
+.klio-glass-floating-ideas { position:relative; width:min(510px,100%); height:183px; margin:0 auto 20px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-floating-card {
+  position:absolute; display:flex; flex-direction:column; align-items:flex-start; gap:4px; width:105px; height:128px;
+  padding:12px 10px; border:1px solid var(--ck-line); border-top-color:var(--glass-highlight); border-radius:19px;
+  background:var(--glass-surface); color:var(--ck-text); box-shadow:0 8px 24px #0000000d;
+  backdrop-filter:blur(14px); text-align:left; font-size:10px; font-weight:400;
+  transition:border-color .3s,box-shadow .3s;
+}
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-floating-card.is-story { left:19%; top:37px; transform:rotate(-12deg); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-floating-card.is-visual { right:18%; top:6px; transform:rotate(10deg); }
+.klio-glass-floating-card>small { color:var(--ck-muted); font-size:8px; }
+.klio-glass-floating-sample { position:relative; display:block; overflow:hidden; width:100%; min-height:57px; margin-top:8px; padding:10px 7px; border:1px solid #eefaff18; border-radius:7px; color:#d3e2e9; background:linear-gradient(140deg,#57738280,#1a3c5359); font:10px/1.15 Georgia,serif; }
+.klio-glass-floating-sample>i { display:block; width:50%; height:1px; margin:0 0 6px; background:#d4e6ed3b; }.klio-glass-floating-sample>i:last-child { margin:6px 0 0; width:72%; }
+.is-visual .klio-glass-floating-sample { background:linear-gradient(150deg,#9ab4c080,#425d8040); }
+.is-visual .klio-glass-floating-sample>i:first-child { position:absolute; top:9px; right:16px; width:18px; height:18px; border-radius:50%; background:#d1dccc7a; }
+.is-visual .klio-glass-floating-sample>i:last-child { position:absolute; left:-6px; bottom:-21px; width:100%; height:52px; border-radius:50%; transform:rotate(-15deg); background:#24465d8c; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-floating-card:is(:hover,:focus-visible) { border-color:var(--glass-accent); box-shadow:0 12px 25px #00000014; }
+@media(prefers-reduced-motion:no-preference) {
+  .klio-glass-floating-card.is-story { animation:klio-glass-drift 7s ease-in-out infinite; }
+  .klio-glass-floating-card.is-visual { animation:klio-glass-drift 8.5s ease-in-out -3s infinite reverse; }
+  .klio-glass-floating-card:is(:hover,:focus-visible) { animation-play-state:paused; }
+}
+@keyframes klio-glass-drift { 0%,100% { translate:0 0; } 50% { translate:3px -10px; } }
+@media(max-width:600px) {
+  .klio-glass-floating-ideas { height:162px; margin-bottom:17px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-glass-floating-card { width:94px; height:119px; padding:10px 9px; font-size:9px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-glass-floating-card.is-story { left:15%; top:28px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-glass-floating-card.is-visual { right:14%; top:3px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-glass-input-panel { padding:12px 14px 11px; border-radius:21px; }
+}
+/* Light stays at the glass edges, leaving the writing area clear. */
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) {
+  --glass-rim:rgba(170,213,242,.17);
+  --glass-rim-bright:rgba(203,234,252,.33);
+  --glass-edge-shadow:inset 0 1px 1px rgba(228,245,255,.17),inset 1px 0 7px rgba(166,213,243,.085),inset -1px -1px 6px rgba(126,188,231,.075),0 3px 10px rgba(1,10,18,.08);
+  --glass-edge-active:inset 0 1px 2px rgba(236,250,255,.3),inset 2px 0 10px rgba(166,218,249,.18),inset -2px -1px 9px rgba(126,194,240,.14),0 0 12px rgba(128,200,242,.065);
+}
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-input-panel:before {
+  display:block; inset:0; border-radius:inherit; background:none;
+  box-shadow:inset 0 0 12px var(--glass-rim),inset 0 1px 2px var(--glass-rim-bright),inset 0 -1px 5px rgba(119,181,226,.1);
+  transition:box-shadow .3s;
+}
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-input-panel:after {
+  content:""; position:absolute; pointer-events:none; inset:-1px; padding:1px; border-radius:inherit;
+  background:linear-gradient(115deg,rgba(224,244,255,.5),rgba(148,204,241,.08) 32%,rgba(148,204,241,.08) 72%,rgba(179,223,252,.4));
+  mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0); mask-composite:exclude;
+}
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-input-panel:focus-within:before {
+  box-shadow:inset 0 0 16px var(--glass-rim),inset 0 1px 3px var(--glass-rim-bright),inset 0 -1px 7px rgba(119,181,226,.18);
+}
+/* A shared rim also covers small controls, floating tiles and sidebar actions. */
+:root .workspace-shell.is-dialogue .klio-glass button,
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-context,
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand,
+:root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-header :is(.workspace-mode-switch button,.theme-toggle,.workspace-account i) {
+  box-shadow:var(--glass-edge-shadow)!important;
+}
+:root .workspace-shell.is-dialogue .klio-glass button:is(:hover,:focus-visible,[aria-pressed="true"]):not(:disabled),
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-context:is(:hover,:focus-within),
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-context:has(input:checked),
+:root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-header :is(.workspace-mode-switch button,.theme-toggle,.workspace-account i):is(:hover,:focus-visible,[aria-pressed="true"]) {
+  box-shadow:var(--glass-edge-active)!important;
+}
+:root[data-theme="light"] body:has(.workspace-shell.is-dialogue > .klio-glass) {
+  --glass-rim:rgba(255,255,255,.38); --glass-rim-bright:rgba(255,255,255,.8);
+  --glass-edge-shadow:inset 0 1px 2px rgba(255,255,255,.7),inset 1px 0 6px rgba(255,255,255,.35),0 2px 8px rgba(52,101,127,.045);
+  --glass-edge-active:inset 0 1px 3px rgba(255,255,255,.95),inset 1px 0 10px rgba(255,255,255,.65),0 0 10px rgba(83,154,185,.1);
+}
+/* Dialogue menus rendered in portals inherit the same edge treatment. */
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) :is(.klio-chatkit-thread-menu,.klio-chatkit-settings-popover,.klio-chatkit-thread-dialog,.module-select-chatkit) button { box-shadow:var(--glass-edge-shadow)!important; }
+:root body:has(.workspace-shell.is-dialogue > .klio-glass) :is(.klio-chatkit-thread-menu,.klio-chatkit-settings-popover,.klio-chatkit-thread-dialog,.module-select-chatkit) button:is(:hover,:focus-visible):not(:disabled) { box-shadow:var(--glass-edge-active)!important; }
+/* The insertion point, rather than the panel perimeter, emits the typing light. */
+.klio-glass-writing-field { position:relative; min-width:0; isolation:isolate; }
+.klio-glass-caret { position:absolute; z-index:1; width:2px; pointer-events:none; }
+.klio-glass-caret:before { content:""; position:absolute; z-index:-1; left:-9px; top:50%; transform:translateY(-50%); width:148px; height:94px; border-radius:50%; background:radial-gradient(ellipse at 17% 50%,rgba(255,199,172,.92) 0%,rgba(249,151,120,.66) 19%,rgba(233,114,100,.3) 43%,rgba(225,105,94,.09) 62%,transparent 78%); filter:blur(9px); }
+.klio-glass-caret>i { display:block; position:absolute; top:12%; bottom:12%; width:2px; border-radius:2px; background:#fff9f3; box-shadow:0 0 4px #fff0df,0 0 13px #ffb28e; }
+:root .workspace-shell.is-dialogue .klio-glass .has-glowing-caret .klio-aui-input { caret-color:transparent; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-input-panel:before,
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-input-panel:after { display:none; }
+/* Raspberry light from the lower left against a charcoal canvas. */
+:root:not([data-theme="light"]) body:has(.workspace-shell.is-dialogue > .klio-glass) { background:radial-gradient(ellipse at 0 100%,#6c1b30,#21151d 55%,#161316); }
+:root:not([data-theme="light"]) body .workspace-shell.is-dialogue:has(> .klio-glass) {
+  --ck-bg:#161316; --ck-rail:rgba(25,18,24,.46); --ck-panel:rgba(63,29,42,.35); --ck-hover:rgba(255,208,219,.08);
+  --ck-text:#fff3f5; --ck-muted:#cbb1ba; --ck-line:rgba(246,215,226,.17);
+  --glass-surface:linear-gradient(135deg,rgba(255,231,205,.09),rgba(145,81,65,.04) 48%,rgba(36,18,27,.16));
+  --glass-elevated:linear-gradient(145deg,rgba(245,209,185,.15),rgba(143,76,64,.09) 50%,rgba(39,20,27,.22));
+  --glass-highlight:rgba(255,224,232,.28); --glass-accent:#ffb1c0; --glass-on-accent:#45232d;
+  background:radial-gradient(ellipse 82% 95% at -10% 90%,rgba(254,46,75,.96) 0%,rgba(254,46,75,.7) 24%,rgba(254,46,75,.15) 53%,transparent 75%),radial-gradient(ellipse at 24% 52%,rgba(255,96,126,.42),transparent 56%),linear-gradient(155deg,#171216 4%,#4d1d2a 46%,#21141c 80%,#0f0e0e 100%)!important;
+}
+:root:not([data-theme="light"]) body:has(.workspace-shell.is-dialogue > .klio-glass) {
+  --glass-edge-shadow:inset 0 1px 1px #ffe5d62b,inset 1px 0 7px #edbda816,inset -1px -1px 6px #c5787613,0 3px 10px #18060b14;
+  --glass-edge-active:inset 0 1px 2px #fff0df4d,inset 2px 0 10px #ffceb82e,inset -2px -1px 9px #ec9b8624,0 0 12px #edb39c11;
+}
+:root:not([data-theme="light"]) .workspace-shell.is-dialogue .klio-glass .klio-glass-input-panel { background:rgba(22,19,26,.69); border-color:rgba(255,224,232,.3); box-shadow:0 8px 24px #21050c14; }
+:root:not([data-theme="light"]) .workspace-shell.is-dialogue .klio-glass .klio-glass-input-panel:focus-within { border-color:rgba(255,218,193,.48); box-shadow:0 8px 24px #21050c14; }
+:root:not([data-theme="light"]) .workspace-shell.is-dialogue .klio-glass .klio-chatkit-rail { background:linear-gradient(155deg,rgba(25,18,24,.5),rgba(26,18,27,.4))!important; }
+:root:not([data-theme="light"]) .workspace-shell.is-dialogue .klio-glass .klio-aui-welcome h1>span { color:#ffc1ce; }
+:root:not([data-theme="light"]) .workspace-shell.is-dialogue .klio-glass :is(.klio-aui-icon,.klio-aui-send) { background:var(--glass-surface); border-color:var(--glass-highlight); }
+:root[data-theme="light"] .klio-glass-caret:before { background:radial-gradient(ellipse at 17% 50%,rgba(255,172,138,.85),rgba(237,108,88,.53) 24%,rgba(213,83,78,.23) 48%,transparent 78%); opacity:1; }
+:root[data-theme="light"] .klio-glass-caret>i { background:#814f43; box-shadow:0 0 4px #f4ad8b,0 0 10px #f4ba9666; }
+@media(prefers-reduced-motion:no-preference) { .klio-glass-caret>i { animation:klio-caret-breathe 1.1s ease-in-out infinite; } }
+@keyframes klio-caret-breathe { 0%,100% { opacity:1; } 50% { opacity:.45; } }
+.klio-glass-floating-ideas { height:138px; margin-bottom:15px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-floating-card { width:94px; height:110px; padding:10px 9px; font-size:9px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-floating-card.is-story { top:18px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-glass-floating-card.is-visual { top:0; }
+.klio-glass-floating-sample { min-height:46px; margin-top:6px; padding:7px 6px; font-size:9px; }
+/* The empty composer occupies the middle track; conversation docks it below. */
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-root.is-empty .klio-aui-viewport {
+  display:grid; grid-template-rows:minmax(max-content,1fr) auto minmax(0,1fr);
+  justify-content:stretch; justify-items:center; align-content:stretch; padding-top:14px; padding-bottom:8px;
+}
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-root.is-empty .klio-aui-welcome { grid-row:1; align-self:end; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-root.is-empty .klio-aui-messages { display:none; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-root.is-empty .klio-aui-footer { grid-row:2; align-self:center; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-footer:before { display:none; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-root:not(.is-empty) .klio-aui-footer { padding:8px 0 max(2px,env(safe-area-inset-bottom)); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-root:not(.is-empty) .klio-chatkit-composer-options { margin-top:5px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-root:not(.is-empty) .klio-chatkit-brand-context { min-height:23px; padding-block:2px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-aui-root:not(.is-empty) .klio-aui-disclaimer { margin-top:5px; font-size:8px; line-height:1.4; }
+@media(max-height:800px) {
+  .klio-glass-floating-ideas { height:105px; margin-bottom:12px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-aui-welcome { padding-bottom:15px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-glass-floating-card { width:76px; height:94px; padding:8px 7px; font-size:8px; gap:3px; border-radius:15px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-glass-floating-card.is-story { top:15px; }
+  :root .workspace-shell.is-dialogue .klio-glass .klio-glass-floating-card.is-visual { top:0; }
+  .klio-glass-floating-card>small { font-size:6px; }
+  .klio-glass-floating-sample { min-height:38px; margin-top:6px; padding:6px 5px; font-size:7px; }
+}
+/* Dark glass controls match the writing surface; each history row is one item. */
+:root:not([data-theme="light"]) body .workspace-shell.is-dialogue:has(> .klio-glass) {
+  --glass-control:rgba(22,19,26,.69); --glass-control-hover:rgba(39,24,34,.82); --glass-popup:#211820fa;
+  --glass-surface:linear-gradient(140deg,rgba(31,23,31,.67),rgba(22,19,26,.65));
+  --glass-elevated:linear-gradient(140deg,rgba(53,30,43,.74),rgba(32,23,33,.76));
+}
+:root[data-theme="light"] body .workspace-shell.is-dialogue:has(> .klio-glass) {
+  --glass-control:rgba(255,246,240,.7); --glass-control-hover:rgba(255,249,245,.9); --glass-popup:#fff1eafa;
+}
+:root .workspace-shell.is-dialogue .klio-glass :is(.klio-chatkit-new,.klio-chatkit-rail>nav>button,.klio-glass-tool-card,.klio-glass-floating-card,.klio-chatkit-brand,.klio-aui-icon,.klio-aui-root .klio-aui-send,.klio-chatkit-toolbar>button,.klio-chatkit-results-trigger) {
+  background:var(--glass-control); border-color:var(--ck-line);
+}
+:root .workspace-shell.is-dialogue .klio-glass :is(.klio-chatkit-new,.klio-chatkit-rail>nav>button,.klio-glass-tool-card,.klio-glass-floating-card,.klio-chatkit-toolbar>button,.klio-chatkit-results-trigger):is(:hover,:focus-visible,[aria-pressed="true"]):not(:disabled) { background:var(--glass-control-hover); border-color:var(--glass-highlight); }
+:root .workspace-shell.is-dialogue .klio-glass :is(.klio-glass-nav-icon,.klio-glass-new-icon,.klio-chatkit-brand-select>button>i) { background:var(--glass-control); border:1px solid var(--ck-line); flex-shrink:0; }
+:root body .workspace-shell.is-dialogue:has(> .klio-glass) .workspace-header :is(.workspace-mode-switch button,.theme-toggle,.workspace-account i) { background:var(--glass-control); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-rail { gap:9px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-rail>nav { margin-bottom:12px; flex-shrink:0; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-rail-head,
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-new,
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-account { flex-shrink:0; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-recent { min-height:0; min-width:0; padding:2px 0 5px; overflow-y:auto; overflow-x:hidden; scrollbar-gutter:stable; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-recent h2 { margin-bottom:10px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-recent ul { gap:6px; width:100%; min-width:0; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-recent li { display:grid; grid-template-columns:minmax(0,1fr) 28px; align-items:center; width:100%; min-width:0; min-height:41px; padding:2px 4px 2px 2px; border:1px solid var(--ck-line); background:var(--glass-control); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-recent li:is(:hover,:focus-within),
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-recent li:has([aria-current="page"]) { background:var(--glass-control-hover); border-color:var(--glass-highlight); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-recent .klio-chatkit-thread-open { width:100%; min-width:0; min-height:35px; padding:8px 7px; border:0; border-radius:9px; background:transparent; box-shadow:none!important; font-size:11px; color:var(--ck-muted); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-recent .klio-chatkit-thread-open[aria-current="page"] { color:var(--ck-text); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-thread-open>span:first-child { display:block; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-recent .klio-chatkit-thread-more { display:grid; place-items:center; width:28px; min-width:28px; height:28px; min-height:28px; margin:0; padding:0; border:0; border-radius:8px; background:transparent; box-shadow:none!important; font-size:18px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-recent .klio-chatkit-thread-more:is(:hover,:focus-visible,[aria-expanded="true"]) { background:var(--glass-surface); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-all-history { min-height:30px; margin-top:8px; padding:7px 8px; width:100%; border:0; background:transparent; box-shadow:none!important; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand { z-index:9; gap:6px; margin-top:7px; padding:11px; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand>span { margin:0; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-select { min-width:0; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-select>button { display:grid; grid-template-columns:32px minmax(0,1fr) 12px; gap:9px; min-width:0; padding:3px 0; border-radius:10px; background:transparent; box-shadow:none!important; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-select>button>span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-options { position:absolute; z-index:20; left:0; right:0; bottom:calc(100% + 8px); display:flex; flex-direction:column; max-height:min(300px,40dvh); gap:6px; padding:8px; border:1px solid var(--glass-highlight); border-radius:17px; background:var(--glass-popup); box-shadow:0 12px 30px #19070d33; backdrop-filter:blur(24px); overflow:hidden; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-options [role="listbox"] { display:grid; grid-auto-rows:max-content; align-content:start; gap:4px; min-height:0; overflow-y:auto; padding:0; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-options button { display:block; flex-shrink:0; width:100%; min-width:0; min-height:36px; padding:10px; border:1px solid transparent; border-radius:10px; background:transparent; color:var(--ck-text); font-size:11px; line-height:1.4; font-weight:400; text-align:left; white-space:normal; overflow-wrap:anywhere; box-shadow:none!important; }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-options button:is(:hover,:focus-visible,[aria-selected="true"]) { background:var(--glass-surface); border-color:var(--ck-line); }
+:root .workspace-shell.is-dialogue .klio-glass .klio-chatkit-brand-options>button { border-top:1px solid var(--ck-line); border-radius:0 0 10px 10px; }
+:root:not([data-theme="light"]) body:has(.workspace-shell.is-dialogue > .klio-glass) :is(.klio-chatkit-thread-menu,.klio-chatkit-settings-popover,.klio-chatkit-thread-dialog,.module-select-list.module-select-chatkit) { background:#211820fa; --ck-text:#fff3f5; --ck-muted:#cbb1ba; --ck-line:#f6d7e22b; }
+@media(prefers-reduced-motion:no-preference) { .klio-glass .klio-aui-welcome { animation:klio-glass-arrive .65s ease both; }.klio-glass .klio-glass-tool-card { animation:klio-glass-materialize .7s ease both; }.klio-glass .klio-glass-tool-card:nth-child(2) { animation-delay:.05s; }.klio-glass .klio-glass-tool-card:nth-child(3) { animation-delay:.1s; }.klio-glass .klio-glass-tool-card:nth-child(4) { animation-delay:.15s; } }
+@keyframes klio-glass-arrive { from { opacity:0; translate:0 9px; } to { opacity:1; translate:0 0; } }
+@keyframes klio-glass-materialize { from { opacity:0; translate:0 12px; } to { opacity:1; translate:0 0; } }
+@media(prefers-reduced-motion:reduce) { .klio-glass *, .klio-glass *:before, .klio-glass *:after { animation:none!important; transition-duration:.01ms!important; scroll-behavior:auto!important; } }
+.klio-dialogue-preview-badge { position:fixed; bottom:3px; left:50%; transform:translateX(-50%); z-index:75; display:flex; align-items:center; gap:18px; max-width:calc(100% - 24px); white-space:nowrap; font:400 7px/1.5 var(--font-sans),Arial,sans-serif; color:#a4b8bd; padding:4px 10px; border-radius:9px; background:#102129b3; border:1px solid #d2f3f414; backdrop-filter:blur(12px); }
+.klio-dialogue-preview-badge a { color:#cbe2e5; text-decoration:none; }
+
+:root .klio-glass.klio-chatkit-shell[hidden] { display:none!important; }

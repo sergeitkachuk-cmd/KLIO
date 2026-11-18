@@ -1,6 +1,9 @@
 "use client";
 
+import { SiteToggle } from "./site-toggle";
+
 import { useState } from "react";
+import { HelpTip } from "./help-tip";
 import { DialogueModal } from "./dialogue-modal";
 import { DialogueImageAttachment } from "./dialogue-image-attachment";
 import { ModuleSelect } from "./module-select";
@@ -58,11 +61,11 @@ export function DialogueCardGenerationDialog({ kind, title, initial, brandName, 
         <ModuleSelect variant="chatkit" disabled={busy} label="Авторская позиция" value={choices.useBrandContext && hasBrand ? choices.settings.authorPosition || "brand" : choices.settings.authorPosition === "brand" ? "neutral" : choices.settings.authorPosition || "neutral"} options={AUTHOR_POSITION_OPTIONS.filter(option => choices.useBrandContext && hasBrand || option.value !== "brand")} onChange={value => update("authorPosition", value)} help="Определяет, от чьего лица написан текст. При профиле бренда по умолчанию КЛИО пишет от имени компании." />
         <ModuleSelect variant="chatkit" disabled={busy} label="Стиль" value={choices.settings.tone} options={TONE_OPTIONS.map(option => ({ ...option, label: option.value ? option.label : choices.useBrandContext && hasBrand ? "По голосу бренда" : "Нейтральный" }))} onChange={value => update("tone", value)} />
       </>}
-      <label className="klio-card-generation-check"><input type="checkbox" disabled={busy || !hasBrand} checked={hasBrand && choices.useBrandContext} onChange={event => setChoices(current => ({ ...current, useBrandContext: event.target.checked }))} /><span>Использовать профиль бренда<small>{hasBrand ? brandName : "Бренд не выбран — можно создать без него"}</small></span></label>
-      {image && <label className="klio-card-generation-check"><input type="checkbox" checked={hasLogo && choices.settings.useLogo} disabled={busy || !hasLogo} onChange={event => update("useLogo", event.target.checked)} /><span>Добавить логотип<small>{hasLogo ? "Из профиля выбранного бренда" : "Логотип можно загрузить в «Мой бизнес»"}</small></span></label>}
+      <label className="klio-card-generation-check"><SiteToggle disabled={busy || !hasBrand} checked={hasBrand && choices.useBrandContext} onChange={event => setChoices(current => ({ ...current, useBrandContext: event.target.checked }))} /><span>Использовать профиль бренда<small>{hasBrand ? brandName : "Бренд не выбран — можно создать без него"}</small></span></label>
+      {image && <label className="klio-card-generation-check"><SiteToggle checked={hasLogo && choices.settings.useLogo} disabled={busy || !hasLogo} onChange={event => update("useLogo", event.target.checked)} /><span>Добавить логотип<small>{hasLogo ? "Из профиля бренда" : "Логотип не загружен"}</small></span></label>}
       {image && hasLogo && choices.settings.useLogo && <>
         {group("Угол для логотипа", "logoPosition", LOGO_POSITION_OPTIONS)}
-        <small>Будет добавлен исходный файл из профиля, без перерисовки.</small>
+        <HelpTip label="Логотип на изображении" text="Будет добавлен исходный файл из профиля, без перерисовки. Логотип можно загрузить в разделе «Мой бизнес»."/>
       </>}
       <p className="klio-card-generation-quota">1 материал из лимита · осталось {remaining}</p>
       {error && <p className="klio-card-generation-error" role="alert">{error}</p>}
